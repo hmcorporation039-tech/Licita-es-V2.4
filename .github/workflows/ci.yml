@@ -1,0 +1,51 @@
+name: CI
+
+# Nenhum segredo é usado aqui de propósito: o pipeline não toca banco, Redis
+# nem API de IA. Typecheck, lint e testes de função pura rodam offline.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci?schema=public
+      JWT_SECRET: ci-apenas-para-compilar
+      AI_ANALYSIS_ENABLED: 'false'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependências da API
+        run: npm ci
+
+      - name: Gerar Prisma Client
+        run: npx prisma generate
+
+      - name: Conferir tipos da API
+        run: npm run typecheck
+
+      - name: Lint da API
+        run: npm run lint
+
+      - name: Testes unitários
+        run: npm run test
+
+      - name: Instalar dependências do frontend
+        run: npm ci
+        working-directory: web
+
+      # next build, e não tsc: os tipos de rota do Next 16 (LayoutProps e afins)
+      # só existem depois que o build os gera.
+      - name: Build do frontend
+        run: npx next build
+        working-directory: web
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:3333

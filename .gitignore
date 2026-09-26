@@ -1,0 +1,18 @@
+node_modules/
+dist/
+.next/
+*.tsbuildinfo
+.env
+.env.local
+*.log
+
+# Claude Code — configuração local de sessão, não é config do projeto
+.claude/
+
+# Railway IaC — pode conter segredos em texto puro (pull --include-variables)
+.railway/
+
+# Artefatos de execução de teste
+cypress/screenshots/
+cypress/videos/
+cypress/downloads/

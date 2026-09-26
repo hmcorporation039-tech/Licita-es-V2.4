@@ -1,0 +1,444 @@
+// ============================================================
+// schema.prisma — Plataforma de Monitoramento de Licitações
+// Stack: PostgreSQL (Supabase) + Prisma ORM
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// USUÁRIOS E AUTENTICAÇÃO
+// ============================================================
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  name         String?
+  // null = conta antiga da fase pré-login, ainda sem senha definida —
+  // ver POST /api/auth/set-password.
+  passwordHash String?   @map("password_hash")
+  isAdmin      Boolean   @default(false) @map("is_admin")
+  // Acesso por prazo determinado (contas de teste/clientes) — null = sem
+  // validade. Expirada, o login passa a ser recusado (ver authMiddleware.ts)
+  // mesmo com senha correta.
+  accessExpiresAt DateTime? @map("access_expires_at")
+  plan      Plan     @default(FREE)
+  active    Boolean  @default(true)
+  // Incrementado ao desativar a conta ou trocar a senha; vai dentro do token
+  // e e conferido no authMiddleware, para que a sessao de 30 dias possa ser
+  // revogada na hora em vez de sobreviver ate expirar sozinha.
+  tokenVersion Int   @default(0) @map("token_version")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  monitoredItems     MonitoredItem[]
+  tenderMatches      TenderMatch[]
+  notifications      Notification[]
+  checklists         TenderChecklist[]
+  companyDocuments   CompanyDocument[]
+  participationPlans TenderParticipationPlan[]
+
+  @@map("users")
+}
+
+enum Plan {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
+// ============================================================
+// ITENS MONITORADOS (cadastrados pelo usuário)
+// ============================================================
+
+model MonitoredItem {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  name        String                        // Nome amigável do item
+  keywords    String[]                      // ['notebook', 'computador portátil']
+  catmatCodes String[] @map("catmat_codes") // Códigos CATMAT (opcional)
+  catserCodes String[] @map("catser_codes") // Códigos CATSER (opcional)
+  ufs         String[]                      // ['DF', 'GO'] — vazio = nacional
+  valorMin    Decimal? @map("valor_min")    // Filtro de valor mínimo
+  valorMax    Decimal? @map("valor_max")    // Filtro de valor máximo
+  modalidades String[]                      // ['pregao', 'dispensa', 'concorrencia']
+  // Filtro por órgão — trecho do nome (ex: "PREFEITURA DE UBERLÂNDIA" para um
+  // órgão específico, ou "PREFEITURA"/"UNIVERSIDADE FEDERAL" para uma categoria
+  // inteira). Casamento literal por palavra, igual às keywords — ver matcherService.
+  orgaos      String[]                      // vazio = qualquer órgão
+  // Filtro por código UASG (unidade compradora) — só existe no sistema legado
+  // (ComprasNet/Lei 8.666); licitações do PNCP não têm UASG, então esse
+  // filtro simplesmente não restringe candidatas do PNCP (ver uasgMatches em
+  // matcherService.ts). Preenchido via busca na tabela cacheada em Uasg.
+  uasgCodes   String[] @map("uasg_codes")   // vazio = qualquer unidade
+  active      Boolean  @default(true)
+
+  // Filtro por raio de distância — alternativa/complemento ao filtro por UF,
+  // útil pra quem presta serviço presencial e só atende dentro de um raio.
+  raioKm          Int?     @map("raio_km")
+  origemMunicipio String?  @map("origem_municipio")
+  origemUf        String?  @map("origem_uf") @db.Char(2)
+  origemLat       Float?   @map("origem_lat")
+  origemLng       Float?   @map("origem_lng")
+
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user          User          @relation(fields: [userId], references: [id])
+  tenderMatches TenderMatch[]
+
+  @@map("monitored_items")
+}
+
+// ============================================================
+// LICITAÇÕES COLETADAS (normalizado entre PNCP e ComprasNet)
+// ============================================================
+
+model Tender {
+  id              String        @id @default(uuid())
+  fonte           FonteEnum                         // 'PNCP' | 'COMPRASNET'
+  fonteId         String        @unique @map("fonte_id") // ID único da fonte
+  modalidade      ModalidadeEnum
+  situacao        SituacaoEnum  @default(ABERTA)
+  objeto          String        @db.Text
+  objetoResumido  String?       @map("objeto_resumido") @db.VarChar(500)
+  // Versões sem acento/minúsculas de objeto/orgao/municipio, mantidas em sincronia
+  // na gravação — usadas pela busca (ver tenders.ts) pra "uberlandia" achar
+  // "Uberlândia" sem precisar da extensão unaccent do Postgres.
+  objetoNorm         String? @map("objeto_norm") @db.Text
+  objetoResumidoNorm String? @map("objeto_resumido_norm") @db.Text
+  orgaoNorm          String? @map("orgao_norm")
+  municipioNorm      String? @map("municipio_norm")
+  valorEstimado   Decimal?      @map("valor_estimado")
+  uf              String?       @db.Char(2)
+  municipio       String?
+  municipioIbge   String?       @map("municipio_ibge")
+  municipioLat    Float?        @map("municipio_lat")
+  municipioLng    Float?        @map("municipio_lng")
+  orgao           String?
+  orgaoCnpj       String?       @map("orgao_cnpj") @db.VarChar(14)
+  unidade         String?
+  aberturaAt      DateTime?     @map("abertura_at")
+  encerramentoAt  DateTime?     @map("encerramento_at")
+  publicadoAt     DateTime?     @map("publicado_at")
+  linkEdital      String?       @map("link_edital")
+  numeroControle  String?       @map("numero_controle")
+  rawJson         Json          @map("raw_json")
+  // Impressao digital dos campos que importam (ver lib/tenderContentHash.ts).
+  // Orgaos republicam licitacao o tempo todo; comparar o hash deixa a coleta
+  // atualizar so o que mudou, sem reescrever milhares de registros por ciclo.
+  contentHash     String?       @map("content_hash")
+  // Ultima vez que a situacao real foi reconsultada no PNCP — usado para
+  // fazer rodizio em vez de varrer a base inteira a cada execucao.
+  situacaoCheckedAt DateTime?   @map("situacao_checked_at")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  items              TenderItem[]
+  tenderMatches      TenderMatch[]
+  checklists         TenderChecklist[]
+  analysis           TenderAnalysis?
+  participationPlans TenderParticipationPlan[]
+
+  @@index([fonte])
+  @@index([uf])
+  @@index([modalidade])
+  @@index([situacao])
+  @@index([aberturaAt])
+  @@index([publicadoAt])
+  @@index([situacaoCheckedAt])
+  @@index([encerramentoAt])
+  @@map("tenders")
+}
+
+enum FonteEnum {
+  PNCP
+  COMPRASNET
+}
+
+// ============================================================
+// TABELA DE UASGs (unidades compradoras) — cache local da API pública
+// dadosabertos.compras.gov.br/modulo-uasg, importado via
+// scripts/importUasg.ts. Usado pra: (1) autocompletar o filtro de Órgão
+// ao cadastrar item monitorado (nomeOrgao vale pras duas fontes) e
+// (2) filtro exato por código UASG (só bate com licitações do ComprasNet
+// — ver comentário em MonitoredItem.uasgCodes).
+// ============================================================
+model Uasg {
+  codigoUasg    String   @id @map("codigo_uasg")
+  nomeUasg      String   @map("nome_uasg")
+  nomeUasgNorm  String   @map("nome_uasg_norm")
+  siglaUf       String?  @map("sigla_uf") @db.Char(2)
+  municipioNome String?  @map("municipio_nome")
+  codigoOrgao   Int?     @map("codigo_orgao")
+  nomeOrgao     String?  @map("nome_orgao")
+  nomeOrgaoNorm String?  @map("nome_orgao_norm")
+  cnpjOrgao     String?  @map("cnpj_orgao")
+  ativo         Boolean  @default(true)
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@index([nomeUasgNorm])
+  @@index([nomeOrgaoNorm])
+  @@index([siglaUf])
+  @@map("uasgs")
+}
+
+enum ModalidadeEnum {
+  PREGAO_ELETRONICO
+  PREGAO_PRESENCIAL
+  CONCORRENCIA
+  DISPENSA_COM_DISPUTA
+  DISPENSA_SEM_DISPUTA
+  INEXIGIBILIDADE
+  CONVITE
+  TOMADA_DE_PRECOS
+  CONCURSO
+  CREDENCIAMENTO
+  DIALOGO_COMPETITIVO
+  OUTROS
+}
+
+enum SituacaoEnum {
+  ABERTA
+  ENCERRADA
+  SUSPENSA
+  CANCELADA
+  ANULADA
+  HOMOLOGADA
+  REVOGADA
+}
+
+// ============================================================
+// ITENS DE CADA LICITAÇÃO
+// ============================================================
+
+model TenderItem {
+  id              String   @id @default(uuid())
+  tenderId        String   @map("tender_id")
+  numeroItem      Int?     @map("numero_item")
+  descricao       String   @db.Text
+  // Mesma razao das colunas *_norm de Tender: o matcher procura a palavra-chave
+  // tambem na descricao do item, e o pre-filtro no banco precisa achar
+  // "cirurgico" dentro de "cirurgico" sem depender da extensao unaccent.
+  descricaoNorm   String?  @map("descricao_norm") @db.Text
+  catmatCode      String?  @map("catmat_code")
+  catserCode      String?  @map("catser_code")
+  unidadeMedida   String?  @map("unidade_medida")
+  quantidade      Decimal?
+  valorUnitario   Decimal? @map("valor_unitario")
+  valorTotal      Decimal? @map("valor_total")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  tender Tender @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+
+  @@index([tenderId])
+  @@index([catmatCode])
+  @@map("tender_items")
+}
+
+// ============================================================
+// MATCHES (cruzamento item monitorado x licitação)
+// ============================================================
+
+model TenderMatch {
+  id              String   @id @default(uuid())
+  tenderId        String   @map("tender_id")
+  monitoredItemId String   @map("monitored_item_id")
+  userId          String   @map("user_id")
+  score           Float                              // Relevância 0–1
+  matchedKeywords String[] @map("matched_keywords")  // Palavras que deram match
+  read            Boolean  @default(false)
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  tender        Tender        @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  monitoredItem MonitoredItem @relation(fields: [monitoredItemId], references: [id], onDelete: Cascade)
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenderId, monitoredItemId])
+  @@index([userId])
+  @@index([read])
+  @@index([createdAt])
+  @@map("tender_matches")
+}
+
+// ============================================================
+// CHECKLIST DE DOCUMENTAÇÃO (habilitação) por licitação
+// Baseado no guia "Checklist de Documentação para Licitações
+// Públicas — Prestação de Serviços" (Lei 14.133/2021)
+// ============================================================
+
+model TenderChecklist {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  tenderId  String   @map("tender_id")
+  items     Json     // [{ id, section, label, hint?, checked, custom }]
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tender Tender @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tenderId])
+  @@map("tender_checklists")
+}
+
+// ============================================================
+// PLANO DE PARTICIPAÇÃO — linha do tempo dos prazos de uma licitação
+// (publicação, esclarecimento, impugnação, fim de propostas, disputa)
+// + status de decisão do usuário. Os marcos "automáticos" (com data vinda
+// da licitação, ou texto vindo da análise por IA) NÃO são armazenados
+// aqui — são recalculados a cada consulta a partir do Tender/TenderAnalysis
+// atuais (ver participationPlanTemplate.ts), pra não ficar desatualizado
+// se a análise por IA rodar depois do plano já ter sido criado. Só o
+// status, quais marcos automáticos já foram marcados como feitos, e os
+// marcos customizados adicionados pelo usuário ficam persistidos aqui.
+// ============================================================
+
+model TenderParticipationPlan {
+  id         String                  @id @default(uuid())
+  userId     String                  @map("user_id")
+  tenderId   String                  @map("tender_id")
+  status     ParticipationStatusEnum @default(AVALIANDO)
+  state      Json // { doneIds: string[], custom: PlanMilestone[] }
+  createdAt  DateTime                @default(now()) @map("created_at")
+  updatedAt  DateTime                @updatedAt @map("updated_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tender Tender @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tenderId])
+  @@map("tender_participation_plans")
+}
+
+enum ParticipationStatusEnum {
+  AVALIANDO
+  VOU_PARTICIPAR
+  NAO_VOU_PARTICIPAR
+  PARTICIPEI
+}
+
+// ============================================================
+// COFRE DE DOCUMENTOS DA EMPRESA — documentos que a empresa já possui,
+// cadastrados uma vez (não por licitação). Cruza automaticamente com o
+// checklist de cada licitação pelo campo `tipo`, que usa os mesmos códigos
+// de src/lib/checklistTemplate.ts (ex: 'cnd-federal', 'crf-fgts').
+// `tipo: null` = documento avulso, fora da lista padrão do checklist.
+// Pode haver mais de um documento do mesmo tipo (ex: vários atestados de
+// capacidade técnica de obras diferentes) — o cruzamento considera
+// "atende" se existir ao menos um, não vencido, daquele tipo.
+// ============================================================
+
+model CompanyDocument {
+  id           String    @id @default(uuid())
+  userId       String    @map("user_id")
+  tipo         String? // código do checklistTemplate, ou null pra avulso
+  nome         String // nome descritivo (ex: "Certidão Negativa Federal")
+  dataEmissao  DateTime? @map("data_emissao")
+  dataValidade DateTime? @map("data_validade") // null = não vence (ex: contrato social)
+  observacao   String?   @db.Text
+  // Último alerta de vencimento enviado — evita reenviar todo dia; ver
+  // documentAlertService.ts. Some naturalmente da consulta quando o
+  // documento é renovado com uma validade mais distante.
+  lastAlertedAt DateTime? @map("last_alerted_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tipo])
+  @@map("company_documents")
+}
+
+// ============================================================
+// ANÁLISE DO EDITAL POR IA (Claude) — uma por licitação, compartilhada
+// entre todos os usuários (o edital é o mesmo documento para todos)
+// ============================================================
+
+model TenderAnalysis {
+  id            String         @id @default(uuid())
+  tenderId      String         @unique @map("tender_id")
+  status        AnalysisStatus @default(PENDING)
+  documentoNome String?        @map("documento_nome")
+  resultado     Json?          // { resumo, valorEstimado, prazoEntrega, criterioJulgamento, exigenciasTecnicas, documentosExigidos, riscos }
+  errorMsg      String?        @map("error_msg") @db.Text
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  tender Tender @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+
+  @@map("tender_analyses")
+}
+
+enum AnalysisStatus {
+  PENDING
+  RUNNING
+  DONE
+  FAILED
+  NO_DOCUMENTS
+  DISABLED
+}
+
+// ============================================================
+// NOTIFICAÇÕES
+// ============================================================
+
+model Notification {
+  id        String             @id @default(uuid())
+  userId    String             @map("user_id")
+  type      NotificationTypeEnum
+  title     String
+  body      String             @db.Text
+  metadata  Json?
+  sentAt    DateTime?          @map("sent_at")
+  readAt    DateTime?          @map("read_at")
+  createdAt DateTime           @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("notifications")
+}
+
+enum NotificationTypeEnum {
+  EMAIL
+  PUSH
+  IN_APP
+}
+
+// ============================================================
+// LOG DE EXECUÇÃO DOS WORKERS
+// ============================================================
+
+model WorkerLog {
+  id          String         @id @default(uuid())
+  worker      String                           // 'coletor-pncp' | 'coletor-comprasnet'
+  status      WorkerStatus
+  fonte       FonteEnum?
+  totalFetched Int?          @map("total_fetched")
+  totalNew    Int?           @map("total_new")
+  totalDupes  Int?           @map("total_dupes")
+  totalUpdated Int?          @map("total_updated")
+  errorMsg    String?        @map("error_msg") @db.Text
+  startedAt   DateTime       @map("started_at")
+  finishedAt  DateTime?      @map("finished_at")
+  createdAt   DateTime       @default(now()) @map("created_at")
+
+  @@index([worker])
+  @@index([status])
+  @@index([createdAt])
+  @@map("worker_logs")
+}
+
+enum WorkerStatus {
+  RUNNING
+  SUCCESS
+  FAILED
+  PARTIAL
+}
