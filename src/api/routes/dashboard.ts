@@ -18,9 +18,10 @@ dashboardRouter.get(
   '/',
   asyncHandler(async (req, res) => {
     const userId = req.userId!
+    const companyId = req.companyId!
 
     const [itensAtivos, matchesNaoLidos, matchesTotal, ultimosMatches, documentos, planos] = await Promise.all([
-      prisma.monitoredItem.count({ where: { userId, active: true } }),
+      prisma.monitoredItem.count({ where: { companyId, active: true } }),
       prisma.tenderMatch.count({ where: { userId, read: false } }),
       prisma.tenderMatch.count({ where: { userId } }),
       prisma.tenderMatch.findMany({
@@ -29,9 +30,9 @@ dashboardRouter.get(
         take: 5,
         include: { tender: true, monitoredItem: { select: { name: true } } },
       }),
-      prisma.companyDocument.findMany({ where: { userId, dataValidade: { not: null } } }),
+      prisma.companyDocument.findMany({ where: { companyId, dataValidade: { not: null } } }),
       prisma.tenderParticipationPlan.findMany({
-        where: { userId, status: { in: ['AVALIANDO', 'VOU_PARTICIPAR'] } },
+        where: { companyId, status: { in: ['AVALIANDO', 'VOU_PARTICIPAR'] } },
         include: {
           tender: { select: { id: true, objeto: true, objetoResumido: true, publicadoAt: true, encerramentoAt: true, aberturaAt: true } },
         },
@@ -97,10 +98,10 @@ const MAPA_ANDAMENTO_DIAS = 15
 dashboardRouter.get(
   '/mapa',
   asyncHandler(async (req, res) => {
-    const userId = req.userId!
+    const companyId = req.companyId!
 
     const escolhidas = await prisma.tenderParticipationPlan.findMany({
-      where: { userId, status: 'VOU_PARTICIPAR' },
+      where: { companyId, status: 'VOU_PARTICIPAR' },
       include: {
         tender: {
           select: {

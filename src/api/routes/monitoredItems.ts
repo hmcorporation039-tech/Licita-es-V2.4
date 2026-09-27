@@ -61,10 +61,10 @@ function geocodeOrigem(municipio: string, uf: string): { lat: number; lng: numbe
   return { lat: geo.lat, lng: geo.lng }
 }
 
-async function assertOwnership(itemId: string, userId: string) {
+async function assertOwnership(itemId: string, companyId: string) {
   const item = await prisma.monitoredItem.findUnique({ where: { id: itemId } })
   if (!item) throw new ApiError(404, 'Item monitorado não encontrado')
-  if (item.userId !== userId) throw new ApiError(403, 'Este item não pertence a você')
+  if (item.companyId !== companyId) throw new ApiError(403, 'Este item não pertence a você')
   return item
 }
 
@@ -89,7 +89,7 @@ monitoredItemsRouter.post(
     }
 
     const item = await prisma.monitoredItem.create({
-      data: { ...body, userId: req.userId!, origemLat, origemLng },
+      data: { ...body, companyId: req.companyId!, userId: req.userId!, origemLat, origemLng },
     })
     res.status(201).json(item)
   })
@@ -99,7 +99,7 @@ monitoredItemsRouter.get(
   '/',
   asyncHandler(async (req, res) => {
     const items = await prisma.monitoredItem.findMany({
-      where: { userId: req.userId! },
+      where: { companyId: req.companyId! },
       orderBy: { createdAt: 'desc' },
     })
     res.json(items)
@@ -109,7 +109,7 @@ monitoredItemsRouter.get(
 monitoredItemsRouter.get(
   '/:id',
   asyncHandler(async (req, res) => {
-    const item = await assertOwnership(req.params.id, req.userId!)
+    const item = await assertOwnership(req.params.id, req.companyId!)
     res.json(item)
   })
 )
@@ -117,7 +117,7 @@ monitoredItemsRouter.get(
 monitoredItemsRouter.patch(
   '/:id',
   asyncHandler(async (req, res) => {
-    const existing = await assertOwnership(req.params.id, req.userId!)
+    const existing = await assertOwnership(req.params.id, req.companyId!)
 
     const data = updateSchema.parse(req.body)
 
@@ -149,7 +149,7 @@ monitoredItemsRouter.patch(
 monitoredItemsRouter.delete(
   '/:id',
   asyncHandler(async (req, res) => {
-    await assertOwnership(req.params.id, req.userId!)
+    await assertOwnership(req.params.id, req.companyId!)
 
     await prisma.monitoredItem.delete({ where: { id: req.params.id } })
     res.status(204).send()
@@ -161,7 +161,7 @@ monitoredItemsRouter.delete(
 monitoredItemsRouter.post(
   '/:id/rematch',
   asyncHandler(async (req, res) => {
-    const item = await assertOwnership(req.params.id, req.userId!)
+    const item = await assertOwnership(req.params.id, req.companyId!)
 
     const candidates = await findMatchingTendersForItem(
       {

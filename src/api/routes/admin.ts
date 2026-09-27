@@ -45,6 +45,11 @@ adminRouter.post(
         passwordHash: await hashPassword(tempPassword),
         isAdmin: body.isAdmin,
         accessExpiresAt: computeExpiresAt(body.diasValidade),
+        // Toda conta precisa de uma Company (ver schema.prisma) — quem se
+        // cadastra sozinho ganha uma individual (PESSOA_FISICA), sem
+        // precisar de CNPJ. Convidar alguém para uma empresa já existente
+        // é a Etapa 1b.
+        company: { create: { name: body.name ?? body.email } },
       },
     })
 

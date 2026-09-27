@@ -23,7 +23,7 @@ participationPlansRouter.get(
     const { status } = querySchema.parse(req.query)
 
     const plans = await prisma.tenderParticipationPlan.findMany({
-      where: { userId: req.userId!, ...(status ? { status } : {}) },
+      where: { companyId: req.companyId!, ...(status ? { status } : {}) },
       orderBy: { updatedAt: 'desc' },
       include: { tender: true },
     })

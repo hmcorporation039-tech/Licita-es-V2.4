@@ -16,6 +16,7 @@ declare global {
   namespace Express {
     interface Request {
       userId?: string
+      companyId?: string
       isAdmin?: boolean
     }
   }
@@ -40,6 +41,7 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
     }
 
     req.userId = user.id
+    req.companyId = user.companyId
     req.isAdmin = user.isAdmin
     next()
   } catch (err) {

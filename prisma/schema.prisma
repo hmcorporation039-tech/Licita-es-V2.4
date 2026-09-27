@@ -37,6 +37,13 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  // Toda conta pertence a uma Company — mesmo quem usa sozinho (pessoa
+  // física). Ver comentário no model Company. NOT NULL só depois da
+  // migration 00000000000005_empresas_constraints (ver scripts/empresasBackfill.ts).
+  companyId   String      @map("company_id")
+  companyRole CompanyRole @default(OWNER) @map("company_role")
+
+  company            Company                   @relation(fields: [companyId], references: [id])
   monitoredItems     MonitoredItem[]
   tenderMatches      TenderMatch[]
   notifications      Notification[]
@@ -44,6 +51,7 @@ model User {
   companyDocuments   CompanyDocument[]
   participationPlans TenderParticipationPlan[]
 
+  @@index([companyId])
   @@map("users")
 }
 
@@ -54,11 +62,51 @@ enum Plan {
 }
 
 // ============================================================
+// EMPRESA (ou pessoa física operando sozinha) — dona de fato dos itens
+// monitorados, do cofre de documentos, dos checklists e dos planos de
+// participação. Todo usuário pertence a uma Company; quem usa a plataforma
+// sozinho ganha uma Company individual (tipo PESSOA_FISICA) criada
+// automaticamente — ninguém é obrigado a ter CNPJ. `cnpj`/`cpf` nullable
+// hoje: viram obrigatórios (um dos dois) só quando a cobrança por
+// documento entrar (ver análise de viabilidade — "1 teste por CNPJ/CPF").
+// ============================================================
+model Company {
+  id        String      @id @default(uuid())
+  tipo      AccountType @default(PESSOA_FISICA)
+  name      String
+  cnpj      String?     @unique
+  cpf       String?     @unique
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+
+  users              User[]
+  monitoredItems     MonitoredItem[]
+  companyDocuments   CompanyDocument[]
+  checklists         TenderChecklist[]
+  participationPlans TenderParticipationPlan[]
+
+  @@map("companies")
+}
+
+enum AccountType {
+  PESSOA_FISICA
+  PESSOA_JURIDICA
+}
+
+enum CompanyRole {
+  OWNER  // pode gerenciar membros (Etapa 1b) e cobrança (Etapa 2)
+  MEMBER
+}
+
+// ============================================================
 // ITENS MONITORADOS (cadastrados pelo usuário)
 // ============================================================
 
 model MonitoredItem {
   id          String   @id @default(uuid())
+  // Dono de fato — ver comentário no model Company. userId continua
+  // existindo só para saber quem cadastrou (auditoria), não para acesso.
+  companyId   String   @map("company_id")
   userId      String   @map("user_id")
   name        String                        // Nome amigável do item
   keywords    String[]                      // ['notebook', 'computador portátil']
@@ -90,9 +138,11 @@ model MonitoredItem {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
+  company       Company       @relation(fields: [companyId], references: [id])
   user          User          @relation(fields: [userId], references: [id])
   tenderMatches TenderMatch[]
 
+  @@index([companyId])
   @@map("monitored_items")
 }
 
@@ -275,16 +325,20 @@ model TenderMatch {
 
 model TenderChecklist {
   id        String   @id @default(uuid())
+  // Dono de fato — checklist é um por (empresa, licitação), compartilhado
+  // entre todos os membros da empresa (ver Company). userId é só quem criou.
+  companyId String   @map("company_id")
   userId    String   @map("user_id")
   tenderId  String   @map("tender_id")
   items     Json     // [{ id, section, label, hint?, checked, custom }]
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tender Tender @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tender  Tender  @relation(fields: [tenderId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, tenderId])
+  @@unique([companyId, tenderId])
   @@map("tender_checklists")
 }
 
@@ -302,6 +356,9 @@ model TenderChecklist {
 
 model TenderParticipationPlan {
   id         String                  @id @default(uuid())
+  // Dono de fato — plano é um por (empresa, licitação), compartilhado entre
+  // todos os membros da empresa (ver Company). userId é só quem criou.
+  companyId  String                  @map("company_id")
   userId     String                  @map("user_id")
   tenderId   String                  @map("tender_id")
   status     ParticipationStatusEnum @default(AVALIANDO)
@@ -309,10 +366,11 @@ model TenderParticipationPlan {
   createdAt  DateTime                @default(now()) @map("created_at")
   updatedAt  DateTime                @updatedAt @map("updated_at")
 
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tender Tender @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tender  Tender  @relation(fields: [tenderId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, tenderId])
+  @@unique([companyId, tenderId])
   @@map("tender_participation_plans")
 }
 
@@ -336,6 +394,9 @@ enum ParticipationStatusEnum {
 
 model CompanyDocument {
   id           String    @id @default(uuid())
+  // Dono de fato — ver comentário no model Company. userId continua
+  // existindo só para saber quem cadastrou (auditoria), não para acesso.
+  companyId    String    @map("company_id")
   userId       String    @map("user_id")
   tipo         String? // código do checklistTemplate, ou null pra avulso
   nome         String // nome descritivo (ex: "Certidão Negativa Federal")
@@ -349,8 +410,10 @@ model CompanyDocument {
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([companyId])
   @@index([userId])
   @@index([tipo])
   @@map("company_documents")

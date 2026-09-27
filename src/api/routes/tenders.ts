@@ -191,13 +191,13 @@ const putChecklistSchema = z.object({
 tendersRouter.get(
   '/:id/checklist',
   asyncHandler(async (req, res) => {
-    const userId = req.userId!
+    const companyId = req.companyId!
 
     const tender = await prisma.tender.findUnique({ where: { id: req.params.id }, select: { id: true } })
     if (!tender) throw new ApiError(404, 'Licitação não encontrada')
 
     const existing = await prisma.tenderChecklist.findUnique({
-      where: { userId_tenderId: { userId, tenderId: req.params.id } },
+      where: { companyId_tenderId: { companyId, tenderId: req.params.id } },
     })
     if (existing) {
       res.json(existing)
@@ -206,7 +206,8 @@ tendersRouter.get(
 
     const created = await prisma.tenderChecklist.create({
       data: {
-        userId,
+        companyId,
+        userId: req.userId!,
         tenderId: req.params.id,
         items: buildChecklistTemplate() as unknown as object,
       },
@@ -221,15 +222,20 @@ tendersRouter.put(
   '/:id/checklist',
   asyncHandler(async (req, res) => {
     const { items } = putChecklistSchema.parse(req.body)
-    const userId = req.userId!
+    const companyId = req.companyId!
 
     const tender = await prisma.tender.findUnique({ where: { id: req.params.id }, select: { id: true } })
     if (!tender) throw new ApiError(404, 'Licitação não encontrada')
 
     const saved = await prisma.tenderChecklist.upsert({
-      where: { userId_tenderId: { userId, tenderId: req.params.id } },
+      where: { companyId_tenderId: { companyId, tenderId: req.params.id } },
       update: { items: items as ChecklistItem[] as unknown as object },
-      create: { userId, tenderId: req.params.id, items: items as ChecklistItem[] as unknown as object },
+      create: {
+        companyId,
+        userId: req.userId!,
+        tenderId: req.params.id,
+        items: items as ChecklistItem[] as unknown as object,
+      },
     })
     res.json(saved)
   })
@@ -327,13 +333,13 @@ async function buildPlanResponse(tenderId: string, status: string, state: PlanSt
 tendersRouter.get(
   '/:id/plano',
   asyncHandler(async (req, res) => {
-    const userId = req.userId!
+    const companyId = req.companyId!
 
     const tender = await prisma.tender.findUnique({ where: { id: req.params.id }, select: { id: true } })
     if (!tender) throw new ApiError(404, 'Licitação não encontrada')
 
     const existing = await prisma.tenderParticipationPlan.findUnique({
-      where: { userId_tenderId: { userId, tenderId: req.params.id } },
+      where: { companyId_tenderId: { companyId, tenderId: req.params.id } },
     })
 
     const state = (existing?.state as unknown as PlanState) ?? { doneIds: [], custom: [] }
@@ -364,7 +370,7 @@ tendersRouter.put(
   '/:id/plano',
   asyncHandler(async (req, res) => {
     const { status, milestones } = putPlanoSchema.parse(req.body)
-    const userId = req.userId!
+    const companyId = req.companyId!
 
     const tender = await prisma.tender.findUnique({ where: { id: req.params.id }, select: { id: true } })
     if (!tender) throw new ApiError(404, 'Licitação não encontrada')
@@ -375,9 +381,15 @@ tendersRouter.put(
     }
 
     await prisma.tenderParticipationPlan.upsert({
-      where: { userId_tenderId: { userId, tenderId: req.params.id } },
+      where: { companyId_tenderId: { companyId, tenderId: req.params.id } },
       update: { status, state: state as unknown as object },
-      create: { userId, tenderId: req.params.id, status, state: state as unknown as object },
+      create: {
+        companyId,
+        userId: req.userId!,
+        tenderId: req.params.id,
+        status,
+        state: state as unknown as object,
+      },
     })
 
     res.json(await buildPlanResponse(req.params.id, status, state))
@@ -395,20 +407,26 @@ tendersRouter.patch(
   '/:id/plano/status',
   asyncHandler(async (req, res) => {
     const { status } = putPlanoStatusSchema.parse(req.body)
-    const userId = req.userId!
+    const companyId = req.companyId!
 
     const tender = await prisma.tender.findUnique({ where: { id: req.params.id }, select: { id: true } })
     if (!tender) throw new ApiError(404, 'Licitação não encontrada')
 
     const existing = await prisma.tenderParticipationPlan.findUnique({
-      where: { userId_tenderId: { userId, tenderId: req.params.id } },
+      where: { companyId_tenderId: { companyId, tenderId: req.params.id } },
     })
     const state = (existing?.state as unknown as PlanState) ?? { doneIds: [], custom: [] }
 
     await prisma.tenderParticipationPlan.upsert({
-      where: { userId_tenderId: { userId, tenderId: req.params.id } },
+      where: { companyId_tenderId: { companyId, tenderId: req.params.id } },
       update: { status },
-      create: { userId, tenderId: req.params.id, status, state: state as unknown as object },
+      create: {
+        companyId,
+        userId: req.userId!,
+        tenderId: req.params.id,
+        status,
+        state: state as unknown as object,
+      },
     })
 
     res.json(await buildPlanResponse(req.params.id, status, state))
