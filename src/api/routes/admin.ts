@@ -133,3 +133,33 @@ adminRouter.patch(
     })
   })
 )
+
+const resetPasswordSchema = z.object({
+  password: z.string().min(8).optional(), // se ausente, gera uma temporária
+})
+
+adminRouter.post(
+  '/users/:id/reset-password',
+  asyncHandler(async (req, res) => {
+    const body = resetPasswordSchema.parse(req.body)
+    const existing = await prisma.user.findUnique({ where: { id: req.params.id } })
+    if (!existing) throw new ApiError(404, 'Usuário não encontrado')
+
+    const newPassword = body.password ?? generateTempPassword()
+
+    // Trocar a senha invalida as sessões antigas — mesmo motivo do
+    // change-password do próprio usuário: um token roubado não deve
+    // continuar valendo depois da troca.
+    const updated = await prisma.user.update({
+      where: { id: req.params.id },
+      data: { passwordHash: await hashPassword(newPassword), tokenVersion: { increment: 1 } },
+    })
+
+    res.json({
+      id: updated.id,
+      email: updated.email,
+      // Só aparece nesta resposta, uma vez — mesmo padrão do POST /users.
+      generatedPassword: body.password ? undefined : newPassword,
+    })
+  })
+)

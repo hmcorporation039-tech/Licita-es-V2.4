@@ -30,6 +30,10 @@ export default function AdminUsuariosPage() {
   const [creating, setCreating] = useState(false)
   const [generatedInfo, setGeneratedInfo] = useState<string | null>(null)
 
+  const [passwordEditId, setPasswordEditId] = useState<string | null>(null)
+  const [passwordValue, setPasswordValue] = useState('')
+  const [passwordSaving, setPasswordSaving] = useState(false)
+
   useEffect(() => {
     if (!user) return
     if (!user.isAdmin) {
@@ -89,6 +93,29 @@ export default function AdminUsuariosPage() {
   async function extend(u: AdminUser, dias: number | null) {
     await api.patch(`/api/admin/users/${u.id}`, { diasValidade: dias })
     await load()
+  }
+
+  async function resetPassword(u: AdminUser) {
+    setError(null)
+    setGeneratedInfo(null)
+    setPasswordSaving(true)
+    try {
+      const result = await api.post<{ generatedPassword?: string }>(`/api/admin/users/${u.id}/reset-password`, {
+        password: passwordValue || undefined,
+      })
+      setGeneratedInfo(
+        result.generatedPassword
+          ? `Nova senha para ${u.email}: ${result.generatedPassword} (repasse com segurança — não fica salva em nenhum outro lugar)`
+          : `Senha de ${u.email} atualizada.`
+      )
+      setPasswordEditId(null)
+      setPasswordValue('')
+      await load()
+    } catch (err) {
+      setError(err instanceof ApiRequestError ? err.message : 'Erro ao trocar senha')
+    } finally {
+      setPasswordSaving(false)
+    }
   }
 
   if (!user || !user.isAdmin) return null
@@ -172,7 +199,43 @@ export default function AdminUsuariosPage() {
                 <button onClick={() => toggleActive(u)} className="text-slate-600 hover:underline">
                   {u.active ? 'desativar' : 'ativar'}
                 </button>
+                <button
+                  onClick={() => {
+                    setPasswordEditId(passwordEditId === u.id ? null : u.id)
+                    setPasswordValue('')
+                  }}
+                  className="text-slate-600 hover:underline"
+                >
+                  trocar senha
+                </button>
               </div>
+
+              {passwordEditId === u.id && (
+                <div className="mt-2 flex w-full flex-wrap items-center gap-2 border-t border-slate-100 pt-2">
+                  <input
+                    type="text"
+                    placeholder="Nova senha (vazio = gerar automaticamente)"
+                    value={passwordValue}
+                    onChange={(e) => setPasswordValue(e.target.value)}
+                    className={inputClass}
+                  />
+                  <button
+                    type="button"
+                    disabled={passwordSaving}
+                    onClick={() => resetPassword(u)}
+                    className="rounded bg-indigo-700 px-3 py-1 text-sm font-medium text-white hover:bg-indigo-800 disabled:opacity-50"
+                  >
+                    {passwordSaving ? 'Salvando...' : 'Confirmar'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPasswordEditId(null)}
+                    className="text-sm text-slate-600 hover:underline"
+                  >
+                    cancelar
+                  </button>
+                </div>
+              )}
             </li>
           ))}
         </ul>
