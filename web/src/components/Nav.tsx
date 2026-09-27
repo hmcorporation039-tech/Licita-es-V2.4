@@ -12,6 +12,7 @@ const LINKS = [
   { href: '/matches', label: 'Meus matches' },
   { href: '/escolhidas', label: 'Licitações escolhidas' },
   { href: '/documentos', label: 'Documentos da empresa' },
+  { href: '/empresa', label: 'Empresa' },
   { href: '/guia', label: 'Guia' },
 ]
 

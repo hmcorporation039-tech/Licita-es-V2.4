@@ -23,7 +23,7 @@ matchesRouter.get(
   asyncHandler(async (req, res) => {
     const { unreadOnly, page, pageSize } = querySchema.parse(req.query)
 
-    const where = { userId: req.userId!, ...(unreadOnly ? { read: false } : {}) }
+    const where = { companyId: req.companyId!, ...(unreadOnly ? { read: false } : {}) }
 
     const [items, total] = await Promise.all([
       prisma.tenderMatch.findMany({
@@ -40,12 +40,12 @@ matchesRouter.get(
   })
 )
 
-// Apaga todos os matches do usuário de uma vez — útil pra "zerar" o feed
+// Apaga todos os matches da empresa de uma vez — útil pra "zerar" o feed
 // e deixar só o que a coleta encontrar dali pra frente.
 matchesRouter.delete(
   '/',
   asyncHandler(async (req, res) => {
-    const { count } = await prisma.tenderMatch.deleteMany({ where: { userId: req.userId! } })
+    const { count } = await prisma.tenderMatch.deleteMany({ where: { companyId: req.companyId! } })
     res.json({ deleted: count })
   })
 )
@@ -55,7 +55,7 @@ matchesRouter.patch(
   asyncHandler(async (req, res) => {
     const match = await prisma.tenderMatch.findUnique({ where: { id: req.params.id } })
     if (!match) throw new ApiError(404, 'Match não encontrado')
-    if (match.userId !== req.userId) throw new ApiError(403, 'Este match não pertence a você')
+    if (match.companyId !== req.companyId) throw new ApiError(403, 'Este match não pertence a você')
 
     const read = typeof req.body?.read === 'boolean' ? req.body.read : undefined
     if (read === undefined) throw new ApiError(400, 'Campo read (boolean) é obrigatório')

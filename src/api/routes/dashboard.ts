@@ -17,15 +17,14 @@ const PRAZO_JANELA_DIAS = 14
 dashboardRouter.get(
   '/',
   asyncHandler(async (req, res) => {
-    const userId = req.userId!
     const companyId = req.companyId!
 
     const [itensAtivos, matchesNaoLidos, matchesTotal, ultimosMatches, documentos, planos] = await Promise.all([
       prisma.monitoredItem.count({ where: { companyId, active: true } }),
-      prisma.tenderMatch.count({ where: { userId, read: false } }),
-      prisma.tenderMatch.count({ where: { userId } }),
+      prisma.tenderMatch.count({ where: { companyId, read: false } }),
+      prisma.tenderMatch.count({ where: { companyId } }),
       prisma.tenderMatch.findMany({
-        where: { userId },
+        where: { companyId },
         orderBy: { createdAt: 'desc' },
         take: 5,
         include: { tender: true, monitoredItem: { select: { name: true } } },

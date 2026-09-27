@@ -41,6 +41,7 @@ type TenderParaMatch = Prisma.TenderGetPayload<{ select: typeof TENDER_SELECT }>
 
 export interface MatchCandidate {
   monitoredItemId: string
+  companyId: string
   userId: string
   score: number
   matchedKeywords: string[]
@@ -117,6 +118,7 @@ export async function findMatchCandidates(tenderId: string): Promise<MatchCandid
 
     candidates.push({
       monitoredItemId: mi.id,
+      companyId: mi.companyId,
       userId: mi.userId,
       score: scoreDoMatch(codeMatch),
       matchedKeywords: encontradas,

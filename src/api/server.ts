@@ -10,6 +10,7 @@ import helmet from 'helmet'
 import { ZodError } from 'zod'
 import { authRouter } from './routes/auth'
 import { adminRouter } from './routes/admin'
+import { companyRouter } from './routes/company'
 import { monitoredItemsRouter } from './routes/monitoredItems'
 import { tendersRouter } from './routes/tenders'
 import { matchesRouter } from './routes/matches'
@@ -61,6 +62,7 @@ app.use('/api/admin', adminRouter)
 
 // Todo o resto da plataforma exige sessão válida — a identidade do
 // usuário vem do token (req.userId), não de um campo enviado pelo cliente.
+app.use('/api/company', requireAuth, companyRouter)
 app.use('/api/monitored-items', requireAuth, monitoredItemsRouter)
 app.use('/api/tenders', requireAuth, tendersRouter)
 app.use('/api/matches', requireAuth, matchesRouter)

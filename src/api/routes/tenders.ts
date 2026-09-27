@@ -67,7 +67,7 @@ tendersRouter.get(
       page,
       pageSize,
     } = querySchema.parse(req.query)
-    const userId = somenteRelacionadas ? req.userId! : undefined
+    const companyId = somenteRelacionadas ? req.companyId! : undefined
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: Record<string, any> = {}
@@ -92,7 +92,7 @@ tendersRouter.get(
       const qNorm = normalize(q)
       where.OR = [{ objetoNorm: { contains: qNorm } }, { objetoResumidoNorm: { contains: qNorm } }]
     }
-    if (userId) where.tenderMatches = { some: { userId } }
+    if (companyId) where.tenderMatches = { some: { companyId } }
 
     const [rows, total] = await Promise.all([
       prisma.tender.findMany({
@@ -102,8 +102,8 @@ tendersRouter.get(
           : { publicadoAt: 'desc' },
         skip: (page - 1) * pageSize,
         take: pageSize,
-        include: userId
-          ? { tenderMatches: { where: { userId }, include: { monitoredItem: { select: { id: true, name: true } } } } }
+        include: companyId
+          ? { tenderMatches: { where: { companyId }, include: { monitoredItem: { select: { id: true, name: true } } } } }
           : undefined,
       }),
       prisma.tender.count({ where }),

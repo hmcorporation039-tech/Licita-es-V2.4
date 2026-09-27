@@ -84,6 +84,7 @@ model Company {
   companyDocuments   CompanyDocument[]
   checklists         TenderChecklist[]
   participationPlans TenderParticipationPlan[]
+  tenderMatches      TenderMatch[]
 
   @@map("companies")
 }
@@ -300,17 +301,27 @@ model TenderMatch {
   id              String   @id @default(uuid())
   tenderId        String   @map("tender_id")
   monitoredItemId String   @map("monitored_item_id")
+  // Dono de fato — Etapa 1b: match de item monitorado compartilhado passa a
+  // aparecer pra empresa toda, não só pra quem criou o item. userId
+  // continua existindo (copiado do dono do MonitoredItem no momento da
+  // criação do match) — hoje só usado pra decidir quem recebe o e-mail de
+  // aviso (ver workers/notificador.ts), não é mais a chave de visibilidade.
+  companyId       String   @map("company_id")
   userId          String   @map("user_id")
   score           Float                              // Relevância 0–1
   matchedKeywords String[] @map("matched_keywords")  // Palavras que deram match
+  // Compartilhado entre os membros da empresa de propósito — se um colega já
+  // viu, some da lista de não-lidos pra todo mundo. Sem inbox por pessoa.
   read            Boolean  @default(false)
   createdAt       DateTime @default(now()) @map("created_at")
 
   tender        Tender        @relation(fields: [tenderId], references: [id], onDelete: Cascade)
   monitoredItem MonitoredItem @relation(fields: [monitoredItemId], references: [id], onDelete: Cascade)
+  company       Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([tenderId, monitoredItemId])
+  @@index([companyId])
   @@index([userId])
   @@index([read])
   @@index([createdAt])

@@ -17,6 +17,7 @@ declare global {
     interface Request {
       userId?: string
       companyId?: string
+      companyRole?: string
       isAdmin?: boolean
     }
   }
@@ -42,6 +43,7 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
 
     req.userId = user.id
     req.companyId = user.companyId
+    req.companyRole = user.companyRole
     req.isAdmin = user.isAdmin
     next()
   } catch (err) {
@@ -52,6 +54,16 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
 export function requireAdmin(req: Request, _res: Response, next: NextFunction) {
   if (!req.isAdmin) {
     next(new ApiError(403, 'Apenas administradores podem fazer isso'))
+    return
+  }
+  next()
+}
+
+// Dono da empresa (não confundir com isAdmin, que é o admin da plataforma
+// inteira) — quem pode convidar/remover colega e editar os dados da empresa.
+export function requireCompanyOwner(req: Request, _res: Response, next: NextFunction) {
+  if (req.companyRole !== 'OWNER') {
+    next(new ApiError(403, 'Apenas o dono da empresa pode fazer isso'))
     return
   }
   next()

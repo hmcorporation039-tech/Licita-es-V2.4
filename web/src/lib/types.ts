@@ -9,6 +9,27 @@ export interface User {
   isAdmin: boolean
 }
 
+export type CompanyType = 'PESSOA_FISICA' | 'PESSOA_JURIDICA'
+export type CompanyRole = 'OWNER' | 'MEMBER'
+
+export interface CompanyMember {
+  id: string
+  email: string
+  name: string | null
+  companyRole: CompanyRole
+  active: boolean
+  createdAt: string
+}
+
+export interface Company {
+  id: string
+  tipo: CompanyType
+  name: string
+  cnpj: string | null
+  cpf: string | null
+  users: CompanyMember[]
+}
+
 export interface AdminUser {
   id: string
   email: string

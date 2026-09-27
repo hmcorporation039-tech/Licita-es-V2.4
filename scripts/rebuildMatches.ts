@@ -44,6 +44,7 @@ async function main() {
       data: candidates.map((c) => ({
         tenderId: c.tenderId,
         monitoredItemId: item.id,
+        companyId: item.companyId,
         userId: item.userId,
         score: c.score,
         matchedKeywords: c.matchedKeywords,

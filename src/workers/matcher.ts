@@ -32,6 +32,7 @@ export function startMatcherWorker() {
         data: newCandidates.map((c) => ({
           tenderId,
           monitoredItemId: c.monitoredItemId,
+          companyId: c.companyId,
           userId: c.userId,
           score: c.score,
           matchedKeywords: c.matchedKeywords,
