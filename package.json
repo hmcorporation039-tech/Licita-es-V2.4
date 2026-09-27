@@ -20,6 +20,7 @@
     "dev:workers": "ts-node-dev --respawn --transpile-only src/workers/index.ts",
     "documentos:check-expirations": "ts-node scripts/checkDocumentExpirations.ts",
     "dump:importar": "ts-node scripts/importarDumpSupabase.ts",
+    "empresas:backfill": "ts-node scripts/empresasBackfill.ts",
     "rawjson:enxugar": "ts-node scripts/enxugarRawJson.ts",
     "lint": "eslint src scripts tests",
     "matches:rebuild": "ts-node scripts/rebuildMatches.ts",
