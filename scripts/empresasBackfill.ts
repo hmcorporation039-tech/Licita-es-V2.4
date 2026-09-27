@@ -59,12 +59,25 @@ async function backfillTabela(tabela: string) {
   console.log(`${tabela}: ${resultado} linha(s) atualizada(s).`)
 }
 
+// tender_matches (Etapa 1b) não pendura em user_id como as outras — o dono
+// de fato é o monitored_item que gerou o match (ver comentário no schema).
+async function backfillTenderMatches() {
+  const resultado = await prisma.$executeRaw`
+    UPDATE tender_matches tm
+    SET company_id = mi.company_id
+    FROM monitored_items mi
+    WHERE tm.monitored_item_id = mi.id AND tm.company_id IS NULL
+  `
+  console.log(`tender_matches: ${resultado} linha(s) atualizada(s).`)
+}
+
 async function main() {
   await backfillUsuarios()
   await backfillTabela('monitored_items')
   await backfillTabela('company_documents')
   await backfillTabela('tender_checklists')
   await backfillTabela('tender_participation_plans')
+  await backfillTenderMatches()
 
   const restantes = await prisma.$queryRaw<{ tabela: string; restantes: bigint }[]>`
     SELECT 'users' AS tabela, count(*) AS restantes FROM users WHERE company_id IS NULL
@@ -72,6 +85,7 @@ async function main() {
     UNION ALL SELECT 'company_documents', count(*) FROM company_documents WHERE company_id IS NULL
     UNION ALL SELECT 'tender_checklists', count(*) FROM tender_checklists WHERE company_id IS NULL
     UNION ALL SELECT 'tender_participation_plans', count(*) FROM tender_participation_plans WHERE company_id IS NULL
+    UNION ALL SELECT 'tender_matches', count(*) FROM tender_matches WHERE company_id IS NULL
   `
   console.log('\nConferência final (deve ser tudo zero):')
   restantes.forEach((r) => console.log(`  ${r.tabela}: ${r.restantes}`))
