@@ -1,10 +1,14 @@
 // ============================================================
 // services/sestSenatParser.ts — Normaliza a resposta do "dados abertos"
 // do SEST SENAT (transparencia.sestsenat.org.br/api/edital/dadosAbertos).
-// Reconhecimento manual em 2026-09-28: API JSON real, sem login — mas só
-// o filtro por empresa (SEST/SENAT) funciona no servidor; ano, código de
-// edital e paginação são ignorados (testado à exaustão). Por isso o corte
-// pros últimos 2 anos é feito aqui, depois de já ter baixado tudo.
+// Reconhecimento manual em 2026-09-28: API JSON real, sem login — mas o
+// filtro por empresa (SEST/SENAT) no servidor é INCONSISTENTE: às vezes
+// devolve só a empresa pedida, às vezes devolve as duas misturadas (testado
+// duas vezes contra o mesmo request, resultado diferente). Ano, código de
+// edital e paginação são sempre ignorados. Por isso normalizarRegistroSestSenat
+// não confia no parâmetro pedido — usa o campo `empresa` que vem em CADA
+// registro, então fica correto mesmo se o servidor devolver tudo junto. O
+// corte pros últimos 2 anos é feito aqui, depois de já ter baixado tudo.
 //
 // SEST e SENAT são duas entidades jurídicas do Sistema S (mesma categoria
 // do SESC/FIEG — Serviço Social Autônomo, não segue a Lei 14.133).
@@ -85,7 +89,18 @@ export function filtrarRecentes(registros: RegistroSestSenat[], anos: number): R
   })
 }
 
-export function normalizarRegistroSestSenat(r: RegistroSestSenat, empresa: SestSenatEmpresa): NormalizedTender {
+// Deriva SEST/SENAT do próprio registro — nunca do parâmetro de filtro que
+// foi pedido ao servidor (ver aviso no topo do arquivo: o filtro não é
+// confiável). "SENAT" é checado primeiro por ser o mais específico —
+// qualquer coisa que não bata claramente cai em SEST (é a entidade-mãe,
+// aparece sozinha nos registros mais antigos/genéricos).
+function empresaDoRegistro(r: RegistroSestSenat): SestSenatEmpresa {
+  const valor = (r.empresa ?? '').trim().toUpperCase()
+  return valor.includes('SENAT') ? 'SENAT' : 'SEST'
+}
+
+export function normalizarRegistroSestSenat(r: RegistroSestSenat): NormalizedTender {
+  const empresa = empresaDoRegistro(r)
   const modalidadeNorm = (r.modalidade ?? '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
   // eslint-disable-next-line no-control-regex
   const objeto = (r.objeto ?? '').replace(/\u0000/g, '').trim()

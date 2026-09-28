@@ -63,7 +63,7 @@ describe('filtrarRecentes', () => {
 describe('normalizarRegistroSestSenat', () => {
   it('mapeia empresa, modalidade, CNPJ e UF corretamente', () => {
     const r = registro({})
-    const tender = normalizarRegistroSestSenat(r, 'SEST')
+    const tender = normalizarRegistroSestSenat(r)
     expect(tender.fonte).toBe('SEST_SENAT')
     expect(tender.fonteId).toBe('SESTSENAT-SEST-00007-2021')
     expect(tender.modalidade).toBe('PREGAO_ELETRONICO')
@@ -75,13 +75,24 @@ describe('normalizarRegistroSestSenat', () => {
   })
 
   it('usa o CNPJ certo pro SENAT', () => {
-    const tender = normalizarRegistroSestSenat(registro({ empresa: 'SENAT' }), 'SENAT')
+    const tender = normalizarRegistroSestSenat(registro({ empresa: 'SENAT' }))
     expect(tender.orgaoCnpj).toBe('73471963000147')
     expect(tender.orgao).toContain('SENAT')
   })
 
   it('cai em OUTROS pra modalidade não mapeada', () => {
-    const tender = normalizarRegistroSestSenat(registro({ modalidade: 'Algo Nunca Visto' }), 'SEST')
+    const tender = normalizarRegistroSestSenat(registro({ modalidade: 'Algo Nunca Visto' }))
     expect(tender.modalidade).toBe('OUTROS')
+  })
+
+  // O servidor às vezes devolve as duas empresas misturadas mesmo pedindo
+  // filtro de uma só (ver aviso no topo do parser) — a rotulagem tem que
+  // vir do campo do registro, nunca do que foi pedido no filtro.
+  it('rotula pelo campo do próprio registro, ignorando qualquer suposição externa', () => {
+    const senatRow = registro({ empresa: 'SENAT SERVICO NACIONAL DE APRENDIZAGEM DO TRANSPORTE' })
+    expect(normalizarRegistroSestSenat(senatRow).orgaoCnpj).toBe('73471963000147')
+
+    const sestRow = registro({ empresa: 'SEST' })
+    expect(normalizarRegistroSestSenat(sestRow).orgaoCnpj).toBe('73471989000195')
   })
 })

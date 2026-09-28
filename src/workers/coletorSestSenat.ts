@@ -45,7 +45,10 @@ export function startColetorSestSenatWorker() {
           )
           const registros = parseSestSenatDadosAbertos(response.data as string)
           const recentes = filtrarRecentes(registros, ANOS_RECENTES)
-          const tenders = recentes.map((r) => normalizarRegistroSestSenat(r, empresa))
+          // normalizarRegistroSestSenat não usa `empresa` (o filtro do
+          // servidor é inconsistente — ver aviso em sestSenatParser.ts):
+          // cada registro se rotula sozinho pelo próprio campo `empresa`.
+          const tenders = recentes.map((r) => normalizarRegistroSestSenat(r))
           totalFetched += tenders.length
 
           const result = await salvarLote(tenders, `SEST SENAT Worker (${empresa})`)
@@ -83,7 +86,10 @@ export function startColetorSestSenatWorker() {
       connection: redisConnection,
       concurrency: 1,
       stalledInterval: 300_000, // 5min
-      lockDuration: 900_000, // 15min — a resposta é grande (100+ MB), dá tempo de sobra
+      // 30min: medido em produção, o filtro por empresa às vezes devolve as
+      // duas junto (ver aviso no parser) — pior caso é duas respostas de
+      // ~300+ MB numa execução só, então a folga precisa ser generosa.
+      lockDuration: 1_800_000,
     }
   )
 
