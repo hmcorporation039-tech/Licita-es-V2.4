@@ -71,3 +71,16 @@ const HTML_HEADERS = {
 export const novacapClient = createRateLimitedClient('https://app.novacap.df.gov.br/sislicitapublica', 1500, HTML_HEADERS)
 export const fiegClient = createRateLimitedClient('https://www.sistemafieg.org.br', 1500, HTML_HEADERS)
 export const sescGoClient = createRateLimitedClient('https://www3.sescgo.com.br', 1500, HTML_HEADERS)
+
+// SEST SENAT — API JSON real (Angular por trás), mas devolve o histórico
+// nacional inteiro numa chamada só (sem filtro de ano que funcione no
+// servidor — testado, ignorado) e às vezes embute byte de controle bruto
+// (\u0000) no meio de string, que quebra o JSON.parse automático do axios.
+// Por isso timeout maior e Content-Type próprio; o parse manual (com limpeza
+// desses bytes) fica no parser, não aqui.
+export const sestSenatClient = createRateLimitedClient(
+  'https://transparencia.sestsenat.org.br/api',
+  1500,
+  { Accept: 'application/json', 'Content-Type': 'application/json' }
+)
+sestSenatClient.defaults.timeout = 120_000

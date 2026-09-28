@@ -2,7 +2,7 @@
 // types/index.ts — Tipos compartilhados da plataforma
 // ============================================================
 
-export type FonteEnum = 'PNCP' | 'COMPRASNET' | 'NOVACAP' | 'FIEG' | 'SESC_GO'
+export type FonteEnum = 'PNCP' | 'COMPRASNET' | 'NOVACAP' | 'FIEG' | 'SESC_GO' | 'SEST_SENAT'
 
 export type ModalidadeEnum =
   | 'PREGAO_ELETRONICO'
@@ -88,6 +88,23 @@ export const SESCGO_MODALIDADE_MAP: Record<string, ModalidadeEnum> = {
   'credenciamento': 'CREDENCIAMENTO',
   'concurso': 'CONCURSO',
   'leilão': 'OUTROS',
+}
+
+// Rótulos de modalidade do SEST SENAT (campo "modalidade" de dadosAbertos —
+// vem com espaços à direita e sem acento em alguns casos, ver sestSenatParser.ts
+// que normaliza antes de consultar este mapa).
+export const SEST_SENAT_MODALIDADE_MAP: Record<string, ModalidadeEnum> = {
+  'inexigibilidade': 'INEXIGIBILIDADE',
+  'pregao': 'PREGAO_ELETRONICO',
+  'pregao eletronico': 'PREGAO_ELETRONICO',
+  'pregao presencial': 'PREGAO_PRESENCIAL',
+  'dispensa': 'DISPENSA_SEM_DISPUTA',
+  'convite': 'CONVITE',
+  'tomada de preco': 'TOMADA_DE_PRECOS',
+  'tomada de precos': 'TOMADA_DE_PRECOS',
+  'concorrencia': 'CONCORRENCIA',
+  'concurso': 'CONCURSO',
+  'credenciamento': 'CREDENCIAMENTO',
 }
 
 // Schema normalizado de licitação (output do Parser)

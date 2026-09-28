@@ -216,6 +216,9 @@ enum FonteEnum {
   NOVACAP
   FIEG
   SESC_GO
+  // Sistema S nacional (Serviço Social do Transporte / Serviço Nacional de
+  // Aprendizagem do Transporte) — mesma categoria jurídica do SESC/FIEG.
+  SEST_SENAT
 }
 
 // ============================================================
