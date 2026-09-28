@@ -34,6 +34,7 @@ const TERMINAL: SituacaoEnum[] = ['ENCERRADA', 'HOMOLOGADA', 'CANCELADA', 'ANULA
 
 interface PNCPCompraStatus {
   situacaoCompraId: number
+  valorTotalHomologado: number | null
 }
 
 // Teto por execução: antes a varredura pegava TODAS as licitações não-terminais
@@ -69,11 +70,24 @@ export async function refreshTenderSituacao(tenderId: string): Promise<boolean> 
   }
 
   const isPastDeadline = tender.encerramentoAt != null && tender.encerramentoAt.getTime() < Date.now()
-  const next: SituacaoEnum = mapped === 'ABERTA' && isPastDeadline ? 'ENCERRADA' : mapped
+  // valorTotalHomologado preenchido é o sinal mais confiável de conclusão —
+  // dispensa/inexigibilidade raramente tem prazo formal de proposta (82% vem
+  // sem dataEncerramentoProposta, confirmado empiricamente em 2026-09-28) e o
+  // PNCP não muda situacaoCompraId quando o processo segue seu curso normal.
+  const concluida = response.data.valorTotalHomologado != null
+  const next: SituacaoEnum =
+    mapped === 'ABERTA' && concluida
+      ? 'HOMOLOGADA'
+      : mapped === 'ABERTA' && isPastDeadline
+        ? 'ENCERRADA'
+        : mapped
 
   if (next === tender.situacao) return false
 
-  await prisma.tender.update({ where: { id: tenderId }, data: { situacao: next } })
+  await prisma.tender.update({
+    where: { id: tenderId },
+    data: { situacao: next, valorHomologado: response.data.valorTotalHomologado ?? undefined },
+  })
   return true
 }
 

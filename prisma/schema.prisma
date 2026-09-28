@@ -167,6 +167,13 @@ model Tender {
   orgaoNorm          String? @map("orgao_norm")
   municipioNorm      String? @map("municipio_norm")
   valorEstimado   Decimal?      @map("valor_estimado")
+  // Preenchido pelo PNCP só quando a contratação já foi homologada/contratada —
+  // ao contrário de situacaoCompraId, que na prática fica parado em "Divulgada
+  // no PNCP" pra dispensa/inexigibilidade mesmo depois de concluída (ver
+  // situacaoUpdateService.ts). É o sinal confiável de que o processo encerrou.
+  valorHomologado Decimal?      @map("valor_homologado")
+  // Registro de Preços — só o PNCP preenche isso hoje (campo "srp" do payload).
+  srp             Boolean?
   uf              String?       @db.Char(2)
   municipio       String?
   municipioIbge   String?       @map("municipio_ibge")

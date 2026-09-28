@@ -96,6 +96,8 @@ export interface Tender {
   objeto: string
   objetoResumido: string | null
   valorEstimado: string | null
+  valorHomologado: string | null
+  srp: boolean | null
   uf: string | null
   municipio: string | null
   orgao: string | null

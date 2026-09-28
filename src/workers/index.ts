@@ -70,9 +70,9 @@ async function main() {
   async function runCleanup() {
     console.log('[Retenção] Iniciando limpeza de licitações sem interação...')
     try {
-      const { deleted, encerradas, antigas } = await cleanupOldUnmatchedTenders()
+      const { deleted, encerradas, homologadas, antigas } = await cleanupOldUnmatchedTenders()
       console.log(
-        `[Retenção] Concluído — ${deleted} licitação(ões) removida(s) (${encerradas} encerrada(s), ${antigas} antiga(s)).`
+        `[Retenção] Concluído — ${deleted} licitação(ões) removida(s) (${encerradas} encerrada(s), ${homologadas} homologada(s), ${antigas} antiga(s)).`
       )
       const { deleted: logs } = await cleanupOldWorkerLogs()
       console.log(`[Retenção] ${logs} log(s) de worker removido(s).`)

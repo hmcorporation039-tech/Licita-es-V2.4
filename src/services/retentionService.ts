@@ -9,9 +9,15 @@
 //   1. Encerrada: passou da data de encerramento. É a regra que faz o
 //      volume, porque a esmagadora maioria do que é coletado nacionalmente
 //      nunca casa com item monitorado de ninguém.
-//   2. Antiga: mais de RETENTION_DAYS dias desde a coleta. Rede de segurança
+//   2. Homologada (só PNCP): valorHomologado preenchido, mesmo sem
+//      encerramentoAt. Dispensa/inexigibilidade raramente tem prazo formal de
+//      proposta (82% vem sem dataEncerramentoProposta) e o PNCP não atualiza
+//      situacaoCompraId quando o processo conclui normalmente — sem esta
+//      regra, essas ficavam só sob a rede de segurança da regra 3 (até 90
+//      dias marcadas como "aberta" depois de já concluídas).
+//   3. Antiga: mais de RETENTION_DAYS dias desde a coleta. Rede de segurança
 //      para a licitação que vem sem encerramentoAt preenchido na origem, que
-//      a regra 1 nunca alcançaria. É o mesmo período usado pelo rematch
+//      as regras 1/2 nunca alcançariam. É o mesmo período usado pelo rematch
 //      (findMatchingTendersForItem), então apagar não perde capacidade: uma
 //      licitação mais velha que isso já não seria encontrada por "Buscar
 //      agora" de qualquer forma.
@@ -63,6 +69,7 @@ async function apagarEmLotes(where: Prisma.TenderWhereInput): Promise<number> {
 export interface CleanupResult {
   deleted: number
   encerradas: number
+  homologadas: number
   antigas: number
 }
 
@@ -75,12 +82,18 @@ export async function cleanupOldUnmatchedTenders(): Promise<CleanupResult> {
     ...SEM_INTERACAO,
   })
 
+  const homologadas = await apagarEmLotes({
+    fonte: 'PNCP',
+    valorHomologado: { not: null },
+    ...SEM_INTERACAO,
+  })
+
   const antigas = await apagarEmLotes({
     createdAt: { lt: cutoff },
     ...SEM_INTERACAO,
   })
 
-  return { deleted: encerradas + antigas, encerradas, antigas }
+  return { deleted: encerradas + homologadas + antigas, encerradas, homologadas, antigas }
 }
 
 // Log de execução dos workers: nunca teve poda e cresce para sempre. O

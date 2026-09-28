@@ -115,6 +115,11 @@ export interface NormalizedTender {
   objeto: string
   objetoResumido?: string
   valorEstimado?: number
+  // Só o PNCP preenche (ver pncpParser.ts / situacaoUpdateService.ts) — sinal
+  // confiável de que a contratação já concluiu, mesmo quando situacaoCompraId
+  // nunca sai de "Divulgada no PNCP" (comum em dispensa/inexigibilidade).
+  valorHomologado?: number
+  srp?: boolean
   uf?: string
   municipio?: string
   municipioIbge?: string

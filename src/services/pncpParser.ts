@@ -61,6 +61,11 @@ export function parsePNCPTender(raw: Record<string, any>): NormalizedTender {
     valorEstimado: raw.valorTotalEstimado
       ? parseFloat(raw.valorTotalEstimado)
       : undefined,
+    valorHomologado:
+      raw.valorTotalHomologado !== undefined && raw.valorTotalHomologado !== null
+        ? parseFloat(raw.valorTotalHomologado)
+        : undefined,
+    srp: typeof raw.srp === 'boolean' ? raw.srp : undefined,
     uf,
     municipio,
     municipioIbge,

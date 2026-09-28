@@ -345,6 +345,12 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
                 />
                 <InfoField label="Cidade/UF" value={tender.municipio ? `${tender.municipio}/${tender.uf ?? ''}` : tender.uf} />
                 <InfoField label="Valor estimado" value={formatValor(tender.valorEstimado)} />
+                {tender.valorHomologado && (
+                  <InfoField label="Valor homologado" value={formatValor(tender.valorHomologado)} />
+                )}
+                {tender.fonte === 'PNCP' && tender.srp != null && (
+                  <InfoField label="Registro de Preços" value={tender.srp ? 'Sim' : 'Não'} />
+                )}
                 <InfoField label="Publicação" value={formatData(tender.publicadoAt)} />
                 <InfoField label="Abertura" value={formatData(tender.aberturaAt)} />
               </div>
