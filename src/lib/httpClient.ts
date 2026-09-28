@@ -78,9 +78,13 @@ export const sescGoClient = createRateLimitedClient('https://www3.sescgo.com.br'
 // (\u0000) no meio de string, que quebra o JSON.parse automático do axios.
 // Por isso timeout maior e Content-Type próprio; o parse manual (com limpeza
 // desses bytes) fica no parser, não aqui.
+//
+// O payload é grande de verdade: medido em 2026-09-28, só a empresa SEST
+// já é ~320 MB e leva perto de 100s pra baixar numa conexão comum — 120s
+// de timeout quase estourou num teste real. 5min dá folga de sobra.
 export const sestSenatClient = createRateLimitedClient(
   'https://transparencia.sestsenat.org.br/api',
   1500,
   { Accept: 'application/json', 'Content-Type': 'application/json' }
 )
-sestSenatClient.defaults.timeout = 120_000
+sestSenatClient.defaults.timeout = 300_000
