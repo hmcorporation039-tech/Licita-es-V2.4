@@ -49,6 +49,14 @@ describe('parseNovacapListagem', () => {
     const semLink = `<table id="tblicita"><tbody><tr><td data-title="Número/ano">sem link</td></tr></tbody></table>`
     expect(parseNovacapListagem(semLink, 'OUTROS')).toHaveLength(0)
   })
+
+  // Licitação encerrada/executada não deve entrar no sistema (mesmo
+  // princípio em fiegParser.ts, sescGoParser.ts, sestSenatParser.ts) — esta
+  // fonte não tem campo de status, então a sessão já passada é o sinal.
+  it('exclui licitação cuja data/hora de certame já passou', () => {
+    const jaPassou = html.replace('02/10/2026 14:00', '02/10/2020 14:00')
+    expect(parseNovacapListagem(jaPassou, 'PREGAO_ELETRONICO')).toHaveLength(0)
+  })
 })
 
 describe('parseFiegListagem / extrairTotalPaginas', () => {
@@ -64,7 +72,6 @@ describe('parseFiegListagem / extrairTotalPaginas', () => {
         <div class="tituDesc">
           <span class="titu">
             Cotação nº 026/0000 - SESI
-            &nbsp;(Finalizada)
           </span>
           <p>Link IP Dedicado 500Mbps - Escola SESI - Santo Antônio do Descoberto.</p>
         </div>
@@ -86,6 +93,14 @@ describe('parseFiegListagem / extrairTotalPaginas', () => {
 
   it('calcula o total de páginas a partir do banner, não dos links visíveis', () => {
     expect(extrairTotalPaginas(html)).toBe(9) // ceil(165 / 20)
+  })
+
+  // Licitação encerrada/executada não deve entrar no sistema (mesmo
+  // princípio em sescGoParser.ts, novacapParser.ts, sestSenatParser.ts) —
+  // "(Finalizada)" no título é o único sinal de status que este site expõe.
+  it('exclui cotação marcada como "(Finalizada)" no título', () => {
+    const finalizada = html.replace('Cotação nº 026/0000 - SESI', 'Cotação nº 026/0000 - SESI &nbsp;(Finalizada)')
+    expect(parseFiegListagem(finalizada)).toHaveLength(0)
   })
 })
 
@@ -143,5 +158,12 @@ describe('parseSescGoListagem', () => {
   it('pula card sem "Processo n°" em vez de quebrar', () => {
     const semProcesso = `<div class="accordion" id="licitacoes"><div class="card"><div class="card-body"></div></div></div>`
     expect(parseSescGoListagem(semProcesso)).toHaveLength(0)
+  })
+
+  // Licitação encerrada/executada não deve entrar no sistema (mesmo
+  // princípio em fiegParser.ts, novacapParser.ts, sestSenatParser.ts).
+  it('exclui licitação com situação encerrada', () => {
+    const encerrada = html.replace('Disponível', 'Encerrada')
+    expect(parseSescGoListagem(encerrada)).toHaveLength(0)
   })
 })

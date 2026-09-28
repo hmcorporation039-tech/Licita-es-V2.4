@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   RegistroSestSenat,
-  filtrarRecentes,
+  filtrarSomenteAbertos,
   normalizarRegistroSestSenat,
   parseSestSenatDadosAbertos,
 } from '../src/services/sestSenatParser'
@@ -35,28 +35,31 @@ describe('parseSestSenatDadosAbertos', () => {
   })
 })
 
-describe('filtrarRecentes', () => {
-  const anoAtual = new Date().getFullYear()
-
-  it('mantém registro dentro do corte de anos', () => {
-    const r = registro({ situacao: 'Edital Encerrado', dataHomologacao: `01/01/${anoAtual}` })
-    expect(filtrarRecentes([r], 2)).toHaveLength(1)
+describe('filtrarSomenteAbertos', () => {
+  it('mantém só "Edital Aberto"', () => {
+    const r = registro({ situacao: 'Edital Aberto' })
+    expect(filtrarSomenteAbertos([r])).toHaveLength(1)
   })
 
-  it('descarta registro fora do corte de anos', () => {
-    const r = registro({ situacao: 'Edital Encerrado', dataHomologacao: '01/01/2010' })
-    expect(filtrarRecentes([r], 2)).toHaveLength(0)
+  // Licitação encerrada/executada não deve entrar no sistema — mesmo
+  // princípio em qualquer outra fonte (ver sescGoParser.ts, fiegParser.ts,
+  // novacapParser.ts). Cobre todos os valores reais de `situacao` vistos
+  // em produção que NÃO são "Edital Aberto".
+  it.each([
+    'Anulado',
+    'Edital Encerrado',
+    'Edital Fracassado',
+    'Edital Impugnado',
+    'Edital Remanescente',
+    'Processo Licitatório Cancelado',
+    'Processo Licitatório Revogado',
+  ])('descarta situação "%s"', (situacao) => {
+    expect(filtrarSomenteAbertos([registro({ situacao })])).toHaveLength(0)
   })
 
-  it('nunca descarta edital em aberto, mesmo sem data ou antigo', () => {
-    const semData = registro({ situacao: 'Edital Aberto', dataProposta: null, dataHomologacao: null })
-    const antigo = registro({ situacao: 'Edital Aberto', dataHomologacao: '01/01/2010' })
-    expect(filtrarRecentes([semData, antigo], 2)).toHaveLength(2)
-  })
-
-  it('mantém registro sem nenhuma data preenchida (não teria como filtrar)', () => {
+  it('descarta mesmo sem nenhuma data preenchida — a situação decide, não a data', () => {
     const r = registro({ situacao: 'Edital Encerrado', dataHomologacao: null, dataProposta: null, dataAbertura: null })
-    expect(filtrarRecentes([r], 2)).toHaveLength(1)
+    expect(filtrarSomenteAbertos([r])).toHaveLength(0)
   })
 })
 

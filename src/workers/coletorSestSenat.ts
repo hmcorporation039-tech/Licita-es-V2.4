@@ -3,11 +3,13 @@
 // não segue a Lei 14.133, não está garantido no PNCP).
 //
 // A API devolve o histórico nacional inteiro numa chamada só — não tem
-// filtro de ano que funcione no servidor (testado à exaustão, ver
-// sestSenatParser.ts). O corte pros últimos 2 anos é feito depois de
-// baixar tudo; o custo de rede/parse por ciclo é maior que os outros
-// coletores, mas o de escrita no banco não é — só entra o que passa
-// no filtro, e o dedupe de sempre cuida do resto.
+// filtro de ano nem de situação que funcione no servidor (testado à
+// exaustão, ver sestSenatParser.ts). Só entra o que está com situação
+// "Edital Aberto" — licitação encerrada/executada não deve entrar no
+// sistema em nenhuma fonte (mesmo princípio em coletorSescGo.ts,
+// coletorFieg.ts, coletorNovacap.ts). O custo de rede/parse por ciclo é
+// maior que os outros coletores, mas o de escrita no banco não é — só
+// entra o que passa no filtro, e o dedupe de sempre cuida do resto.
 // ============================================================
 
 import { Worker } from 'bullmq'
@@ -15,14 +17,13 @@ import { redisConnection } from '../queues'
 import { sestSenatClient } from '../lib/httpClient'
 import {
   SestSenatEmpresa,
-  filtrarRecentes,
+  filtrarSomenteAbertos,
   normalizarRegistroSestSenat,
   parseSestSenatDadosAbertos,
 } from '../services/sestSenatParser'
 import { saveWorkerLog } from '../services/tenderService'
 import { salvarLote } from './coletorHtmlShared'
 
-const ANOS_RECENTES = 2
 const EMPRESAS: SestSenatEmpresa[] = ['SEST', 'SENAT']
 
 export function startColetorSestSenatWorker() {
@@ -44,11 +45,11 @@ export function startColetorSestSenatWorker() {
             { responseType: 'text', transformResponse: (data) => data }
           )
           const registros = parseSestSenatDadosAbertos(response.data as string)
-          const recentes = filtrarRecentes(registros, ANOS_RECENTES)
+          const abertos = filtrarSomenteAbertos(registros)
           // normalizarRegistroSestSenat não usa `empresa` (o filtro do
           // servidor é inconsistente — ver aviso em sestSenatParser.ts):
           // cada registro se rotula sozinho pelo próprio campo `empresa`.
-          const tenders = recentes.map((r) => normalizarRegistroSestSenat(r))
+          const tenders = abertos.map((r) => normalizarRegistroSestSenat(r))
           totalFetched += tenders.length
 
           const result = await salvarLote(tenders, `SEST SENAT Worker (${empresa})`)
@@ -57,7 +58,7 @@ export function startColetorSestSenatWorker() {
           totalUpdated += result.totalUpdated
 
           console.log(
-            `[SEST SENAT Worker] ${empresa}: ${registros.length} registro(s) na fonte, ${recentes.length} dentro do corte de ${ANOS_RECENTES} anos.`
+            `[SEST SENAT Worker] ${empresa}: ${registros.length} registro(s) na fonte, ${abertos.length} em aberto.`
           )
         } catch (err) {
           hadErrors = true

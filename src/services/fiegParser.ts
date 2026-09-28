@@ -26,6 +26,15 @@ function parseTitulo(titulo: string): { numero?: string; entidade?: string } {
   return { numero: m[1].trim(), entidade: entidade || undefined }
 }
 
+// Licitação encerrada/executada não deve entrar no sistema (mesmo princípio
+// em sescGoParser.ts, novacapParser.ts, sestSenatParser.ts). Aqui o único
+// sinal de status é o parêntese no fim do título — "(Finalizada)" na
+// amostra real; a expressão cobre outras variações prováveis do mesmo site.
+function statusFechado(titulo: string): boolean {
+  const m = titulo.match(/\(([^)]+)\)\s*$/)
+  return m ? /finalizad|encerrad|cancelad|desert|fracassad|revogad/i.test(m[1]) : false
+}
+
 // Total de páginas a partir do texto "N itens encontrado(s), mostrando X a Y."
 // — não conta os links de página visíveis (".pagelinks a") porque em listas
 // grandes o site só mostra uma janela de páginas adjacentes, não todas.
@@ -55,6 +64,8 @@ export function parseFiegListagem(html: string): NormalizedTender[] {
     const abertura = dataMatch ? parseDataBr(`${dataMatch[1]} ${horaMatch?.[1] ?? '00:00'}`) : undefined
 
     const tituloTexto = item.find('.titu').text().replace(/\s+/g, ' ').trim()
+    if (statusFechado(tituloTexto)) return
+
     const { numero, entidade } = parseTitulo(tituloTexto)
     const objeto = item.find('.tituDesc p').text().replace(/\s+/g, ' ').trim()
 

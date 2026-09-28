@@ -18,6 +18,13 @@ function truncate(str: string, max = 500): string {
   return str.length > max ? str.slice(0, max - 3) + '...' : str
 }
 
+// Licitação encerrada/executada não deve entrar no sistema (mesmo princípio
+// em fiegParser.ts, novacapParser.ts, sestSenatParser.ts). Nunca vimos a
+// lista completa de valores de "Situação" nesta fonte (só "Disponível" em
+// amostra real) — por segurança, a regra é por exclusão dos que reconhecemos
+// claramente como estado final, não por uma lista fechada do que é "aberto".
+const SITUACAO_FECHADA = /encerrad|cancelad|revogad|anulad|homologad|fracassad|conclu[íi]d|finalizad|suspens|deserta/i
+
 export const SESCGO_CNPJ = '03671444000147'
 export const SESCGO_RAZAO_SOCIAL = 'Serviço Social do Comércio - SESC - Administração Regional no Estado de Goiás'
 
@@ -39,6 +46,8 @@ export function parseSescGoListagem(html: string): NormalizedTender[] {
 
     const processo = campos['processo n°'] ?? campos['processo nº']
     if (!processo) return // card fora do padrão esperado — pula em vez de quebrar a coleta inteira
+
+    if (SITUACAO_FECHADA.test(campos['situação'] ?? campos['situacao'] ?? '')) return
 
     const objeto = el.find('.card-header .title').first().text().replace(/\s+/g, ' ').trim()
     const modalidadeTexto = (campos['modalidade'] ?? '').toLowerCase()

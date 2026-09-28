@@ -7,8 +7,9 @@
 // duas vezes contra o mesmo request, resultado diferente). Ano, código de
 // edital e paginação são sempre ignorados. Por isso normalizarRegistroSestSenat
 // não confia no parâmetro pedido — usa o campo `empresa` que vem em CADA
-// registro, então fica correto mesmo se o servidor devolver tudo junto. O
-// corte pros últimos 2 anos é feito aqui, depois de já ter baixado tudo.
+// registro, então fica correto mesmo se o servidor devolver tudo junto. Só
+// entra licitação com `situacao` "Edital Aberto" (ver filtrarSomenteAbertos)
+// — o resto (encerrada, fracassada, cancelada...) não é salvo.
 //
 // SEST e SENAT são duas entidades jurídicas do Sistema S (mesma categoria
 // do SESC/FIEG — Serviço Social Autônomo, não segue a Lei 14.133).
@@ -70,23 +71,17 @@ function extrairUf(nomeFilial: string): string | undefined {
   return m ? m[1] : undefined
 }
 
-function anoDoRegistro(r: RegistroSestSenat): number | undefined {
-  const data = r.dataHomologacao ?? r.dataProposta ?? r.dataAbertura
-  if (!data) return undefined
-  const m = data.match(/(\d{4})/)
-  return m ? Number(m[1]) : undefined
-}
-
-// Filtra pros últimos `anos` anos, mas nunca descarta um edital que ainda
-// está aberto (esses importam mais que qualquer corte por data, e às vezes
-// vêm sem nenhuma data preenchida).
-export function filtrarRecentes(registros: RegistroSestSenat[], anos: number): RegistroSestSenat[] {
-  const anoCorte = new Date().getFullYear() - (anos - 1)
-  return registros.filter((r) => {
-    if (/aberto/i.test(r.situacao)) return true
-    const ano = anoDoRegistro(r)
-    return ano === undefined || ano >= anoCorte
-  })
+// Licitação encerrada/executada não entra no sistema — em nenhuma fonte
+// (ver mesmo princípio em sescGoParser.ts, fiegParser.ts, novacapParser.ts).
+// Aqui o sinal é direto: dos valores reais de `situacao` vistos em produção
+// ("Anulado", "Edital Aberto", "Edital Encerrado", "Edital Fracassado",
+// "Edital Impugnado", "Edital Remanescente", "Processo Licitatório
+// Cancelado", "Processo Licitatório Revogado"), só "Edital Aberto" contém
+// "aberto" — os outros sete são todos estado final. Substitui o corte por
+// ano anterior: como só entra o que está aberto, filtrar por idade não
+// fazia mais sentido (e o site nem devolve o histórico todo mesmo).
+export function filtrarSomenteAbertos(registros: RegistroSestSenat[]): RegistroSestSenat[] {
+  return registros.filter((r) => /aberto/i.test(r.situacao ?? ''))
 }
 
 // Deriva SEST/SENAT do próprio registro — nunca do parâmetro de filtro que

@@ -40,6 +40,13 @@ export function parseNovacapListagem(html: string, modalidade: ModalidadeEnum): 
     const dataHora = row.find('td[data-title="Data-hora"]').text().trim()
     const custo = row.find('td[data-title="Custo estimado"]').text().trim()
 
+    // Licitação encerrada/executada não deve entrar no sistema (mesmo
+    // princípio em sescGoParser.ts, fiegParser.ts, sestSenatParser.ts). Esta
+    // fonte não expõe um campo de status — a "Data/hora de certame" já
+    // passada é o melhor sinal disponível de que a sessão já aconteceu.
+    const dataCertame = parseDataBr(dataHora)
+    if (dataCertame && dataCertame.getTime() < Date.now()) return
+
     tenders.push({
       fonte: 'NOVACAP',
       fonteId: `NOVACAP-${idMatch[1]}`,
