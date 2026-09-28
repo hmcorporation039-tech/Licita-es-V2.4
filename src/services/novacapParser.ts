@@ -9,6 +9,7 @@
 import * as cheerio from 'cheerio'
 import { NormalizedTender, ModalidadeEnum } from '../types'
 import { parseDataBr, parseValorBr } from '../lib/scrapingHelpers'
+import { novacapClient } from '../lib/httpClient'
 
 function truncate(str: string, max = 500): string {
   if (!str) return ''
@@ -59,4 +60,23 @@ export function parseNovacapListagem(html: string, modalidade: ModalidadeEnum): 
   })
 
   return tenders
+}
+
+// Busca os anexos (edital, termo de referência, minutas...) de UMA licitação —
+// sob demanda, na hora da análise por IA, mesmo padrão do listPNCPDocuments
+// (não fica guardado no banco). Aceita o id numérico do licitadetail (extraído
+// do fonteId "NOVACAP-{id}").
+export async function listNovacapDocumentos(detailId: string): Promise<{ uri: string; titulo: string }[]> {
+  const response = await novacapClient.get(`/licitadetail/${detailId}`)
+  const $ = cheerio.load(response.data)
+  const docs: { uri: string; titulo: string }[] = []
+
+  $('a[href*="/licita/download/"]').each((_, a) => {
+    const uri = $(a).attr('href')
+    if (!uri) return
+    const titulo = $(a).closest('tr').find('td').eq(1).text().replace(/\s+/g, ' ').trim()
+    docs.push({ uri, titulo: titulo || 'Anexo' })
+  })
+
+  return docs
 }

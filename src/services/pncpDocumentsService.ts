@@ -6,6 +6,7 @@
 // ============================================================
 
 import axios from 'axios'
+import { ordenarPorPrioridade } from '../lib/documentPriority'
 
 export interface PNCPDocumentInfo {
   uri: string
@@ -26,9 +27,18 @@ export async function listPNCPDocuments(
   return Array.isArray(response.data) ? response.data : []
 }
 
-// Baixa o conteúdo binário de um documento (normalmente PDF)
+// Baixa o conteúdo binário de um documento (normalmente PDF) — apesar do
+// nome, hoje serve qualquer fonte (Novacap, SESC GO), não só PNCP (ver
+// editalAnalysisService.ts). User-Agent de navegador: alguns sites bloqueiam
+// cliente sem cara de browser mesmo em arquivo público sem login.
 export async function downloadPNCPDocument(uri: string): Promise<Buffer> {
-  const response = await axios.get(uri, { responseType: 'arraybuffer', timeout: 60_000 })
+  const response = await axios.get(uri, {
+    responseType: 'arraybuffer',
+    timeout: 60_000,
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
+    },
+  })
   return Buffer.from(response.data)
 }
 
@@ -36,42 +46,11 @@ export function isPdf(buffer: Buffer): boolean {
   return buffer.subarray(0, 5).toString('latin1') === '%PDF-'
 }
 
-// Peças administrativas do processo: existem no PNCP, mas não dizem nada sobre
-// como participar. Autorização de abertura, comprovante de publicação e
-// solicitação de parecer entram aqui.
-const ADMINISTRATIVO =
-  /autoriza[çc][ãa]o|comprovante|publica[çc][ãa]o|parecer|despacho|solicita[çc][ãa]o|^dfd$|\bdfd\b|aviso de licita/i
-
-const EDITAL = /\bedital\b/i
-const TERMO_DE_REFERENCIA = /termo\s*de\s*refer|projeto\s*b[aá]sico|\btr\b/i
-const APOIO = /anexo|habilita|planilha|or[cç]ament|minuta|contrato/i
-
-// Quanto mais alto, mais cedo o documento entra na análise.
-//
-// A classificação olha o TÍTULO primeiro, não o tipoDocumentoNome: na prática
-// o órgão carimba "Edital" no tipo de quase tudo que anexa ao processo, então
-// classificar por tipo empurrava o Termo de Referência — que é onde ficam as
-// exigências técnicas reais — para fora do corte, atrás de comprovante de
-// publicação e solicitação de parecer.
-function prioridade(doc: PNCPDocumentInfo): number {
-  const titulo = doc.titulo ?? ''
-  const tipo = doc.tipoDocumentoNome ?? ''
-
-  if (ADMINISTRATIVO.test(titulo)) return 0
-  if (EDITAL.test(titulo)) return 5
-  if (TERMO_DE_REFERENCIA.test(titulo) || TERMO_DE_REFERENCIA.test(tipo)) return 4
-  if (APOIO.test(titulo)) return 3
-  if (EDITAL.test(tipo)) return 2
-  return 1
-}
-
 // Escolhe o conjunto documental a analisar, do mais relevante para o menos.
+// A heurística de prioridade é genérica (ver lib/documentPriority.ts) —
+// aqui só filtra pelo que é específico do PNCP (statusAtivo).
 export function selecionarDocumentos(docs: PNCPDocumentInfo[]): PNCPDocumentInfo[] {
-  return docs
-    .filter((d) => d.statusAtivo)
-    .map((doc, ordem) => ({ doc, ordem, peso: prioridade(doc) }))
-    .sort((a, b) => b.peso - a.peso || a.ordem - b.ordem)
-    .map(({ doc }) => doc)
+  return ordenarPorPrioridade(docs.filter((d) => d.statusAtivo))
 }
 
 // Compatibilidade com quem só precisa do documento principal.

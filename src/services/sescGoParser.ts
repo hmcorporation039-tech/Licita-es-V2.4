@@ -42,7 +42,19 @@ export function parseSescGoListagem(html: string): NormalizedTender[] {
 
     const objeto = el.find('.card-header .title').first().text().replace(/\s+/g, ' ').trim()
     const modalidadeTexto = (campos['modalidade'] ?? '').toLowerCase()
-    const linkEdital = el.find('nav a[href*="/licitacao/download/"]').first().attr('href')
+
+    // Anexos (edital + termo de referência + minutas...) — capturados aqui,
+    // na coleta, porque essa fonte não tem página de detalhe por licitação
+    // pra buscar sob demanda como as outras (é tudo uma página só). Só o
+    // link e o nome do arquivo, nada de peso (ver análise de edital por IA).
+    const anexos: { uri: string; titulo: string }[] = []
+    el.find('nav a[href*="/licitacao/download/"]').each((__, a) => {
+      const uri = $(a).attr('href')
+      if (!uri) return
+      const bruto = $(a).text().replace(/\s+/g, ' ').trim()
+      const titulo = bruto.replace(/\s*-\s*\d{2}\/\d{2}\/\d{2}\s+\d{2}:\d{2}\s*$/, '').trim()
+      anexos.push({ uri, titulo: titulo || 'Anexo' })
+    })
 
     tenders.push({
       fonte: 'SESC_GO',
@@ -54,9 +66,9 @@ export function parseSescGoListagem(html: string): NormalizedTender[] {
       orgao: SESCGO_RAZAO_SOCIAL,
       orgaoCnpj: SESCGO_CNPJ,
       encerramentoAt: parseDataBr(campos['abertura']),
-      linkEdital,
+      linkEdital: anexos[0]?.uri,
       numeroControle: processo,
-      rawJson: {},
+      rawJson: { anexos },
     })
   })
 

@@ -135,6 +135,9 @@ describe('parseSescGoListagem', () => {
     expect(tender.objeto).toContain('escadas diversas')
     expect(tender.linkEdital).toBe('https://www3.sescgo.com.br/licitacao/download/50015')
     expect(tender.encerramentoAt?.toISOString().slice(0, 10)).toBe('2026-10-07')
+    // Anexos vão pro rawJson (não têm página de detalhe pra buscar sob
+    // demanda como Novacap/PNCP) — é o que a análise de edital por IA lê.
+    expect(tender.rawJson).toEqual({ anexos: [{ uri: 'https://www3.sescgo.com.br/licitacao/download/50015', titulo: 'Edital.pdf' }] })
   })
 
   it('pula card sem "Processo n°" em vez de quebrar', () => {

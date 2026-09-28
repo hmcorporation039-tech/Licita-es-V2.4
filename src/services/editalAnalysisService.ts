@@ -14,17 +14,19 @@
 // ============================================================
 
 import axios from 'axios'
+import { Tender } from '@prisma/client'
 import { prisma } from './tenderService'
-import {
-  downloadPNCPDocument,
-  isPdf,
-  listPNCPDocuments,
-  selecionarDocumentos,
-} from './pncpDocumentsService'
+import { downloadPNCPDocument, isPdf, listPNCPDocuments, selecionarDocumentos } from './pncpDocumentsService'
+import { listNovacapDocumentos } from './novacapParser'
+import { ordenarPorPrioridade, DocumentoComTitulo } from '../lib/documentPriority'
 import { extractPdf, temCamadaDeTexto } from './pdfTextService'
 import { AnalysisRefusedError, EditalAnalyzer, EditalDocumento } from './llm/types'
 import { analyzeEdital as analyzeWithClaude } from './llm/claudeAnalyzer'
 import { analyzeEdital as analyzeWithGemini } from './llm/geminiAnalyzer'
+
+interface DocumentoDisponivel extends DocumentoComTitulo {
+  uri: string
+}
 
 // Teto por requisição da API (32 MB). Ficamos abaixo com folga porque o
 // base64 infla o binário em cerca de 1/3. Só conta o que vai em PDF nativo.
@@ -46,15 +48,44 @@ function getAnalyzer(): EditalAnalyzer {
   throw new Error(`AI_PROVIDER inválido: "${provider}" — use "claude" ou "gemini"`)
 }
 
+// Lista os documentos de uma licitação, já do mais relevante para o menos —
+// cada fonte tem seu próprio jeito de chegar neles. Fontes sem acesso
+// público a anexo (FIEG exige login no site de origem — mesma regra que
+// vale pros outros portais com login, ver Etapa 5; ComprasNet nunca teve
+// esse link capturado, módulo Lei 8.666 praticamente inativo) devolvem
+// lista vazia e caem no NO_DOCUMENTS de sempre, sem tratamento especial.
+async function listarDocumentosDisponiveis(tender: Tender): Promise<DocumentoDisponivel[]> {
+  switch (tender.fonte) {
+    case 'PNCP': {
+      const raw = tender.rawJson as Record<string, unknown>
+      const orgaoEntidade = raw.orgaoEntidade as Record<string, unknown> | undefined
+      const cnpj = orgaoEntidade?.cnpj as string | undefined
+      const ano = raw.anoCompra as number | undefined
+      const sequencial = raw.sequencialCompra as number | undefined
+      if (!cnpj || !ano || !sequencial) return []
+      return selecionarDocumentos(await listPNCPDocuments(cnpj, ano, sequencial))
+    }
+    case 'NOVACAP': {
+      // fonteId é sempre "NOVACAP-{id}" (ver novacapParser.ts) — sob demanda
+      // aqui, na hora da análise, mesmo padrão do PNCP: não fica no banco.
+      const detailId = tender.fonteId.replace('NOVACAP-', '')
+      return ordenarPorPrioridade(await listNovacapDocumentos(detailId))
+    }
+    case 'SESC_GO': {
+      // Sem página de detalhe por licitação nesta fonte — os anexos já
+      // vieram capturados na coleta (ver sescGoParser.ts).
+      const raw = tender.rawJson as { anexos?: DocumentoDisponivel[] }
+      return ordenarPorPrioridade(raw.anexos ?? [])
+    }
+    default:
+      return []
+  }
+}
+
 // Baixa até MAX_DOCUMENTOS PDFs, do mais relevante para o menos, e decide um
 // a um se vai como texto (barato) ou em PDF nativo (quando é escaneado e não
 // há texto para extrair).
-async function baixarDocumentos(
-  cnpj: string,
-  ano: number,
-  sequencial: number
-): Promise<EditalDocumento[]> {
-  const disponiveis = selecionarDocumentos(await listPNCPDocuments(cnpj, ano, sequencial))
+async function baixarDocumentos(disponiveis: DocumentoDisponivel[]): Promise<EditalDocumento[]> {
   const selecionados: EditalDocumento[] = []
   let bytesDePdf = 0
   let caracteres = 0
@@ -123,29 +154,25 @@ export async function runEditalAnalysis(tenderId: string): Promise<void> {
     const tender = await prisma.tender.findUnique({ where: { id: tenderId } })
     if (!tender) throw new Error('Licitação não encontrada')
 
-    const raw = tender.rawJson as Record<string, unknown>
-    const orgaoEntidade = raw.orgaoEntidade as Record<string, unknown> | undefined
-    const cnpj = orgaoEntidade?.cnpj as string | undefined
-    const ano = raw.anoCompra as number | undefined
-    const sequencial = raw.sequencialCompra as number | undefined
+    const disponiveis = await listarDocumentosDisponiveis(tender)
 
-    if (tender.fonte !== 'PNCP' || !cnpj || !ano || !sequencial) {
+    if (disponiveis.length === 0) {
       await prisma.tenderAnalysis.update({
         where: { tenderId },
         data: {
           status: 'NO_DOCUMENTS',
-          errorMsg: 'Documentos só estão disponíveis para licitações publicadas no PNCP.',
+          errorMsg: 'Nenhum documento disponível publicamente para esta licitação nesta fonte.',
         },
       })
       return
     }
 
-    const documentos = await baixarDocumentos(cnpj, ano, sequencial)
+    const documentos = await baixarDocumentos(disponiveis)
 
     if (documentos.length === 0) {
       await prisma.tenderAnalysis.update({
         where: { tenderId },
-        data: { status: 'NO_DOCUMENTS', errorMsg: 'Nenhum documento em PDF foi encontrado no PNCP para esta licitação.' },
+        data: { status: 'NO_DOCUMENTS', errorMsg: 'Nenhum documento em PDF foi encontrado para esta licitação.' },
       })
       return
     }
@@ -176,12 +203,12 @@ export async function runEditalAnalysis(tenderId: string): Promise<void> {
       },
     })
   } catch (err) {
-    // A API não-oficial de documentos do PNCP (pncpDocumentsService) cai com
-    // frequência (fora do nosso controle) — em vez do axios "Request failed
+    // As fontes de origem (API do PNCP, sites da Novacap etc.) caem com
+    // frequência, fora do nosso controle — em vez do axios "Request failed
     // with status code 503" cru, mostra algo que a pessoa usuária entenda.
-    const isPncpDown = axios.isAxiosError(err) && (!err.response || err.response.status >= 500)
-    const errorMsg = isPncpDown
-      ? 'PNCP está indisponível no momento (não foi possível baixar os documentos do edital). Tente novamente mais tarde.'
+    const isFonteFora = axios.isAxiosError(err) && (!err.response || err.response.status >= 500)
+    const errorMsg = isFonteFora
+      ? 'A fonte de origem está indisponível no momento (não foi possível baixar os documentos do edital). Tente novamente mais tarde.'
       : err instanceof Error
         ? err.message
         : String(err)
