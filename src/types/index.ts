@@ -2,7 +2,7 @@
 // types/index.ts — Tipos compartilhados da plataforma
 // ============================================================
 
-export type FonteEnum = 'PNCP' | 'COMPRASNET'
+export type FonteEnum = 'PNCP' | 'COMPRASNET' | 'NOVACAP' | 'FIEG' | 'SESC_GO'
 
 export type ModalidadeEnum =
   | 'PREGAO_ELETRONICO'
@@ -55,6 +55,39 @@ export const COMPRASNET_MODALIDADE_MAP: Record<string, ModalidadeEnum> = {
   '6':  'DISPENSA_SEM_DISPUTA',
   '7':  'INEXIGIBILIDADE',
   '99': 'OUTROS',            // RDC (Regime Diferenciado de Contratações)
+}
+
+// Categorias do sistema da Novacap (app.novacap.df.gov.br/sislicitapublica) —
+// cada uma é uma sub-listagem própria (licitalisting/{id}), levantada
+// manualmente em 2026-09-28 contra o site real (ver landing page /).
+export const NOVACAP_LISTAGENS: { id: number; label: string; modalidade: ModalidadeEnum }[] = [
+  { id: 1, label: 'TOMADA DE PREÇOS', modalidade: 'TOMADA_DE_PRECOS' },
+  { id: 4, label: 'DISPENSA', modalidade: 'DISPENSA_SEM_DISPUTA' },
+  { id: 5, label: 'CONVITE', modalidade: 'CONVITE' },
+  { id: 6, label: 'CONCORRÊNCIA', modalidade: 'CONCORRENCIA' },
+  { id: 7, label: 'PREGÃO ELETRÔNICO', modalidade: 'PREGAO_ELETRONICO' },
+  { id: 10, label: 'CHAMADA PÚBLICA', modalidade: 'OUTROS' },
+  { id: 11, label: 'PL - PRESENCIAL', modalidade: 'PREGAO_PRESENCIAL' },
+  { id: 12, label: 'PL - ELETRÔNICO', modalidade: 'PREGAO_ELETRONICO' },
+  { id: 13, label: 'COTAÇÃO ELETRÔNICA', modalidade: 'OUTROS' },
+  { id: 14, label: 'RDC - REGIME DIFERENCIADO DE CONTRATAÇÃO', modalidade: 'OUTROS' },
+  { id: 15, label: 'CONCORRÊNCIA ELETRÔNICA', modalidade: 'CONCORRENCIA' },
+  { id: 16, label: 'LEILÃO', modalidade: 'OUTROS' },
+  { id: 17, label: 'CREDENCIAMENTO', modalidade: 'CREDENCIAMENTO' },
+]
+
+// Rótulos de modalidade exibidos pelo SESC Goiás (campo "Modalidade" de cada
+// card) — mapeamento por texto, já que o site não expõe um código numérico.
+export const SESCGO_MODALIDADE_MAP: Record<string, ModalidadeEnum> = {
+  'pregão eletrônico': 'PREGAO_ELETRONICO',
+  'pregão presencial': 'PREGAO_PRESENCIAL',
+  'dispensa de licitação': 'DISPENSA_SEM_DISPUTA',
+  'concorrência': 'CONCORRENCIA',
+  'tomada de preços': 'TOMADA_DE_PRECOS',
+  'convite': 'CONVITE',
+  'credenciamento': 'CREDENCIAMENTO',
+  'concurso': 'CONCURSO',
+  'leilão': 'OUTROS',
 }
 
 // Schema normalizado de licitação (output do Parser)

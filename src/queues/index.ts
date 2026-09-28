@@ -30,6 +30,12 @@ const defaultQueueOptions: QueueOptions = {
 // worker do ComprasNet e vice-versa, retornando sem coletar nada)
 export const coletorPNCPQueue = new Queue('coletor-pncp', defaultQueueOptions)
 export const coletorComprasnetQueue = new Queue('coletor-comprasnet', defaultQueueOptions)
+// Etapa 5 — portais sem login/CAPTCHA, fora do PNCP por regime legal próprio
+// (ver análise de viabilidade). Sem janela de data: cada coleta traz a
+// listagem inteira da fonte, então uma cadência diária já basta.
+export const coletorNovacapQueue = new Queue('coletor-novacap', defaultQueueOptions)
+export const coletorFiegQueue = new Queue('coletor-fieg', defaultQueueOptions)
+export const coletorSescGoQueue = new Queue('coletor-sesc-go', defaultQueueOptions)
 
 // Fila de matching (disparada após salvar cada licitação nova)
 export const matcherQueue = new Queue('matcher', defaultQueueOptions)
@@ -74,6 +80,29 @@ export const COLETOR_SCHEDULERS: ColetorScheduler[] = [
     jobName: 'coleta-comprasnet',
     pattern: '0 7,19 * * *',
     fonte: 'COMPRASNET',
+  },
+  // Uma vez por dia — essas 3 não têm filtro de data, então rodar 2x/dia
+  // como PNCP/ComprasNet só dobraria o custo sem trazer nada a mais.
+  {
+    queue: coletorNovacapQueue,
+    schedulerId: 'coleta-novacap',
+    jobName: 'coleta-novacap',
+    pattern: '0 8 * * *',
+    fonte: 'NOVACAP',
+  },
+  {
+    queue: coletorFiegQueue,
+    schedulerId: 'coleta-fieg',
+    jobName: 'coleta-fieg',
+    pattern: '0 9 * * *',
+    fonte: 'FIEG',
+  },
+  {
+    queue: coletorSescGoQueue,
+    schedulerId: 'coleta-sesc-go',
+    jobName: 'coleta-sesc-go',
+    pattern: '0 10 * * *',
+    fonte: 'SESC_GO',
   },
 ]
 

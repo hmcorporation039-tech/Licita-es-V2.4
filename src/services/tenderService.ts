@@ -151,7 +151,7 @@ export async function saveTenderItemsIfMissing(
 export async function saveWorkerLog(data: {
   worker: string
   status: 'RUNNING' | 'SUCCESS' | 'FAILED' | 'PARTIAL'
-  fonte?: 'PNCP' | 'COMPRASNET'
+  fonte?: NormalizedTender['fonte']
   totalFetched?: number
   totalNew?: number
   totalDupes?: number

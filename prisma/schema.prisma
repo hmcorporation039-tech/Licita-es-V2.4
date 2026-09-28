@@ -211,6 +211,11 @@ model Tender {
 enum FonteEnum {
   PNCP
   COMPRASNET
+  // Etapa 5 — portais sem login/CAPTCHA, fora do PNCP por regime legal
+  // próprio (empresa pública ou Sistema S — ver análise de viabilidade).
+  NOVACAP
+  FIEG
+  SESC_GO
 }
 
 // ============================================================

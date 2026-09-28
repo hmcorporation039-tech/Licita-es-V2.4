@@ -11,13 +11,19 @@ function sleep(ms: number): Promise<void> {
 }
 
 // Cria um cliente axios com delay entre requisições
-function createRateLimitedClient(baseURL: string, delayMs = 1200): AxiosInstance {
+function createRateLimitedClient(
+  baseURL: string,
+  delayMs = 1200,
+  // Os coletores de HTML (Novacap/FIEG/SESC GO) sobrescrevem o Accept —
+  // os de API (PNCP/ComprasNet) continuam pedindo JSON.
+  headers: Record<string, string> = { Accept: 'application/json' }
+): AxiosInstance {
   const client = axios.create({
     baseURL,
     timeout: 30_000,
     headers: {
-      'Accept': 'application/json',
       'User-Agent': 'LicitacaoMonitor/1.0 (plataforma de monitoramento)',
+      ...headers,
     },
   })
 
@@ -53,3 +59,15 @@ function createRateLimitedClient(baseURL: string, delayMs = 1200): AxiosInstance
 export const pncpClient = createRateLimitedClient('https://pncp.gov.br/api/consulta')
 export const comprasnetClient = createRateLimitedClient('https://dadosabertos.compras.gov.br')
 export const comprasLegacyClient = createRateLimitedClient('https://compras.dados.gov.br')
+
+// Fontes que devolvem HTML (raspagem) em vez de JSON — Accept pedindo HTML
+// e um User-Agent de navegador real: alguns desses sites bloqueiam clientes
+// que não parecem browser, mesmo em página pública sem login.
+const HTML_HEADERS = {
+  Accept: 'text/html,application/xhtml+xml',
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
+}
+
+export const novacapClient = createRateLimitedClient('https://app.novacap.df.gov.br/sislicitapublica', 1500, HTML_HEADERS)
+export const fiegClient = createRateLimitedClient('https://www.sistemafieg.org.br', 1500, HTML_HEADERS)
+export const sescGoClient = createRateLimitedClient('https://www3.sescgo.com.br', 1500, HTML_HEADERS)

@@ -90,7 +90,7 @@ export interface TenderMatchInfo {
 
 export interface Tender {
   id: string
-  fonte: 'PNCP' | 'COMPRASNET'
+  fonte: 'PNCP' | 'COMPRASNET' | 'NOVACAP' | 'FIEG' | 'SESC_GO'
   modalidade: string
   situacao: string
   objeto: string

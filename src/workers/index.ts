@@ -7,6 +7,9 @@ import 'dotenv/config'
 import { dispararColetaInicial, scheduleColetorJobs } from '../queues'
 import { startColetorPNCPWorker } from './coletorPNCP'
 import { startColetorComprasnetWorker } from './coletorComprasnet'
+import { startColetorNovacapWorker } from './coletorNovacap'
+import { startColetorFiegWorker } from './coletorFieg'
+import { startColetorSescGoWorker } from './coletorSescGo'
 import { startMatcherWorker } from './matcher'
 import { startNotificadorWorker } from './notificador'
 import { startAnaliseWorker } from './analise'
@@ -20,11 +23,14 @@ async function main() {
   // Sobe os workers em paralelo
   const workerPNCP = startColetorPNCPWorker()
   const workerComprasnet = startColetorComprasnetWorker()
+  const workerNovacap = startColetorNovacapWorker()
+  const workerFieg = startColetorFiegWorker()
+  const workerSescGo = startColetorSescGoWorker()
   const workerMatcher = startMatcherWorker()
   const workerNotificador = startNotificadorWorker()
   const workerAnalise = startAnaliseWorker()
 
-  console.log('✅ Workers ativos: PNCP, ComprasNet, Matcher, Notificador, Análise')
+  console.log('✅ Workers ativos: PNCP, ComprasNet, Novacap, FIEG, SESC GO, Matcher, Notificador, Análise')
 
   // Agenda coletas periódicas — envolvido em try/catch de propósito: isso
   // roda toda vez que o processo sobe, então se o Redis estiver indisponível
@@ -94,6 +100,9 @@ async function main() {
     console.log('Encerrando workers...')
     await workerPNCP.close()
     await workerComprasnet.close()
+    await workerNovacap.close()
+    await workerFieg.close()
+    await workerSescGo.close()
     await workerMatcher.close()
     await workerNotificador.close()
     await workerAnalise.close()
