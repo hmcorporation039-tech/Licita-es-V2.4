@@ -80,7 +80,13 @@ export function parseFiegListagem(html: string): NormalizedTender[] {
       uf: 'GO',
       orgao: entidade ? `Sistema FIEG - ${entidade}` : 'Sistema FIEG',
       orgaoCnpj: FIEG_CNPJ,
-      encerramentoAt: abertura,
+      // "Abertura em" não é claramente prazo final ou data de publicação —
+      // o site só expõe essa data única. Vai em aberturaAt (não em
+      // encerramentoAt): a retenção (retentionService.ts) apaga qualquer
+      // licitação sem interação cujo encerramentoAt já passou, e "Abertura
+      // em" já passada não quer dizer que a cotação encerrou — quem decide
+      // isso é o "(Finalizada)" do título (ver statusFechado acima).
+      aberturaAt: abertura,
       linkEdital: href.startsWith('http') ? href : `https://www.fieg.com.br/licitacao/site/${href}`,
       numeroControle: numero,
       rawJson: {},

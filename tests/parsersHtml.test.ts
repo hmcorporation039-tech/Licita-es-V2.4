@@ -88,7 +88,7 @@ describe('parseFiegListagem / extrairTotalPaginas', () => {
     expect(tender.numeroControle).toBe('026/0000')
     expect(tender.orgao).toBe('Sistema FIEG - SESI')
     expect(tender.objeto).toContain('Link IP Dedicado')
-    expect(tender.encerramentoAt?.toISOString().slice(0, 10)).toBe('2026-06-08')
+    expect(tender.aberturaAt?.toISOString().slice(0, 10)).toBe('2026-06-08')
   })
 
   it('calcula o total de páginas a partir do banner, não dos links visíveis', () => {
