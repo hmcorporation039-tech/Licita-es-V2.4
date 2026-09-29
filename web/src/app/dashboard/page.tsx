@@ -99,7 +99,7 @@ export default function DashboardPage() {
                 ))}
               </ul>
             )}
-            <Link href="/documentos" className="mt-3 inline-block text-sm text-indigo-700 hover:underline">
+            <Link href="/empresa" className="mt-3 inline-block text-sm text-indigo-700 hover:underline">
               Ver cofre de documentos
             </Link>
           </section>
