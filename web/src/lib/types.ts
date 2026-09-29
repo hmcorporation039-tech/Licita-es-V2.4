@@ -27,6 +27,11 @@ export interface Company {
   name: string
   cnpj: string | null
   cpf: string | null
+  email: string | null
+  telefone: string | null
+  responsavel: string | null
+  endereco: string | null
+  cep: string | null
   users: CompanyMember[]
 }
 

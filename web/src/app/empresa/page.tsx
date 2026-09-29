@@ -47,6 +47,11 @@ export default function EmpresaPage() {
   const [name, setName] = useState('')
   const [tipo, setTipo] = useState<CompanyType>('PESSOA_FISICA')
   const [documento, setDocumento] = useState('')
+  const [companyEmail, setCompanyEmail] = useState('')
+  const [telefone, setTelefone] = useState('')
+  const [responsavel, setResponsavel] = useState('')
+  const [endereco, setEndereco] = useState('')
+  const [cep, setCep] = useState('')
   const [savingCompany, setSavingCompany] = useState(false)
 
   const [memberEmail, setMemberEmail] = useState('')
@@ -79,6 +84,11 @@ export default function EmpresaPage() {
       setName(data.name)
       setTipo(data.tipo)
       setDocumento(data.tipo === 'PESSOA_JURIDICA' ? (data.cnpj ?? '') : (data.cpf ?? ''))
+      setCompanyEmail(data.email ?? '')
+      setTelefone(data.telefone ?? '')
+      setResponsavel(data.responsavel ?? '')
+      setEndereco(data.endereco ?? '')
+      setCep(data.cep ?? '')
     } catch (err) {
       setError(err instanceof ApiRequestError ? err.message : 'Erro ao carregar empresa')
     } finally {
@@ -112,6 +122,11 @@ export default function EmpresaPage() {
         tipo,
         cnpj: tipo === 'PESSOA_JURIDICA' ? documento || null : null,
         cpf: tipo === 'PESSOA_FISICA' ? documento || null : null,
+        email: companyEmail || null,
+        telefone: telefone || null,
+        responsavel: responsavel || null,
+        endereco: endereco || null,
+        cep: cep || null,
       })
       setCompany((prev) => (prev ? { ...prev, ...updated } : prev))
       setInfo('Dados da empresa atualizados.')
@@ -242,6 +257,42 @@ export default function EmpresaPage() {
             onChange={(e) => setDocumento(e.target.value)}
             disabled={!souOwner}
             className={inputClass}
+          />
+          <input
+            type="email"
+            placeholder="E-mail da empresa (opcional)"
+            value={companyEmail}
+            onChange={(e) => setCompanyEmail(e.target.value)}
+            disabled={!souOwner}
+            className={inputClass}
+          />
+          <input
+            placeholder="Telefone (opcional)"
+            value={telefone}
+            onChange={(e) => setTelefone(e.target.value)}
+            disabled={!souOwner}
+            className={inputClass}
+          />
+          <input
+            placeholder="Responsável (opcional)"
+            value={responsavel}
+            onChange={(e) => setResponsavel(e.target.value)}
+            disabled={!souOwner}
+            className={inputClass}
+          />
+          <input
+            placeholder="CEP (opcional)"
+            value={cep}
+            onChange={(e) => setCep(e.target.value)}
+            disabled={!souOwner}
+            className={inputClass}
+          />
+          <input
+            placeholder="Endereço (opcional)"
+            value={endereco}
+            onChange={(e) => setEndereco(e.target.value)}
+            disabled={!souOwner}
+            className={`${inputClass} sm:col-span-2`}
           />
           {souOwner && (
             <button

@@ -36,6 +36,11 @@ const updateCompanySchema = z.object({
   tipo: z.enum(['PESSOA_FISICA', 'PESSOA_JURIDICA']).optional(),
   cnpj: z.string().min(1).nullable().optional(),
   cpf: z.string().min(1).nullable().optional(),
+  email: z.string().email().nullable().optional(),
+  telefone: z.string().min(1).nullable().optional(),
+  responsavel: z.string().min(1).nullable().optional(),
+  endereco: z.string().min(1).nullable().optional(),
+  cep: z.string().min(1).nullable().optional(),
 })
 
 companyRouter.patch(

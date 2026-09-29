@@ -76,6 +76,13 @@ model Company {
   name      String
   cnpj      String?     @unique
   cpf       String?     @unique
+  // Dados de contato/cobrança — preparação para a Etapa 2 (pagamentos):
+  // emissão de fatura/nota precisa de responsável, contato e endereço.
+  email       String?
+  telefone    String?
+  responsavel String?
+  endereco    String?
+  cep         String?
   createdAt DateTime    @default(now()) @map("created_at")
   updatedAt DateTime    @updatedAt @map("updated_at")
 
