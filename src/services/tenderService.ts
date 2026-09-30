@@ -5,6 +5,7 @@
 import { Prisma, PrismaClient } from '@prisma/client'
 import { NormalizedTender, NormalizedTenderItem } from '../types'
 import { normalize } from '../lib/geoService'
+import { fetchPNCPItens } from './pncpItemsService'
 import {
   CampoMonitorado,
   camposAlterados,
@@ -170,6 +171,32 @@ export async function saveTenderItemsIfMissing(
   await prisma.tenderItem.createMany({
     data: items.map((item) => itemParaBanco(item, tenderId)),
   })
+}
+
+// Garante que os itens de uma licitação PNCP estejam no banco, buscando-os sob
+// demanda se ainda não existirem. Usado tanto ao abrir o detalhe quanto logo
+// após um match (o "acompanhar compra" do fluxo), para o pool já vir com itens.
+// Devolve true se buscou itens agora. Efeito colateral: não lança em rede
+// (quem chama decide), mas propaga erro de rede para o try/catch do chamador.
+export async function garantirItensPNCP(tender: {
+  id: string
+  fonte: string
+  rawJson: unknown
+}): Promise<boolean> {
+  if (tender.fonte !== 'PNCP') return false
+  const existentes = await prisma.tenderItem.count({ where: { tenderId: tender.id } })
+  if (existentes > 0) return false
+
+  const raw = (tender.rawJson ?? {}) as Record<string, unknown>
+  const orgaoEntidade = raw.orgaoEntidade as Record<string, unknown> | undefined
+  const cnpj = orgaoEntidade?.cnpj as string | undefined
+  const ano = raw.anoCompra as number | undefined
+  const sequencial = raw.sequencialCompra as number | undefined
+  if (!cnpj || !ano || !sequencial) return false
+
+  const itens = await fetchPNCPItens(cnpj, ano, sequencial)
+  await saveTenderItemsIfMissing(tender.id, itens)
+  return true
 }
 
 // Registra log de execução do worker

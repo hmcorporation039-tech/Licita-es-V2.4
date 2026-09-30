@@ -7,7 +7,7 @@
 import { Worker, Job } from 'bullmq'
 import { redisConnection, notificadorQueue } from '../queues'
 import { enfileirarSemTravar } from '../queues/enfileirar'
-import { prisma } from '../services/tenderService'
+import { prisma, garantirItensPNCP } from '../services/tenderService'
 import { findMatchCandidates } from '../services/matcherService'
 import { MatcherJobPayload } from '../types'
 
@@ -18,6 +18,20 @@ export function startMatcherWorker() {
       const { tenderId } = job.data
       const candidates = await findMatchCandidates(tenderId)
       if (candidates.length === 0) return
+
+      // Enriquecimento do "pool": a licitação deu match, então buscamos os itens
+      // dela agora (o "acompanhar compra" do fluxo) em vez de esperar alguém
+      // abrir o detalhe. Bounded: só roda para licitação que já casou. Efeito
+      // colateral — falha de rede aqui não invalida os matches.
+      try {
+        const t = await prisma.tender.findUnique({
+          where: { id: tenderId },
+          select: { id: true, fonte: true, rawJson: true },
+        })
+        if (t) await garantirItensPNCP(t)
+      } catch (err) {
+        console.error('[Matcher Worker] Falha ao buscar itens:', err instanceof Error ? err.message : err)
+      }
 
       const monitoredItemIds = candidates.map((c) => c.monitoredItemId)
       const existing = await prisma.tenderMatch.findMany({

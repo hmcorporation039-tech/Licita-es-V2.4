@@ -4,14 +4,13 @@
 
 import { Router } from 'express'
 import { z } from 'zod'
-import { prisma, saveTenderItemsIfMissing } from '../../services/tenderService'
+import { prisma, garantirItensPNCP } from '../../services/tenderService'
 import { asyncHandler, ApiError } from '../asyncHandler'
 import { escritaSensivelLimiter } from '../rateLimit'
 import { buildChecklistTemplate, ChecklistItem } from '../../lib/checklistTemplate'
 import { analiseHabilitada } from '../../services/editalAnalysisService'
 import { analiseQueue } from '../../queues'
 import { enfileirarSemTravar } from '../../queues/enfileirar'
-import { fetchPNCPItens } from '../../services/pncpItemsService'
 import { MODALIDADE_VALUES } from './monitoredItems'
 import { normalize } from '../../lib/geoService'
 import { buildAutoMilestones, PlanMilestone } from '../../lib/participationPlanTemplate'
@@ -154,20 +153,13 @@ tendersRouter.get(
     // Busca sob demanda: a coleta periódica não traz os itens (chamada separada
     // no PNCP) — busca na primeira vez que alguém abre o detalhe e guarda.
     if (tender.items.length === 0 && tender.fonte === 'PNCP') {
-      const raw = tender.rawJson as Record<string, unknown>
-      const orgaoEntidade = raw.orgaoEntidade as Record<string, unknown> | undefined
-      const cnpj = orgaoEntidade?.cnpj as string | undefined
-      const ano = raw.anoCompra as number | undefined
-      const sequencial = raw.sequencialCompra as number | undefined
-
-      if (cnpj && ano && sequencial) {
-        try {
-          const itens = await fetchPNCPItens(cnpj, ano, sequencial)
-          await saveTenderItemsIfMissing(tender.id, itens)
+      try {
+        const buscou = await garantirItensPNCP(tender)
+        if (buscou) {
           tender = await prisma.tender.findUnique({ where: { id: req.params.id }, include: { items: true } })
-        } catch (err) {
-          console.error('[Tenders] Erro ao buscar itens do PNCP:', err)
         }
+      } catch (err) {
+        console.error('[Tenders] Erro ao buscar itens do PNCP:', err)
       }
     }
 
