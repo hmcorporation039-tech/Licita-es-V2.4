@@ -22,6 +22,7 @@ import { catalogRouter } from './routes/catalog'
 import { requireAuth } from './authMiddleware'
 import { ApiError } from './asyncHandler'
 import { globalLimiter } from './rateLimit'
+import { iniciarImportacaoAutomatica } from '../services/catalogoBootstrap'
 
 const app = express()
 
@@ -102,4 +103,7 @@ app.use(errorHandler)
 const PORT = Number(process.env.PORT ?? process.env.API_PORT ?? 3333)
 app.listen(PORT, () => {
   console.log(`🌐 API rodando em http://localhost:${PORT}`)
+  // Popula/renova UASGs e catálogo CATMAT/CATSER em segundo plano (ver
+  // catalogoBootstrap.ts). Só liga em produção ou com AUTO_IMPORT_CATALOGOS=true.
+  iniciarImportacaoAutomatica()
 })

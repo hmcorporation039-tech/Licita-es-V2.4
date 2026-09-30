@@ -13,9 +13,30 @@ import { senhaSchema } from '../passwordPolicy'
 import { asyncHandler, ApiError } from '../asyncHandler'
 import { requireAdmin, requireAuth } from '../authMiddleware'
 import { escritaSensivelLimiter } from '../rateLimit'
+import {
+  importacaoEmAndamento,
+  statusImportacoes,
+  verificarEImportar,
+} from '../../services/catalogoBootstrap'
 
 export const adminRouter = Router()
 adminRouter.use(requireAuth, requireAdmin)
+
+// Situação da importação de UASGs e do catálogo CATMAT/CATSER (automática).
+adminRouter.get('/importacoes', (_req, res) => {
+  res.json(statusImportacoes())
+})
+
+// Força a reimportação de tudo agora, em segundo plano (responde 202 na hora;
+// acompanhe por GET /importacoes). Útil se a sugestão de UASG/CATMAT sumir.
+adminRouter.post('/importacoes', escritaSensivelLimiter, (_req, res) => {
+  if (importacaoEmAndamento()) {
+    res.status(409).json({ error: 'Já existe uma importação em andamento' })
+    return
+  }
+  void verificarEImportar({ forcar: true })
+  res.status(202).json({ iniciada: true })
+})
 
 function computeExpiresAt(diasValidade: number | null | undefined): Date | null {
   if (!diasValidade) return null
