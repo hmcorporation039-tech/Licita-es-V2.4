@@ -267,6 +267,32 @@ model Uasg {
   @@map("uasgs")
 }
 
+// Cache local do catálogo oficial (CATMAT = material, CATSER = serviço), da API
+// dadosabertos.compras.gov.br — mesma ideia da tabela Uasg. Serve o autocomplete
+// de códigos no cadastro de item monitorado (/api/catalog/search). Populado por
+// scripts/importCatalogo.ts (reexecutável). A busca por descrição usa LIKE
+// '%termo%' sobre descricaoNorm, acelerada por índice GIN de trigramas (ver
+// migration 00000000000014).
+enum CatalogoTipo {
+  MATERIAL
+  SERVICO
+}
+
+model CatalogItem {
+  tipo          CatalogoTipo
+  codigo        String
+  descricao     String       @db.Text
+  descricaoNorm String       @map("descricao_norm") @db.Text
+  grupo         String?
+  classe        String?
+  ativo         Boolean      @default(true)
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  @@id([tipo, codigo])
+  @@index([tipo])
+  @@map("catalog_items")
+}
+
 enum ModalidadeEnum {
   PREGAO_ELETRONICO
   PREGAO_PRESENCIAL

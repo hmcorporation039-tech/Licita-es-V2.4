@@ -7,6 +7,14 @@ import { api, ApiRequestError } from '@/lib/api'
 import { MonitoredItem, UasgResult } from '@/lib/types'
 import { MODALIDADE_OPTIONS } from '@/lib/modalidades'
 import UasgPicker from '@/components/UasgPicker'
+import CatalogPicker from '@/components/CatalogPicker'
+
+// Anexa um código à string separada por vírgula, sem duplicar.
+function anexarCodigo(atual: string, codigo: string): string {
+  const lista = atual.split(',').map((c) => c.trim()).filter(Boolean)
+  if (lista.includes(codigo)) return atual
+  return [...lista, codigo].join(', ')
+}
 
 function ModalidadeCheckboxes({ selected, onChange }: { selected: string[]; onChange: (next: string[]) => void }) {
   function toggle(value: string) {
@@ -234,18 +242,24 @@ export default function ItemsPage() {
             onChange={(e) => setKeywords(e.target.value)}
             className="rounded border border-slate-300 px-3 py-2 text-sm sm:col-span-2"
           />
-          <input
-            placeholder="Códigos CATMAT (opcional — match exato, mais preciso que palavra-chave)"
-            value={catmatCodes}
-            onChange={(e) => setCatmatCodes(e.target.value)}
-            className="rounded border border-slate-300 px-3 py-2 text-sm"
-          />
-          <input
-            placeholder="Códigos CATSER (opcional — serviços)"
-            value={catserCodes}
-            onChange={(e) => setCatserCodes(e.target.value)}
-            className="rounded border border-slate-300 px-3 py-2 text-sm"
-          />
+          <div className="flex flex-col gap-1.5">
+            <CatalogPicker tipo="material" onAdd={(c) => setCatmatCodes((v) => anexarCodigo(v, c))} />
+            <input
+              placeholder="Códigos CATMAT (opcional — match exato, mais preciso que palavra-chave)"
+              value={catmatCodes}
+              onChange={(e) => setCatmatCodes(e.target.value)}
+              className="rounded border border-slate-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <CatalogPicker tipo="servico" onAdd={(c) => setCatserCodes((v) => anexarCodigo(v, c))} />
+            <input
+              placeholder="Códigos CATSER (opcional — serviços)"
+              value={catserCodes}
+              onChange={(e) => setCatserCodes(e.target.value)}
+              className="rounded border border-slate-300 px-3 py-2 text-sm"
+            />
+          </div>
           <input
             placeholder="UFs — siglas de 2 letras separadas por vírgula, ex: DF, SP (vazio = nacional)"
             value={ufs}
@@ -344,18 +358,24 @@ export default function ItemsPage() {
                       onChange={(e) => setEditKeywords(e.target.value)}
                       className="rounded border border-slate-300 px-3 py-2 text-sm sm:col-span-2"
                     />
-                    <input
-                      placeholder="Códigos CATMAT (opcional)"
-                      value={editCatmatCodes}
-                      onChange={(e) => setEditCatmatCodes(e.target.value)}
-                      className="rounded border border-slate-300 px-3 py-2 text-sm"
-                    />
-                    <input
-                      placeholder="Códigos CATSER (opcional)"
-                      value={editCatserCodes}
-                      onChange={(e) => setEditCatserCodes(e.target.value)}
-                      className="rounded border border-slate-300 px-3 py-2 text-sm"
-                    />
+                    <div className="flex flex-col gap-1.5">
+                      <CatalogPicker tipo="material" onAdd={(c) => setEditCatmatCodes((v) => anexarCodigo(v, c))} />
+                      <input
+                        placeholder="Códigos CATMAT (opcional)"
+                        value={editCatmatCodes}
+                        onChange={(e) => setEditCatmatCodes(e.target.value)}
+                        className="rounded border border-slate-300 px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <CatalogPicker tipo="servico" onAdd={(c) => setEditCatserCodes((v) => anexarCodigo(v, c))} />
+                      <input
+                        placeholder="Códigos CATSER (opcional)"
+                        value={editCatserCodes}
+                        onChange={(e) => setEditCatserCodes(e.target.value)}
+                        className="rounded border border-slate-300 px-3 py-2 text-sm"
+                      />
+                    </div>
                     <input
                       placeholder="UFs — siglas de 2 letras separadas por vírgula, ex: DF, SP (vazio = nacional)"
                       value={editUfs}

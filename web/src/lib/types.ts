@@ -88,6 +88,13 @@ export interface TenderItem {
   valorTotal: string | null
 }
 
+export interface CatalogResult {
+  codigo: string
+  descricao: string
+  grupo: string | null
+  classe: string | null
+}
+
 export interface TenderMatchInfo {
   score: number
   classificacao: 'exata' | 'alta' | 'media'
