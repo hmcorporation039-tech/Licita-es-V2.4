@@ -12,13 +12,14 @@ import { publicadaRecentemente } from '../src/services/sescRegional/tipos'
 const AGORA = new Date(2026, 8, 30, 12, 0)
 
 describe('registro das unidades do SESC Regional', () => {
-  it('cobre as 21 unidades das Fases 1 e 2, sem repetir UF', () => {
-    const ufs = SESC_UNIDADES.map((u) => u.uf).sort()
-    expect(ufs).toEqual([
-      'AC', 'AL', 'AM', 'AP', 'CE', 'DF', 'ES', 'MA', 'MG', 'MS', 'MT',
-      'PA', 'PB', 'PE', 'PI', 'PR', 'RN', 'RO', 'SC', 'SE', 'TO',
+  it('cobre as 26 unidades das Fases 1 a 3 (DN e RJ dividem a UF, mas têm chaves distintas)', () => {
+    const chaves = SESC_UNIDADES.map((u) => u.chave ?? u.uf).sort()
+    expect(chaves).toEqual([
+      'AC', 'AL', 'AM', 'AP', 'BA', 'CE', 'DF', 'DN', 'ES', 'MA', 'MG', 'MS', 'MT',
+      'PA', 'PB', 'PE', 'PI', 'PR', 'RJ', 'RN', 'RO', 'RS', 'SC', 'SE', 'SP', 'TO',
     ])
-    expect(new Set(ufs).size).toBe(ufs.length)
+    // A chave é o prefixo do fonteId: não pode repetir, senão as unidades colidem.
+    expect(new Set(chaves).size).toBe(chaves.length)
   })
 
   // Únicas unidades cujo portal só é servido em HTTP puro (sem TLS). Qualquer

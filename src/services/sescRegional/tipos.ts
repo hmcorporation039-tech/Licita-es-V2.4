@@ -21,8 +21,12 @@ export interface ContextoDeParse {
 }
 
 export interface SescUnidade {
-  // Sigla da UF ('AM', 'SC'...). Para o DN use 'DF' e nome 'Sesc Departamento Nacional'.
+  // Sigla da UF ('AM', 'SC'...). O Departamento Nacional fica no RJ.
   uf: string
+  // Identificador da unidade no fonteId (padrão: a UF). Só precisa ser definido
+  // quando duas unidades compartilham a UF (ex.: DN e Sesc RJ) — sem isso os
+  // ids de uma colidiriam com os da outra.
+  chave?: string
   // Nome de exibição, vira Tender.orgao (ex.: 'Sesc Amazonas').
   nome: string
   cnpj?: string
@@ -152,7 +156,7 @@ export function detectarModalidade(texto: string): ModalidadeEnum {
 // Monta o NormalizedTender padrão das unidades do SESC Regional. O parser de
 // cada unidade só preenche o que o portal traz.
 export function montarTender(
-  unidade: Pick<SescUnidade, 'uf' | 'nome' | 'cnpj'>,
+  unidade: Pick<SescUnidade, 'uf' | 'chave' | 'nome' | 'cnpj'>,
   dados: {
     // Identificador estável da licitação dentro da unidade (nº do processo,
     // id do portal...). Compõe o fonteId — precisa ser o mesmo a cada coleta.
@@ -173,7 +177,7 @@ export function montarTender(
   const id = limparTexto(dados.idLocal).replace(/[^\w.-]+/g, '-').replace(/-+/g, '-')
   return {
     fonte: 'SESC_REGIONAL',
-    fonteId: `SESC-${unidade.uf}-${id}`,
+    fonteId: `SESC-${unidade.chave ?? unidade.uf}-${id}`,
     modalidade: dados.modalidade ?? detectarModalidade(dados.modalidadeTexto ?? objeto),
     objeto,
     objetoResumido: truncar(objeto),
