@@ -21,7 +21,7 @@ model User {
   email        String    @unique
   name         String?
   // null = conta antiga da fase pré-login, ainda sem senha definida —
-  // ver POST /api/auth/set-password.
+  // ver POST /api/admin/users/:id/reset-password.
   passwordHash String?   @map("password_hash")
   isAdmin      Boolean   @default(false) @map("is_admin")
   // Acesso por prazo determinado (contas de teste/clientes) — null = sem
