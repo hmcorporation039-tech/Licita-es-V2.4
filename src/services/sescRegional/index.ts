@@ -3,11 +3,12 @@
 // o coletor (workers/coletorSescRegional.ts) varre. Para incluir uma unidade
 // nova: criar <uf>.ts exportando uma SescUnidade e adicioná-la aqui.
 //
-// Fase 1 (portais com lista no HTML/AJAX público): AL, AM, CE, DF, MA, MS, MT,
-// PA, SC, SE. O SESC GO tem coletor próprio (services/sescGoParser.ts).
-// Ainda fora (sem lista acessível por GET, ver relatório): DN, RJ, SP, BA
-// (Paradigma/ASP.NET com postback), RR (aplicação JavaScript) e as unidades
-// cujo endereço da planilha é só a home do site.
+// Fase 1 (lista no HTML/AJAX público): AL, AM, CE, DF, MA, MS, MT, PA, SC, SE.
+// Fase 2 (página da lista localizada a partir da home): AC, AP, ES, MG, PB, PE,
+// PI, PR (API JSON por POST), RN, RO, TO. O SESC GO tem coletor próprio
+// (services/sescGoParser.ts).
+// Ainda fora: RS (portal Paradigma/GeneXus com POST e AJAX), DN/RJ/SP/BA
+// (Paradigma com postback) e RR (aplicação JavaScript) — ver relatório.
 // ============================================================
 
 import { SescUnidade } from './tipos'
@@ -21,16 +22,38 @@ import { sescMT } from './mt'
 import { sescPA } from './pa'
 import { sescSC } from './sc'
 import { sescSE } from './se'
+import { sescAC } from './ac'
+import { sescAP } from './ap'
+import { sescES } from './es'
+import { sescMG } from './mg'
+import { sescPB } from './pb'
+import { sescPE } from './pe'
+import { sescPI } from './pi'
+import { sescPR } from './pr'
+import { sescRN } from './rn'
+import { sescRO } from './ro'
+import { sescTO } from './to'
 
 export const SESC_UNIDADES: SescUnidade[] = [
+  sescAC,
   sescAL,
   sescAM,
+  sescAP,
   sescCE,
   sescDF,
+  sescES,
   sescMA,
+  sescMG,
   sescMS,
   sescMT,
   sescPA,
+  sescPB,
+  sescPE,
+  sescPI,
+  sescPR,
+  sescRN,
+  sescRO,
   sescSC,
   sescSE,
+  sescTO,
 ]

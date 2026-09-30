@@ -41,6 +41,10 @@ export interface SescUnidade {
   // Opcional: certificados intermediários (PEM) que o servidor do portal não
   // envia e que devem ser confiados SÓ para esta unidade (ver certificados.ts).
   certificadosConfiaveis?: string[]
+  // Opcional: a listagem só é servida por POST (API JSON do próprio site, ex.: PR).
+  // Recebe a URL da página (a paginação pode vir no fragmento, que não é enviado
+  // ao servidor) e devolve o corpo da requisição. Quando ausente, é GET.
+  requisicaoPost?: (url: string) => { corpo: string; contentType?: string }
 }
 
 export const MAX_PAGINAS_POR_UNIDADE = 8

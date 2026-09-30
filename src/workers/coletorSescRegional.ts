@@ -42,16 +42,24 @@ async function abrirSessao(sessaoUrl: string, agente?: Agent): Promise<Sessao> {
   return { cookie: cookie || undefined, referer: sessaoUrl, agente }
 }
 
-async function baixarPagina(url: string, sessao: Sessao = {}): Promise<string> {
-  const response = await sescRegionalClient.get<ArrayBuffer>(url, {
-    responseType: 'arraybuffer',
+async function baixarPagina(url: string, sessao: Sessao = {}, unidade?: SescUnidade): Promise<string> {
+  const config = {
+    responseType: 'arraybuffer' as const,
     timeout: 45_000,
     httpsAgent: sessao.agente,
     headers: {
       ...(sessao.cookie ? { Cookie: sessao.cookie } : {}),
       ...(sessao.referer ? { Referer: sessao.referer } : {}),
     },
-  })
+  }
+  // Portais cuja lista só sai por POST (API JSON do próprio site).
+  const post = unidade?.requisicaoPost?.(url)
+  const response = post
+    ? await sescRegionalClient.post<ArrayBuffer>(url, post.corpo, {
+        ...config,
+        headers: { ...config.headers, 'Content-Type': post.contentType ?? 'application/json' },
+      })
+    : await sescRegionalClient.get<ArrayBuffer>(url, config)
   return decodificarHtml(Buffer.from(response.data), String(response.headers['content-type'] ?? ''))
 }
 
@@ -77,7 +85,7 @@ export async function coletarUnidade(unidade: SescUnidade, agora = new Date()): 
     if (vistas.has(url)) continue
     vistas.add(url)
 
-    const html = await baixarPagina(url, sessao)
+    const html = await baixarPagina(url, sessao, unidade)
     for (const tender of unidade.parse(html, { url, agora })) {
       porFonteId.set(tender.fonteId, tender)
     }

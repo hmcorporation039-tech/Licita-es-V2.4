@@ -12,19 +12,26 @@ import { publicadaRecentemente } from '../src/services/sescRegional/tipos'
 const AGORA = new Date(2026, 8, 30, 12, 0)
 
 describe('registro das unidades do SESC Regional', () => {
-  it('cobre as 10 unidades da Fase 1, sem repetir UF', () => {
+  it('cobre as 21 unidades das Fases 1 e 2, sem repetir UF', () => {
     const ufs = SESC_UNIDADES.map((u) => u.uf).sort()
-    expect(ufs).toEqual(['AL', 'AM', 'CE', 'DF', 'MA', 'MS', 'MT', 'PA', 'SC', 'SE'])
+    expect(ufs).toEqual([
+      'AC', 'AL', 'AM', 'AP', 'CE', 'DF', 'ES', 'MA', 'MG', 'MS', 'MT',
+      'PA', 'PB', 'PE', 'PI', 'PR', 'RN', 'RO', 'SC', 'SE', 'TO',
+    ])
     expect(new Set(ufs).size).toBe(ufs.length)
   })
 
-  it('toda unidade tem nome "Sesc ...", URL https e parse', () => {
+  // Únicas unidades cujo portal só é servido em HTTP puro (sem TLS). Qualquer
+  // outra unidade nova precisa ser https.
+  const SO_HTTP = ['AC']
+
+  it('toda unidade tem nome "Sesc ...", URL https (exceto as sem TLS) e parse', () => {
     for (const u of SESC_UNIDADES) {
       expect(u.nome).toMatch(/^Sesc /)
       expect(typeof u.parse).toBe('function')
       const urls = u.urls(AGORA)
       expect(urls.length).toBeGreaterThan(0)
-      for (const url of urls) expect(url).toMatch(/^https:\/\//)
+      for (const url of urls) expect(url).toMatch(SO_HTTP.includes(u.uf) ? /^https?:\/\// : /^https:\/\//)
     }
   })
 })

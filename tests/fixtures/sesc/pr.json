@@ -1,0 +1,207 @@
+{
+ "success": true,
+ "data": [
+  {
+   "idLicitacao": 3247,
+   "dsProtocolo": "66/26",
+   "dsEdital": "66/26",
+   "dsObjeto": "CONTRATAÇÃO DE EMPRESA ESPECIALIZADA PARA A EXECUÇÃO DA REFORMA DAS PISCINAS, ENVOLVENDO OS SERVIÇOS DE CONSTRUÇÃO CIVIL E SUBSTITUIÇÃO DE EQUIPAMENTOS ESPECÍFICOS, DO SESC CAIOBÁ  CENTRO DE TURISMO E LAZER, EM MATINHOS/PR",
+   "dsModalidade": "Concorrência",
+   "dtAbertura": "2026-10-28",
+   "dtSaida": "2031-09-25",
+   "hrAbertura": "14:30:00",
+   "dtPublicacao": "2026-09-25",
+   "stLicitacao": 10,
+   "dsUrl": "www.sescpr.com.br/licitacoes",
+   "dsObservacao": "",
+   "cdPlanoLicitacao": null,
+   "dsCategoria": "EDITAL",
+   "lstArquivo": [
+    {
+     "idLicitacaoArquivo": 3247,
+     "dsNome": "EDITAL WORD",
+     "dsCaminho": "./arquivos/66_26/66.26.docx",
+     "flShowForm": true,
+     "dtPublicacao": "2026-09-25"
+    },
+    {
+     "idLicitacaoArquivo": 3247,
+     "dsNome": "EDITAL PDF",
+     "dsCaminho": "./arquivos/66_26/66.26.pdf",
+     "flShowForm": true,
+     "dtPublicacao": "2026-09-25"
+    }
+   ]
+  },
+  {
+   "idLicitacao": 3244,
+   "dsProtocolo": "77/26",
+   "dsEdital": "77/26",
+   "dsObjeto": "CONTRATAÇÃO DE EMPRESA ESPECIALIZADA NA PRESTAÇÃO DE SERVIÇOS DE ESTRUTURAL, ILUMINAÇÃO E SONORIZAÇÃO, LOCAÇÃO DE GERADOR DE ENERGIA, PROJETOR E SEGURANÇA DESARMADA PARA OS EVENTOS SHOW ITINERANTE DAS UNIDADES SESC GUARAPUAVA, SESC TOLEDO E SESC ESTAÇÃO SAUDADE (PONTA GROSSA)",
+   "dsModalidade": "Pregão",
+   "dtAbertura": "2026-09-30",
+   "dtSaida": "2031-09-22",
+   "hrAbertura": "10:00:00",
+   "dtPublicacao": "2026-09-22",
+   "stLicitacao": 10,
+   "dsUrl": "www.licitacoes-e.com.br",
+   "dsObservacao": "",
+   "cdPlanoLicitacao": "3511",
+   "dsCategoria": "EDITAL",
+   "lstArquivo": [
+    {
+     "idLicitacaoArquivo": 3244,
+     "dsNome": "Edital PDF",
+     "dsCaminho": "./arquivos/77_26/PE 77.26.pdf",
+     "flShowForm": true,
+     "dtPublicacao": "2026-09-22"
+    },
+    {
+     "idLicitacaoArquivo": 3244,
+     "dsNome": "Edital Word",
+     "dsCaminho": "./arquivos/77_26/PE 77.26.docx",
+     "flShowForm": true,
+     "dtPublicacao": "2026-09-22"
+    }
+   ]
+  },
+  {
+   "idLicitacao": 3239,
+   "dsProtocolo": "68/26",
+   "dsEdital": "68/26",
+   "dsObjeto": "REGISTRO DE PREÇOS PARA EVENTUAL AQUISIÇÃO DE CARNES BOVINA, SUÍNA, DEFUMADOS, EMBUTIDOS, FRANGO E PROCESSADOS PARA OS SERVIÇOS DE ALIMENTAÇÃO DO SESC PARANÁ",
+   "dsModalidade": "Pregão",
+   "dtAbertura": "2026-09-29",
+   "dtSaida": "2031-09-15",
+   "hrAbertura": "14:00:00",
+   "dtPublicacao": "2026-09-15",
+   "stLicitacao": 10,
+   "dsUrl": "www.licitacoes-e.com.br",
+   "dsObservacao": "",
+   "cdPlanoLicitacao": null,
+   "dsCategoria": "EDITAL",
+   "lstArquivo": [
+    {
+     "idLicitacaoArquivo": 3239,
+     "dsNome": "Edital Word",
+     "dsCaminho": "./arquivos/68_26/PE 68.26.docx",
+     "flShowForm": true,
+     "dtPublicacao": "2026-09-15"
+    },
+    {
+     "idLicitacaoArquivo": 3239,
+     "dsNome": "Edital PDF",
+     "dsCaminho": "./arquivos/68_26/PE 68.26.pdf",
+     "flShowForm": true,
+     "dtPublicacao": "2026-09-15"
+    }
+   ]
+  },
+  {
+   "idLicitacao": 3230,
+   "dsProtocolo": "60/26",
+   "dsEdital": "60/26",
+   "dsObjeto": "ALIENAÇÃO DE VEÍCULOS DE PROPRIEDADE DO SESC PARANÁ",
+   "dsModalidade": "Leilão",
+   "dtAbertura": "2026-09-24",
+   "dtSaida": "2031-09-09",
+   "hrAbertura": "09:00:00",
+   "dtPublicacao": "2026-09-09",
+   "stLicitacao": 14,
+   "dsUrl": "www.vipleiloes.com.br",
+   "dsObservacao": "",
+   "cdPlanoLicitacao": "3496",
+   "dsCategoria": "EDITAL",
+   "lstArquivo": [
+    {
+     "idLicitacaoArquivo": 3230,
+     "dsNome": "Edital (PDF)",
+     "dsCaminho": "./arquivos/60_26/EDITAL LEILAO 60.26 SESCPR.pdf",
+     "flShowForm": true,
+     "dtPublicacao": "2026-09-09"
+    },
+    {
+     "idLicitacaoArquivo": 3230,
+     "dsNome": "Edital (word)",
+     "dsCaminho": "./arquivos/60_26/EDITAL LEILAO 60.26 SESCPR.docx",
+     "flShowForm": true,
+     "dtPublicacao": "2026-09-09"
+    }
+   ]
+  },
+  {
+   "idLicitacao": 3238,
+   "dsProtocolo": "63/26",
+   "dsEdital": "63/26",
+   "dsObjeto": "CONTRATAÇÃO DE EMPRESA ESPECIALIZADA PARA A PRESTAÇÃO DE SERVIÇOS CONTINUADOS DE LIMPEZA, HIGIENE, ASSEIO, CONSERVAÇÃO E JARDINAGEM PARA O SESC PARANÁ",
+   "dsModalidade": "Concorrência",
+   "dtAbertura": "2026-09-18",
+   "dtSaida": "2031-09-03",
+   "hrAbertura": "14:00:00",
+   "dtPublicacao": "2026-09-03",
+   "stLicitacao": 13,
+   "dsUrl": "",
+   "dsObservacao": "",
+   "cdPlanoLicitacao": null,
+   "dsCategoria": "EDITAL",
+   "lstArquivo": [
+    {
+     "idLicitacaoArquivo": 3238,
+     "dsNome": "Edital (word)",
+     "dsCaminho": "./arquivos/63_26/EDITAL CC 63.26 SESC PARANA.docx",
+     "flShowForm": true,
+     "dtPublicacao": "2026-09-03"
+    },
+    {
+     "idLicitacaoArquivo": 3238,
+     "dsNome": "Edital (PDF)",
+     "dsCaminho": "./arquivos/63_26/EDITAL CC 63.26 SESC PARANA.pdf",
+     "flShowForm": true,
+     "dtPublicacao": "2026-09-03"
+    }
+   ]
+  },
+  {
+   "idLicitacao": 3215,
+   "dsProtocolo": "54/26",
+   "dsEdital": "54/26",
+   "dsObjeto": "CONTRATAÇÃO DE EMPRESA ESPECIALIZADA PARA A REALIZAÇÃO DE ENSAIOS ELÉTRICOS EM EQUIPAMENTOS DE MÉDIA TENSÃO INSTALADOS NA ENTRADA DE ENERGIA / CABINES DE MEDIÇÃO DE MÉDIA TENSÃO DE UNIDADES DO SESC PARANÁ.",
+   "dsModalidade": "Pregão",
+   "dtAbertura": "2026-08-20",
+   "dtSaida": "2031-07-21",
+   "hrAbertura": "10:00:00",
+   "dtPublicacao": "2026-07-21",
+   "stLicitacao": 15,
+   "dsUrl": "www.licitacoes-e.com.br",
+   "dsObservacao": "",
+   "cdPlanoLicitacao": null,
+   "dsCategoria": "EDITAL",
+   "lstArquivo": [
+    {
+     "idLicitacaoArquivo": 3215,
+     "dsNome": "EDITAL PDF",
+     "dsCaminho": "./arquivos/54_26/PE 54.26 - Ensaios eletricos.pdf",
+     "flShowForm": false,
+     "dtPublicacao": "2026-07-21"
+    },
+    {
+     "idLicitacaoArquivo": 3215,
+     "dsNome": "EDITAL WORD",
+     "dsCaminho": "./arquivos/54_26/PE 54.26 - Ensaios eletricos.docx",
+     "flShowForm": false,
+     "dtPublicacao": "2026-07-21"
+    }
+   ]
+  }
+ ],
+ "meta": {
+  "version": "1.0.2",
+  "pagination": {
+   "page": 1,
+   "per_page": 10,
+   "total": 727,
+   "total_pages": 73
+  },
+  "operation": "list"
+ }
+}
