@@ -11,6 +11,7 @@ import { prisma } from '../../services/tenderService'
 import { generateTempPassword, hashPassword } from '../../services/authService'
 import { asyncHandler, ApiError } from '../asyncHandler'
 import { requireAdmin, requireAuth } from '../authMiddleware'
+import { escritaSensivelLimiter } from '../rateLimit'
 
 export const adminRouter = Router()
 adminRouter.use(requireAuth, requireAdmin)
@@ -30,6 +31,7 @@ const createUserSchema = z.object({
 
 adminRouter.post(
   '/users',
+  escritaSensivelLimiter,
   asyncHandler(async (req, res) => {
     const body = createUserSchema.parse(req.body)
 
@@ -145,6 +147,7 @@ const resetPasswordSchema = z.object({
 
 adminRouter.post(
   '/users/:id/reset-password',
+  escritaSensivelLimiter,
   asyncHandler(async (req, res) => {
     const body = resetPasswordSchema.parse(req.body)
     const existing = await prisma.user.findUnique({ where: { id: req.params.id } })

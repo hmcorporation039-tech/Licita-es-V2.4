@@ -12,6 +12,7 @@ import { prisma } from '../../services/tenderService'
 import { generateTempPassword, hashPassword } from '../../services/authService'
 import { asyncHandler, ApiError } from '../asyncHandler'
 import { requireCompanyOwner } from '../authMiddleware'
+import { escritaSensivelLimiter } from '../rateLimit'
 
 export const companyRouter = Router()
 
@@ -62,6 +63,7 @@ const createMemberSchema = z.object({
 companyRouter.post(
   '/members',
   requireCompanyOwner,
+  escritaSensivelLimiter,
   asyncHandler(async (req, res) => {
     const body = createMemberSchema.parse(req.body)
 

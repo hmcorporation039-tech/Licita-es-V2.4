@@ -6,6 +6,7 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { prisma, saveTenderItemsIfMissing } from '../../services/tenderService'
 import { asyncHandler, ApiError } from '../asyncHandler'
+import { escritaSensivelLimiter } from '../rateLimit'
 import { buildChecklistTemplate, ChecklistItem } from '../../lib/checklistTemplate'
 import { analiseHabilitada } from '../../services/editalAnalysisService'
 import { analiseQueue } from '../../queues'
@@ -260,6 +261,7 @@ tendersRouter.get(
 // terminar. O cliente acompanha por GET /:id/analysis.
 tendersRouter.post(
   '/:id/analyze',
+  escritaSensivelLimiter,
   asyncHandler(async (req, res) => {
     const tender = await prisma.tender.findUnique({ where: { id: req.params.id }, select: { id: true } })
     if (!tender) throw new ApiError(404, 'Licitação não encontrada')
