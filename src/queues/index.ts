@@ -37,6 +37,7 @@ export const coletorNovacapQueue = new Queue('coletor-novacap', defaultQueueOpti
 export const coletorFiegQueue = new Queue('coletor-fieg', defaultQueueOptions)
 export const coletorSescGoQueue = new Queue('coletor-sesc-go', defaultQueueOptions)
 export const coletorSestSenatQueue = new Queue('coletor-sest-senat', defaultQueueOptions)
+export const coletorSescRegionalQueue = new Queue('coletor-sesc-regional', defaultQueueOptions)
 
 // Fila de matching (disparada após salvar cada licitação nova)
 export const matcherQueue = new Queue('matcher', defaultQueueOptions)
@@ -111,6 +112,13 @@ export const COLETOR_SCHEDULERS: ColetorScheduler[] = [
     jobName: 'coleta-sest-senat',
     pattern: '0 11 * * *',
     fonte: 'SEST_SENAT',
+  },
+  {
+    queue: coletorSescRegionalQueue,
+    schedulerId: 'coleta-sesc-regional',
+    jobName: 'coleta-sesc-regional',
+    pattern: '0 12 * * *',
+    fonte: 'SESC_REGIONAL',
   },
 ]
 

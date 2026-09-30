@@ -72,6 +72,12 @@ export const novacapClient = createRateLimitedClient('https://app.novacap.df.gov
 export const fiegClient = createRateLimitedClient('https://www.sistemafieg.org.br', 1500, HTML_HEADERS)
 export const sescGoClient = createRateLimitedClient('https://www3.sescgo.com.br', 1500, HTML_HEADERS)
 
+// Departamentos Regionais do SESC (exceto GO): cada unidade tem um site próprio,
+// então este cliente não tem baseURL — o coletor passa a URL completa de cada
+// página (ver services/sescRegional/). O intervalo entre requisições é global
+// do cliente, o que espaça também as idas a sites diferentes.
+export const sescRegionalClient = createRateLimitedClient('', 1500, HTML_HEADERS)
+
 // SEST SENAT — API JSON real (Angular por trás), mas devolve o histórico
 // nacional inteiro numa chamada só (sem filtro de ano que funcione no
 // servidor — testado, ignorado) e às vezes embute byte de controle bruto

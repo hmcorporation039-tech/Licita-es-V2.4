@@ -238,6 +238,10 @@ enum FonteEnum {
   // Sistema S nacional (Serviço Social do Transporte / Serviço Nacional de
   // Aprendizagem do Transporte) — mesma categoria jurídica do SESC/FIEG.
   SEST_SENAT
+  // Departamentos Regionais do SESC (exceto GO, que tem fonte própria) — um
+  // portal diferente por unidade; o parser de cada uma fica em
+  // services/sescRegional/. A unidade vai em Tender.orgao/uf.
+  SESC_REGIONAL
 }
 
 // ============================================================
