@@ -15,6 +15,8 @@ import { NormalizedTenderItem } from '../types'
 interface PNCPItemRaw {
   numeroItem: number
   descricao: string
+  informacaoComplementar: string | null
+  criterioJulgamentoNome: string | null
   materialOuServico: 'M' | 'S' | string
   quantidade: number
   unidadeMedida: string
@@ -35,6 +37,8 @@ export async function fetchPNCPItens(
   return raw.map((item) => ({
     numeroItem: item.numeroItem,
     descricao: item.descricao ?? '',
+    descricaoDetalhada: item.informacaoComplementar || undefined,
+    criterioJulgamento: item.criterioJulgamentoNome || undefined,
     catmatCode: item.materialOuServico === 'M' ? item.catalogoCodigoItem ?? undefined : undefined,
     catserCode: item.materialOuServico === 'S' ? item.catalogoCodigoItem ?? undefined : undefined,
     unidadeMedida: item.unidadeMedida,

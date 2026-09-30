@@ -6,7 +6,8 @@
 import {
   NormalizedTender,
   NormalizedTenderItem,
-  PNCP_MODALIDADE_MAP,
+  PNCP_SITUACAO_COMPRA_ID_MAP,
+  resolvePNCPModalidade,
 } from '../types'
 import { getMunicipioByIbge, findMunicipioByNomeUf } from '../lib/geoService'
 
@@ -34,7 +35,17 @@ export function rawJsonEssencial(raw: Record<string, any>): Record<string, unkno
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function parsePNCPTender(raw: Record<string, any>): NormalizedTender {
   const modalidadeCodigo = raw.modalidadeId ?? raw.codigoModalidadeContratacao
-  const modalidade = PNCP_MODALIDADE_MAP[modalidadeCodigo] ?? 'OUTROS'
+  // Usa o modo de disputa para distinguir dispensa COM disputa (aberta para
+  // participação) de dispensa SEM disputa — ver resolvePNCPModalidade.
+  const modalidade = resolvePNCPModalidade(modalidadeCodigo, raw.modoDisputaId)
+
+  // Situação real da contratação, quando o payload informa (situacaoCompraId).
+  // Sem isso a licitação nascia sempre ABERTA por default de banco, mesmo
+  // quando já vinha revogada/suspensa/anulada da fonte.
+  const situacao =
+    typeof raw.situacaoCompraId === 'number'
+      ? PNCP_SITUACAO_COMPRA_ID_MAP[raw.situacaoCompraId]
+      : undefined
 
   // fonteId: usa numeroControlePNCP como chave única
   const fonteId =
@@ -56,6 +67,7 @@ export function parsePNCPTender(raw: Record<string, any>): NormalizedTender {
     fonte: 'PNCP',
     fonteId,
     modalidade,
+    situacao,
     objeto,
     objetoResumido: truncate(objeto),
     valorEstimado: raw.valorTotalEstimado
@@ -96,6 +108,8 @@ function parsePNCPItems(itens: Record<string, any>[]): NormalizedTenderItem[] {
   return itens.map((item) => ({
     numeroItem: item.numeroItem,
     descricao: item.descricao ?? item.descricaoItem ?? '',
+    descricaoDetalhada: item.informacaoComplementar || undefined,
+    criterioJulgamento: item.criterioJulgamentoNome || undefined,
     catmatCode: item.codigoCatalogoProduto ?? item.numeroCatalogoProduto,
     unidadeMedida: item.unidadeMedida,
     quantidade: item.quantidade ? parseFloat(item.quantidade) : undefined,

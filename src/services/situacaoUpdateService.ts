@@ -19,14 +19,11 @@
 
 import { SituacaoEnum } from '@prisma/client'
 import { pncpClient } from '../lib/httpClient'
+import { PNCP_SITUACAO_COMPRA_ID_MAP } from '../types'
 import { prisma } from './tenderService'
 
-const SITUACAO_COMPRA_ID_MAP: Record<number, SituacaoEnum> = {
-  1: 'ABERTA',
-  2: 'REVOGADA',
-  3: 'ANULADA',
-  4: 'SUSPENSA',
-}
+// Mesmo mapa usado na coleta (pncpParser). Centralizado em types/index.ts.
+const SITUACAO_COMPRA_ID_MAP: Record<number, SituacaoEnum> = PNCP_SITUACAO_COMPRA_ID_MAP
 
 // Situações terminais — uma vez atingidas, não faz sentido continuar
 // reconsultando essa licitação periodicamente.

@@ -52,4 +52,15 @@ describe('selecionarDocumentos', () => {
   it('devolve lista vazia quando não há documento ativo', () => {
     expect(selecionarDocumentos([doc('Edital', 'Edital', false)])).toEqual([])
   })
+
+  it('prioriza o Aviso de Contratação Direta na dispensa (documento principal)', () => {
+    // Na dispensa não há "edital"; o documento central é o aviso/ato de
+    // contratação direta, que antes caía como peça administrativa (peso 0).
+    const dispensa = [
+      doc('Termo de Referência', 'Termo de Referência'),
+      doc('Aviso de Contratação Direta', 'Ato que autoriza a Contratação Direta'),
+      doc('COMPROVANTE DE PUBLICAÇÃO', 'Outros'),
+    ]
+    expect(selecionarDocumentos(dispensa)[0].titulo).toBe('Aviso de Contratação Direta')
+  })
 })

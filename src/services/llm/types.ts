@@ -14,8 +14,13 @@ export interface EditalAnalysisRisco {
 export interface EditalAnalysisResult {
   resumo: string
   valorEstimado: string
+  dataSessao: string
+  registroPrecos: string
   prazoEntrega: string
+  local: string
+  pagamento: string
   criterioJulgamento: string
+  adesaoAta: string
   prazoImpugnacao: string
   prazoEsclarecimento: string
   exigenciasTecnicas: string[]
@@ -30,8 +35,13 @@ export const ANALYSIS_SCHEMA = {
   properties: {
     resumo: { type: 'string' },
     valorEstimado: { type: 'string' },
+    dataSessao: { type: 'string' },
+    registroPrecos: { type: 'string' },
     prazoEntrega: { type: 'string' },
+    local: { type: 'string' },
+    pagamento: { type: 'string' },
     criterioJulgamento: { type: 'string' },
+    adesaoAta: { type: 'string' },
     prazoImpugnacao: { type: 'string' },
     prazoEsclarecimento: { type: 'string' },
     exigenciasTecnicas: { type: 'array', items: { type: 'string' } },
@@ -53,8 +63,13 @@ export const ANALYSIS_SCHEMA = {
   required: [
     'resumo',
     'valorEstimado',
+    'dataSessao',
+    'registroPrecos',
     'prazoEntrega',
+    'local',
+    'pagamento',
     'criterioJulgamento',
+    'adesaoAta',
     'prazoImpugnacao',
     'prazoEsclarecimento',
     'exigenciasTecnicas',
@@ -67,9 +82,14 @@ export const ANALYSIS_SCHEMA = {
 export const SYSTEM_PROMPT = `Você é um analista especialista em licitações públicas brasileiras (Lei nº 14.133/2021).
 Leia o edital fornecido e produza uma análise minuciosa e objetiva para uma empresa que está avaliando participar.
 
-Extraia:
+Extraia (para qualquer campo não encontrado, escreva "não especificado no edital"):
 - resumo: 2-3 frases sobre o objeto da licitação
-- valorEstimado, prazoEntrega, criterioJulgamento: extraia do texto; escreva "não especificado no edital" se não encontrar
+- valorEstimado, prazoEntrega, criterioJulgamento: extraia do texto
+- dataSessao: data/hora da sessão pública ou do fim do recebimento de propostas (ex: "10/10/2026 09:00")
+- registroPrecos: se é Sistema de Registro de Preços (SRP). Responda "Sim" ou "Não" e, se houver, detalhe
+- local: local/endereço/localidade de entrega ou execução do objeto
+- pagamento: condições e prazo de pagamento previstos
+- adesaoAta: se permite adesão à ata de registro de preços ("carona"). Responda "Sim"/"Não"/"Não se aplica" e detalhe se houver
 - prazoImpugnacao: prazo e forma de impugnar o edital (ex: "até 3 dias úteis antes da abertura da sessão" ou uma data específica, se o edital indicar uma). Escreva "não especificado no edital" se não encontrar.
 - prazoEsclarecimento: prazo e forma de pedir esclarecimentos sobre o edital (mesma lógica do prazoImpugnacao — pode ser uma regra relativa à data da sessão, ou uma data absoluta). Escreva "não especificado no edital" se não encontrar.
 - exigenciasTecnicas: lista de exigências de qualificação técnica (atestados, registros em conselho de classe, etc.)
@@ -141,8 +161,13 @@ export function validarResultadoAnalise(bruto: unknown): EditalAnalysisResult {
   return {
     resumo: texto(o.resumo),
     valorEstimado: texto(o.valorEstimado),
+    dataSessao: texto(o.dataSessao),
+    registroPrecos: texto(o.registroPrecos),
     prazoEntrega: texto(o.prazoEntrega),
+    local: texto(o.local),
+    pagamento: texto(o.pagamento),
     criterioJulgamento: texto(o.criterioJulgamento),
+    adesaoAta: texto(o.adesaoAta),
     prazoImpugnacao: texto(o.prazoImpugnacao),
     prazoEsclarecimento: texto(o.prazoEsclarecimento),
     exigenciasTecnicas: listaTexto(o.exigenciasTecnicas),

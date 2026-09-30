@@ -26,6 +26,7 @@ const TENDER_SELECT = {
   id: true,
   fonte: true,
   uf: true,
+  situacao: true,
   modalidade: true,
   orgao: true,
   unidade: true,
@@ -99,6 +100,10 @@ function temCodigoEmComum(
 export async function findMatchCandidates(tenderId: string): Promise<MatchCandidate[]> {
   const tender = await prisma.tender.findUnique({ where: { id: tenderId }, select: TENDER_SELECT })
   if (!tender) return []
+  // Só gera match para licitação com propostas em andamento (ABERTA). Revogada,
+  // suspensa, anulada, encerrada, homologada e cancelada não entram no pool de
+  // oportunidades — ver instruções 3.1.2/3.1.4/3.1.5.
+  if (tender.situacao !== 'ABERTA') return []
 
   const objetoNorm = tender.objetoNorm ?? normalize(tender.objeto)
   const itemDescsNorm = tender.items.map((i) => i.descricaoNorm ?? normalize(i.descricao))
@@ -157,7 +162,8 @@ const REMATCH_BATCH_SIZE = 500
 // feito em memória, só sobre o conjunto já reduzido — a semântica literal do
 // matcher é decisão de produto e não muda aqui.
 function whereDoRematch(item: RematchInput, cutoff: Date): Prisma.TenderWhereInput {
-  const where: Prisma.TenderWhereInput = { createdAt: { gte: cutoff } }
+  // Só licitação ABERTA entra no rematch — mesma regra de findMatchCandidates.
+  const where: Prisma.TenderWhereInput = { createdAt: { gte: cutoff }, situacao: 'ABERTA' }
 
   if (item.ufs.length > 0) where.uf = { in: item.ufs }
   if (item.modalidades.length > 0) where.modalidade = { in: item.modalidades as ModalidadeEnum[] }

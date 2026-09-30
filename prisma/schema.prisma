@@ -305,6 +305,10 @@ model TenderItem {
   // tambem na descricao do item, e o pre-filtro no banco precisa achar
   // "cirurgico" dentro de "cirurgico" sem depender da extensao unaccent.
   descricaoNorm   String?  @map("descricao_norm") @db.Text
+  // Descrição detalhada do item (PNCP: informacaoComplementar) e critério de
+  // julgamento do item (PNCP: criterioJulgamentoNome) — ver pncpItemsService.
+  descricaoDetalhada String? @map("descricao_detalhada") @db.Text
+  criterioJulgamento String? @map("criterio_julgamento")
   catmatCode      String?  @map("catmat_code")
   catserCode      String?  @map("catser_code")
   unidadeMedida   String?  @map("unidade_medida")

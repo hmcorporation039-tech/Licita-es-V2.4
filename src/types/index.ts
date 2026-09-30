@@ -18,6 +18,26 @@ export type ModalidadeEnum =
   | 'DIALOGO_COMPETITIVO'
   | 'OUTROS'
 
+// Espelha o enum SituacaoEnum do schema.prisma (mantém os dois em sincronia).
+export type SituacaoEnum =
+  | 'ABERTA'
+  | 'ENCERRADA'
+  | 'SUSPENSA'
+  | 'CANCELADA'
+  | 'ANULADA'
+  | 'HOMOLOGADA'
+  | 'REVOGADA'
+
+// situacaoCompraId do PNCP → nossa SituacaoEnum. Usado tanto na coleta
+// (pncpParser) quanto na varredura periódica (situacaoUpdateService), por isso
+// mora aqui. 1 = "Divulgada no PNCP" (ativa/aberta); os demais são terminais.
+export const PNCP_SITUACAO_COMPRA_ID_MAP: Record<number, SituacaoEnum> = {
+  1: 'ABERTA',
+  2: 'REVOGADA',
+  3: 'ANULADA',
+  4: 'SUSPENSA',
+}
+
 // Mapeamento dos códigos de modalidade do PNCP (codigoModalidadeContratacao)
 // Confirmado empiricamente contra a API real em 2026-08-10 (ver tabela de domínio
 // "Modalidade de Contratação" do Manual de Integração PNCP). O mapeamento anterior
@@ -36,6 +56,29 @@ export const PNCP_MODALIDADE_MAP: Record<number, ModalidadeEnum> = {
   11: 'OUTROS',              // Pré-qualificação
   12: 'CREDENCIAMENTO',
   13: 'OUTROS',              // Leilão - Presencial
+}
+
+// modoDisputaId do PNCP que indicam DISPUTA (fase competitiva de lances/propostas
+// abertas): 1 Aberto, 2 Fechado, 3 Aberto-Fechado, 6 Fechado-Aberto. Os valores
+// 4 ("Dispensa/não se aplica") e 5 ("Não se aplica") indicam SEM disputa.
+const MODO_DISPUTA_COM_DISPUTA = new Set([1, 2, 3, 6])
+
+// O código 8 do PNCP ("Dispensa") não distingue, por si só, dispensa eletrônica
+// COM disputa (fase de lances, "aberta para participação") de dispensa SEM
+// disputa. O sinal que distingue é o modoDisputa. Esta função resolve a
+// modalidade final a partir do código + modo de disputa; para as demais
+// modalidades, o modo de disputa é ignorado e vale só a tabela.
+export function resolvePNCPModalidade(
+  modalidadeCodigo: number,
+  modoDisputaId: number | null | undefined
+): ModalidadeEnum {
+  const base = PNCP_MODALIDADE_MAP[modalidadeCodigo] ?? 'OUTROS'
+  if (modalidadeCodigo === 8) {
+    return modoDisputaId != null && MODO_DISPUTA_COM_DISPUTA.has(modoDisputaId)
+      ? 'DISPENSA_COM_DISPUTA'
+      : 'DISPENSA_SEM_DISPUTA'
+  }
+  return base
 }
 
 // Mapeamento dos códigos de modalidade do ComprasNet (módulo legado, Lei 8.666/10.520)
@@ -112,6 +155,9 @@ export interface NormalizedTender {
   fonte: FonteEnum
   fonteId: string
   modalidade: ModalidadeEnum
+  // Situação real lida na coleta (quando a fonte informa). Sem valor, o banco
+  // aplica o default ABERTA. Ver PNCP_SITUACAO_COMPRA_ID_MAP.
+  situacao?: SituacaoEnum
   objeto: string
   objetoResumido?: string
   valorEstimado?: number
@@ -140,6 +186,11 @@ export interface NormalizedTender {
 export interface NormalizedTenderItem {
   numeroItem?: number
   descricao: string
+  // Descrição detalhada do item (PNCP: informacaoComplementar). É o "OCULTAR
+  // DETALHES DO ITEM → DESCRIÇÃO DETALHADA" do fluxo de acompanhamento.
+  descricaoDetalhada?: string
+  // Critério de julgamento do item (PNCP: criterioJulgamentoNome).
+  criterioJulgamento?: string
   catmatCode?: string
   catserCode?: string
   unidadeMedida?: string

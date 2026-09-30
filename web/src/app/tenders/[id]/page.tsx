@@ -399,7 +399,17 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
                       <tbody>
                         {tender.items.map((it) => (
                           <tr key={it.id} className="border-b border-slate-100 align-top last:border-0">
-                            <td className="py-2 pr-3">{it.descricao}</td>
+                            <td className="py-2 pr-3">
+                              {it.descricao}
+                              {it.descricaoDetalhada && (
+                                <span className="mt-1 block text-xs text-slate-500">{it.descricaoDetalhada}</span>
+                              )}
+                              {it.criterioJulgamento && (
+                                <span className="mt-0.5 block text-xs text-slate-400">
+                                  Critério: {it.criterioJulgamento}
+                                </span>
+                              )}
+                            </td>
                             <td className="py-2 pr-3 font-mono text-xs">{it.catmatCode ?? '—'}</td>
                             <td className="py-2 pr-3 font-mono text-xs">{it.catserCode ?? '—'}</td>
                             <td className="py-2 pr-3">
@@ -477,12 +487,32 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
                       <p className="text-sm">{analysis.resultado.valorEstimado}</p>
                     </div>
                     <div className="rounded border border-slate-200 p-3">
+                      <p className="text-xs text-slate-400">Data da sessão</p>
+                      <p className="text-sm">{analysis.resultado.dataSessao || '—'}</p>
+                    </div>
+                    <div className="rounded border border-slate-200 p-3">
+                      <p className="text-xs text-slate-400">Registro de preços (SRP)</p>
+                      <p className="text-sm">{analysis.resultado.registroPrecos || '—'}</p>
+                    </div>
+                    <div className="rounded border border-slate-200 p-3">
                       <p className="text-xs text-slate-400">Prazo de entrega</p>
                       <p className="text-sm">{analysis.resultado.prazoEntrega}</p>
                     </div>
                     <div className="rounded border border-slate-200 p-3">
+                      <p className="text-xs text-slate-400">Local / entrega</p>
+                      <p className="text-sm">{analysis.resultado.local || '—'}</p>
+                    </div>
+                    <div className="rounded border border-slate-200 p-3">
+                      <p className="text-xs text-slate-400">Pagamento</p>
+                      <p className="text-sm">{analysis.resultado.pagamento || '—'}</p>
+                    </div>
+                    <div className="rounded border border-slate-200 p-3">
                       <p className="text-xs text-slate-400">Critério de julgamento</p>
                       <p className="text-sm">{analysis.resultado.criterioJulgamento}</p>
+                    </div>
+                    <div className="rounded border border-slate-200 p-3">
+                      <p className="text-xs text-slate-400">Adesão a ata (carona)</p>
+                      <p className="text-sm">{analysis.resultado.adesaoAta || '—'}</p>
                     </div>
                     <div className="rounded border border-slate-200 p-3">
                       <p className="text-xs text-slate-400">Prazo para esclarecimento</p>

@@ -22,6 +22,37 @@ export interface SaveResult {
   changedFields: CampoMonitorado[]
 }
 
+// Mapeia um item normalizado para as colunas de tender_items. Centralizado
+// para os três pontos que gravam item (create, update sob demanda) ficarem
+// sempre com o mesmo conjunto de campos.
+function itemParaBanco(item: NormalizedTenderItem, tenderId: string) {
+  return {
+    tenderId,
+    numeroItem: item.numeroItem,
+    descricao: item.descricao,
+    descricaoNorm: normalize(item.descricao),
+    descricaoDetalhada: item.descricaoDetalhada,
+    criterioJulgamento: item.criterioJulgamento,
+    catmatCode: item.catmatCode,
+    catserCode: item.catserCode,
+    unidadeMedida: item.unidadeMedida,
+    quantidade: item.quantidade,
+    valorUnitario: item.valorUnitario,
+    valorTotal: item.valorTotal,
+  }
+}
+
+// Situações "mortas" que a coleta pode marcar por conta própria, sem depender
+// da varredura periódica. Numa RECOLETA só deixamos a coleta sobrescrever a
+// situação para um desses estados — nunca revertê-la para ABERTA (o PNCP mantém
+// situacaoCompraId=1 "Divulgada" mesmo depois de encerrada/homologada; quem
+// detecta ENCERRADA/HOMOLOGADA é a varredura, e a recoleta não pode desfazer).
+const SITUACOES_MORTAS_NA_COLETA: NonNullable<NormalizedTender['situacao']>[] = [
+  'REVOGADA',
+  'SUSPENSA',
+  'ANULADA',
+]
+
 function dadosPersistidos(tender: NormalizedTender) {
   return {
     modalidade: tender.modalidade,
@@ -88,7 +119,17 @@ export async function saveTender(tender: NormalizedTender): Promise<SaveResult> 
 
     const changedFields = camposAlterados(snapshotDeTender(existing), snapshotDeTender(tender))
 
-    await prisma.tender.update({ where: { id: existing.id }, data: dadosPersistidos(tender) })
+    // Na recoleta só propagamos a situação quando for um estado morto novo
+    // (revogada/suspensa/anulada) — ver SITUACOES_MORTAS_NA_COLETA.
+    const situacaoUpdate =
+      tender.situacao && SITUACOES_MORTAS_NA_COLETA.includes(tender.situacao)
+        ? { situacao: tender.situacao }
+        : {}
+
+    await prisma.tender.update({
+      where: { id: existing.id },
+      data: { ...dadosPersistidos(tender), ...situacaoUpdate },
+    })
 
     return { isNew: false, tenderId: existing.id, isDupe: true, changed: true, changedFields }
   }
@@ -98,24 +139,15 @@ export async function saveTender(tender: NormalizedTender): Promise<SaveResult> 
       data: {
         fonte: tender.fonte,
         fonteId: tender.fonteId,
+        // Situação lida na coleta; sem valor, o banco aplica o default ABERTA.
+        ...(tender.situacao ? { situacao: tender.situacao } : {}),
         ...dadosPersistidos(tender),
       },
     })
 
     if (tender.items && tender.items.length > 0) {
       await tx.tenderItem.createMany({
-        data: tender.items.map((item) => ({
-          tenderId: newTender.id,
-          numeroItem: item.numeroItem,
-          descricao: item.descricao,
-          descricaoNorm: normalize(item.descricao),
-          catmatCode: item.catmatCode,
-          catserCode: item.catserCode,
-          unidadeMedida: item.unidadeMedida,
-          quantidade: item.quantidade,
-          valorUnitario: item.valorUnitario,
-          valorTotal: item.valorTotal,
-        })),
+        data: tender.items.map((item) => itemParaBanco(item, newTender.id)),
       })
     }
 
@@ -136,18 +168,7 @@ export async function saveTenderItemsIfMissing(
   if (existingCount > 0 || items.length === 0) return
 
   await prisma.tenderItem.createMany({
-    data: items.map((item) => ({
-      tenderId,
-      numeroItem: item.numeroItem,
-      descricao: item.descricao,
-      descricaoNorm: normalize(item.descricao),
-      catmatCode: item.catmatCode,
-      catserCode: item.catserCode,
-      unidadeMedida: item.unidadeMedida,
-      quantidade: item.quantidade,
-      valorUnitario: item.valorUnitario,
-      valorTotal: item.valorTotal,
-    })),
+    data: items.map((item) => itemParaBanco(item, tenderId)),
   })
 }
 

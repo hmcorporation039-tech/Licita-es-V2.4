@@ -14,16 +14,30 @@ const querySchema = z.object({
     .enum(['true', 'false'])
     .optional()
     .transform((v) => v === 'true'),
+  // Por padrão o feed esconde licitação que morreu depois do match
+  // (revogada/suspensa/anulada/cancelada). incluirInativas=true mostra tudo.
+  incluirInativas: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((v) => v === 'true'),
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().positive().max(100).default(20),
 })
 
+// Situações em que a licitação deixou de ser oportunidade viável — ocultadas
+// por padrão no feed de matches (instruções 3.1.4/3.1.5).
+const SITUACOES_INATIVAS = ['REVOGADA', 'SUSPENSA', 'ANULADA', 'CANCELADA'] as const
+
 matchesRouter.get(
   '/',
   asyncHandler(async (req, res) => {
-    const { unreadOnly, page, pageSize } = querySchema.parse(req.query)
+    const { unreadOnly, incluirInativas, page, pageSize } = querySchema.parse(req.query)
 
-    const where = { companyId: req.companyId!, ...(unreadOnly ? { read: false } : {}) }
+    const where = {
+      companyId: req.companyId!,
+      ...(unreadOnly ? { read: false } : {}),
+      ...(incluirInativas ? {} : { tender: { situacao: { notIn: [...SITUACOES_INATIVAS] } } }),
+    }
 
     const [items, total] = await Promise.all([
       prisma.tenderMatch.findMany({

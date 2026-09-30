@@ -48,6 +48,31 @@ describe('parsePNCPTender', () => {
     expect(t.municipioLng).toBeTypeOf('number')
   })
 
+  it('lê a situação real da contratação (situacaoCompraId)', () => {
+    expect(parsePNCPTender({ ...raw, situacaoCompraId: 1 }).situacao).toBe('ABERTA')
+    expect(parsePNCPTender({ ...raw, situacaoCompraId: 2 }).situacao).toBe('REVOGADA')
+    expect(parsePNCPTender({ ...raw, situacaoCompraId: 4 }).situacao).toBe('SUSPENSA')
+    // sem situacaoCompraId → indefinido (o banco aplica o default ABERTA)
+    expect(parsePNCPTender(raw).situacao).toBeUndefined()
+  })
+
+  it('distingue dispensa com/sem disputa pelo modo de disputa', () => {
+    const dispensa = { ...raw, modalidadeId: 8 }
+    expect(parsePNCPTender({ ...dispensa, modoDisputaId: 1 }).modalidade).toBe('DISPENSA_COM_DISPUTA')
+    expect(parsePNCPTender({ ...dispensa, modoDisputaId: 5 }).modalidade).toBe('DISPENSA_SEM_DISPUTA')
+    // sem modo de disputa → trata como sem disputa (comportamento anterior)
+    expect(parsePNCPTender(dispensa).modalidade).toBe('DISPENSA_SEM_DISPUTA')
+  })
+
+  it('traz descrição detalhada e critério do item quando embutidos', () => {
+    const t = parsePNCPTender({
+      ...raw,
+      itens: [{ descricao: 'notebook', informacaoComplementar: 'i7 16GB', criterioJulgamentoNome: 'Menor Preço' }],
+    })
+    expect(t.items?.[0].descricaoDetalhada).toBe('i7 16GB')
+    expect(t.items?.[0].criterioJulgamento).toBe('Menor Preço')
+  })
+
   it('cai para OUTROS quando a modalidade é desconhecida', () => {
     expect(parsePNCPTender({ ...raw, modalidadeId: 999 }).modalidade).toBe('OUTROS')
   })

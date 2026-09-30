@@ -24,6 +24,12 @@ const ADMINISTRATIVO =
   /autoriza[çc][ãa]o|comprovante|publica[çc][ãa]o|parecer|despacho|solicita[çc][ãa]o|^dfd$|\bdfd\b|aviso de licita/i
 
 const EDITAL = /\bedital\b/i
+// Documento convocatório da CONTRATAÇÃO DIRETA (dispensa/inexigibilidade): o
+// "Aviso de Contratação Direta" / "Ato que autoriza a Contratação Direta" faz,
+// nessas modalidades, o papel que o edital faz no pregão — é o documento
+// principal. Precisa ser testado ANTES de ADMINISTRATIVO, senão "ato que
+// autoriza..." cairia como peça administrativa (peso 0).
+const CONTRATACAO_DIRETA = /contrata[çc][ãa]o\s*direta|aviso\s*de\s*contrata|ato\s*que\s*autoriza/i
 const TERMO_DE_REFERENCIA = /termo\s*de\s*refer|projeto\s*b[aá]sico|\btr\b/i
 const APOIO = /anexo|habilita|planilha|or[cç]ament|minuta|contrato/i
 
@@ -32,6 +38,7 @@ export function prioridadeDocumento(doc: DocumentoComTitulo): number {
   const titulo = doc.titulo ?? ''
   const tipo = doc.tipoDocumentoNome ?? ''
 
+  if (CONTRATACAO_DIRETA.test(titulo) || CONTRATACAO_DIRETA.test(tipo)) return 5
   if (ADMINISTRATIVO.test(titulo)) return 0
   if (EDITAL.test(titulo)) return 5
   if (TERMO_DE_REFERENCIA.test(titulo) || TERMO_DE_REFERENCIA.test(tipo)) return 4

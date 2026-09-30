@@ -78,6 +78,8 @@ export interface TenderItem {
   id: string
   numeroItem: number | null
   descricao: string
+  descricaoDetalhada: string | null
+  criterioJulgamento: string | null
   catmatCode: string | null
   catserCode: string | null
   unidadeMedida: string | null
@@ -207,8 +209,13 @@ export interface AnalysisRisco {
 export interface AnalysisResultado {
   resumo: string
   valorEstimado: string
+  dataSessao: string
+  registroPrecos: string
   prazoEntrega: string
+  local: string
+  pagamento: string
   criterioJulgamento: string
+  adesaoAta: string
   prazoImpugnacao: string
   prazoEsclarecimento: string
   exigenciasTecnicas: string[]
