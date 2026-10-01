@@ -1,0 +1,56 @@
+{
+ "data": [
+  {
+   "id": 503,
+   "modalidade": {
+    "id": 4,
+    "titulo": "PREGÃO PRESENCIAL - SRP"
+   },
+   "numProcesso": "26/027",
+   "ano": "2026",
+   "dataAbertura": "2026-10-02",
+   "dataPublicacao": "2026-09-25",
+   "datasRepublicacoes": "",
+   "objeto": "AQUISIÇÃO DE MATERIAIS DE ILUMINAÇÃO EM GERAL, VISANDO ATENDER, CONFORME DEMANDA, TODAS AS UNIDADES DO SESC/RR",
+   "etapa": {
+    "id": 1,
+    "titulo": "PUBLICADA"
+   }
+  },
+  {
+   "id": 497,
+   "modalidade": {
+    "id": 3,
+    "titulo": "PREGÃO PRESENCIAL"
+   },
+   "numProcesso": "26/023",
+   "ano": "2026",
+   "dataAbertura": "2026-08-26",
+   "dataPublicacao": "2026-08-19",
+   "datasRepublicacoes": "",
+   "objeto": "AQUISIÇÃO DE ESTAÇÕES DE TRABALHO, MONITORES E NOTEBOOKS PARA UTILIZAÇÃO NAS UNIDADES DO SESC/RR. ",
+   "etapa": {
+    "id": 1,
+    "titulo": "PUBLICADA"
+   }
+  },
+  {
+   "id": 377,
+   "modalidade": {
+    "id": 3,
+    "titulo": "PREGÃO PRESENCIAL"
+   },
+   "numProcesso": "24/0037",
+   "ano": "2024",
+   "dataAbertura": "2024-10-24",
+   "dataPublicacao": "2024-10-08",
+   "datasRepublicacoes": "",
+   "objeto": "AQUISIÇÃO DE EQUIPAMENTOS PARA ATENDER AS NECESSIDADES DO PROGRAMA DE SUSTENTABILIDADE ECOS, DO SESC RORAIMA. ",
+   "etapa": {
+    "id": 1,
+    "titulo": "PUBLICADA"
+   }
+  }
+ ],
+ "count": 3
+}

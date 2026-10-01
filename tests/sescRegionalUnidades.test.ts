@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { SESC_UNIDADES } from '../src/services/sescRegional'
 import {
   GLOBALSIGN_GCC_R6_ALPHASSL_CA_2025,
+  SECTIGO_DV_R36_CA,
   agenteDaUnidade,
 } from '../src/services/sescRegional/certificados'
 import { sescMT } from '../src/services/sescRegional/mt'
@@ -12,11 +13,11 @@ import { publicadaRecentemente } from '../src/services/sescRegional/tipos'
 const AGORA = new Date(2026, 8, 30, 12, 0)
 
 describe('registro das unidades do SESC Regional', () => {
-  it('cobre as 26 unidades das Fases 1 a 3 (DN e RJ dividem a UF, mas têm chaves distintas)', () => {
+  it('cobre as 27 unidades da planilha (Fases 1 a 3) (DN e RJ dividem a UF, mas têm chaves distintas)', () => {
     const chaves = SESC_UNIDADES.map((u) => u.chave ?? u.uf).sort()
     expect(chaves).toEqual([
       'AC', 'AL', 'AM', 'AP', 'BA', 'CE', 'DF', 'DN', 'ES', 'MA', 'MG', 'MS', 'MT',
-      'PA', 'PB', 'PE', 'PI', 'PR', 'RJ', 'RN', 'RO', 'RS', 'SC', 'SE', 'SP', 'TO',
+      'PA', 'PB', 'PE', 'PI', 'PR', 'RJ', 'RN', 'RO', 'RR', 'RS', 'SC', 'SE', 'SP', 'TO',
     ])
     // A chave é o prefixo do fonteId: não pode repetir, senão as unidades colidem.
     expect(new Set(chaves).size).toBe(chaves.length)
@@ -37,22 +38,37 @@ describe('registro das unidades do SESC Regional', () => {
   })
 })
 
-describe('certificado intermediário do MT', () => {
-  const cert = new X509Certificate(GLOBALSIGN_GCC_R6_ALPHASSL_CA_2025)
+describe('certificados intermediários (servidores com cadeia TLS incompleta)', () => {
+  // Unidades cujo servidor não envia o intermediário: MT (GlobalSign) e RR (Sectigo).
+  const COM_CERTIFICADO = ['MT', 'RR']
 
-  it('é o intermediário da GlobalSign, emitido pela raiz R6', () => {
+  it('o intermediário do MT é da GlobalSign, emitido pela raiz R6', () => {
+    const cert = new X509Certificate(GLOBALSIGN_GCC_R6_ALPHASSL_CA_2025)
     expect(cert.subject).toContain('GlobalSign GCC R6 AlphaSSL CA 2025')
     expect(cert.issuer).toContain('GlobalSign Root CA - R6')
     expect(cert.ca).toBe(true)
   })
 
-  it('só o MT declara certificado extra; as demais usam as raízes normais', () => {
-    expect(sescMT.certificadosConfiaveis).toEqual([GLOBALSIGN_GCC_R6_ALPHASSL_CA_2025])
-    for (const u of SESC_UNIDADES.filter((x) => x.uf !== 'MT')) {
-      expect(u.certificadosConfiaveis).toBeUndefined()
-      expect(agenteDaUnidade(u)).toBeUndefined()
+  it('o intermediário do RR é da Sectigo, emitido pela raiz R46', () => {
+    const cert = new X509Certificate(SECTIGO_DV_R36_CA)
+    expect(cert.subject).toContain('Sectigo Public Server Authentication CA DV R36')
+    expect(cert.issuer).toContain('Sectigo Public Server Authentication Root R46')
+    expect(cert.ca).toBe(true)
+  })
+
+  it('só MT e RR declaram certificado extra, e cada um é um certificado de CA válido', () => {
+    for (const u of SESC_UNIDADES) {
+      const k = u.chave ?? u.uf
+      if (COM_CERTIFICADO.includes(k)) {
+        expect(u.certificadosConfiaveis?.length).toBe(1)
+        for (const pem of u.certificadosConfiaveis!) expect(new X509Certificate(pem).ca).toBe(true)
+        expect(agenteDaUnidade(u)).toBeDefined()
+      } else {
+        // As demais usam as raízes normais: nada de confiar em certificado avulso.
+        expect(u.certificadosConfiaveis).toBeUndefined()
+        expect(agenteDaUnidade(u)).toBeUndefined()
+      }
     }
-    expect(agenteDaUnidade(sescMT)).toBeDefined()
   })
 
   it('o MT abre a página de sessão antes (cookie + Referer)', () => {

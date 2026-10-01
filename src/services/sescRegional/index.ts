@@ -8,7 +8,7 @@
 // PI, PR (API JSON por POST), RN, RO, TO.
 // Fase 3 (plataforma Paradigma, AJAX por POST — paradigma.ts): BA, DN, RJ, RS, SP.
 // O SESC GO tem coletor próprio (services/sescGoParser.ts).
-// Ainda fora: RR (aplicação JavaScript sem API localizada) — ver relatório.
+// Todas as unidades da planilha estão cobertas (RR: API JSON do portal React, rr.ts).
 // ============================================================
 
 import { SescUnidade } from './tipos'
@@ -34,6 +34,7 @@ import { sescRN } from './rn'
 import { sescRO } from './ro'
 import { sescTO } from './to'
 import { sescBA, sescDN, sescRJ, sescRS, sescSP } from './paradigma'
+import { sescRR } from './rr'
 
 export const SESC_UNIDADES: SescUnidade[] = [
   sescAC,
@@ -57,6 +58,7 @@ export const SESC_UNIDADES: SescUnidade[] = [
   sescRJ,
   sescRN,
   sescRO,
+  sescRR,
   sescRS,
   sescSC,
   sescSE,

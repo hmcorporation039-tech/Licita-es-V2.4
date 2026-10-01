@@ -54,6 +54,9 @@ interface ColetorScheduler {
   schedulerId: string
   jobName: string
   pattern: string
+  // Fuso em que o cron é lido. Sem ele vale o fuso do processo (UTC no Railway),
+  // então '0 6 * * *' dispararia às 03:00 de Brasília.
+  tz?: string
   fonte: FonteEnum
 }
 
@@ -117,7 +120,9 @@ export const COLETOR_SCHEDULERS: ColetorScheduler[] = [
     queue: coletorSescRegionalQueue,
     schedulerId: 'coleta-sesc-regional',
     jobName: 'coleta-sesc-regional',
-    pattern: '0 12 * * *',
+    // Todo dia às 06:00 de Brasília (não em UTC — ver tz).
+    pattern: '0 6 * * *',
+    tz: 'America/Sao_Paulo',
     fonte: 'SESC_REGIONAL',
   },
 ]
@@ -147,7 +152,7 @@ export async function scheduleColetorJobs() {
 
     await scheduler.queue.upsertJobScheduler(
       scheduler.schedulerId,
-      { pattern: scheduler.pattern },
+      { pattern: scheduler.pattern, ...(scheduler.tz ? { tz: scheduler.tz } : {}) },
       { name: scheduler.jobName, data: { fonte: scheduler.fonte } }
     )
   }
