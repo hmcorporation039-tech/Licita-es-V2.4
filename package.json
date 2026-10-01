@@ -1,6 +1,6 @@
 {
-  "name": "licitacao-platform",
-  "version": "1.0.0",
+  "name": "licitacao-platform-comercial",
+  "version": "2.4.0",
   "description": "Plataforma de monitoramento de licitações — PNCP + ComprasNet",
   "scripts": {
     "analise:smoke": "ts-node scripts/smokeAnaliseEdital.ts",
