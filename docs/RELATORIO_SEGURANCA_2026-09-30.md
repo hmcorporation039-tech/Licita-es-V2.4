@@ -123,7 +123,9 @@ Com conexão direta na API, `trust proxy = 1` faz o Express confiar no `X-Forwar
 ---
 
 ## 6. Recomendações que dependem de você (fora do código)
-1. **Antes de subir para produção:** rodar a migration `00000000000012_disabled_by_admin` (`npx prisma migrate deploy`).
+1. **Antes de subir para produção:** aplicar as migrations `00000000000012` a `00000000000015` **no banco de produção**, e só então publicar a API/workers novos (o login lê `users.disabled_by_admin`; sem a coluna a API responde 500 "Erro interno").
+
+   > **Cuidado — o banco de produção foi criado com `prisma db push`** (ver `MIGRACAO.md`), então não tem o histórico `_prisma_migrations`. Nesse caso `npx prisma migrate deploy` direto **falha com P3005** e não aplica nada (reproduzido). E as migrations 1 e 3 a 11 não são idempotentes: marcar só o baseline e rodar `migrate deploy` também falha se o banco já tiver o schema da v2.x. O caminho seguro é: (a) conferir no Postgres quais migrations o banco já reflete; (b) `npx prisma migrate resolve --applied <nome>` para cada uma que ele já tem (da `00000000000000_baseline` em diante); (c) só então `npx prisma migrate deploy`, que aplicará apenas as faltantes. Depois disso, o Pre-deploy Command do Railway (`npm run db:migrate:deploy`) passa a ser seguro.
 2. Rodar uma vez o `UPDATE` do item T19 para limpar mensagens antigas.
 3. Garantir que a conta `cypress-admin@example.com` **não exista** no banco de produção.
 4. Confirmar a topologia de proxy (item T22).
