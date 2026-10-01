@@ -30,6 +30,35 @@ interface StatusFonte {
   registros: number | null
 }
 
+// Quantidade mínima para considerar a tabela COMPLETA. Importações interrompidas
+// ou de teste (ex.: CATALOGO_MAX_PAGINAS) deixam a tabela com poucas linhas e,
+// como ela não está vazia nem velha, a rotina nunca a completaria. Valores bem
+// abaixo do tamanho real das fontes (UASG ~22 mil, CATSER ~3,1 mil, CATMAT ~345 mil).
+export const MINIMO_ESPERADO: Record<FonteDeApoio, number> = {
+  uasg: 15_000,
+  servico: 2_500,
+  material: 250_000,
+}
+
+// Decide se uma fonte precisa ser (re)importada. Pura, para ser testada.
+export function precisaImportar(
+  total: number,
+  maisRecente: Date | null,
+  minimo: number,
+  agora: Date,
+  maxIdadeMs: number,
+  forcar = false
+): 'forçada' | 'tabela vazia' | 'dados antigos' | 'tabela incompleta' | null {
+  if (forcar) return 'forçada'
+  if (total === 0) return 'tabela vazia'
+  const idade = maisRecente ? agora.getTime() - maisRecente.getTime() : Infinity
+  if (idade > maxIdadeMs) return 'dados antigos'
+  // Incompleta: tenta de novo no máximo uma vez por dia (se a fonte realmente
+  // encolher, não reimporta a cada checagem).
+  if (total < minimo && idade > UM_DIA_MS) return 'tabela incompleta'
+  return null
+}
+
 const status: Record<FonteDeApoio, StatusFonte> = {
   uasg: { fonte: 'uasg', emAndamento: false, ultimaExecucao: null, ultimoErro: null, registros: null },
   servico: { fonte: 'servico', emAndamento: false, ultimaExecucao: null, ultimoErro: null, registros: null },
@@ -96,11 +125,9 @@ export async function verificarEImportar(opcoes: { forcar?: boolean } = {}): Pro
   try {
     for (const fonte of ['uasg', 'servico', 'material'] as FonteDeApoio[]) {
       const { total, maisRecente } = await contagemEIdade(fonte)
-      const velha = maisRecente != null && Date.now() - maisRecente.getTime() > maxIdadeMs()
-      if (opcoes.forcar || total === 0 || velha) {
-        console.log(
-          `[Importação] ${fonte}: ${opcoes.forcar ? 'forçada' : total === 0 ? 'tabela vazia' : 'dados antigos'} — importando...`
-        )
+      const motivo = precisaImportar(total, maisRecente, MINIMO_ESPERADO[fonte], new Date(), maxIdadeMs(), opcoes.forcar)
+      if (motivo) {
+        console.log(`[Importação] ${fonte}: ${motivo} (${total} registros) — importando...`)
         await executar(fonte)
         importadas.push(fonte)
       }

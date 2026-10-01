@@ -23,6 +23,7 @@ import { requireAuth } from './authMiddleware'
 import { ApiError } from './asyncHandler'
 import { globalLimiter } from './rateLimit'
 import { iniciarImportacaoAutomatica } from '../services/catalogoBootstrap'
+import { verificarProntidao } from '../services/prontidao'
 
 const app = express()
 
@@ -55,7 +56,16 @@ app.use(
 
 app.use(express.json({ limit: '1mb' }))
 
+// Liveness: o processo está de pé (não toca no banco).
 app.get('/api/health', (_req, res) => res.json({ ok: true }))
+
+// Readiness: o banco responde E tem todas as migrations do código. Usar como
+// Healthcheck Path no Railway — impede que uma versão incompatível com o banco
+// entre no ar (ver services/prontidao.ts). Fica antes do rate limit de propósito.
+app.get('/api/health/ready', async (_req, res) => {
+  const p = await verificarProntidao()
+  res.status(p.ok ? 200 : 503).json(p)
+})
 
 app.use('/api', globalLimiter)
 
