@@ -16,5 +16,8 @@ Tela `/radar` (menu "Radar"), alimentada sob demanda pela API pública de consul
 - Cache em memória de 15 min por consulta. PNCP fora do ar → erro 502 com mensagem clara.
 - A API não filtra por data de vigência nem por palavra-chave; por isso o filtro "vencendo" e o "ramo" são feitos aqui.
 
+## Perfilador
+`GET /api/radar/perfil` — usa o CNPJ da empresa para ler os contratos dela no PNCP (2 anos) e sugerir palavras-chave (termos frequentes, sem genéricos), estados, órgãos e faixa de valor (P10–P90). A tela cria o item monitorado com um clique.
+
 ## PCA (Plano de Contratações Anual) — adiado
 O endpoint de PCA exige códigos de classificação próprios e devolve poucos registros; precisa de decisão de produto antes de implementar.

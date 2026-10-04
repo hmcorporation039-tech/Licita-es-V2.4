@@ -145,3 +145,31 @@ describe('buscarContratos', () => {
     await expect(p).rejects.not.toThrow(/segredo/)
   })
 })
+
+describe('sugerirPerfil', () => {
+  const mk = (i: number, objeto: string, uf = 'GO', valor = 1000 * (i + 1)) =>
+    normalizarContrato(bruto({ numeroControlePNCP: `p${i}`, objetoContrato: objeto, unidadeOrgao: { ufSigla: uf }, valorGlobal: valor }))!
+
+  it('sugere termos frequentes, ignora genéricos e conta 1x por contrato', async () => {
+    const { sugerirPerfil } = await import('../src/lib/radar')
+    const cs = [
+      mk(0, 'Contratação de empresa especializada em limpeza e conservação, limpeza geral'),
+      mk(1, 'Serviço de limpeza hospitalar'),
+      mk(2, 'Fornecimento de uniformes escolares', 'DF'),
+      mk(3, 'Prestação de serviços de limpeza predial'),
+      mk(4, 'Aquisição de uniformes'),
+    ]
+    const p = sugerirPerfil(cs)
+    expect(p.totalDeContratos).toBe(5)
+    expect(p.palavrasChave[0]).toEqual({ termo: 'limpeza', ocorrencias: 3 })
+    expect(p.palavrasChave.map((x) => x.termo)).toContain('uniformes')
+    expect(p.palavrasChave.map((x) => x.termo)).not.toContain('contratacao')
+    expect(p.ufs).toEqual(['GO', 'DF'])
+    expect(p.faixaDeValor).toEqual({ minimo: 1000, maximo: 5000 })
+  })
+
+  it('sem histórico não sugere nada; poucos valores não geram faixa', async () => {
+    const { sugerirPerfil } = await import('../src/lib/radar')
+    expect(sugerirPerfil([])).toMatchObject({ totalDeContratos: 0, palavrasChave: [], ufs: [], faixaDeValor: null })
+  })
+})

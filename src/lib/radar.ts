@@ -155,3 +155,62 @@ export function janelasDeBusca(hoje: string, quantidade: number): { inicial: str
 export function cnpjValido14(v: string): boolean {
   return /^\d{14}$/.test(v.replace(/\D/g, ''))
 }
+
+// ---------- Perfilador: sugestões a partir do histórico de contratos da própria empresa ----------
+
+const PALAVRAS_VAZIAS = new Set(
+  ('para com sem por uma uns umas dos das nos nas aos que como entre sobre sob ate pela pelo pelas pelos este esta esse essa isso ' +
+    'objeto contrato contratacao contratar contratada contratante empresa especializada servico servicos prestacao fornecimento ' +
+    'aquisicao registro precos eventual futura demanda atender necessidades necessidade secretaria municipal municipio estado ' +
+    'federal unidade unidades conforme termo referencia edital processo item itens lote lotes geral gerais tipo diversos diversas ' +
+    'realizacao execucao locacao instalacao manutencao fornecer visando destinado destinados destinada').split(' ')
+)
+
+export interface PerfilSugerido {
+  totalDeContratos: number
+  palavrasChave: { termo: string; ocorrencias: number }[]
+  ufs: string[]
+  orgaos: { nome: string; contratos: number }[]
+  faixaDeValor: { minimo: number; maximo: number } | null
+}
+
+function percentil(ordenado: number[], p: number): number {
+  if (ordenado.length === 0) return 0
+  return ordenado[Math.min(ordenado.length - 1, Math.floor(p * ordenado.length))]
+}
+
+export function sugerirPerfil(contratos: ContratoPncp[]): PerfilSugerido {
+  const unicos = [...new Map(contratos.map((c) => [c.id, c])).values()]
+  // Conta cada palavra uma vez por contrato (um objeto repetindo "limpeza" 5x não pesa mais).
+  const freq = new Map<string, number>()
+  for (const c of unicos) {
+    const palavras = new Set(
+      semAcento(c.objeto)
+        .replace(/[^a-z0-9 ]/g, ' ')
+        .split(/\s+/)
+        .filter((p) => p.length >= 4 && !/^\d+$/.test(p) && !PALAVRAS_VAZIAS.has(p))
+    )
+    for (const p of palavras) freq.set(p, (freq.get(p) ?? 0) + 1)
+  }
+  const minimo = Math.max(2, Math.ceil(unicos.length * 0.05))
+  const palavrasChave = [...freq.entries()]
+    .filter(([, n]) => n >= minimo)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, 12)
+    .map(([termo, ocorrencias]) => ({ termo, ocorrencias }))
+
+  const ufs = agrupar(unicos.filter((c) => c.orgao.uf), (c) => c.orgao.uf!, () => 1)
+    .slice(0, 8)
+    .map((u) => u.k)
+  const orgaos = agrupar(unicos, (c) => c.orgao.nome, () => 1)
+    .slice(0, 5)
+    .map((o) => ({ nome: o.k, contratos: o.contratos }))
+  const valores = unicos.map((c) => c.valorGlobal).filter((v) => v > 0).sort((a, b) => a - b)
+  return {
+    totalDeContratos: unicos.length,
+    palavrasChave,
+    ufs,
+    orgaos,
+    faixaDeValor: valores.length >= 5 ? { minimo: Math.round(percentil(valores, 0.1)), maximo: Math.round(percentil(valores, 0.9)) } : null,
+  }
+}
