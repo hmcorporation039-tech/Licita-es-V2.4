@@ -11,6 +11,7 @@
 //  - Só uma chave de IA configurada: análise simples, sem revisão, dita como tal.
 // ============================================================
 
+import { decidirRevisao, modoDeRevisao, valorAltoDeRevisao } from '../lib/politicaDeRevisao'
 import { compararAnalises, AlteracaoDaRevisao } from '../lib/revisaoDaAnalise'
 import { DocumentoParaVerificar, ExigenciaVerificada, verificarExigencias } from '../lib/matrizExigencias'
 import type { EditalAnalysisResult, EditalAnalyzer, EditalDocumento, UsoDeIa } from './llm/types'
@@ -129,6 +130,7 @@ export async function executarPipeline(args: {
   env?: NodeJS.ProcessEnv
 }): Promise<ResultadoDoPipeline> {
   const agora = args.agora ?? Date.now
+  const ambiente = args.env ?? process.env
   const usos: EtapaDeUso[] = []
 
   // 1) Analista. Se falhar, o erro sobe (a análise inteira falha); o chamador
@@ -167,6 +169,28 @@ export async function executarPipeline(args: {
         analista: analistaInfo,
         revisor: null,
         motivo: 'Análise sem revisão: só um provedor de IA está configurado.',
+        detalheTecnico: null,
+      },
+      analise.uso.provider === 'claude' ? 'claude' : 'gemini'
+    )
+  }
+
+  // Modo seletivo: sem sinal de risco na análise, a revisão (lenta e paga) é dispensada.
+  const verificada = verificarExigencias(analise.resultado.matrizExigencias, docs)
+  const decisao = decidirRevisao(analise.resultado, verificada.map((e) => e.verificacao), modoDeRevisao(ambiente), valorAltoDeRevisao(ambiente))
+  if (!decisao.revisar) {
+    return finalizar(
+      analise.resultado,
+      null,
+      {
+        status: 'NAO_EXECUTADA',
+        veredito: null,
+        resumo: null,
+        alteracoes: [],
+        totalDeAlteracoes: 0,
+        analista: analistaInfo,
+        revisor: null,
+        motivo: 'Revisão dispensada (modo seletivo): a análise não apresentou sinais de risco.',
         detalheTecnico: null,
       },
       analise.uso.provider === 'claude' ? 'claude' : 'gemini'
