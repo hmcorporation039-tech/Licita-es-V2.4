@@ -135,7 +135,11 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
 
     api
       .get<TenderAnalysis>(`/api/tenders/${id}/analysis`)
-      .then(setAnalysis)
+      .then((a) => {
+        setAnalysis(a)
+        // Reabriu a página com a revisão ainda rodando: retoma o acompanhamento.
+        if (a.revisao?.status === 'EM_ANDAMENTO') void aguardarAnalise().catch((e) => console.error(e))
+      })
       .catch((err) => {
         if (!(err instanceof ApiRequestError && err.status === 404)) {
           console.error(err)
@@ -185,7 +189,7 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
 
   async function aguardarAnalise() {
     const INTERVALO_MS = 4000
-    const TENTATIVAS_MAX = 150 // ~10 minutos
+    const TENTATIVAS_MAX = 360 // ~24 minutos (análise + revisão em segundo plano)
 
     for (let tentativa = 0; tentativa < TENTATIVAS_MAX; tentativa++) {
       await new Promise((resolve) => setTimeout(resolve, INTERVALO_MS))
@@ -193,7 +197,8 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
       try {
         const atual = await api.get<TenderAnalysis>(`/api/tenders/${id}/analysis`)
         setAnalysis(atual)
-        if (atual.status !== 'PENDING' && atual.status !== 'RUNNING') return
+        // A análise preliminar já aparece (DONE), mas seguimos atualizando até a revisão terminar.
+        if (atual.status !== 'PENDING' && atual.status !== 'RUNNING' && atual.revisao?.status !== 'EM_ANDAMENTO') return
       } catch (err) {
         if (!(err instanceof ApiRequestError && err.status === 404)) throw err
       }

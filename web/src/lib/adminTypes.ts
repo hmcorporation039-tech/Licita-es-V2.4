@@ -213,7 +213,7 @@ export interface AlteracaoDaRevisao {
 }
 
 export interface RevisaoDaAnalise {
-  status: 'OK' | 'FALHOU' | 'NAO_EXECUTADA'
+  status: 'OK' | 'FALHOU' | 'NAO_EXECUTADA' | 'EM_ANDAMENTO'
   veredito: 'aprovada' | 'corrigida' | 'reprovada' | null
   resumo: string | null
   alteracoes: AlteracaoDaRevisao[]

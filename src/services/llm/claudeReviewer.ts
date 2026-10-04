@@ -30,6 +30,17 @@ export function modeloDoRevisor(env: NodeJS.ProcessEnv = process.env): string {
   return env.CLAUDE_REVIEW_MODEL || MODELO_REVISOR_PADRAO
 }
 
+// Esforço do revisor: é a principal alavanca entre PROFUNDIDADE e TEMPO/CUSTO da revisão.
+// Padrão "high" (conferir um edital inteiro pede cuidado); "medium" é bem mais rápido e
+// barato e costuma bastar. Valor inválido cai no padrão.
+const ESFORCOS = ['low', 'medium', 'high', 'xhigh', 'max'] as const
+export type EsforcoDoRevisor = (typeof ESFORCOS)[number]
+
+export function esforcoDoRevisor(env: NodeJS.ProcessEnv = process.env): EsforcoDoRevisor {
+  const v = (env.CLAUDE_REVIEW_EFFORT ?? '').trim().toLowerCase()
+  return (ESFORCOS as readonly string[]).includes(v) ? (v as EsforcoDoRevisor) : 'high'
+}
+
 export const reviewEdital: EditalReviewer = async (objeto, documentos, rascunho): Promise<ReviewOutcome> => {
   const model = modeloDoRevisor()
 
@@ -40,7 +51,7 @@ export const reviewEdital: EditalReviewer = async (objeto, documentos, rascunho)
       thinking: { type: 'adaptive' },
       system: REVIEW_SYSTEM_PROMPT,
       output_config: {
-        effort: 'high',
+        effort: esforcoDoRevisor(),
         format: { type: 'json_schema', schema: REVIEW_SCHEMA },
       },
       messages: [
