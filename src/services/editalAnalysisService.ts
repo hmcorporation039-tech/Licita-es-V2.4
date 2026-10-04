@@ -229,8 +229,39 @@ export async function runEditalAnalysis(
 
     let pipeline
     const inicioIa = Date.now()
+    // Quando há revisão, a análise do analista já é gravada (e o consumo dele medido) ANTES de a
+    // revisão começar: o usuário lê a prévia enquanto a Claude, mais lenta, confere o edital.
+    let analistaJaRegistrado = false
     try {
-      pipeline = await executarPipeline({ objeto: tender.objeto, documentos, analista, revisor: revisor ?? null })
+      pipeline = await executarPipeline({
+        objeto: tender.objeto,
+        documentos,
+        analista,
+        revisor: revisor ?? null,
+        aoConcluirAnalista: async (previa) => {
+          await registrarUsoDeIa({
+            tenderId,
+            quem,
+            uso: previa.usoDoAnalista.uso,
+            durationMs: previa.usoDoAnalista.durationMs,
+            status: previa.usoDoAnalista.status,
+            etapa: 'analise',
+          })
+          analistaJaRegistrado = true
+          await prisma.tenderAnalysis.update({
+            where: { tenderId },
+            data: {
+              status: 'DONE',
+              documentoNome,
+              resultado: previa.resultado as unknown as object,
+              rascunho: Prisma.DbNull,
+              revisao: previa.revisao as unknown as object,
+              pipeline: 'dupla',
+              errorMsg: null,
+            },
+          })
+        },
+      })
     } catch (rawErr) {
       // Falha do ANALISTA depois da chamada ao modelo: os tokens já foram gastos e entram na medição.
       let err = rawErr
@@ -248,8 +279,8 @@ export async function runEditalAnalysis(
       throw err
     }
 
-    // Cada etapa (analista e revisor) vira uma linha de consumo.
-    for (const u of pipeline.usos) {
+    // Cada etapa (analista e revisor) vira uma linha de consumo (o analista pode já ter sido registrado na prévia).
+    for (const u of pipeline.usos.slice(analistaJaRegistrado ? 1 : 0)) {
       await registrarUsoDeIa({ tenderId, quem, uso: u.uso, durationMs: u.durationMs, status: u.status, etapa: u.etapa })
     }
 

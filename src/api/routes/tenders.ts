@@ -21,20 +21,9 @@ import { avaliarHabilitacao } from '../../lib/habilitacao'
 import { calcularAlertasLegais, lerValoresEmReais } from '../../lib/alertasLegais'
 import type { EditalAnalysisResult } from '../../services/llm/types'
 import { chaveDaExigencia, ExigenciaVerificada, resumoDaVerificacao } from '../../lib/matrizExigencias'
+import { analiseParaResposta } from '../../lib/analiseParaResposta'
 
 export const tendersRouter = Router()
-
-// O que o cliente comum pode ver de uma análise: o resultado final e o relatório
-// da revisão. O RASCUNHO do analista e o detalhe técnico de erros são do admin
-// (auditoria) — não vão para os demais usuários.
-function analiseParaResposta<T extends { rascunho?: unknown; revisao?: unknown }>(analise: T, admin: boolean): T {
-  if (admin) return analise
-  const { rascunho: _rascunho, ...resto } = analise
-  void _rascunho
-  const revisao = analise.revisao && typeof analise.revisao === 'object' ? { ...(analise.revisao as Record<string, unknown>) } : analise.revisao
-  if (revisao && typeof revisao === 'object') delete (revisao as Record<string, unknown>).detalheTecnico
-  return { ...resto, revisao } as unknown as T
-}
 
 const SITUACAO_VALUES = ['ABERTA', 'ENCERRADA', 'SUSPENSA', 'CANCELADA', 'ANULADA', 'HOMOLOGADA', 'REVOGADA'] as const
 

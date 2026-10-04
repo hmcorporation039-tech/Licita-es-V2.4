@@ -74,7 +74,8 @@ export interface EtapaDeUso {
 }
 
 export interface RevisaoRegistrada {
-  status: 'OK' | 'FALHOU' | 'NAO_EXECUTADA'
+  // EM_ANDAMENTO: o analista terminou e o revisor ainda trabalha (a análise já é legível).
+  status: 'OK' | 'FALHOU' | 'NAO_EXECUTADA' | 'EM_ANDAMENTO'
   veredito: 'aprovada' | 'corrigida' | 'reprovada' | null
   resumo: string | null
   alteracoes: AlteracaoDaRevisao[]
@@ -87,6 +88,13 @@ export interface RevisaoRegistrada {
   em: string
   // Mensagem técnica do erro (só o administrador vê; nunca vai ao usuário).
   detalheTecnico: string | null
+}
+
+// A análise do analista, pronta para ser mostrada antes da revisão.
+export interface AnalisePreliminar {
+  resultado: Omit<EditalAnalysisResult, 'matrizExigencias'> & { matrizExigencias: ExigenciaVerificada[] }
+  revisao: RevisaoRegistrada
+  usoDoAnalista: EtapaDeUso
 }
 
 export interface ResultadoDoPipeline {
@@ -114,6 +122,9 @@ export async function executarPipeline(args: {
   analista: EditalAnalyzer
   revisor: EditalReviewer | null
   agora?: () => number
+  // Chamado assim que o ANALISTA termina e antes de o revisor começar (só há revisor): permite
+  // mostrar a análise preliminar enquanto a revisão, que é a etapa lenta, ainda roda.
+  aoConcluirAnalista?: (analise: AnalisePreliminar) => Promise<void>
   // Para teste: o ambiente de onde sai o diagnóstico das chaves (padrão: process.env).
   env?: NodeJS.ProcessEnv
 }): Promise<ResultadoDoPipeline> {
@@ -160,6 +171,32 @@ export async function executarPipeline(args: {
       },
       analise.uso.provider === 'claude' ? 'claude' : 'gemini'
     )
+  }
+
+  // A revisão é a etapa lenta (a Claude relê o edital inteiro e reescreve a análise).
+  // Antes de começá-la, entrega a análise preliminar para que ela já possa ser lida.
+  if (args.aoConcluirAnalista) {
+    try {
+      await args.aoConcluirAnalista({
+        resultado: { ...analise.resultado, matrizExigencias: verificarExigencias(analise.resultado.matrizExigencias, docs) },
+        revisao: {
+          status: 'EM_ANDAMENTO',
+          veredito: null,
+          resumo: null,
+          alteracoes: [],
+          totalDeAlteracoes: 0,
+          analista: analistaInfo,
+          revisor: null,
+          motivo: 'Revisão em andamento: a análise abaixo é preliminar e pode ser corrigida em alguns minutos.',
+          em: new Date(agora()).toISOString(),
+          detalheTecnico: null,
+        },
+        usoDoAnalista: usos[0],
+      })
+    } catch (err) {
+      // Não conseguir mostrar a prévia não pode impedir a revisão.
+      console.error('[Análise em dupla] Falha ao gravar a análise preliminar:', err instanceof Error ? err.message : err)
+    }
   }
 
   // 2) Revisor. Qualquer falha mantém o rascunho do analista, sinalizado como não revisado.

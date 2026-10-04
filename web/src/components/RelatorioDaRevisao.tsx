@@ -41,6 +41,15 @@ export default function RelatorioDaRevisao({ revisao }: { revisao: RevisaoDaAnal
   const [aberto, setAberto] = useState(false)
   if (!revisao) return null
 
+  if (revisao.status === 'EM_ANDAMENTO') {
+    return (
+      <div className="mb-4 rounded-md border border-blue-300 bg-blue-50 p-3 text-xs text-blue-900">
+        ⏳ <strong>Análise preliminar</strong> — a revisão pela Claude está em andamento e pode levar alguns minutos.
+        Você já pode consultar o resultado abaixo; ele será atualizado automaticamente quando a revisão terminar.
+      </div>
+    )
+  }
+
   if (revisao.status === 'NAO_EXECUTADA') {
     return (
       <p className="rounded border border-slate-200 bg-slate-50 p-2 text-xs text-slate-600">
