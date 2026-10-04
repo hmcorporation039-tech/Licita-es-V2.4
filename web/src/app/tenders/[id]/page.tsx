@@ -43,7 +43,7 @@ const SEVERIDADE_STYLE: Record<string, string> = {
 const TABS = [
   { id: 'informacoes', label: 'Informações' },
   { id: 'itens', label: 'Itens' },
-  { id: 'analise', label: 'Análise (IA)' },
+  { id: 'analise', label: 'Análise' },
   { id: 'habilitacao', label: 'Habilitação' },
   { id: 'exigencias', label: 'Exigências' },
   { id: 'checklist', label: 'Checklist' },
@@ -479,7 +479,7 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
           {activeTab === 'analise' && (
             <section className="rounded border border-slate-200 bg-white p-4">
               <div className="mb-2 flex items-center justify-between">
-                <h2 className="text-lg font-semibold">Análise do edital (IA)</h2>
+                <h2 className="text-lg font-semibold">Análise</h2>
                 {analysis?.status === 'DONE' && (
                   <button
                     onClick={() => runAnalysis(true)}
@@ -730,7 +730,7 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
 
                   {!analysis && (
                     <p className="mb-4 text-xs text-slate-400">
-                      Rode a "Análise (IA)" pra trazer os prazos de impugnação e esclarecimento pra essa linha do
+                      Rode a "Análise" pra trazer os prazos de impugnação e esclarecimento pra essa linha do
                       tempo — eles não vêm nos dados estruturados do PNCP.
                     </p>
                   )}
