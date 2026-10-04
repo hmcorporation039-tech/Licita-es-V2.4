@@ -52,6 +52,28 @@ export function normalizarContrato(bruto: unknown): ContratoPncp | null {
   }
 }
 
+// Item da busca do portal PNCP (/api/search). É a fonte do dossiê e do Perfilador:
+// a API de consulta de contratos IGNORA o filtro por fornecedor (devolve contratos de
+// todo mundo), já a busca indexa `fornecedor_ni`. A "categoria" aqui é a modalidade.
+export function normalizarContratoDaBusca(bruto: unknown): ContratoPncp | null {
+  const c = obj(bruto)
+  const id = txt(c.numero_controle_pncp)
+  if (!id || c.cancelado === true) return null
+  const valor = Number(c.valor_global)
+  return {
+    id,
+    orgao: { cnpj: txt(c.orgao_cnpj), nome: txt(c.orgao_nome), uf: txt(c.uf) || null, municipio: txt(c.municipio_nome) || null },
+    fornecedor: { ni: txt(c.fornecedor_ni), nome: txt(c.fornecedor_nome) },
+    objeto: txt(c.description).replace(/\s+/g, ' ') || txt(c.title),
+    valorGlobal: Number.isFinite(valor) ? valor : 0,
+    assinatura: dia(c.data_assinatura),
+    vigenciaInicio: dia(c.data_inicio_vigencia),
+    vigenciaFim: dia(c.data_fim_vigencia),
+    categoria: txt(c.modalidade_licitacao_nome) || null,
+    tipo: txt(c.tipo_contrato_nome) || null,
+  }
+}
+
 function semAcento(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 }
