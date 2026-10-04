@@ -38,6 +38,9 @@ export const ACOES = [
   'SENHA_REDEFINIDA_POR_EMAIL',
   'ADMIN_EMAIL_CONFIRMADO',
   'EXIGENCIA_ATUALIZADA',
+  'DADOS_EXPORTADOS',
+  'EXCLUSAO_SOLICITADA',
+  'EMPRESA_EXCLUIDA',
 ] as const
 export type AcaoAuditoria = (typeof ACOES)[number]
 

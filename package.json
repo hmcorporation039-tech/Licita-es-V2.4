@@ -11,6 +11,7 @@
     "cypress:open": "cypress open",
     "cypress:run": "cypress run",
     "dados:exportar": "ts-node scripts/exportarDados.ts",
+    "excluir-empresa": "ts-node scripts/excluirEmpresa.ts",
     "dados:importar": "ts-node scripts/importarDados.ts",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",

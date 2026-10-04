@@ -8,11 +8,16 @@
 //  - Um teste por CPF/CNPJ: o documento (já validado) é único em `companies`.
 //  - Token de uso único, só o hash no banco, e o consumo é atômico (duas
 //    requisições com o mesmo link: só uma vence).
+//  - Pré-sequestro de conta: alguém pode cadastrar o e-mail de outra pessoa com
+//    uma senha que ele conhece. Por isso (1) a confirmação exige a senha do
+//    cadastro — o dono do e-mail, que não a conhece, não ativa a conta do
+//    atacante por engano — e (2) um novo cadastro com um e-mail ainda NÃO
+//    confirmado substitui o anterior (só quem recebe o e-mail confirma).
 // ============================================================
 
 import { Prisma } from '@prisma/client'
 import { prisma } from './tenderService'
-import { hashPassword, normalizeEmail } from './authService'
+import { hashPassword, normalizeEmail, verifyPasswordConstantTime } from './authService'
 import {
   enviarAvisoDeCadastroRepetido,
   enviarConfirmacaoDeEmail,
@@ -86,6 +91,34 @@ export interface ResultadoDoCadastro {
   motivo?: 'email-existente' | 'documento-existente'
 }
 
+// Cadastro nunca confirmado: o usuário nunca entrou, então não há dados dele além
+// da própria conta e da empresa vazia. Pode ser apagado com segurança.
+async function apagarCadastroNaoConfirmado(userId: string): Promise<void> {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { emailVerifiedAt: true, companyId: true } })
+  if (!user || user.emailVerifiedAt) return
+  const outros = await prisma.user.count({ where: { companyId: user.companyId, id: { not: userId } } })
+  await prisma.$transaction([
+    prisma.authToken.deleteMany({ where: { userId } }),
+    prisma.user.delete({ where: { id: userId } }),
+    ...(outros === 0 ? [prisma.company.delete({ where: { id: user.companyId } })] : []),
+  ])
+}
+
+// Documento preso a um cadastro abandonado (nunca confirmado e com o link já vencido)
+// não pode impedir o verdadeiro dono do CPF/CNPJ de se cadastrar.
+const CADASTRO_ABANDONADO_MS = 48 * 60 * 60 * 1000
+
+// Aviso "alguém tentou cadastrar seu e-mail": no máximo 1 por hora por destinatário,
+// para o cadastro não virar ferramenta de encher a caixa de alguém.
+const ultimoAvisoRepetido = new Map<string, number>()
+function podeAvisarCadastroRepetido(email: string, agora = Date.now()): boolean {
+  const ultimo = ultimoAvisoRepetido.get(email)
+  if (ultimo !== undefined && agora - ultimo < 60 * 60 * 1000) return false
+  ultimoAvisoRepetido.set(email, agora)
+  if (ultimoAvisoRepetido.size > 5000) ultimoAvisoRepetido.delete(ultimoAvisoRepetido.keys().next().value as string)
+  return true
+}
+
 // Cria a conta em período de teste. NÃO diz ao chamador "já existe": devolve
 // `criado: false` e o motivo só para a auditoria interna. Quem responde ao
 // cliente usa sempre a mesma mensagem.
@@ -96,14 +129,24 @@ export async function cadastrar(dados: DadosDeCadastro): Promise<ResultadoDoCada
   const passwordHash = await hashPassword(dados.senha)
   const documento = somenteDigitos(dados.documento)
 
-  if (await prisma.user.findUnique({ where: { email }, select: { id: true } })) {
-    void enviarAvisoDeCadastroRepetido(email)
+  const existente = await prisma.user.findUnique({ where: { email }, select: { id: true, emailVerifiedAt: true } })
+  if (existente?.emailVerifiedAt) {
+    if (podeAvisarCadastroRepetido(email)) void enviarAvisoDeCadastroRepetido(email)
     return { criado: false, motivo: 'email-existente' }
   }
+  // E-mail com cadastro pendente: o novo cadastro substitui o antigo (o link anterior morre).
+  if (existente) await apagarCadastroNaoConfirmado(existente.id)
 
   const docWhere = dados.tipo === 'PESSOA_JURIDICA' ? { cnpj: documento } : { cpf: documento }
-  if (await prisma.company.findFirst({ where: docWhere, select: { id: true } })) {
-    return { criado: false, motivo: 'documento-existente' }
+  const dono = await prisma.company.findFirst({
+    where: docWhere,
+    select: { users: { select: { id: true, emailVerifiedAt: true, createdAt: true } } },
+  })
+  if (dono) {
+    const abandonado =
+      dono.users.length > 0 && dono.users.every((u) => !u.emailVerifiedAt && Date.now() - u.createdAt.getTime() > CADASTRO_ABANDONADO_MS)
+    if (!abandonado) return { criado: false, motivo: 'documento-existente' }
+    for (const u of dono.users) await apagarCadastroNaoConfirmado(u.id)
   }
 
   const agora = new Date()
@@ -152,11 +195,21 @@ export async function reenviarConfirmacao(emailBruto: string): Promise<void> {
   if (token) void enviarConfirmacaoDeEmail(user.email, user.name, token, VALIDADE_DO_TOKEN.EMAIL_VERIFY / 3_600_000)
 }
 
-export async function confirmarEmail(token: string): Promise<{ userId: string; companyId: string } | null> {
+// Confirma o e-mail. Exige a senha escolhida no cadastro (ver "pré-sequestro" no topo).
+// Senha errada NÃO consome o link: a pessoa pode tentar de novo.
+export async function confirmarEmail(
+  token: string,
+  senha: string
+): Promise<{ userId: string; companyId: string } | { erro: 'link' | 'senha' }> {
+  const registro = await prisma.authToken.findUnique({ where: { tokenHash: hashDoToken(token) } })
+  if (!registro || registro.type !== 'EMAIL_VERIFY' || !tokenUtilizavel(registro, new Date())) return { erro: 'link' }
+  const dono = await prisma.user.findUnique({ where: { id: registro.userId }, select: { passwordHash: true } })
+  if (!(await verifyPasswordConstantTime(senha, dono?.passwordHash ?? null))) return { erro: 'senha' }
+
   const userId = await consumirToken(token, 'EMAIL_VERIFY')
-  if (!userId) return null
+  if (!userId) return { erro: 'link' }
   const user = await prisma.user.findUnique({ where: { id: userId } })
-  if (!user) return null
+  if (!user) return { erro: 'link' }
   if (!user.emailVerifiedAt) await prisma.user.update({ where: { id: userId }, data: { emailVerifiedAt: new Date() } })
   return { userId, companyId: user.companyId }
 }

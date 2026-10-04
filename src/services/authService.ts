@@ -13,6 +13,13 @@ const SALT_ROUNDS = 10
 // (User.accessExpiresAt), que é quem controla se a conta ainda pode logar.
 const SESSION_DURATION = '30d'
 
+// Segredo curto (ex.: "segredo123") é adivinhável por força bruta offline a partir de
+// qualquer token de sessão: com ele, forja-se sessão de qualquer usuário, inclusive admin.
+export const JWT_SECRET_MIN = 32
+export function jwtSecretFraco(env: NodeJS.ProcessEnv = process.env): boolean {
+  return (env.JWT_SECRET ?? '').length < JWT_SECRET_MIN
+}
+
 function getJwtSecret(): string {
   const secret = process.env.JWT_SECRET
   if (!secret) throw new Error('JWT_SECRET não configurado no .env')
@@ -69,7 +76,7 @@ export function signSessionToken(userId: string, tokenVersion: number): string {
 
 export function verifySessionToken(token: string): SessionTokenPayload | null {
   try {
-    const decoded = jwt.verify(token, getJwtSecret())
+    const decoded = jwt.verify(token, getJwtSecret(), { algorithms: ['HS256'] })
     if (typeof decoded === 'object' && decoded && typeof decoded.userId === 'string') {
       return {
         userId: decoded.userId,

@@ -81,3 +81,29 @@ export const recuperacaoLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: 'Muitas solicitações — aguarde alguns minutos e tente de novo' },
 })
+
+// Radar: cada consulta pode buscar milhares de contratos no PNCP. Por USUÁRIO (não por IP),
+// para que um cliente não esgote o PNCP nem a API para os demais.
+export const radarLimiter = rateLimit({
+  windowMs: JANELA_MS,
+  limit: limite(40),
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  keyGenerator: (req) => req.userId ?? 'anonimo',
+  message: { error: 'Muitas consultas ao Radar — aguarde alguns minutos e tente de novo' },
+})
+
+// Login por CONTA (e-mail digitado), além do limite por IP: senão um ataque distribuído
+// (muitos IPs) contra um mesmo e-mail não era freado. Só conta as tentativas que falham.
+export const loginPorContaLimiter = rateLimit({
+  windowMs: JANELA_MS,
+  limit: limite(10),
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  keyGenerator: (req) => {
+    const email = (req.body as { email?: unknown } | undefined)?.email
+    return typeof email === 'string' ? 'conta:' + email.trim().toLowerCase() : 'conta:?'
+  },
+  message: { error: 'Muitas tentativas para esta conta — aguarde alguns minutos ou redefina a senha' },
+})
