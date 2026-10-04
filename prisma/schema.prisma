@@ -88,6 +88,10 @@ model Company {
   responsavel String?
   endereco    String?
   cep         String?
+  // Plano comercial (código em `plans`) e ajustes pontuais de limite combinados
+  // com o cliente (ex.: { "itensMonitorados": 30 }) — ver lib/planos.ts.
+  planCode       String   @default("TESTE") @map("plan_code")
+  quotaOverrides Json?    @map("quota_overrides")
   createdAt DateTime    @default(now()) @map("created_at")
   updatedAt DateTime    @updatedAt @map("updated_at")
 
@@ -576,4 +580,70 @@ enum WorkerStatus {
   SUCCESS
   FAILED
   PARTIAL
+}
+
+// ============================================================
+// BASE COMERCIAL (2.4) — planos, medição de IA e trilha de auditoria.
+// ============================================================
+
+// Planos e seus limites. `limits` = { itensMonitorados, usuarios, analisesIaMes };
+// null em um limite = ilimitado. Preço fica nulo até a cobrança existir.
+model SubscriptionPlan {
+  code              String   @id
+  name              String
+  description       String?  @db.Text
+  limits            Json
+  sortOrder         Int      @default(0) @map("sort_order")
+  active            Boolean  @default(true)
+  priceMonthlyCents Int?     @map("price_monthly_cents")
+  priceYearlyCents  Int?     @map("price_yearly_cents")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@map("plans")
+}
+
+// Uma linha por chamada ao modelo de IA. Sem chave estrangeira de propósito:
+// o histórico de consumo precisa sobreviver à exclusão de empresa/licitação.
+// companyId/userId = quem pediu a análise (a análise em si é compartilhada).
+model AiUsage {
+  id           String   @id @default(uuid())
+  tenderId     String?  @map("tender_id")
+  companyId    String?  @map("company_id")
+  userId       String?  @map("user_id")
+  provider     String
+  model        String
+  inputTokens  Int      @default(0) @map("input_tokens")
+  outputTokens Int      @default(0) @map("output_tokens")
+  // Estimativa em USD — só preenchida se AI_PRICE_*_PER_MTOK estiver configurado.
+  costUsd      Decimal? @map("cost_usd") @db.Decimal(12, 6)
+  durationMs   Int?     @map("duration_ms")
+  status       String   @default("OK") // OK | ERRO
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([companyId, createdAt])
+  @@index([createdAt])
+  @@map("ai_usage")
+}
+
+// Registro imutável de quem fez o quê. Sem chave estrangeira: precisa
+// sobreviver à exclusão do usuário/empresa. Nunca guarda senha nem token.
+model AuditLog {
+  id          String   @id @default(uuid())
+  actorUserId String?  @map("actor_user_id")
+  actorEmail  String?  @map("actor_email")
+  companyId   String?  @map("company_id")
+  action      String
+  entityType  String?  @map("entity_type")
+  entityId    String?  @map("entity_id")
+  metadata    Json?
+  ip          String?
+  userAgent   String?  @map("user_agent")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@index([companyId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([action])
+  @@map("audit_logs")
 }

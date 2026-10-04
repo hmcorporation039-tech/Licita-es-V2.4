@@ -20,7 +20,8 @@ import { downloadPNCPDocument, isPdf, listPNCPDocuments, selecionarDocumentos } 
 import { listNovacapDocumentos } from './novacapParser'
 import { ordenarPorPrioridade, DocumentoComTitulo } from '../lib/documentPriority'
 import { extractPdf, temCamadaDeTexto } from './pdfTextService'
-import { AnalysisRefusedError, EditalAnalyzer, EditalDocumento } from './llm/types'
+import { AnalysisRefusedError, EditalAnalyzer, EditalDocumento, ErroComUso } from './llm/types'
+import { QuemPediu, registrarUsoDeIa } from './aiUsageService'
 import { analyzeEdital as analyzeWithClaude } from './llm/claudeAnalyzer'
 import { analyzeEdital as analyzeWithGemini } from './llm/geminiAnalyzer'
 
@@ -127,7 +128,7 @@ async function baixarDocumentos(disponiveis: DocumentoDisponivel[]): Promise<Edi
   return selecionados
 }
 
-export async function runEditalAnalysis(tenderId: string): Promise<void> {
+export async function runEditalAnalysis(tenderId: string, quem?: QuemPediu): Promise<void> {
   if (!analiseHabilitada()) {
     await prisma.tenderAnalysis.upsert({
       where: { tenderId },
@@ -180,9 +181,18 @@ export async function runEditalAnalysis(tenderId: string): Promise<void> {
     const documentoNome = documentos.map((d) => d.nome).join(' · ')
 
     let resultado
+    const inicioIa = Date.now()
     try {
-      resultado = await getAnalyzer()(tender.objeto, documentos)
-    } catch (err) {
+      const outcome = await getAnalyzer()(tender.objeto, documentos)
+      resultado = outcome.resultado
+      await registrarUsoDeIa({ tenderId, quem, uso: outcome.uso, durationMs: Date.now() - inicioIa, status: 'OK' })
+    } catch (rawErr) {
+      // Falha depois da chamada ao modelo: os tokens já foram gastos e entram na medição.
+      let err = rawErr
+      if (rawErr instanceof ErroComUso) {
+        await registrarUsoDeIa({ tenderId, quem, uso: rawErr.uso, durationMs: Date.now() - inicioIa, status: 'ERRO' })
+        err = rawErr.causa
+      }
       if (err instanceof AnalysisRefusedError) {
         await prisma.tenderAnalysis.update({
           where: { tenderId },

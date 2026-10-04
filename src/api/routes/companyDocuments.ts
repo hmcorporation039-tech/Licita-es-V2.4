@@ -7,6 +7,7 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import { prisma } from '../../services/tenderService'
+import { registrarAuditoria } from '../../services/auditService'
 import { asyncHandler, ApiError } from '../asyncHandler'
 
 export const companyDocumentsRouter = Router()
@@ -35,6 +36,12 @@ companyDocumentsRouter.post(
     const doc = await prisma.companyDocument.create({
       data: { ...body, companyId: req.companyId!, userId: req.userId! },
     })
+    await registrarAuditoria(req, {
+      action: 'DOCUMENTO_CRIADO',
+      entityType: 'documento',
+      entityId: doc.id,
+      metadata: { nome: doc.nome, tipo: doc.tipo },
+    })
     res.status(201).json(doc)
   })
 )
@@ -57,6 +64,12 @@ companyDocumentsRouter.patch(
 
     const data = updateSchema.parse(req.body)
     const updated = await prisma.companyDocument.update({ where: { id: req.params.id }, data })
+    await registrarAuditoria(req, {
+      action: 'DOCUMENTO_ALTERADO',
+      entityType: 'documento',
+      entityId: updated.id,
+      metadata: { campos: Object.keys(data) },
+    })
     res.json(updated)
   })
 )
@@ -64,9 +77,15 @@ companyDocumentsRouter.patch(
 companyDocumentsRouter.delete(
   '/:id',
   asyncHandler(async (req, res) => {
-    await assertOwnership(req.params.id, req.companyId!)
+    const doc = await assertOwnership(req.params.id, req.companyId!)
 
     await prisma.companyDocument.delete({ where: { id: req.params.id } })
+    await registrarAuditoria(req, {
+      action: 'DOCUMENTO_REMOVIDO',
+      entityType: 'documento',
+      entityId: doc.id,
+      metadata: { nome: doc.nome, tipo: doc.tipo },
+    })
     res.status(204).send()
   })
 )

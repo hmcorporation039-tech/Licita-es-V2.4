@@ -10,6 +10,7 @@ import helmet from 'helmet'
 import { ZodError } from 'zod'
 import { authRouter } from './routes/auth'
 import { adminRouter } from './routes/admin'
+import { adminGestaoRouter } from './routes/adminGestao'
 import { companyRouter } from './routes/company'
 import { monitoredItemsRouter } from './routes/monitoredItems'
 import { tendersRouter } from './routes/tenders'
@@ -73,6 +74,7 @@ app.use('/api', globalLimiter)
 // (ver /api/admin/users), não existe mais autocadastro aberto.
 app.use('/api/auth', authRouter)
 app.use('/api/admin', adminRouter)
+app.use('/api/admin', adminGestaoRouter)
 
 // Todo o resto da plataforma exige sessão válida — a identidade do
 // usuário vem do token (req.userId), não de um campo enviado pelo cliente.
@@ -92,7 +94,7 @@ const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     return
   }
   if (err instanceof ApiError) {
-    res.status(err.status).json({ error: err.message })
+    res.status(err.status).json({ error: err.message, ...err.extra })
     return
   }
   // express.json() joga um erro aqui (type: entity.parse.failed) quando o
@@ -111,7 +113,11 @@ app.use(errorHandler)
 // Railway injeta PORT automaticamente pra serviços com domínio público —
 // API_PORT continua valendo pra rodar local sem depender dessa variável.
 const PORT = Number(process.env.PORT ?? process.env.API_PORT ?? 3333)
-app.listen(PORT, () => {
+
+// Os testes de integração importam o app e o sobem numa porta própria; sem
+// esta guarda, importar o módulo já abriria a porta e a importação automática.
+export { app }
+if (process.env.NODE_ENV !== 'test') app.listen(PORT, () => {
   console.log(`🌐 API rodando em http://localhost:${PORT}`)
   // Popula/renova UASGs e catálogo CATMAT/CATSER em segundo plano (ver
   // catalogoBootstrap.ts). Só liga em produção ou com AUTO_IMPORT_CATALOGOS=true.

@@ -5,12 +5,20 @@
 // esses testes acusem antes da coleta em produção quebrar silenciosamente.
 // ============================================================
 
-import { describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { parseNovacapListagem } from '../src/services/novacapParser'
 import { parseFiegListagem, extrairTotalPaginas } from '../src/services/fiegParser'
 import { parseSescGoListagem } from '../src/services/sescGoParser'
 
 describe('parseNovacapListagem', () => {
+  // O parser descarta licitações com sessão já passada; a do exemplo é de 02/10/2026.
+  // Sem fixar o relógio, o teste quebra no dia seguinte (já aconteceu).
+  beforeAll(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-09-30T12:00:00Z'))
+  })
+  afterAll(() => vi.useRealTimers())
+
   const html = `
     <table id="tblicita">
       <tbody>

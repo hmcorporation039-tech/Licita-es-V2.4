@@ -113,7 +113,20 @@ export type EditalDocumento =
   | { nome: string; tipo: 'texto'; texto: string }
   | { nome: string; tipo: 'pdf'; data: Buffer }
 
-export type EditalAnalyzer = (objeto: string, documentos: EditalDocumento[]) => Promise<EditalAnalysisResult>
+// Consumo da chamada ao modelo — base da medição de custo por empresa.
+export interface UsoDeIa {
+  provider: string
+  model: string
+  inputTokens: number
+  outputTokens: number
+}
+
+export interface EditalAnalysisOutcome {
+  resultado: EditalAnalysisResult
+  uso: UsoDeIa
+}
+
+export type EditalAnalyzer = (objeto: string, documentos: EditalDocumento[]) => Promise<EditalAnalysisOutcome>
 
 export function buildInstrucao(objeto: string, documentos: EditalDocumento[]): string {
   const lista = documentos.map((d, i) => `${i + 1}. ${d.nome}`).join('\n')
@@ -181,5 +194,17 @@ export function validarResultadoAnalise(bruto: unknown): EditalAnalysisResult {
 export class AnalysisRefusedError extends Error {
   constructor() {
     super('A análise foi recusada pelos filtros de segurança do modelo.')
+  }
+}
+
+// Falha DEPOIS da chamada ao modelo (recusa, resposta cortada, JSON inválido):
+// os tokens já foram gastos e precisam entrar na medição mesmo assim.
+export class ErroComUso extends Error {
+  uso: UsoDeIa
+  causa: unknown
+  constructor(causa: unknown, uso: UsoDeIa) {
+    super(causa instanceof Error ? causa.message : String(causa))
+    this.causa = causa
+    this.uso = uso
   }
 }

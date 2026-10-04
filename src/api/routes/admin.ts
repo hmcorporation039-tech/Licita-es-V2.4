@@ -13,6 +13,7 @@ import { senhaSchema } from '../passwordPolicy'
 import { asyncHandler, ApiError } from '../asyncHandler'
 import { requireAdmin, requireAuth } from '../authMiddleware'
 import { escritaSensivelLimiter } from '../rateLimit'
+import { registrarAuditoria } from '../../services/auditService'
 import {
   importacaoEmAndamento,
   statusImportacoes,
@@ -49,6 +50,8 @@ const createUserSchema = z.object({
   password: senhaSchema.optional(), // se ausente, gera uma temporária
   isAdmin: z.boolean().default(false),
   diasValidade: z.number().int().positive().nullable().optional(), // null/ausente = acesso sem prazo
+  // Plano da empresa criada para esta conta (ver tabela `plans`). Ausente = TESTE.
+  planCode: z.string().min(1).max(40).optional(),
 })
 
 adminRouter.post(
@@ -63,6 +66,10 @@ adminRouter.post(
 
     const tempPassword = body.password ?? generateTempPassword()
 
+    if (body.planCode && !(await prisma.subscriptionPlan.findUnique({ where: { code: body.planCode } }))) {
+      throw new ApiError(400, `Plano "${body.planCode}" não existe`)
+    }
+
     const user = await prisma.user.create({
       data: {
         email,
@@ -74,8 +81,16 @@ adminRouter.post(
         // cadastra sozinho ganha uma individual (PESSOA_FISICA), sem
         // precisar de CNPJ. Convidar alguém para uma empresa já existente
         // é a Etapa 1b.
-        company: { create: { name: body.name ?? body.email } },
+        company: { create: { name: body.name ?? body.email, planCode: body.planCode ?? 'TESTE' } },
       },
+    })
+
+    await registrarAuditoria(req, {
+      action: 'USUARIO_CRIADO',
+      entityType: 'usuario',
+      entityId: user.id,
+      companyId: user.companyId,
+      metadata: { email: user.email, isAdmin: user.isAdmin, planCode: body.planCode ?? 'TESTE' },
     })
 
     res.status(201).json({
@@ -158,6 +173,13 @@ adminRouter.patch(
     if (body.diasValidade !== undefined) data.accessExpiresAt = computeExpiresAt(body.diasValidade)
 
     const updated = await prisma.user.update({ where: { id: req.params.id }, data })
+    await registrarAuditoria(req, {
+      action: 'USUARIO_ALTERADO',
+      entityType: 'usuario',
+      entityId: updated.id,
+      companyId: updated.companyId,
+      metadata: { email: updated.email, active: body.active, isAdmin: body.isAdmin, diasValidade: body.diasValidade },
+    })
     res.json({
       id: updated.id,
       email: updated.email,
@@ -189,6 +211,14 @@ adminRouter.post(
     const updated = await prisma.user.update({
       where: { id: req.params.id },
       data: { passwordHash: await hashPassword(newPassword), tokenVersion: { increment: 1 } },
+    })
+
+    await registrarAuditoria(req, {
+      action: 'SENHA_REDEFINIDA_ADMIN',
+      entityType: 'usuario',
+      entityId: updated.id,
+      companyId: updated.companyId,
+      metadata: { email: updated.email },
     })
 
     res.json({

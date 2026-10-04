@@ -10,6 +10,8 @@ import { findMunicipioByNomeUf } from '../../lib/geoService'
 import { notificadorQueue } from '../../queues'
 import { enfileirarSemTravar } from '../../queues/enfileirar'
 import { asyncHandler, ApiError } from '../asyncHandler'
+import { exigirCotaDaRequisicao } from '../cotas'
+import { registrarAuditoria } from '../../services/auditService'
 
 export const monitoredItemsRouter = Router()
 
@@ -95,8 +97,16 @@ monitoredItemsRouter.post(
       origemLng = geo.lng
     }
 
+    await exigirCotaDaRequisicao(req, 'itensMonitorados')
+
     const item = await prisma.monitoredItem.create({
       data: { ...body, companyId: req.companyId!, userId: req.userId!, origemLat, origemLng },
+    })
+    await registrarAuditoria(req, {
+      action: 'ITEM_MONITORADO_CRIADO',
+      entityType: 'item-monitorado',
+      entityId: item.id,
+      metadata: { nome: item.name },
     })
     res.status(201).json(item)
   })
@@ -149,6 +159,12 @@ monitoredItemsRouter.patch(
       where: { id: req.params.id },
       data: { ...data, origemLat, origemLng },
     })
+    await registrarAuditoria(req, {
+      action: 'ITEM_MONITORADO_ALTERADO',
+      entityType: 'item-monitorado',
+      entityId: updated.id,
+      metadata: { nome: updated.name, campos: Object.keys(data) },
+    })
     res.json(updated)
   })
 )
@@ -156,9 +172,15 @@ monitoredItemsRouter.patch(
 monitoredItemsRouter.delete(
   '/:id',
   asyncHandler(async (req, res) => {
-    await assertOwnership(req.params.id, req.companyId!)
+    const item = await assertOwnership(req.params.id, req.companyId!)
 
     await prisma.monitoredItem.delete({ where: { id: req.params.id } })
+    await registrarAuditoria(req, {
+      action: 'ITEM_MONITORADO_REMOVIDO',
+      entityType: 'item-monitorado',
+      entityId: item.id,
+      metadata: { nome: item.name },
+    })
     res.status(204).send()
   })
 )

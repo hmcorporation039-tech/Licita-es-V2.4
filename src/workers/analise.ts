@@ -14,7 +14,7 @@ export function startAnaliseWorker() {
   const worker = new Worker<AnaliseJobPayload>(
     'analise',
     async (job: Job<AnaliseJobPayload>) => {
-      await runEditalAnalysis(job.data.tenderId)
+      await runEditalAnalysis(job.data.tenderId, { companyId: job.data.companyId, userId: job.data.userId })
     },
     {
       connection: redisConnection,

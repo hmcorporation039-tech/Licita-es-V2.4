@@ -218,6 +218,10 @@ export interface MatcherJobPayload {
 
 export interface AnaliseJobPayload {
   tenderId: string
+  // Quem pediu — a análise é compartilhada, mas o consumo é atribuído a quem a
+  // disparou (cota e custo por empresa). Ausente em jobs antigos.
+  companyId?: string
+  userId?: string
 }
 
 // Jobs de match antigos, já enfileirados no Redis, não têm o campo `tipo` —

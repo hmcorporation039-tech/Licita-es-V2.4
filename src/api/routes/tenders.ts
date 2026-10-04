@@ -2,7 +2,7 @@
 // api/routes/tenders.ts — Feed público de licitações coletadas
 // ============================================================
 
-import { Router } from 'express'
+import { Router, Request } from 'express'
 import { z } from 'zod'
 import { prisma, garantirItensPNCP } from '../../services/tenderService'
 import { asyncHandler, ApiError } from '../asyncHandler'
@@ -14,6 +14,9 @@ import { enfileirarSemTravar } from '../../queues/enfileirar'
 import { MODALIDADE_VALUES } from './monitoredItems'
 import { normalize } from '../../lib/geoService'
 import { buildAutoMilestones, PlanMilestone } from '../../lib/participationPlanTemplate'
+import { calcularPrazosDaSessao, lerDataTexto } from '../../lib/diasUteis'
+import { exigirCotaDaRequisicao } from '../cotas'
+import { registrarAuditoria } from '../../services/auditService'
 
 export const tendersRouter = Router()
 
@@ -280,6 +283,10 @@ tendersRouter.post(
       }
     }
 
+    // Só chega aqui quem vai de fato gastar IA (análise pronta ou em andamento
+    // já voltou acima, de graça — a análise é compartilhada entre as empresas).
+    await exigirCotaDaRequisicao(req, 'analisesIaMes')
+
     const pendente = await prisma.tenderAnalysis.upsert({
       where: { tenderId: req.params.id },
       update: { status: 'PENDING', errorMsg: null },
@@ -289,14 +296,54 @@ tendersRouter.post(
     const enfileirou = await enfileirarSemTravar(
       analiseQueue,
       'analisar-edital',
-      { tenderId: req.params.id },
+      { tenderId: req.params.id, companyId: req.companyId!, userId: req.userId! },
       'Análise'
     )
     if (!enfileirou) {
       throw new ApiError(503, 'A fila de análise está indisponível no momento — tente de novo em alguns minutos')
     }
 
+    await registrarAuditoria(req, {
+      action: 'ANALISE_SOLICITADA',
+      entityType: 'tender',
+      entityId: req.params.id,
+      metadata: { forcada: force },
+    })
+
     res.status(202).json(pendente)
+  })
+)
+
+// Prazos legais da sessão em DIAS ÚTEIS (art. 164 da Lei 14.133: esclarecimento
+// e impugnação até 3 dias úteis antes da abertura). Usa a data de abertura da
+// licitação e, na falta dela, a data da sessão lida pela IA. Considera só os
+// feriados nacionais — o prazo oficial é sempre o do edital.
+tendersRouter.get(
+  '/:id/prazos',
+  asyncHandler(async (req, res) => {
+    const tender = await prisma.tender.findUnique({
+      where: { id: req.params.id },
+      select: { aberturaAt: true, analysis: { select: { status: true, resultado: true } } },
+    })
+    if (!tender) throw new ApiError(404, 'Licitação não encontrada')
+
+    let sessao: Date | null = tender.aberturaAt
+    let origem: 'abertura' | 'analise-ia' = 'abertura'
+    if (!sessao && tender.analysis?.status === 'DONE' && tender.analysis.resultado) {
+      sessao = lerDataTexto((tender.analysis.resultado as unknown as { dataSessao?: string }).dataSessao)
+      origem = 'analise-ia'
+    }
+    if (!sessao) {
+      res.json({ disponivel: false, motivo: 'A licitação não informa a data da sessão.' })
+      return
+    }
+
+    res.json({
+      disponivel: true,
+      origem,
+      ...calcularPrazosDaSessao(sessao),
+      aviso: 'Estimativa com feriados nacionais; confira o prazo oficial no edital.',
+    })
   })
 )
 
@@ -305,6 +352,18 @@ export const PARTICIPATION_STATUS_VALUES = ['AVALIANDO', 'VOU_PARTICIPAR', 'NAO_
 interface PlanState {
   doneIds: string[]
   custom: PlanMilestone[]
+}
+
+// A decisão de participar (ou não) é o "portão" do fluxo: fica registrada com
+// quem decidiu, quando e de qual estado para qual. Só grava se de fato mudou.
+async function auditarMudancaDeStatus(req: Request, tenderId: string, de: string | null, para: string) {
+  if ((de ?? 'AVALIANDO') === para) return
+  await registrarAuditoria(req, {
+    action: 'PARTICIPACAO_STATUS',
+    entityType: 'tender',
+    entityId: tenderId,
+    metadata: { de: de ?? 'AVALIANDO', para },
+  })
 }
 
 async function buildPlanResponse(tenderId: string, status: string, state: PlanState) {
@@ -378,6 +437,11 @@ tendersRouter.put(
       custom: milestones.filter((m) => m.custom),
     }
 
+    const antes = await prisma.tenderParticipationPlan.findUnique({
+      where: { companyId_tenderId: { companyId, tenderId: req.params.id } },
+      select: { status: true },
+    })
+
     await prisma.tenderParticipationPlan.upsert({
       where: { companyId_tenderId: { companyId, tenderId: req.params.id } },
       update: { status, state: state as unknown as object },
@@ -390,6 +454,7 @@ tendersRouter.put(
       },
     })
 
+    await auditarMudancaDeStatus(req, req.params.id, antes?.status ?? null, status)
     res.json(await buildPlanResponse(req.params.id, status, state))
   })
 )
@@ -427,6 +492,7 @@ tendersRouter.patch(
       },
     })
 
+    await auditarMudancaDeStatus(req, req.params.id, existing?.status ?? null, status)
     res.json(await buildPlanResponse(req.params.id, status, state))
   })
 )

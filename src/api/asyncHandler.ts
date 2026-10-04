@@ -14,8 +14,12 @@ export function asyncHandler(
 
 export class ApiError extends Error {
   status: number
-  constructor(status: number, message: string) {
+  // Campos extras devolvidos junto com a mensagem (ex.: code, limite) para o
+  // front poder reagir sem interpretar texto.
+  extra?: Record<string, unknown>
+  constructor(status: number, message: string, extra?: Record<string, unknown>) {
     super(message)
     this.status = status
+    this.extra = extra
   }
 }
