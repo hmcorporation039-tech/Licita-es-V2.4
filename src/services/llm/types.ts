@@ -23,6 +23,12 @@ export interface EditalAnalysisResult {
   adesaoAta: string
   prazoImpugnacao: string
   prazoEsclarecimento: string
+  // Campos que alimentam os alertas legais fixos (lib/alertasLegais.ts): o texto do
+  // edital sobre cada exigência, com o percentual/valor exatamente como escrito.
+  garantiaProposta: string
+  garantiaContratual: string
+  patrimonioLiquidoMinimo: string
+  visitaTecnica: string
   exigenciasTecnicas: string[]
   documentosExigidos: string[]
   riscos: EditalAnalysisRisco[]
@@ -44,6 +50,10 @@ export const ANALYSIS_SCHEMA = {
     adesaoAta: { type: 'string' },
     prazoImpugnacao: { type: 'string' },
     prazoEsclarecimento: { type: 'string' },
+    garantiaProposta: { type: 'string' },
+    garantiaContratual: { type: 'string' },
+    patrimonioLiquidoMinimo: { type: 'string' },
+    visitaTecnica: { type: 'string' },
     exigenciasTecnicas: { type: 'array', items: { type: 'string' } },
     documentosExigidos: { type: 'array', items: { type: 'string' } },
     riscos: {
@@ -72,6 +82,10 @@ export const ANALYSIS_SCHEMA = {
     'adesaoAta',
     'prazoImpugnacao',
     'prazoEsclarecimento',
+    'garantiaProposta',
+    'garantiaContratual',
+    'patrimonioLiquidoMinimo',
+    'visitaTecnica',
     'exigenciasTecnicas',
     'documentosExigidos',
     'riscos',
@@ -92,6 +106,10 @@ Extraia (para qualquer campo não encontrado, escreva "não especificado no edit
 - adesaoAta: se permite adesão à ata de registro de preços ("carona"). Responda "Sim"/"Não"/"Não se aplica" e detalhe se houver
 - prazoImpugnacao: prazo e forma de impugnar o edital (ex: "até 3 dias úteis antes da abertura da sessão" ou uma data específica, se o edital indicar uma). Escreva "não especificado no edital" se não encontrar.
 - prazoEsclarecimento: prazo e forma de pedir esclarecimentos sobre o edital (mesma lógica do prazoImpugnacao — pode ser uma regra relativa à data da sessão, ou uma data absoluta). Escreva "não especificado no edital" se não encontrar.
+- garantiaProposta: o que o edital diz sobre garantia de proposta. Transcreva o trecho com o percentual ou valor exigido exatamente como está escrito (ex: "1% do valor estimado da contratação"). Se o edital não exige, escreva "não exigida".
+- garantiaContratual: o que o edital diz sobre garantia contratual (garantia de execução do contrato), com o percentual ou valor exatamente como escrito (ex: "5% do valor do contrato"). Se não exige, escreva "não exigida".
+- patrimonioLiquidoMinimo: exigência de capital mínimo ou de patrimônio líquido mínimo na habilitação econômico-financeira, com o percentual ou valor exatamente como escrito (ex: "10% do valor estimado" ou "R$ 500.000,00"). Se não exige, escreva "não exigido".
+- visitaTecnica: o que o edital diz sobre visita técnica ou vistoria: se é obrigatória ou facultativa e se admite declaração do licitante no lugar da visita. Transcreva o trecho. Se não menciona, escreva "não exigida".
 - exigenciasTecnicas: lista de exigências de qualificação técnica (atestados, registros em conselho de classe, etc.)
 - documentosExigidos: documentos de habilitação exigidos NESTE edital além do básico padrão presente em praticamente toda licitação da Lei 14.133/2021. NÃO liste nenhum destes, mesmo que o edital os cite: contrato social, cartão CNPJ, certidões negativas federais/estaduais/municipais, CNDT, certidão de regularidade do FGTS, RG/CPF ou procuração de sócios/representantes, certidão negativa de falência, e as declarações-modelo que acompanham como anexo quase todo edital — não emprego de menor, inexistência de fato impeditivo à habilitação (idoneidade), cumprimento dos requisitos de habilitação, elaboração independente de proposta, inexistência de parentesco/nepotismo com agente público, enquadramento como ME/EPP. Liste só o que é ESPECÍFICO deste edital: garantia de proposta, atestado de capacidade técnica com critério ou quantitativo definido, registro em conselho de classe, comprovação de vínculo com responsável técnico, ART/RRT, vistoria obrigatória, índices contábeis com valor mínimo fixado pelo edital, planilha de custos em formato próprio, compatibilidade com convenção coletiva específica, etc.
 - riscos: pontos de atenção reais encontrados no texto, no estilo de auditoria de concorrência — exemplos do que procurar: exigência de atestado técnico com critérios muito restritivos, planilha de custos com prazo de preenchimento apertado, exigência de visita técnica obrigatória com prazo curto, cláusulas de habilitação que podem restringir a competitividade indevidamente, valores ou prazos incomuns, exigências de qualificação econômico-financeira desproporcionais ao objeto. Marque severidade "alta" só para riscos que podem de fato inabilitar ou prejudicar uma proposta.
@@ -183,6 +201,10 @@ export function validarResultadoAnalise(bruto: unknown): EditalAnalysisResult {
     adesaoAta: texto(o.adesaoAta),
     prazoImpugnacao: texto(o.prazoImpugnacao),
     prazoEsclarecimento: texto(o.prazoEsclarecimento),
+    garantiaProposta: texto(o.garantiaProposta),
+    garantiaContratual: texto(o.garantiaContratual),
+    patrimonioLiquidoMinimo: texto(o.patrimonioLiquidoMinimo),
+    visitaTecnica: texto(o.visitaTecnica),
     exigenciasTecnicas: listaTexto(o.exigenciasTecnicas),
     documentosExigidos: listaTexto(o.documentosExigidos),
     riscos,

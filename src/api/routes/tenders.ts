@@ -17,6 +17,9 @@ import { buildAutoMilestones, PlanMilestone } from '../../lib/participationPlanT
 import { calcularPrazosDaSessao, lerDataTexto } from '../../lib/diasUteis'
 import { exigirCotaDaRequisicao } from '../cotas'
 import { registrarAuditoria } from '../../services/auditService'
+import { avaliarHabilitacao } from '../../lib/habilitacao'
+import { calcularAlertasLegais, lerValoresEmReais } from '../../lib/alertasLegais'
+import type { EditalAnalysisResult } from '../../services/llm/types'
 
 export const tendersRouter = Router()
 
@@ -345,6 +348,67 @@ tendersRouter.get(
       origem,
       ...calcularPrazosDaSessao(sessao),
       aviso: 'Estimativa com feriados nacionais; confira o prazo oficial no edital.',
+    })
+  })
+)
+
+// Painel do "Fiscal": semáforo da habilitação (o que o edital pede × o cofre da
+// empresa, olhando a validade NA DATA DA SESSÃO) e alertas legais fixos sobre
+// exigências que parecem passar dos limites da Lei 14.133. Ambos são apoio à
+// decisão, não parecer jurídico. Os alertas só existem para análises feitas
+// depois que a IA passou a extrair esses campos.
+tendersRouter.get(
+  '/:id/habilitacao',
+  asyncHandler(async (req, res) => {
+    const tender = await prisma.tender.findUnique({
+      where: { id: req.params.id },
+      select: { aberturaAt: true, valorEstimado: true, analysis: { select: { status: true, resultado: true } } },
+    })
+    if (!tender) throw new ApiError(404, 'Licitação não encontrada')
+
+    const analisada = tender.analysis?.status === 'DONE' && tender.analysis.resultado != null
+    const analise = analisada ? (tender.analysis!.resultado as unknown as Partial<EditalAnalysisResult>) : null
+
+    const sessao = tender.aberturaAt ?? (analise ? lerDataTexto(analise.dataSessao) : null)
+
+    const docs = await prisma.companyDocument.findMany({
+      where: { companyId: req.companyId! },
+      select: { id: true, nome: true, tipo: true, dataValidade: true },
+    })
+
+    const habilitacao = avaliarHabilitacao({
+      checklist: buildChecklistTemplate(),
+      documentos: docs,
+      documentosExigidosIA: analise ? (analise.documentosExigidos ?? []) : null,
+      sessao,
+    })
+
+    // Valor estimado: o cadastrado na licitação; na falta dele, o que a IA leu do edital.
+    const valorEstimado =
+      tender.valorEstimado != null ? Number(tender.valorEstimado) : (lerValoresEmReais(analise?.valorEstimado ?? '')[0] ?? null)
+
+    // Análises antigas (anteriores a esta função) não trazem os campos que alimentam os alertas.
+    const alertasDisponiveis = analise !== null && typeof analise.garantiaProposta === 'string'
+    const alertas = alertasDisponiveis
+      ? calcularAlertasLegais({
+          garantiaProposta: analise.garantiaProposta,
+          garantiaContratual: analise.garantiaContratual,
+          patrimonioLiquidoMinimo: analise.patrimonioLiquidoMinimo,
+          visitaTecnica: analise.visitaTecnica,
+          valorEstimado,
+        })
+      : []
+
+    res.json({
+      analise: { status: tender.analysis?.status ?? null, feita: analisada },
+      habilitacao,
+      alertas: {
+        disponivel: alertasDisponiveis,
+        itens: alertas,
+        aviso:
+          'Indícios para análise jurídica, não conclusões. O texto extraído pode estar incompleto e a lei admite exceções; valide com advogado antes de impugnar.',
+      },
+      prazos: sessao ? calcularPrazosDaSessao(sessao) : null,
     })
   })
 )
