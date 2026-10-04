@@ -25,6 +25,8 @@ const ROTULO_CAMPO: Record<string, string> = {
   riscos: 'Pontos de atenção',
 }
 
+const quando = (iso: string) => new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+
 const NOME_DO_MODELO: Record<string, string> = { gemini: 'Gemini', claude: 'Claude' }
 const nome = (p: string) => NOME_DO_MODELO[p] ?? p
 
@@ -42,7 +44,7 @@ export default function RelatorioDaRevisao({ revisao }: { revisao: RevisaoDaAnal
   if (revisao.status === 'NAO_EXECUTADA') {
     return (
       <p className="rounded border border-slate-200 bg-slate-50 p-2 text-xs text-slate-600">
-        Análise feita por {revisao.analista ? nome(revisao.analista.provider) : 'IA'}, <strong>sem revisão</strong>.
+        Análise feita por {revisao.analista ? nome(revisao.analista.provider) : 'IA'}, <strong>sem revisão</strong>{revisao.em ? ' (' + quando(revisao.em) + ')' : ''}.
         {revisao.motivo ? ` ${revisao.motivo}` : ''}
       </p>
     )
@@ -52,6 +54,7 @@ export default function RelatorioDaRevisao({ revisao }: { revisao: RevisaoDaAnal
     return (
       <p className="rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900">
         ⚠ Esta análise <strong>não foi revisada</strong>: {revisao.motivo ?? 'a revisão falhou.'} Trate os dados com mais cautela e confira o edital.
+        {revisao.em && <span className="mt-1 block text-[11px] text-amber-800">Revisão tentada em {quando(revisao.em)}.</span>}
         {revisao.detalheTecnico && <span className="mt-1 block font-mono text-[11px] text-amber-800">Detalhe técnico (admin): {revisao.detalheTecnico}</span>}
       </p>
     )

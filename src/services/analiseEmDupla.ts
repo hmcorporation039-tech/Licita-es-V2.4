@@ -16,6 +16,7 @@ import { DocumentoParaVerificar, ExigenciaVerificada, verificarExigencias } from
 import type { EditalAnalysisResult, EditalAnalyzer, EditalDocumento, UsoDeIa } from './llm/types'
 import { ErroComUso } from './llm/types'
 import type { EditalReviewer } from './llm/revisao'
+import { pareceErroDeChave, textoDoDiagnostico } from '../lib/diagnosticoDeChave'
 
 export type ProvedorDeIa = 'gemini' | 'claude'
 export type ModoDeIa = 'dupla' | 'gemini' | 'claude'
@@ -82,6 +83,8 @@ export interface RevisaoRegistrada {
   revisor: { provider: string; model: string } | null
   // Por que não houve revisão (status FALHOU ou NAO_EXECUTADA).
   motivo: string | null
+  // Quando a revisão foi tentada (ISO). Mostra se o que se vê é uma análise nova ou antiga.
+  em: string
   // Mensagem técnica do erro (só o administrador vê; nunca vai ao usuário).
   detalheTecnico: string | null
 }
@@ -111,6 +114,8 @@ export async function executarPipeline(args: {
   analista: EditalAnalyzer
   revisor: EditalReviewer | null
   agora?: () => number
+  // Para teste: o ambiente de onde sai o diagnóstico das chaves (padrão: process.env).
+  env?: NodeJS.ProcessEnv
 }): Promise<ResultadoDoPipeline> {
   const agora = args.agora ?? Date.now
   const usos: EtapaDeUso[] = []
@@ -127,13 +132,13 @@ export async function executarPipeline(args: {
   const finalizar = (
     resultado: EditalAnalysisResult,
     rascunho: EditalAnalysisResult | null,
-    revisao: RevisaoRegistrada,
+    revisao: Omit<RevisaoRegistrada, 'em'>,
     pipeline: ModoDeIa
   ): ResultadoDoPipeline => ({
     // A conferência de literalidade roda sempre, sobre a versão FINAL.
     resultado: { ...resultado, matrizExigencias: verificarExigencias(resultado.matrizExigencias, docs) },
     rascunho,
-    revisao,
+    revisao: { ...revisao, em: new Date(agora()).toISOString() },
     pipeline,
     usos,
   })
@@ -195,9 +200,16 @@ export async function executarPipeline(args: {
         analista: analistaInfo,
         revisor: err instanceof ErroComUso ? { provider: err.uso.provider, model: err.uso.model } : null,
         motivo: 'A revisão não pôde ser concluída: esta análise NÃO foi revisada.',
-        detalheTecnico: mensagemDoErro(err).slice(0, 500),
+        detalheTecnico: detalheDoErro(err, args.env),
       },
       'dupla'
     )
   }
+}
+
+// Detalhe técnico para o ADMIN. Quando o erro é de chave (401/403), junta o diagnóstico do
+// FORMATO das chaves que o processo enxerga (tamanho, prefixo, espaços, aspas), sem expô-las.
+function detalheDoErro(err: unknown, env?: NodeJS.ProcessEnv): string {
+  const msg = mensagemDoErro(err).slice(0, 400)
+  return pareceErroDeChave(msg) ? `${msg} || Diagnóstico das chaves no servidor: ${textoDoDiagnostico(env)}` : msg
 }
