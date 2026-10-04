@@ -14,8 +14,20 @@ import { senhaSchema } from '../passwordPolicy'
 import { asyncHandler, ApiError } from '../asyncHandler'
 import { requireCompanyOwner } from '../authMiddleware'
 import { escritaSensivelLimiter } from '../rateLimit'
+import { exigirCotaDaRequisicao } from '../cotas'
+import { registrarAuditoria } from '../../services/auditService'
+import { resumoDeCotas } from '../../services/quotaService'
 
 export const companyRouter = Router()
+
+// Plano da empresa e quanto dele já foi usado (itens, usuários, análises de IA
+// no mês) — alimenta os avisos de limite na tela.
+companyRouter.get(
+  '/usage',
+  asyncHandler(async (req, res) => {
+    res.json(await resumoDeCotas(req.companyId!))
+  })
+)
 
 companyRouter.get(
   '/',
@@ -51,6 +63,12 @@ companyRouter.patch(
   asyncHandler(async (req, res) => {
     const data = updateCompanySchema.parse(req.body)
     const updated = await prisma.company.update({ where: { id: req.companyId! }, data })
+    await registrarAuditoria(req, {
+      action: 'EMPRESA_ALTERADA',
+      entityType: 'empresa',
+      entityId: updated.id,
+      metadata: { campos: Object.keys(data) },
+    })
     res.json(updated)
   })
 )
@@ -77,6 +95,8 @@ companyRouter.post(
       throw new ApiError(409, 'Não foi possível convidar este e-mail. Fale com o administrador.')
     }
 
+    await exigirCotaDaRequisicao(req, 'usuarios')
+
     const tempPassword = body.password ?? generateTempPassword()
 
     // Membro novo herda o prazo de acesso da empresa (accessExpiresAt do dono),
@@ -96,6 +116,13 @@ companyRouter.post(
         companyRole: 'MEMBER',
         accessExpiresAt: owner?.accessExpiresAt ?? null,
       },
+    })
+
+    await registrarAuditoria(req, {
+      action: 'MEMBRO_CRIADO',
+      entityType: 'usuario',
+      entityId: member.id,
+      metadata: { email: member.email },
     })
 
     res.status(201).json({
@@ -156,7 +183,16 @@ companyRouter.patch(
       if (!body.active) data.tokenVersion = { increment: 1 }
     }
 
+    // Reativar um membro ocupa uma vaga do plano, como convidar um novo.
+    if (body.active === true && !membro.active) await exigirCotaDaRequisicao(req, 'usuarios')
+
     const updated = await prisma.user.update({ where: { id: membro.id }, data })
+    await registrarAuditoria(req, {
+      action: 'MEMBRO_ALTERADO',
+      entityType: 'usuario',
+      entityId: membro.id,
+      metadata: { email: membro.email, companyRole: body.companyRole, active: body.active },
+    })
     res.json({ id: updated.id, email: updated.email, companyRole: updated.companyRole, active: updated.active })
   })
 )

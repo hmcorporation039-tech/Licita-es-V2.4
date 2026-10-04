@@ -15,6 +15,7 @@ import {
 import { senhaSchema } from '../passwordPolicy'
 import { asyncHandler, ApiError } from '../asyncHandler'
 import { requireAuth } from '../authMiddleware'
+import { registrarAuditoria } from '../../services/auditService'
 import { loginLimiter, changePasswordLimiter } from '../rateLimit'
 
 export const authRouter = Router()
@@ -43,12 +44,37 @@ authRouter.post(
       password,
       user && user.active ? user.passwordHash : null
     )
-    if (!user || !user.active || !senhaConfere) throw invalid()
+    if (!user || !user.active || !senhaConfere) {
+      // O e-mail só é registrado quando a conta existe: o campo digitado errado
+      // costuma conter outra coisa (até uma senha colada), que não deve ir para o log.
+      await registrarAuditoria(
+        req,
+        {
+          action: 'LOGIN_FALHA',
+          entityType: 'usuario',
+          entityId: user?.id,
+          companyId: user?.companyId ?? null,
+          metadata: { motivo: !user ? 'conta-desconhecida' : !user.active ? 'conta-inativa' : 'senha-incorreta' },
+        },
+        { userId: user?.id ?? null, email: user?.email ?? null }
+      )
+      throw invalid()
+    }
     if (user.accessExpiresAt && user.accessExpiresAt.getTime() < Date.now()) {
+      await registrarAuditoria(
+        req,
+        { action: 'LOGIN_FALHA', entityType: 'usuario', entityId: user.id, companyId: user.companyId, metadata: { motivo: 'acesso-expirado' } },
+        { userId: user.id, email: user.email }
+      )
       throw new ApiError(403, 'O acesso desta conta expirou — fale com o administrador')
     }
 
     const token = signSessionToken(user.id, user.tokenVersion)
+    await registrarAuditoria(
+      req,
+      { action: 'LOGIN_OK', entityType: 'usuario', entityId: user.id, companyId: user.companyId },
+      { userId: user.id, email: user.email }
+    )
     res.json({
       token,
       user: { id: user.id, email: user.email, name: user.name, isAdmin: user.isAdmin },
@@ -80,6 +106,7 @@ authRouter.post(
       data: { passwordHash: await hashPassword(newPassword), tokenVersion: { increment: 1 } },
     })
 
+    await registrarAuditoria(req, { action: 'SENHA_ALTERADA', entityType: 'usuario', entityId: user.id })
     res.json({ token: signSessionToken(atualizado.id, atualizado.tokenVersion) })
   })
 )
@@ -96,6 +123,7 @@ authRouter.post(
       where: { id: req.userId! },
       data: { tokenVersion: { increment: 1 } },
     })
+    await registrarAuditoria(req, { action: 'LOGOUT', entityType: 'usuario', entityId: req.userId })
     res.status(204).end()
   })
 )

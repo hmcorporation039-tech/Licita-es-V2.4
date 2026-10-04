@@ -6,10 +6,12 @@ import Anthropic from '@anthropic-ai/sdk'
 import {
   ANALYSIS_SCHEMA,
   AnalysisRefusedError,
-  EditalAnalysisResult,
+  EditalAnalysisOutcome,
   EditalDocumento,
   SYSTEM_PROMPT,
   buildInstrucao,
+  ErroComUso,
+  UsoDeIa,
   validarResultadoAnalise,
 } from './types'
 
@@ -26,7 +28,8 @@ const MAX_TOKENS = 32_000
 export async function analyzeEdital(
   objeto: string,
   documentos: EditalDocumento[]
-): Promise<EditalAnalysisResult> {
+): Promise<EditalAnalysisOutcome> {
+  const model = process.env.CLAUDE_ANALYSIS_MODEL || 'claude-opus-5'
   const blocosDeDocumento: Anthropic.ContentBlockParam[] = documentos.map((doc) =>
     doc.tipo === 'pdf'
       ? {
@@ -45,7 +48,7 @@ export async function analyzeEdital(
   // do timeout HTTP padrão do SDK numa chamada não-streaming.
   const message = await getClient()
     .messages.stream({
-      model: process.env.CLAUDE_ANALYSIS_MODEL || 'claude-opus-5',
+      model,
       max_tokens: MAX_TOKENS,
       thinking: { type: 'adaptive' },
       system: SYSTEM_PROMPT,
@@ -62,17 +65,30 @@ export async function analyzeEdital(
     })
     .finalMessage()
 
-  if (message.stop_reason === 'refusal') {
-    throw new AnalysisRefusedError()
-  }
-  if (message.stop_reason === 'max_tokens') {
-    throw new Error('A resposta do modelo foi cortada antes de terminar — o edital é grande demais para uma análise única.')
-  }
-
-  const textBlock = message.content.find((block) => block.type === 'text')
-  if (!textBlock || textBlock.type !== 'text') {
-    throw new Error('Resposta do modelo não contém o resultado esperado')
+  // Tokens de cache contam como entrada para fins de custo.
+  const u = message.usage
+  const uso: UsoDeIa = {
+    provider: 'claude',
+    model,
+    inputTokens: (u.input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0) + (u.cache_read_input_tokens ?? 0),
+    outputTokens: u.output_tokens ?? 0,
   }
 
-  return validarResultadoAnalise(JSON.parse(textBlock.text))
+  try {
+    if (message.stop_reason === 'refusal') {
+      throw new AnalysisRefusedError()
+    }
+    if (message.stop_reason === 'max_tokens') {
+      throw new Error('A resposta do modelo foi cortada antes de terminar — o edital é grande demais para uma análise única.')
+    }
+
+    const textBlock = message.content.find((block) => block.type === 'text')
+    if (!textBlock || textBlock.type !== 'text') {
+      throw new Error('Resposta do modelo não contém o resultado esperado')
+    }
+
+    return { resultado: validarResultadoAnalise(JSON.parse(textBlock.text)), uso }
+  } catch (err) {
+    throw new ErroComUso(err, uso)
+  }
 }

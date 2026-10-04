@@ -27,7 +27,7 @@ export default function Nav() {
 
   if (pathname === '/login') return null
 
-  const links = user?.isAdmin ? [...LINKS, { href: '/admin/usuarios', label: 'Usuários' }] : LINKS
+  const links = user?.isAdmin ? [...LINKS, { href: '/admin', label: 'Administração' }] : LINKS
 
   return (
     <header className="border-b border-slate-200 bg-white">

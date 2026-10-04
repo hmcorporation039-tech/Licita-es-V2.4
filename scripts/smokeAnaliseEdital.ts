@@ -99,10 +99,11 @@ async function main() {
 
   const inicio = Date.now()
   const analisar = provider === 'gemini' ? analyzeWithGemini : analyzeWithClaude
-  const resultado = await analisar('Licitação de teste do smoke script', documentos)
+  const { resultado, uso } = await analisar('Licitação de teste do smoke script', documentos)
   const segundos = ((Date.now() - inicio) / 1000).toFixed(1)
 
   console.log(`--- RESULTADO (${segundos}s) ---\n`)
+  console.log(`Consumo: ${uso.inputTokens} tokens de entrada, ${uso.outputTokens} de saída (${uso.provider}/${uso.model})`)
   console.log(`Resumo: ${resultado.resumo}`)
   console.log(`Valor estimado: ${resultado.valorEstimado}`)
   console.log(`Critério de julgamento: ${resultado.criterioJulgamento}`)

@@ -37,6 +37,7 @@
     "tenders:cleanup": "ts-node scripts/cleanupOldTenders.ts",
     "test": "vitest run",
     "test:e2e": "cross-env RATE_LIMIT_DISABLED=true start-server-and-test api http://localhost:3333/api/health cypress:run",
+    "test:integracao": "vitest run tests/integracao",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit -p tsconfig.check.json",
     "verify": "npm run typecheck && npm run lint && npm run test",
