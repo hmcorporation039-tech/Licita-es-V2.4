@@ -8,9 +8,12 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3333'
 
 export class ApiRequestError extends Error {
   status: number
-  constructor(status: number, message: string) {
+  // Código estável enviado pela API (ex.: EMAIL_NAO_VERIFICADO, COTA_EXCEDIDA).
+  code?: string
+  constructor(status: number, message: string, code?: string) {
     super(message)
     this.status = status
+    this.code = code
   }
 }
 
@@ -40,7 +43,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
       Array.isArray(body.details) && body.details.length > 0
         ? ' (' + body.details.map((d: { path?: unknown[]; message?: string }) => `${(d.path ?? []).join('.')}: ${d.message}`).join('; ') + ')'
         : ''
-    throw new ApiRequestError(res.status, (body.error ?? `Erro ${res.status}`) + detail)
+    throw new ApiRequestError(res.status, (body.error ?? `Erro ${res.status}`) + detail, typeof body.code === 'string' ? body.code : undefined)
   }
 
   return body as T

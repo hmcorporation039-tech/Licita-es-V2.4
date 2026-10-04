@@ -139,4 +139,10 @@ export const ROTULO_ACAO: Record<string, string> = {
   ADMIN_CONSULTOU_EMPRESA: 'Admin consultou empresa',
   ADMIN_EXPORTOU_AUDITORIA: 'Admin exportou auditoria',
   COTA_EXCEDIDA: 'Limite do plano atingido',
+  CADASTRO_CRIADO: 'Cadastro público criado',
+  CADASTRO_RECUSADO: 'Cadastro público recusado (conta ou documento já existe)',
+  EMAIL_VERIFICADO: 'E-mail confirmado',
+  RECUPERACAO_SOLICITADA: 'Recuperação de senha solicitada',
+  SENHA_REDEFINIDA_POR_EMAIL: 'Senha redefinida pelo link do e-mail',
+  ADMIN_EMAIL_CONFIRMADO: 'Admin confirmou o e-mail de um usuário',
 }

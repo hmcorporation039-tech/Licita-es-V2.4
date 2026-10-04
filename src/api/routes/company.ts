@@ -114,6 +114,8 @@ companyRouter.post(
         passwordHash: await hashPassword(tempPassword),
         companyId: req.companyId!,
         companyRole: 'MEMBER',
+        // Convidado pelo dono da empresa: não passa pela confirmação de e-mail.
+        emailVerifiedAt: new Date(),
         accessExpiresAt: owner?.accessExpiresAt ?? null,
       },
     })

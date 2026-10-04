@@ -62,6 +62,7 @@ rodar('API com banco real', () => {
         name: chave,
         passwordHash: await hashPassword(SENHA),
         isAdmin: opcoes.admin === true,
+        emailVerifiedAt: new Date(),
         company: { create: { name: `Empresa ${chave} ${sufixo}`, planCode: plano } },
       },
     })

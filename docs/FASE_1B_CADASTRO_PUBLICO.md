@@ -1,0 +1,57 @@
+# Fase 1b — Cadastro público (versão 2.4)
+
+Qualquer pessoa pode criar uma conta de teste: cadastro, confirmação de e-mail, recuperação de
+senha e um período gratuito **uma única vez por CPF/CNPJ**. A cobrança continua fora (Fase 1c).
+
+## Fluxo
+
+1. `/cadastro` → `POST /api/auth/register` (sempre responde **202**, igual para qualquer situação).
+2. O sistema cria a empresa (plano **Teste**) e o usuário dono, com prazo de acesso de **14 dias**
+   (`TRIAL_DIAS`), e envia o e-mail de confirmação (link válido por 48 h, uso único).
+3. `/verificar-email?token=…` → `POST /api/auth/verify-email`. Só depois disso o login é liberado.
+4. `/esqueci-senha` → `POST /api/auth/forgot-password`; `/redefinir-senha?token=…` →
+   `POST /api/auth/reset-password` (link válido por 1 h, uso único).
+5. Teste vencido: o login responde 403 com `code: "ACESSO_EXPIRADO"` até o administrador estender
+   (`Admin → Usuários → +30 dias`) ou mudar o plano.
+
+Também novos: página inicial pública com os planos (`GET /api/public/plans`), `/termos` e
+`/privacidade` (**minutas**), e o botão **confirmar e-mail** do administrador (para clientes que não
+recebem a mensagem, ou enquanto o envio não está configurado).
+
+## Para ligar o envio de e-mail (você)
+
+O código está pronto; falta a conta no provedor. Sem `RESEND_API_KEY` nada é enviado (o motivo vai para
+o log) e as contas novas ficam esperando confirmação, que o administrador pode fazer à mão.
+
+1. Crie uma conta em https://resend.com e **verifique o domínio** de envio (registros DNS).
+2. No Railway, nos serviços **API** e **Workers** da 2.4, defina:
+   - `RESEND_API_KEY` = a chave criada no Resend
+   - `EMAIL_FROM` = `Monitor de Licitações <noreply@SEU-DOMINIO>` (domínio verificado)
+   - `APP_URL` = `https://licita-es-v2-4.vercel.app` (ou o domínio final)
+3. Redeploy dos dois serviços. Teste criando uma conta e olhando a caixa de entrada (e o spam).
+
+## Garantias (e como são testadas)
+
+Teste de integração com banco real: [tests/integracao/cadastro.test.ts](../tests/integracao/cadastro.test.ts).
+
+| Garantia | Como |
+|---|---|
+| Não revela se e-mail/documento já têm conta | Mesma resposta (byte a byte) e custo de bcrypt sempre pago; o dono do e-mail recebe um aviso |
+| Um teste por CPF/CNPJ | Documento validado (dígitos) e único; a máscara não é brecha |
+| Login só após confirmar o e-mail | `403 EMAIL_NAO_VERIFICADO` com a senha certa; contas antigas são migradas como confirmadas |
+| Link de uso único e com validade | Só o hash fica no banco; consumo atômico; um novo pedido invalida o anterior |
+| Recuperar a senha derruba as sessões | `tokenVersion` incrementado; a senha antiga para de valer |
+| Sem spam de e-mail | Intervalo de 1 min por conta/tipo + limite por IP |
+| Anti-robô básico | Campo-isca invisível + limite por IP/hora |
+| Auditoria | `CADASTRO_CRIADO/RECUSADO`, `EMAIL_VERIFICADO`, `RECUPERACAO_SOLICITADA`, `SENHA_REDEFINIDA_POR_EMAIL` — sem e-mail nem documento digitado nos casos recusados |
+
+## Limites conhecidos (decisões para depois)
+
+- **Anti-robô forte:** o campo-isca e o limite por IP barram o básico. Se aparecer abuso real, o passo
+  seguinte é um CAPTCHA (ex.: Cloudflare Turnstile) no formulário.
+- **Um teste por documento, não por pessoa:** quem usar outro CPF/CNPJ ganha outro teste. É o limite
+  natural dessa regra; a defesa extra seria validar o CNPJ na Receita.
+- **Termos e Privacidade são minutas** (versão `2026-10-minuta-1`, gravada no aceite de cada usuário).
+  Precisam de advogado antes do lançamento comercial; os campos entre colchetes (foro, razão social,
+  DPO, prazos de retenção) estão em aberto.
+- Convidados pelo dono da empresa e contas criadas pelo admin **não** passam pela confirmação de e-mail.
