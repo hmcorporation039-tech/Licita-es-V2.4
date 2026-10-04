@@ -17,6 +17,7 @@ import { MODALIDADE_OPTIONS } from '@/lib/modalidades'
 import { SITUACAO_OPTIONS } from '@/lib/situacoes'
 import { safeHttpUrl } from '@/lib/safeUrl'
 import type { PrazosDaSessao } from '@/lib/adminTypes'
+import PainelDoFiscal from '@/components/PainelDoFiscal'
 
 // Documento válido (não vencido) do cofre da empresa, indexado por tipo —
 // pra marcar automaticamente os itens do checklist que a empresa já tem.
@@ -41,6 +42,7 @@ const TABS = [
   { id: 'informacoes', label: 'Informações' },
   { id: 'itens', label: 'Itens' },
   { id: 'analise', label: 'Análise (IA)' },
+  { id: 'habilitacao', label: 'Habilitação' },
   { id: 'checklist', label: 'Checklist' },
   { id: 'plano', label: 'Plano de participação' },
 ] as const
@@ -409,6 +411,8 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
               </details>
             </section>
           )}
+
+          {activeTab === 'habilitacao' && <PainelDoFiscal tenderId={id} />}
 
           {activeTab === 'itens' && (
             <section className="rounded border border-slate-200 bg-white p-4">

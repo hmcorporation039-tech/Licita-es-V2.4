@@ -161,3 +161,40 @@ export interface Aderencia {
   faixa: 'alta' | 'boa' | 'media' | 'baixa'
   criterios: CriterioDeAderencia[]
 }
+
+// ---- Painel do Fiscal: GET /api/tenders/:id/habilitacao ----
+
+export type StatusHabilitacao = 'verde' | 'amarelo' | 'vermelho' | 'cinza'
+
+export interface RequisitoDeHabilitacao {
+  id: string
+  label: string
+  section: string
+  origem: 'padrao' | 'edital' | 'a-confirmar' | 'extra'
+  status: StatusHabilitacao
+  motivo: string
+  acao: string | null
+  documento: { id: string; nome: string; dataValidade: string | null } | null
+  citadoNoEdital: string[]
+}
+
+export interface AlertaLegal {
+  id: string
+  titulo: string
+  gravidade: 'alta' | 'media'
+  detalhe: string
+  fundamento: string
+  trecho: string
+}
+
+export interface PainelDoFiscal {
+  analise: { status: string | null; feita: boolean }
+  habilitacao: {
+    referencia: { dataSessao: string | null; usouHoje: boolean }
+    resumo: Record<StatusHabilitacao, number>
+    semPendenciaBloqueante: boolean
+    requisitos: RequisitoDeHabilitacao[]
+  }
+  alertas: { disponivel: boolean; itens: AlertaLegal[]; aviso: string }
+  prazos: { dataSessao: string; limiteImpugnacao: string; limitePassou: boolean; sessaoPassou: boolean; diasUteisAteLimite: number } | null
+}
