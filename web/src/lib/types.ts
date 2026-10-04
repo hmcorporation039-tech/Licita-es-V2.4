@@ -1,7 +1,7 @@
 // ============================================================
 // lib/types.ts — Tipos espelhando as respostas da API
 // ============================================================
-import type { Aderencia } from './adminTypes'
+import type { Aderencia, RevisaoDaAnalise } from './adminTypes'
 
 
 export interface User {
@@ -241,5 +241,10 @@ export interface TenderAnalysis {
   status: AnalysisStatus
   documentoNome: string | null
   resultado: AnalysisResultado | null
+  // 'dupla' (Gemini analisa, Claude revisa), 'gemini' ou 'claude'.
+  pipeline?: string | null
+  revisao?: RevisaoDaAnalise | null
+  // Só o administrador recebe o rascunho do analista (para auditar).
+  rascunho?: AnalysisResultado | null
   errorMsg: string | null
 }

@@ -97,6 +97,8 @@ export interface UsoIaResposta {
   total: UsoDeIaResumo
   porEmpresa: (UsoDeIaResumo & { companyId: string | null; empresa: string; planCode: string | null })[]
   porMes: ({ mes: string } & UsoDeIaResumo)[]
+  // Quanto custa analisar e quanto custa revisar, por modelo.
+  porEtapa: (UsoDeIaResumo & { etapa: string; provider: string; model: string })[]
   recentes: { id: string; tenderId: string | null; companyId: string | null; provider: string; model: string; inputTokens: number; outputTokens: number; costUsd: string | null; status: string; createdAt: string }[]
   aviso: string
 }
@@ -145,6 +147,7 @@ export const ROTULO_ACAO: Record<string, string> = {
   RECUPERACAO_SOLICITADA: 'Recuperação de senha solicitada',
   SENHA_REDEFINIDA_POR_EMAIL: 'Senha redefinida pelo link do e-mail',
   ADMIN_EMAIL_CONFIRMADO: 'Admin confirmou o e-mail de um usuário',
+  EXIGENCIA_ATUALIZADA: 'Exigência da matriz marcada',
 }
 
 export interface CriterioDeAderencia {
@@ -197,4 +200,50 @@ export interface PainelDoFiscal {
   }
   alertas: { disponivel: boolean; itens: AlertaLegal[]; aviso: string }
   prazos: { dataSessao: string; limiteImpugnacao: string; limitePassou: boolean; sessaoPassou: boolean; diasUteisAteLimite: number } | null
+}
+
+// ---- Análise em dupla (analista + revisor) e matriz de exigências ----
+
+export interface AlteracaoDaRevisao {
+  campo: string
+  tipo: 'alterado' | 'adicionado' | 'removido'
+  antes: string | null
+  depois: string | null
+  motivo: string | null
+}
+
+export interface RevisaoDaAnalise {
+  status: 'OK' | 'FALHOU' | 'NAO_EXECUTADA'
+  veredito: 'aprovada' | 'corrigida' | 'reprovada' | null
+  resumo: string | null
+  alteracoes: AlteracaoDaRevisao[]
+  totalDeAlteracoes: number
+  analista: { provider: string; model: string } | null
+  revisor: { provider: string; model: string } | null
+  motivo: string | null
+  // Só o administrador recebe.
+  detalheTecnico?: string | null
+}
+
+export type StatusDaVerificacao = 'confirmado' | 'parcial' | 'nao-localizado' | 'nao-verificavel'
+
+export interface ExigenciaDaMatriz {
+  chave: string
+  texto: string
+  categoria: 'juridica' | 'fiscal' | 'economica' | 'tecnica' | 'proposta' | 'outra'
+  documento: string
+  pagina: string
+  item: string
+  responsavel: 'fiscal' | 'calculista' | 'redator'
+  atendida: boolean
+  nota: string | null
+  verificacao?: { status: StatusDaVerificacao; paginaConfirmada: string | null; documentoConfirmado: string | null }
+}
+
+export interface MatrizResposta {
+  disponivel: boolean
+  motivo?: string
+  pipeline?: string | null
+  itens?: ExigenciaDaMatriz[]
+  resumo?: { total: number; atendidas: number; verificacao: Record<StatusDaVerificacao, number> }
 }

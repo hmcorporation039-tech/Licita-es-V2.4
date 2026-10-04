@@ -37,7 +37,8 @@ export async function usoDaEmpresa(companyId: string): Promise<UsoDaEmpresa> {
     // Conta todos (ativos ou não): senão desativar e recriar burlaria o limite.
     prisma.monitoredItem.count({ where: { companyId } }),
     prisma.user.count({ where: { companyId, active: true } }),
-    prisma.aiUsage.count({ where: { companyId, status: 'OK', createdAt: { gte: inicioDoMesBrasilia() } } }),
+    // A revisão (2ª chamada) é custo nosso, não do cliente: só a etapa "analise" conta na cota.
+    prisma.aiUsage.count({ where: { companyId, status: 'OK', etapa: 'analise', createdAt: { gte: inicioDoMesBrasilia() } } }),
   ])
   return { itensMonitorados, usuarios, analisesIaMes }
 }

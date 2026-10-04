@@ -20,8 +20,21 @@ import { registrarAuditoria } from '../../services/auditService'
 import { avaliarHabilitacao } from '../../lib/habilitacao'
 import { calcularAlertasLegais, lerValoresEmReais } from '../../lib/alertasLegais'
 import type { EditalAnalysisResult } from '../../services/llm/types'
+import { chaveDaExigencia, ExigenciaVerificada, resumoDaVerificacao } from '../../lib/matrizExigencias'
 
 export const tendersRouter = Router()
+
+// O que o cliente comum pode ver de uma análise: o resultado final e o relatório
+// da revisão. O RASCUNHO do analista e o detalhe técnico de erros são do admin
+// (auditoria) — não vão para os demais usuários.
+function analiseParaResposta<T extends { rascunho?: unknown; revisao?: unknown }>(analise: T, admin: boolean): T {
+  if (admin) return analise
+  const { rascunho: _rascunho, ...resto } = analise
+  void _rascunho
+  const revisao = analise.revisao && typeof analise.revisao === 'object' ? { ...(analise.revisao as Record<string, unknown>) } : analise.revisao
+  if (revisao && typeof revisao === 'object') delete (revisao as Record<string, unknown>).detalheTecnico
+  return { ...resto, revisao } as unknown as T
+}
 
 const SITUACAO_VALUES = ['ABERTA', 'ENCERRADA', 'SUSPENSA', 'CANCELADA', 'ANULADA', 'HOMOLOGADA', 'REVOGADA'] as const
 
@@ -252,7 +265,7 @@ tendersRouter.get(
       res.status(404).json({ error: 'Análise ainda não foi solicitada para esta licitação' })
       return
     }
-    res.json(analysis)
+    res.json(analiseParaResposta(analysis, req.isAdmin === true))
   })
 )
 
@@ -279,11 +292,11 @@ tendersRouter.post(
 
     if (!force) {
       if (existing?.status === 'DONE') {
-        res.json(existing)
+        res.json(analiseParaResposta(existing, req.isAdmin === true))
         return
       }
       if (existing?.status === 'RUNNING' || existing?.status === 'PENDING') {
-        res.status(202).json(existing)
+        res.status(202).json(analiseParaResposta(existing, req.isAdmin === true))
         return
       }
     }
@@ -315,7 +328,7 @@ tendersRouter.post(
       metadata: { forcada: force },
     })
 
-    res.status(202).json(pendente)
+    res.status(202).json(analiseParaResposta(pendente, req.isAdmin === true))
   })
 )
 
@@ -349,6 +362,101 @@ tendersRouter.get(
       ...calcularPrazosDaSessao(sessao),
       aviso: 'Estimativa com feriados nacionais; confira o prazo oficial no edital.',
     })
+  })
+)
+
+// ---------------------------------------------------------------
+// Matriz de exigências: cada exigência do edital em uma linha, com o texto
+// literal, o arquivo, a página e o item de onde veio, o responsável por atendê-la
+// e a conferência por código de que o texto existe mesmo no documento. Cada
+// empresa marca o que já atendeu (não vaza entre empresas).
+// ---------------------------------------------------------------
+
+interface EstadoDaMatriz {
+  [chave: string]: { atendida: boolean; nota: string | null; em: string; por: string }
+}
+
+async function carregarMatriz(tenderId: string) {
+  const analysis = await prisma.tenderAnalysis.findUnique({ where: { tenderId }, select: { status: true, resultado: true, pipeline: true } })
+  const resultado = analysis?.status === 'DONE' ? (analysis.resultado as unknown as Partial<EditalAnalysisResult> | null) : null
+  const matriz = resultado && Array.isArray(resultado.matrizExigencias) ? resultado.matrizExigencias : null
+  return { analysis, matriz }
+}
+
+tendersRouter.get(
+  '/:id/matriz',
+  asyncHandler(async (req, res) => {
+    const tender = await prisma.tender.findUnique({ where: { id: req.params.id }, select: { id: true } })
+    if (!tender) throw new ApiError(404, 'Licitação não encontrada')
+
+    const { analysis, matriz } = await carregarMatriz(req.params.id)
+    if (!matriz) {
+      res.json({
+        disponivel: false,
+        motivo: analysis?.status === 'DONE'
+          ? 'Esta análise é anterior à matriz de exigências. Peça uma nova análise ao administrador.'
+          : 'A matriz aparece depois que a análise do edital é feita.',
+      })
+      return
+    }
+
+    const progresso = await prisma.requirementProgress.findUnique({
+      where: { companyId_tenderId: { companyId: req.companyId!, tenderId: req.params.id } },
+    })
+    const estado = (progresso?.state ?? {}) as unknown as EstadoDaMatriz
+
+    const itens = (matriz as ExigenciaVerificada[]).map((e) => {
+      const chave = chaveDaExigencia(e.texto)
+      return { ...e, chave, atendida: estado[chave]?.atendida === true, nota: estado[chave]?.nota ?? null }
+    })
+
+    res.json({
+      disponivel: true,
+      pipeline: analysis?.pipeline ?? null,
+      itens,
+      resumo: {
+        total: itens.length,
+        atendidas: itens.filter((i) => i.atendida).length,
+        verificacao: resumoDaVerificacao(itens.filter((i) => i.verificacao)),
+      },
+    })
+  })
+)
+
+const marcarExigenciaSchema = z.object({
+  atendida: z.boolean(),
+  nota: z.string().trim().max(300).nullable().optional(),
+})
+
+tendersRouter.put(
+  '/:id/matriz/:chave',
+  asyncHandler(async (req, res) => {
+    const { atendida, nota } = marcarExigenciaSchema.parse(req.body)
+    const tender = await prisma.tender.findUnique({ where: { id: req.params.id }, select: { id: true } })
+    if (!tender) throw new ApiError(404, 'Licitação não encontrada')
+
+    const { matriz } = await carregarMatriz(req.params.id)
+    const exigencia = matriz?.find((e) => chaveDaExigencia(e.texto) === req.params.chave)
+    if (!exigencia) throw new ApiError(404, 'Exigência não encontrada nesta licitação')
+
+    const companyId = req.companyId!
+    const existente = await prisma.requirementProgress.findUnique({ where: { companyId_tenderId: { companyId, tenderId: req.params.id } } })
+    const estado = { ...((existente?.state ?? {}) as unknown as EstadoDaMatriz) }
+    estado[req.params.chave] = { atendida, nota: nota ?? null, em: new Date().toISOString(), por: req.userId! }
+
+    await prisma.requirementProgress.upsert({
+      where: { companyId_tenderId: { companyId, tenderId: req.params.id } },
+      update: { state: estado as unknown as object },
+      create: { companyId, tenderId: req.params.id, state: estado as unknown as object },
+    })
+
+    await registrarAuditoria(req, {
+      action: 'EXIGENCIA_ATUALIZADA',
+      entityType: 'tender',
+      entityId: req.params.id,
+      metadata: { exigencia: exigencia.texto.slice(0, 120), atendida },
+    })
+    res.json({ chave: req.params.chave, atendida, nota: nota ?? null })
   })
 )
 
