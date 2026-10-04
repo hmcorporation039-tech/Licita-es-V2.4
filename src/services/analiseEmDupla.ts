@@ -168,7 +168,7 @@ export async function executarPipeline(args: {
         totalDeAlteracoes: 0,
         analista: analistaInfo,
         revisor: null,
-        motivo: 'Análise sem revisão: só um provedor de IA está configurado.',
+        motivo: 'Análise sem revisão adicional.',
         detalheTecnico: null,
       },
       analise.uso.provider === 'claude' ? 'claude' : 'gemini'

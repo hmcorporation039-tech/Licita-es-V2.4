@@ -29,7 +29,7 @@ const VERIFICACAO: Record<StatusDaVerificacao, { rotulo: string; classe: string;
   'nao-localizado': {
     rotulo: 'Não localizado',
     classe: 'bg-red-100 text-red-800',
-    dica: 'Este texto não foi encontrado no edital. Pode ter sido inventado pela IA: confira antes de confiar.',
+    dica: 'Este texto não foi encontrado no edital. Pode ter sido interpretado de forma errada: confira antes de confiar.',
   },
   'nao-verificavel': { rotulo: 'Não verificável', classe: 'bg-slate-100 text-slate-600', dica: 'Documento escaneado (sem texto) ou trecho curto demais para conferir.' },
 }
@@ -144,7 +144,7 @@ export default function MatrizDeExigencias({ tenderId }: { tenderId: string }) {
         </div>
         {(resumo.verificacao['nao-localizado'] > 0 || resumo.verificacao.parcial > 0) && (
           <p className="mt-3 rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900">
-            ⚠ {resumo.verificacao['nao-localizado']} exigência(s) não localizada(s) e {resumo.verificacao.parcial} só parecida(s) com o edital. A IA pode ter errado ou
+            ⚠ {resumo.verificacao['nao-localizado']} exigência(s) não localizada(s) e {resumo.verificacao.parcial} só parecida(s) com o edital. A análise pode ter errado ou
             parafraseado: confira essas linhas no documento original antes de confiar.
           </p>
         )}

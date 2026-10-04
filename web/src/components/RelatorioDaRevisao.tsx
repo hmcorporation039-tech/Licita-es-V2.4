@@ -27,8 +27,6 @@ const ROTULO_CAMPO: Record<string, string> = {
 
 const quando = (iso: string) => new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
 
-const NOME_DO_MODELO: Record<string, string> = { gemini: 'Gemini', claude: 'Claude' }
-const nome = (p: string) => NOME_DO_MODELO[p] ?? p
 
 const COR_DO_VEREDITO = {
   aprovada: 'border-emerald-200 bg-emerald-50 text-emerald-900',
@@ -44,7 +42,7 @@ export default function RelatorioDaRevisao({ revisao }: { revisao: RevisaoDaAnal
   if (revisao.status === 'EM_ANDAMENTO') {
     return (
       <div className="mb-4 rounded-md border border-blue-300 bg-blue-50 p-3 text-xs text-blue-900">
-        ⏳ <strong>Análise preliminar</strong> — a revisão pela Claude está em andamento e pode levar alguns minutos.
+        ⏳ <strong>Análise preliminar</strong> — a revisão automática está em andamento e pode levar alguns minutos.
         Você já pode consultar o resultado abaixo; ele será atualizado automaticamente quando a revisão terminar.
       </div>
     )
@@ -53,7 +51,7 @@ export default function RelatorioDaRevisao({ revisao }: { revisao: RevisaoDaAnal
   if (revisao.status === 'NAO_EXECUTADA') {
     return (
       <p className="rounded border border-slate-200 bg-slate-50 p-2 text-xs text-slate-600">
-        Análise feita por {revisao.analista ? nome(revisao.analista.provider) : 'IA'}, <strong>sem revisão</strong>{revisao.em ? ' (' + quando(revisao.em) + ')' : ''}.
+        Análise <strong>sem revisão</strong>{revisao.em ? ' (' + quando(revisao.em) + ')' : ''}.
         {revisao.motivo ? ` ${revisao.motivo}` : ''}
       </p>
     )
@@ -73,7 +71,7 @@ export default function RelatorioDaRevisao({ revisao }: { revisao: RevisaoDaAnal
   return (
     <div className={`rounded border p-3 text-sm ${COR_DO_VEREDITO[v]}`}>
       <p className="font-medium">
-        Analisada por {revisao.analista ? nome(revisao.analista.provider) : 'IA'} e revisada por {revisao.revisor ? nome(revisao.revisor.provider) : 'IA'}
+        Análise revisada
         {' · '}
         {v === 'aprovada' ? 'revisão aprovada, sem mudanças relevantes' : v === 'reprovada' ? 'o revisor refez a maior parte' : `${revisao.totalDeAlteracoes} correção(ões) do revisor`}
       </p>
@@ -100,7 +98,7 @@ export default function RelatorioDaRevisao({ revisao }: { revisao: RevisaoDaAnal
         </>
       )}
       <p className="mt-2 text-[11px] opacity-70">
-        A revisão por uma segunda IA reduz erros, mas não os elimina: o sistema também confere por código se cada exigência aparece no edital.
+        A dupla conferência reduz erros, mas não os elimina: o sistema também confere por código se cada exigência aparece no edital.
         Confirme os pontos importantes no documento original.
       </p>
     </div>

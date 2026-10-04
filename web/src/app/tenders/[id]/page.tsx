@@ -494,14 +494,14 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
               {!analysis && !analyzing && (
                 <div>
                   <p className="mb-3 text-sm text-slate-500">
-                    Baixa o edital publicado no PNCP e usa IA para resumir valor, prazo, critério de julgamento,
+                    Baixa o edital publicado no PNCP e resume valor, prazo, critério de julgamento,
                     exigências técnicas e pontos de atenção — pode levar até 30 segundos.
                   </p>
                   <button
                     onClick={() => runAnalysis(false)}
                     className="rounded bg-indigo-700 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-800"
                   >
-                    Analisar edital com IA
+                    Analisar edital
                   </button>
                 </div>
               )}

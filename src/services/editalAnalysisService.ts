@@ -154,12 +154,12 @@ export async function runEditalAnalysis(
       where: { tenderId },
       update: {
         status: 'DISABLED',
-        errorMsg: 'A análise de edital por IA está desligada nesta instalação (AI_ANALYSIS_ENABLED).',
+        errorMsg: 'A análise de edital está desligada nesta instalação (AI_ANALYSIS_ENABLED).',
       },
       create: {
         tenderId,
         status: 'DISABLED',
-        errorMsg: 'A análise de edital por IA está desligada nesta instalação (AI_ANALYSIS_ENABLED).',
+        errorMsg: 'A análise de edital está desligada nesta instalação (AI_ANALYSIS_ENABLED).',
       },
     })
     return
@@ -218,7 +218,7 @@ export async function runEditalAnalysis(
           data: {
             status: 'FAILED',
             documentoNome,
-            errorMsg: 'A análise por IA não está configurada nesta instalação (chave de IA ausente).',
+            errorMsg: 'A análise de edital não está configurada nesta instalação.',
           },
         })
         return

@@ -30,8 +30,8 @@ const RECURSOS = [
     texto: 'Coleta diária do PNCP, ComprasNet e de portais do Sistema S (SESC, SEST SENAT), Novacap e FIEG, filtrada pelos itens, códigos CATMAT/CATSER, UASGs e regiões que você acompanha.',
   },
   {
-    titulo: 'Lê o edital com IA',
-    texto: 'Resumo, exigências específicas, documentos de habilitação e riscos apontados por severidade. A IA apoia a leitura: ela não substitui a conferência do edital.',
+    titulo: 'Lê o edital para você',
+    texto: 'Resumo, exigências específicas, documentos de habilitação e riscos apontados por severidade. A análise apoia a leitura: ela não substitui a conferência do edital.',
   },
   {
     titulo: 'Organiza a sua habilitação',
@@ -95,7 +95,7 @@ export default function Home() {
                 <ul className="mt-3 flex flex-col gap-1 text-sm text-slate-600">
                   <li>{limite(p.limites.itensMonitorados)} itens monitorados</li>
                   <li>{limite(p.limites.usuarios)} usuário(s)</li>
-                  <li>{limite(p.limites.analisesIaMes)} análises de IA por mês</li>
+                  <li>{limite(p.limites.analisesIaMes)} análises de edital por mês</li>
                 </ul>
               </div>
             ))}
