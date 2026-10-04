@@ -8,6 +8,7 @@ import { Router } from 'express'
 import { prisma } from '../../services/tenderService'
 import { buildAutoMilestones } from '../../lib/participationPlanTemplate'
 import { asyncHandler } from '../asyncHandler'
+import { whereLicitacaoAberta } from '../../lib/licitacaoAberta'
 
 export const dashboardRouter = Router()
 
@@ -21,10 +22,10 @@ dashboardRouter.get(
 
     const [itensAtivos, matchesNaoLidos, matchesTotal, ultimosMatches, documentos, planos] = await Promise.all([
       prisma.monitoredItem.count({ where: { companyId, active: true } }),
-      prisma.tenderMatch.count({ where: { companyId, read: false } }),
-      prisma.tenderMatch.count({ where: { companyId } }),
+      prisma.tenderMatch.count({ where: { companyId, read: false, tender: whereLicitacaoAberta() } }),
+      prisma.tenderMatch.count({ where: { companyId, tender: whereLicitacaoAberta() } }),
       prisma.tenderMatch.findMany({
-        where: { companyId },
+        where: { companyId, tender: whereLicitacaoAberta() },
         orderBy: { createdAt: 'desc' },
         take: 5,
         include: { tender: true, monitoredItem: { select: { name: true } } },

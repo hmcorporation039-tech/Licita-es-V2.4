@@ -77,7 +77,6 @@ export default function TendersPage() {
   const [orgao, setOrgao] = useState('')
   const [numero, setNumero] = useState('')
   const [modalidade, setModalidade] = useState('')
-  const [situacao, setSituacao] = useState('')
   const [municipio, setMunicipio] = useState('')
   const [uf, setUf] = useState('')
   const [publicacaoInicio, setPublicacaoInicio] = useState('')
@@ -99,7 +98,6 @@ export default function TendersPage() {
       if (orgao) qs.set('orgao', orgao)
       if (numero) qs.set('numero', numero)
       if (modalidade) qs.set('modalidade', modalidade)
-      if (situacao) qs.set('situacao', situacao)
       if (municipio) qs.set('municipio', municipio)
       if (uf) qs.set('uf', uf)
       if (publicacaoInicio) qs.set('publicacaoInicio', publicacaoInicio)
@@ -113,7 +111,7 @@ export default function TendersPage() {
         .finally(() => setLoading(false))
     }, 300)
     return () => clearTimeout(timeout)
-  }, [user, orgao, numero, modalidade, situacao, municipio, uf, publicacaoInicio, publicacaoFim, q, somenteRelacionadas, agrupar, page])
+  }, [user, orgao, numero, modalidade, municipio, uf, publicacaoInicio, publicacaoFim, q, somenteRelacionadas, agrupar, page])
 
   // Agrupa a lista já ordenada (uf → órgão) vinda do backend em UF > Órgão >
   // licitações, pra render em seções em vez de uma tabela só.
@@ -140,7 +138,6 @@ export default function TendersPage() {
     setOrgao('')
     setNumero('')
     setModalidade('')
-    setSituacao('')
     setMunicipio('')
     setUf('')
     setPublicacaoInicio('')
@@ -194,24 +191,6 @@ export default function TendersPage() {
             >
               <option value="">Todas</option>
               {MODALIDADE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className={labelClass}>Situação</label>
-            <select
-              value={situacao}
-              onChange={(e) => {
-                setPage(1)
-                setSituacao(e.target.value)
-              }}
-              className={inputClass}
-            >
-              <option value="">Todas</option>
-              {SITUACAO_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
                 </option>

@@ -7,6 +7,7 @@ import { Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { prisma } from '../../services/tenderService'
 import { asyncHandler, ApiError } from '../asyncHandler'
+import { whereLicitacaoAberta } from '../../lib/licitacaoAberta'
 import { Aderencia, calcularAderencia } from '../../lib/aderencia'
 
 export const matchesRouter = Router()
@@ -109,7 +110,8 @@ matchesRouter.get(
     const where = {
       companyId: req.companyId!,
       ...(unreadOnly ? { read: false } : {}),
-      ...(Object.keys(tenderWhere).length > 0 ? { tender: tenderWhere } : {}),
+      // Só matches de licitações ainda abertas (ver lib/licitacaoAberta.ts).
+      tender: { AND: [whereLicitacaoAberta(), ...(Object.keys(tenderWhere).length > 0 ? [tenderWhere] : [])] },
     }
 
     let items: MatchComTudo[]
