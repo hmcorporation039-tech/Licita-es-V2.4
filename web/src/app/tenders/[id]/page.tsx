@@ -501,7 +501,7 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
                     onClick={() => runAnalysis(false)}
                     className="rounded bg-indigo-700 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-800"
                   >
-                    Analisar edital com IA
+                    Analisar edital
                   </button>
                 </div>
               )}
