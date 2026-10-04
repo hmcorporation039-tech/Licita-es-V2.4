@@ -14,16 +14,19 @@
 // ============================================================
 
 import axios from 'axios'
-import { Tender } from '@prisma/client'
+import { Prisma, Tender } from '@prisma/client'
 import { prisma } from './tenderService'
 import { downloadPNCPDocument, isPdf, listPNCPDocuments, selecionarDocumentos } from './pncpDocumentsService'
 import { listNovacapDocumentos } from './novacapParser'
 import { ordenarPorPrioridade, DocumentoComTitulo } from '../lib/documentPriority'
 import { extractPdf, temCamadaDeTexto } from './pdfTextService'
 import { AnalysisRefusedError, EditalAnalyzer, EditalDocumento, ErroComUso } from './llm/types'
+import type { EditalReviewer } from './llm/revisao'
 import { QuemPediu, registrarUsoDeIa } from './aiUsageService'
 import { analyzeEdital as analyzeWithClaude } from './llm/claudeAnalyzer'
 import { analyzeEdital as analyzeWithGemini } from './llm/geminiAnalyzer'
+import { reviewEdital } from './llm/claudeReviewer'
+import { ConfiguracaoDeIa, configuracaoDeIa, executarPipeline } from './analiseEmDupla'
 
 interface DocumentoDisponivel extends DocumentoComTitulo {
   uri: string
@@ -42,11 +45,21 @@ export function analiseHabilitada(): boolean {
   return process.env.AI_ANALYSIS_ENABLED === 'true'
 }
 
-function getAnalyzer(): EditalAnalyzer {
-  const provider = (process.env.AI_PROVIDER || 'claude').toLowerCase()
-  if (provider === 'gemini') return analyzeWithGemini
-  if (provider === 'claude') return analyzeWithClaude
-  throw new Error(`AI_PROVIDER inválido: "${provider}" — use "claude" ou "gemini"`)
+// Quem analisa e quem revisa, conforme as chaves e o AI_PIPELINE (ver
+// analiseEmDupla.ts): com as duas chaves, o Gemini analisa e a Claude revisa.
+function escolherModelos(config: ConfiguracaoDeIa): { analista: EditalAnalyzer; revisor: EditalReviewer | null } | null {
+  if (!config.analista) return null
+  const analista = config.analista === 'gemini' ? analyzeWithGemini : analyzeWithClaude
+  return { analista, revisor: config.revisor === 'claude' ? reviewEdital : null }
+}
+
+// Pontos de injeção para teste: permitem rodar o fluxo completo (banco real)
+// sem rede e sem gastar crédito de IA.
+export interface DependenciasDaAnalise {
+  obterDocumentos?: (tender: Tender) => Promise<EditalDocumento[]>
+  analista?: EditalAnalyzer
+  // null = análise sem revisão; ausente = decidir pela configuração.
+  revisor?: EditalReviewer | null
 }
 
 // Lista os documentos de uma licitação, já do mais relevante para o menos —
@@ -98,7 +111,7 @@ async function baixarDocumentos(disponiveis: DocumentoDisponivel[]): Promise<Edi
       const buffer = await downloadPNCPDocument(doc.uri)
       if (!isPdf(buffer)) continue
 
-      let extraido: { texto: string; paginas: number } | null = null
+      let extraido: { texto: string; paginas: number; textoComPaginas: string } | null = null
       try {
         extraido = await extractPdf(buffer)
       } catch (err) {
@@ -109,9 +122,11 @@ async function baixarDocumentos(disponiveis: DocumentoDisponivel[]): Promise<Edi
       }
 
       if (extraido && temCamadaDeTexto(extraido.texto, extraido.paginas)) {
-        if (caracteres + extraido.texto.length > MAX_CARACTERES_TOTAL) continue
-        selecionados.push({ nome: doc.titulo, tipo: 'texto', texto: extraido.texto })
-        caracteres += extraido.texto.length
+        // Vai o texto com marcadores [[PÁGINA n]], para a IA citar a página de cada exigência.
+        const textoParaIa = extraido.textoComPaginas
+        if (caracteres + textoParaIa.length > MAX_CARACTERES_TOTAL) continue
+        selecionados.push({ nome: doc.titulo, tipo: 'texto', texto: textoParaIa })
+        caracteres += textoParaIa.length
         continue
       }
 
@@ -128,7 +143,11 @@ async function baixarDocumentos(disponiveis: DocumentoDisponivel[]): Promise<Edi
   return selecionados
 }
 
-export async function runEditalAnalysis(tenderId: string, quem?: QuemPediu): Promise<void> {
+export async function runEditalAnalysis(
+  tenderId: string,
+  quem?: QuemPediu,
+  deps: DependenciasDaAnalise = {}
+): Promise<void> {
   if (!analiseHabilitada()) {
     await prisma.tenderAnalysis.upsert({
       where: { tenderId },
@@ -155,20 +174,25 @@ export async function runEditalAnalysis(tenderId: string, quem?: QuemPediu): Pro
     const tender = await prisma.tender.findUnique({ where: { id: tenderId } })
     if (!tender) throw new Error('Licitação não encontrada')
 
-    const disponiveis = await listarDocumentosDisponiveis(tender)
+    let documentos: EditalDocumento[]
+    if (deps.obterDocumentos) {
+      documentos = await deps.obterDocumentos(tender)
+    } else {
+      const disponiveis = await listarDocumentosDisponiveis(tender)
 
-    if (disponiveis.length === 0) {
-      await prisma.tenderAnalysis.update({
-        where: { tenderId },
-        data: {
-          status: 'NO_DOCUMENTS',
-          errorMsg: 'Nenhum documento disponível publicamente para esta licitação nesta fonte.',
-        },
-      })
-      return
+      if (disponiveis.length === 0) {
+        await prisma.tenderAnalysis.update({
+          where: { tenderId },
+          data: {
+            status: 'NO_DOCUMENTS',
+            errorMsg: 'Nenhum documento disponível publicamente para esta licitação nesta fonte.',
+          },
+        })
+        return
+      }
+
+      documentos = await baixarDocumentos(disponiveis)
     }
-
-    const documentos = await baixarDocumentos(disponiveis)
 
     if (documentos.length === 0) {
       await prisma.tenderAnalysis.update({
@@ -180,17 +204,37 @@ export async function runEditalAnalysis(tenderId: string, quem?: QuemPediu): Pro
 
     const documentoNome = documentos.map((d) => d.nome).join(' · ')
 
-    let resultado
+    // Quem analisa e quem revisa (injeção para teste; senão, pela configuração).
+    let analista = deps.analista
+    let revisor = deps.revisor
+    if (!analista) {
+      const config = configuracaoDeIa()
+      for (const aviso of config.avisos) console.warn(`[Análise de edital] ${aviso}`)
+      const modelos = escolherModelos(config)
+      if (!modelos) {
+        await prisma.tenderAnalysis.update({
+          where: { tenderId },
+          data: {
+            status: 'FAILED',
+            documentoNome,
+            errorMsg: 'A análise por IA não está configurada nesta instalação (chave de IA ausente).',
+          },
+        })
+        return
+      }
+      analista = modelos.analista
+      if (revisor === undefined) revisor = modelos.revisor
+    }
+
+    let pipeline
     const inicioIa = Date.now()
     try {
-      const outcome = await getAnalyzer()(tender.objeto, documentos)
-      resultado = outcome.resultado
-      await registrarUsoDeIa({ tenderId, quem, uso: outcome.uso, durationMs: Date.now() - inicioIa, status: 'OK' })
+      pipeline = await executarPipeline({ objeto: tender.objeto, documentos, analista, revisor: revisor ?? null })
     } catch (rawErr) {
-      // Falha depois da chamada ao modelo: os tokens já foram gastos e entram na medição.
+      // Falha do ANALISTA depois da chamada ao modelo: os tokens já foram gastos e entram na medição.
       let err = rawErr
       if (rawErr instanceof ErroComUso) {
-        await registrarUsoDeIa({ tenderId, quem, uso: rawErr.uso, durationMs: Date.now() - inicioIa, status: 'ERRO' })
+        await registrarUsoDeIa({ tenderId, quem, uso: rawErr.uso, durationMs: Date.now() - inicioIa, status: 'ERRO', etapa: 'analise' })
         err = rawErr.causa
       }
       if (err instanceof AnalysisRefusedError) {
@@ -203,12 +247,20 @@ export async function runEditalAnalysis(tenderId: string, quem?: QuemPediu): Pro
       throw err
     }
 
+    // Cada etapa (analista e revisor) vira uma linha de consumo.
+    for (const u of pipeline.usos) {
+      await registrarUsoDeIa({ tenderId, quem, uso: u.uso, durationMs: u.durationMs, status: u.status, etapa: u.etapa })
+    }
+
     await prisma.tenderAnalysis.update({
       where: { tenderId },
       data: {
         status: 'DONE',
         documentoNome,
-        resultado: resultado as unknown as object,
+        resultado: pipeline.resultado as unknown as object,
+        rascunho: pipeline.rascunho ? (pipeline.rascunho as unknown as object) : Prisma.DbNull,
+        revisao: pipeline.revisao as unknown as object,
+        pipeline: pipeline.pipeline,
         errorMsg: null,
       },
     })

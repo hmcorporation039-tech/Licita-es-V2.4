@@ -37,6 +37,7 @@ export const ACOES = [
   'RECUPERACAO_SOLICITADA',
   'SENHA_REDEFINIDA_POR_EMAIL',
   'ADMIN_EMAIL_CONFIRMADO',
+  'EXIGENCIA_ATUALIZADA',
 ] as const
 export type AcaoAuditoria = (typeof ACOES)[number]
 

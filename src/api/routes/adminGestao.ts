@@ -400,6 +400,36 @@ adminGestaoRouter.get(
 )
 
 // ---------------------------------------------------------------
+// Auditoria de uma análise de edital: o RASCUNHO do analista, a versão final, o
+// relatório da revisão (com o detalhe técnico de erros) e o consumo de cada etapa.
+// Os demais usuários só veem o resultado final e o relatório sem o detalhe técnico.
+// ---------------------------------------------------------------
+adminGestaoRouter.get(
+  '/analyses/:tenderId',
+  asyncHandler(async (req, res) => {
+    const analise = await prisma.tenderAnalysis.findUnique({ where: { tenderId: req.params.tenderId } })
+    if (!analise) throw new ApiError(404, 'Esta licitação não tem análise')
+    const usos = await prisma.aiUsage.findMany({ where: { tenderId: req.params.tenderId }, orderBy: { createdAt: 'asc' } })
+    res.json({
+      analise,
+      usos: usos.map((u) => ({
+        id: u.id,
+        etapa: u.etapa,
+        provider: u.provider,
+        model: u.model,
+        inputTokens: u.inputTokens,
+        outputTokens: u.outputTokens,
+        custoEstimadoUsd: num(u.costUsd),
+        duracaoMs: u.durationMs,
+        status: u.status,
+        companyId: u.companyId,
+        em: u.createdAt,
+      })),
+    })
+  })
+)
+
+// ---------------------------------------------------------------
 // Consumo de IA
 // ---------------------------------------------------------------
 const usageQuery = z.object({
@@ -415,7 +445,7 @@ adminGestaoRouter.get(
     if (to) createdAt.lte = to
     const where: Prisma.AiUsageWhereInput = { createdAt }
 
-    const [total, porEmpresa, porMes, recentes] = await Promise.all([
+    const [total, porEmpresa, porMes, recentes, porEtapa] = await Promise.all([
       prisma.aiUsage.aggregate({ where, _count: { _all: true }, _sum: { inputTokens: true, outputTokens: true, costUsd: true } }),
       prisma.aiUsage.groupBy({
         by: ['companyId'],
@@ -431,6 +461,13 @@ adminGestaoRouter.get(
         FROM ai_usage
         GROUP BY 1 ORDER BY 1 DESC LIMIT 24`,
       prisma.aiUsage.findMany({ where, orderBy: { createdAt: 'desc' }, take: 50 }),
+      // Quanto custa analisar e quanto custa revisar, por modelo (a revisão é custo nosso).
+      prisma.aiUsage.groupBy({
+        by: ['etapa', 'provider', 'model'],
+        where,
+        _count: { _all: true },
+        _sum: { inputTokens: true, outputTokens: true, costUsd: true },
+      }),
     ])
 
     const empresas = await prisma.company.findMany({
@@ -463,8 +500,17 @@ adminGestaoRouter.get(
         tokensSaida: Number(m.saida ?? 0),
         custoEstimadoUsd: num(m.custo),
       })),
+      porEtapa: porEtapa.map((e) => ({
+        etapa: e.etapa,
+        provider: e.provider,
+        model: e.model,
+        chamadas: e._count._all,
+        tokensEntrada: e._sum.inputTokens ?? 0,
+        tokensSaida: e._sum.outputTokens ?? 0,
+        custoEstimadoUsd: num(e._sum.costUsd),
+      })),
       recentes,
-      aviso: 'O custo em USD é uma estimativa e só aparece se AI_PRICE_INPUT_PER_MTOK e AI_PRICE_OUTPUT_PER_MTOK estiverem configurados.',
+      aviso: 'O custo em USD é uma estimativa e só aparece se os preços por milhão de tokens estiverem configurados (AI_PRICE_GEMINI_* e AI_PRICE_CLAUDE_*, ou AI_PRICE_INPUT/OUTPUT_PER_MTOK).',
     })
   })
 )

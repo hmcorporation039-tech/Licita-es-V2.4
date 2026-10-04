@@ -17,6 +17,14 @@ export const MIN_CARACTERES_POR_PAGINA = 200
 export interface PdfTexto {
   texto: string
   paginas: number
+  // O mesmo texto com um marcador [[PÁGINA n]] antes de cada página — é o que vai
+  // para a IA, para ela poder citar a página de cada exigência.
+  textoComPaginas: string
+}
+
+// Monta o texto com marcadores de página. Pura: recebe as páginas já extraídas.
+export function montarTextoComPaginas(paginas: { num: number; text: string }[]): string {
+  return paginas.map((p) => `[[PÁGINA ${p.num}]]\n${p.text.trim()}`).join('\n\n')
 }
 
 export function temCamadaDeTexto(texto: string, paginas: number): boolean {
@@ -30,7 +38,8 @@ export async function extractPdf(buffer: Buffer): Promise<PdfTexto> {
   const parser = new PDFParse({ data: buffer })
   try {
     const result = await parser.getText()
-    return { texto: result.text, paginas: result.total }
+    const comMarcadores = result.pages?.length ? montarTextoComPaginas(result.pages) : result.text
+    return { texto: result.text, paginas: result.total, textoComPaginas: comMarcadores }
   } finally {
     await parser.destroy()
   }

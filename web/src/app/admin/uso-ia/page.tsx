@@ -75,6 +75,46 @@ function Conteudo() {
       </section>
 
       <section className={secao}>
+        <h2 className="mb-1 text-sm font-medium">Por etapa e modelo</h2>
+        <p className="mb-2 text-xs text-slate-500">
+          Cada análise tem duas etapas: o analista lê o edital e o revisor o confere. A revisão é custo da plataforma: não conta na cota do cliente.
+        </p>
+        <table className="w-full text-left text-sm">
+          <thead>
+            <tr>
+              <th className={th}>Etapa</th>
+              <th className={th}>Modelo</th>
+              <th className={`${th} text-right`}>Chamadas</th>
+              <th className={`${th} text-right`}>Tokens in</th>
+              <th className={`${th} text-right`}>Tokens out</th>
+              <th className={`${th} text-right`}>Custo est.</th>
+            </tr>
+          </thead>
+          <tbody>
+            {d.porEtapa.map((e) => (
+              <tr key={`${e.etapa}-${e.provider}-${e.model}`} className="border-t border-slate-100">
+                <td className="px-2 py-1.5">{e.etapa === 'revisao' ? 'Revisão' : 'Análise'}</td>
+                <td className="px-2 py-1.5">
+                  {e.provider} / {e.model}
+                </td>
+                <td className="px-2 py-1.5 text-right">{e.chamadas}</td>
+                <td className="px-2 py-1.5 text-right">{nf.format(e.tokensEntrada)}</td>
+                <td className="px-2 py-1.5 text-right">{nf.format(e.tokensSaida)}</td>
+                <td className="px-2 py-1.5 text-right">{usd(e.custoEstimadoUsd)}</td>
+              </tr>
+            ))}
+            {d.porEtapa.length === 0 && (
+              <tr>
+                <td colSpan={6} className="px-2 py-4 text-center text-slate-500">
+                  Nenhuma chamada neste período.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </section>
+
+      <section className={secao}>
         <h2 className="mb-2 text-sm font-medium">Por mês</h2>
         <table className="w-full text-left text-sm">
           <thead>

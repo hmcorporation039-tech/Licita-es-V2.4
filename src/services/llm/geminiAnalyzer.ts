@@ -61,6 +61,11 @@ export async function analyzeEdital(
       throw new AnalysisRefusedError()
     }
     const finishReason = response.candidates?.[0]?.finishReason
+    // Resposta cortada pelo limite de saída não é recusa: o JSON viria truncado
+    // (a matriz de exigências é a parte mais longa).
+    if (finishReason === 'MAX_TOKENS') {
+      throw new Error('A resposta do analista foi cortada antes de terminar.')
+    }
     if (finishReason && finishReason !== 'STOP') {
       throw new AnalysisRefusedError()
     }

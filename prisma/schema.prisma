@@ -107,6 +107,7 @@ model Company {
   companyDocuments   CompanyDocument[]
   checklists         TenderChecklist[]
   participationPlans TenderParticipationPlan[]
+  requirementProgress RequirementProgress[]
   tenderMatches      TenderMatch[]
 
   @@map("companies")
@@ -226,6 +227,7 @@ model Tender {
   checklists         TenderChecklist[]
   analysis           TenderAnalysis?
   participationPlans TenderParticipationPlan[]
+  requirementProgress RequirementProgress[]
 
   @@index([fonte])
   @@index([uf])
@@ -515,7 +517,14 @@ model TenderAnalysis {
   tenderId      String         @unique @map("tender_id")
   status        AnalysisStatus @default(PENDING)
   documentoNome String?        @map("documento_nome")
-  resultado     Json?          // { resumo, valorEstimado, prazoEntrega, criterioJulgamento, exigenciasTecnicas, documentosExigidos, riscos }
+  // Resultado FINAL: a análise revisada, ou o rascunho do analista quando não houve revisão.
+  resultado     Json?          // { resumo, valorEstimado, ..., matrizExigencias, riscos }
+  // Análise em dupla: o que o analista (Gemini) entregou ANTES da revisão — só o admin vê, para auditar.
+  rascunho      Json?
+  // Relatório da revisão: status, veredito, resumo, alterações campo a campo, modelos usados.
+  revisao       Json?
+  // 'dupla' | 'gemini' | 'claude' — como esta análise foi produzida.
+  pipeline      String?
   errorMsg      String?        @map("error_msg") @db.Text
   createdAt     DateTime       @default(now()) @map("created_at")
   updatedAt     DateTime       @updatedAt @map("updated_at")
@@ -629,6 +638,8 @@ model AiUsage {
   costUsd      Decimal? @map("cost_usd") @db.Decimal(12, 6)
   durationMs   Int?     @map("duration_ms")
   status       String   @default("OK") // OK | ERRO
+  // Etapa da análise em dupla: 'analise' (analista) ou 'revisao' (revisor). A cota conta só 'analise'.
+  etapa        String   @default("analise")
   createdAt    DateTime @default(now()) @map("created_at")
 
   @@index([companyId, createdAt])
@@ -676,4 +687,22 @@ model AuthToken {
 
   @@index([userId, type])
   @@map("auth_tokens")
+}
+
+// Quanto da matriz de exigências de uma licitação cada empresa já atendeu.
+// `state` = { [chaveDaExigencia]: { atendida, nota?, em, por } } — a chave é um
+// hash do texto literal da exigência (estável entre reanálises).
+model RequirementProgress {
+  id        String   @id @default(uuid())
+  companyId String   @map("company_id")
+  tenderId  String   @map("tender_id")
+  state     Json
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  tender  Tender  @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, tenderId])
+  @@map("requirement_progress")
 }

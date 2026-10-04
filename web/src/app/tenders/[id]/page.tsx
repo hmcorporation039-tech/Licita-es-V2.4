@@ -18,6 +18,8 @@ import { SITUACAO_OPTIONS } from '@/lib/situacoes'
 import { safeHttpUrl } from '@/lib/safeUrl'
 import type { PrazosDaSessao } from '@/lib/adminTypes'
 import PainelDoFiscal from '@/components/PainelDoFiscal'
+import MatrizDeExigencias from '@/components/MatrizDeExigencias'
+import RelatorioDaRevisao from '@/components/RelatorioDaRevisao'
 
 // Documento válido (não vencido) do cofre da empresa, indexado por tipo —
 // pra marcar automaticamente os itens do checklist que a empresa já tem.
@@ -43,6 +45,7 @@ const TABS = [
   { id: 'itens', label: 'Itens' },
   { id: 'analise', label: 'Análise (IA)' },
   { id: 'habilitacao', label: 'Habilitação' },
+  { id: 'exigencias', label: 'Exigências' },
   { id: 'checklist', label: 'Checklist' },
   { id: 'plano', label: 'Plano de participação' },
 ] as const
@@ -414,6 +417,8 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
 
           {activeTab === 'habilitacao' && <PainelDoFiscal tenderId={id} />}
 
+          {activeTab === 'exigencias' && <MatrizDeExigencias tenderId={id} />}
+
           {activeTab === 'itens' && (
             <section className="rounded border border-slate-200 bg-white p-4">
               <h2 className="mb-1 text-lg font-semibold">Itens da licitação</h2>
@@ -518,6 +523,13 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
                 <div className="flex flex-col gap-4">
                   {analysis.documentoNome && (
                     <p className="text-xs text-slate-400">Documento analisado: {analysis.documentoNome}</p>
+                  )}
+                  <RelatorioDaRevisao revisao={analysis.revisao ?? null} />
+                  {user?.isAdmin && analysis.rascunho && (
+                    <details className="rounded border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+                      <summary className="cursor-pointer font-medium">Admin: rascunho do analista (antes da revisão)</summary>
+                      <pre className="mt-2 max-h-96 overflow-auto whitespace-pre-wrap">{JSON.stringify(analysis.rascunho, null, 2)}</pre>
+                    </details>
                   )}
                   <p className="text-sm text-slate-700">{analysis.resultado.resumo}</p>
 

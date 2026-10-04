@@ -11,6 +11,21 @@ export interface EditalAnalysisRisco {
   severidade: 'alta' | 'media' | 'baixa'
 }
 
+export const CATEGORIAS_DE_EXIGENCIA = ['juridica', 'fiscal', 'economica', 'tecnica', 'proposta', 'outra'] as const
+export const RESPONSAVEIS_DE_EXIGENCIA = ['fiscal', 'calculista', 'redator'] as const
+
+// Uma exigência do edital, rastreável até o ponto exato de onde veio. `texto` é a
+// transcrição LITERAL (o sistema confere depois, por código, se ele aparece mesmo
+// no documento — ver lib/matrizExigencias.ts).
+export interface ExigenciaDoEdital {
+  texto: string
+  categoria: (typeof CATEGORIAS_DE_EXIGENCIA)[number]
+  documento: string
+  pagina: string
+  item: string
+  responsavel: (typeof RESPONSAVEIS_DE_EXIGENCIA)[number]
+}
+
 export interface EditalAnalysisResult {
   resumo: string
   valorEstimado: string
@@ -31,6 +46,7 @@ export interface EditalAnalysisResult {
   visitaTecnica: string
   exigenciasTecnicas: string[]
   documentosExigidos: string[]
+  matrizExigencias: ExigenciaDoEdital[]
   riscos: EditalAnalysisRisco[]
 }
 
@@ -56,6 +72,22 @@ export const ANALYSIS_SCHEMA = {
     visitaTecnica: { type: 'string' },
     exigenciasTecnicas: { type: 'array', items: { type: 'string' } },
     documentosExigidos: { type: 'array', items: { type: 'string' } },
+    matrizExigencias: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          texto: { type: 'string' },
+          categoria: { type: 'string', enum: [...CATEGORIAS_DE_EXIGENCIA] },
+          documento: { type: 'string' },
+          pagina: { type: 'string' },
+          item: { type: 'string' },
+          responsavel: { type: 'string', enum: [...RESPONSAVEIS_DE_EXIGENCIA] },
+        },
+        required: ['texto', 'categoria', 'documento', 'pagina', 'item', 'responsavel'],
+        additionalProperties: false,
+      },
+    },
     riscos: {
       type: 'array',
       items: {
@@ -88,6 +120,7 @@ export const ANALYSIS_SCHEMA = {
     'visitaTecnica',
     'exigenciasTecnicas',
     'documentosExigidos',
+    'matrizExigencias',
     'riscos',
   ],
   additionalProperties: false,
@@ -110,6 +143,7 @@ Extraia (para qualquer campo não encontrado, escreva "não especificado no edit
 - garantiaContratual: o que o edital diz sobre garantia contratual (garantia de execução do contrato), com o percentual ou valor exatamente como escrito (ex: "5% do valor do contrato"). Se não exige, escreva "não exigida".
 - patrimonioLiquidoMinimo: exigência de capital mínimo ou de patrimônio líquido mínimo na habilitação econômico-financeira, com o percentual ou valor exatamente como escrito (ex: "10% do valor estimado" ou "R$ 500.000,00"). Se não exige, escreva "não exigido".
 - visitaTecnica: o que o edital diz sobre visita técnica ou vistoria: se é obrigatória ou facultativa e se admite declaração do licitante no lugar da visita. Transcreva o trecho. Se não menciona, escreva "não exigida".
+- matrizExigencias: a matriz de exigências do edital, uma linha por exigência que o licitante precisa cumprir ou comprovar (habilitação jurídica, fiscal, econômico-financeira, técnica e da proposta). Cada linha tem: texto (transcrição LITERAL de até 200 caracteres do trecho do edital que contém a obrigação, normalmente com "deverá", "deve", "será exigido" ou "é obrigatório"; copie exatamente, sem parafrasear nem resumir), categoria (juridica, fiscal, economica, tecnica, proposta ou outra), documento (nome do arquivo em que o trecho aparece), pagina (número da página, conforme os marcadores [[PÁGINA n]] que antecedem cada página do texto; se o documento não tiver marcadores, escreva "não identificada"), item (número do item ou cláusula, ex.: "10.3.2"; vazio se não houver) e responsavel (fiscal para documentos de habilitação, calculista para planilhas, preços e custos, redator para declarações e texto da proposta). Liste no máximo 50 exigências, priorizando habilitação e proposta. Nunca invente uma exigência: se não houver o trecho, não liste.
 - exigenciasTecnicas: lista de exigências de qualificação técnica (atestados, registros em conselho de classe, etc.)
 - documentosExigidos: documentos de habilitação exigidos NESTE edital além do básico padrão presente em praticamente toda licitação da Lei 14.133/2021. NÃO liste nenhum destes, mesmo que o edital os cite: contrato social, cartão CNPJ, certidões negativas federais/estaduais/municipais, CNDT, certidão de regularidade do FGTS, RG/CPF ou procuração de sócios/representantes, certidão negativa de falência, e as declarações-modelo que acompanham como anexo quase todo edital — não emprego de menor, inexistência de fato impeditivo à habilitação (idoneidade), cumprimento dos requisitos de habilitação, elaboração independente de proposta, inexistência de parentesco/nepotismo com agente público, enquadramento como ME/EPP. Liste só o que é ESPECÍFICO deste edital: garantia de proposta, atestado de capacidade técnica com critério ou quantitativo definido, registro em conselho de classe, comprovação de vínculo com responsável técnico, ART/RRT, vistoria obrigatória, índices contábeis com valor mínimo fixado pelo edital, planilha de custos em formato próprio, compatibilidade com convenção coletiva específica, etc.
 - riscos: pontos de atenção reais encontrados no texto, no estilo de auditoria de concorrência — exemplos do que procurar: exigência de atestado técnico com critérios muito restritivos, planilha de custos com prazo de preenchimento apertado, exigência de visita técnica obrigatória com prazo curto, cláusulas de habilitação que podem restringir a competitividade indevidamente, valores ou prazos incomuns, exigências de qualificação econômico-financeira desproporcionais ao objeto. Marque severidade "alta" só para riscos que podem de fato inabilitar ou prejudicar uma proposta.
@@ -151,7 +185,7 @@ export function buildInstrucao(objeto: string, documentos: EditalDocumento[]): s
   return [
     `Objeto da licitação (conforme cadastro no PNCP): ${objeto}`,
     '',
-    'Documentos anexados, na ordem em que aparecem:',
+    'Documentos anexados, na ordem em que aparecem (os textos trazem marcadores [[PÁGINA n]] no início de cada página):',
     lista,
     '',
     'Analise o conjunto completo. O Termo de Referência e os anexos costumam trazer as exigências técnicas e os documentos de habilitação que não estão no corpo do edital.',
@@ -165,6 +199,9 @@ export function buildInstrucao(objeto: string, documentos: EditalDocumento[]): s
 // de tamanho (defesa contra resposta gigante induzida por prompt injection).
 const LIMITE_STR = 20_000
 const LIMITE_ITENS = 200
+// Teto da matriz de exigências (defesa contra resposta gigante); o prompt do
+// analista pede até 50 e o revisor pode completar até este limite.
+export const LIMITE_MATRIZ = 150
 
 function texto(v: unknown): string {
   return typeof v === 'string' ? v.slice(0, LIMITE_STR) : ''
@@ -189,6 +226,29 @@ export function validarResultadoAnalise(bruto: unknown): EditalAnalysisResult {
         return { titulo: texto(ro.titulo), descricao: texto(ro.descricao), severidade: sev }
       })
     : []
+  const matrizExigencias: ExigenciaDoEdital[] = Array.isArray(o.matrizExigencias)
+    ? o.matrizExigencias
+        .slice(0, LIMITE_MATRIZ)
+        .map((e) => {
+          const eo = (typeof e === 'object' && e !== null ? e : {}) as Record<string, unknown>
+          const categoria = (CATEGORIAS_DE_EXIGENCIA as readonly string[]).includes(eo.categoria as string)
+            ? (eo.categoria as ExigenciaDoEdital['categoria'])
+            : 'outra'
+          const responsavel = (RESPONSAVEIS_DE_EXIGENCIA as readonly string[]).includes(eo.responsavel as string)
+            ? (eo.responsavel as ExigenciaDoEdital['responsavel'])
+            : 'fiscal'
+          return {
+            texto: texto(eo.texto).slice(0, 600),
+            categoria,
+            documento: texto(eo.documento).slice(0, 300),
+            pagina: texto(eo.pagina).slice(0, 40),
+            item: texto(eo.item).slice(0, 60),
+            responsavel,
+          }
+        })
+        // Linha sem texto não é exigência.
+        .filter((e) => e.texto.trim().length > 0)
+    : []
   return {
     resumo: texto(o.resumo),
     valorEstimado: texto(o.valorEstimado),
@@ -207,6 +267,7 @@ export function validarResultadoAnalise(bruto: unknown): EditalAnalysisResult {
     visitaTecnica: texto(o.visitaTecnica),
     exigenciasTecnicas: listaTexto(o.exigenciasTecnicas),
     documentosExigidos: listaTexto(o.documentosExigidos),
+    matrizExigencias,
     riscos,
   }
 }
