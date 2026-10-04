@@ -22,6 +22,7 @@ import { calcularAlertasLegais, lerValoresEmReais } from '../../lib/alertasLegai
 import type { EditalAnalysisResult } from '../../services/llm/types'
 import { chaveDaExigencia, ExigenciaVerificada, resumoDaVerificacao } from '../../lib/matrizExigencias'
 import { analiseParaResposta } from '../../lib/analiseParaResposta'
+import { whereLicitacaoAberta } from '../../lib/licitacaoAberta'
 
 export const tendersRouter = Router()
 
@@ -83,8 +84,10 @@ tendersRouter.get(
     if (uf) where.uf = uf
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if (modalidade) where.modalidade = modalidade as any
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if (situacao) where.situacao = situacao as any
+    // Só licitações abertas para concorrência (ver lib/licitacaoAberta.ts). O filtro
+    // `situacao` antigo foi aposentado: encerradas não aparecem mais nas buscas.
+    void situacao
+    where.AND = [whereLicitacaoAberta()]
     // Busca contra as colunas *_norm (minúsculas, sem acento) em vez das colunas
     // originais — assim "uberlandia" encontra "Uberlândia" sem depender da
     // extensão unaccent do Postgres (ver comentário no schema.prisma).

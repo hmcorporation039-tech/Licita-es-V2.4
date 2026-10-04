@@ -8,6 +8,7 @@ import { ModalidadeEnum, Prisma } from '@prisma/client'
 import { prisma } from './tenderService'
 import { normalize } from '../lib/geoService'
 import { calcularAderencia } from '../lib/aderencia'
+import { estaAberta, whereLicitacaoAberta } from '../lib/licitacaoAberta'
 import {
   CODE_MATCH_SCORE,
   Gates,
@@ -34,6 +35,10 @@ const TENDER_SELECT = {
   objetoNorm: true,
   valorEstimado: true,
   encerramentoAt: true,
+  aberturaAt: true,
+  publicadoAt: true,
+  createdAt: true,
+  valorHomologado: true,
   municipioLat: true,
   municipioLng: true,
   items: { select: { descricao: true, descricaoNorm: true, catmatCode: true, catserCode: true } },
@@ -138,7 +143,9 @@ export async function findMatchCandidates(tenderId: string): Promise<MatchCandid
   // Só gera match para licitação com propostas em andamento (ABERTA). Revogada,
   // suspensa, anulada, encerrada, homologada e cancelada não entram no pool de
   // oportunidades — ver instruções 3.1.2/3.1.4/3.1.5.
-  if (tender.situacao !== 'ABERTA') return []
+  // Além da situação, o prazo: licitação encerrada/homologada/antiga não é oportunidade
+  // (ver lib/licitacaoAberta.ts).
+  if (!estaAberta(tender)) return []
 
   const objetoNorm = tender.objetoNorm ?? normalize(tender.objeto)
   const itemDescsNorm = tender.items.map((i) => i.descricaoNorm ?? normalize(i.descricao))
@@ -200,7 +207,7 @@ const REMATCH_BATCH_SIZE = 500
 // matcher é decisão de produto e não muda aqui.
 function whereDoRematch(item: RematchInput, cutoff: Date): Prisma.TenderWhereInput {
   // Só licitação ABERTA entra no rematch — mesma regra de findMatchCandidates.
-  const where: Prisma.TenderWhereInput = { createdAt: { gte: cutoff }, situacao: 'ABERTA' }
+  const where: Prisma.TenderWhereInput = { createdAt: { gte: cutoff }, AND: [whereLicitacaoAberta()] }
 
   if (item.ufs.length > 0) where.uf = { in: item.ufs }
   if (item.modalidades.length > 0) where.modalidade = { in: item.modalidades as ModalidadeEnum[] }
