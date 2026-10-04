@@ -22,9 +22,12 @@ import { participationPlansRouter } from './routes/participationPlans'
 import { uasgRouter } from './routes/uasg'
 import { catalogRouter } from './routes/catalog'
 import { radarRouter } from './routes/radar'
+import { contaRouter } from './routes/conta'
 import { requireAuth } from './authMiddleware'
 import { ApiError } from './asyncHandler'
-import { globalLimiter } from './rateLimit'
+import { globalLimiter, radarLimiter } from './rateLimit'
+import { alertarFalha, instalarAlertasDoProcesso } from '../services/alertaOperacional'
+import { JWT_SECRET_MIN, jwtSecretFraco } from '../services/authService'
 import { iniciarImportacaoAutomatica } from '../services/catalogoBootstrap'
 import { verificarProntidao } from '../services/prontidao'
 
@@ -90,9 +93,10 @@ app.use('/api/dashboard', requireAuth, dashboardRouter)
 app.use('/api/participation-plans', requireAuth, participationPlansRouter)
 app.use('/api/uasg', requireAuth, uasgRouter)
 app.use('/api/catalog', requireAuth, catalogRouter)
-app.use('/api/radar', requireAuth, radarRouter)
+app.use('/api/radar', requireAuth, radarLimiter, radarRouter)
+app.use('/api/conta', requireAuth, contaRouter)
 
-const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
+const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
   if (err instanceof ZodError) {
     res.status(400).json({ error: 'Dados inválidos', details: err.issues })
     return
@@ -110,6 +114,8 @@ const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     return
   }
   console.error('[API] Erro não tratado:', err)
+  // Rota sem ids (ex.: /api/tenders/:id) para o silêncio agrupar erros iguais.
+  void alertarFalha('api', `${req.method} ${req.baseUrl}${req.route?.path ?? ''}`, err)
   res.status(500).json({ error: 'Erro interno' })
 }
 app.use(errorHandler)
@@ -121,6 +127,15 @@ const PORT = Number(process.env.PORT ?? process.env.API_PORT ?? 3333)
 // Os testes de integração importam o app e o sobem numa porta própria; sem
 // esta guarda, importar o módulo já abriria a porta e a importação automática.
 export { app }
+if (process.env.NODE_ENV !== 'test') {
+  instalarAlertasDoProcesso('api')
+  // Não derruba a API (trocar o segredo desloga todo mundo; é decisão de quem opera),
+  // mas avisa alto: segredo curto permite forjar sessão de qualquer usuário.
+  if (jwtSecretFraco()) {
+    console.error(`[Segurança] JWT_SECRET tem menos de ${JWT_SECRET_MIN} caracteres. Gere um novo (ver docs/CHECKLIST_COLOCAR_NO_AR.md).`)
+    void alertarFalha('api', 'JWT_SECRET fraco', new Error(`JWT_SECRET com menos de ${JWT_SECRET_MIN} caracteres`))
+  }
+}
 if (process.env.NODE_ENV !== 'test') app.listen(PORT, () => {
   console.log(`🌐 API rodando em http://localhost:${PORT}`)
   // Popula/renova UASGs e catálogo CATMAT/CATSER em segundo plano (ver

@@ -14,8 +14,8 @@ const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3333";
 // 'none' impede embutir o site em iframe (clickjacking), além do X-Frame-Options.
 const isProd = process.env.NODE_ENV === "production";
 const scriptSrc = isProd
-  ? "script-src 'self' 'unsafe-inline'"
-  : "script-src 'self' 'unsafe-inline' 'unsafe-eval'";
+  ? "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com"
+  : "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com";
 
 const csp = [
   "default-src 'self'",
@@ -26,6 +26,8 @@ const csp = [
   "img-src 'self' data: blob:",
   "style-src 'self' 'unsafe-inline'",
   scriptSrc,
+  // Captcha Turnstile (cadastro) roda num iframe da Cloudflare.
+  "frame-src https://challenges.cloudflare.com",
   `connect-src 'self' ${apiUrl}`,
 ].join("; ");
 

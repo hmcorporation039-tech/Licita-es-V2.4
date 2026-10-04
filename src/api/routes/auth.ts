@@ -16,7 +16,9 @@ import { senhaSchema } from '../passwordPolicy'
 import { asyncHandler, ApiError } from '../asyncHandler'
 import { requireAuth } from '../authMiddleware'
 import { registrarAuditoria } from '../../services/auditService'
-import { loginLimiter, changePasswordLimiter, cadastroLimiter, recuperacaoLimiter } from '../rateLimit'
+import { loginLimiter, loginPorContaLimiter, changePasswordLimiter, cadastroLimiter, recuperacaoLimiter } from '../rateLimit'
+import { captchaValido, emailDescartavel, maxCadastrosPorHora } from '../../lib/protecaoCadastro'
+import { alertarFalha } from '../../services/alertaOperacional'
 import { cnpjValido, cpfValido } from '../../lib/documentos'
 import {
   cadastrar,
@@ -51,6 +53,8 @@ const cadastroSchema = z
     aceiteTermos: z.literal(true, { errorMap: () => ({ message: 'É preciso aceitar os Termos de Uso e a Política de Privacidade' }) }),
     // Isca para robôs: campo invisível na tela. Pessoa nunca preenche.
     website: z.string().max(200).optional(),
+    // Resposta do captcha (Turnstile), quando ligado.
+    captcha: z.string().max(4000).optional(),
   })
   .superRefine((d, ctx) => {
     const ok = d.tipo === 'PESSOA_FISICA' ? cpfValido(d.documento) : cnpjValido(d.documento)
@@ -70,6 +74,18 @@ authRouter.post(
     if (d.website) {
       res.status(202).json({ mensagem: MENSAGEM_CADASTRO })
       return
+    }
+    if (!(await captchaValido(d.captcha, req.ip))) {
+      throw new ApiError(400, 'Não foi possível confirmar que você não é um robô. Recarregue a página e tente de novo.', { code: 'CAPTCHA' })
+    }
+    if (emailDescartavel(d.email)) {
+      throw new ApiError(400, 'Use um e-mail permanente (e-mails temporários não são aceitos).', { code: 'EMAIL_DESCARTAVEL' })
+    }
+    // Teto global: freia criação em massa vinda de muitos IPs diferentes.
+    const ultimaHora = await prisma.user.count({ where: { createdAt: { gt: new Date(Date.now() - 3_600_000) }, emailVerifiedAt: null } })
+    if (ultimaHora >= maxCadastrosPorHora()) {
+      void alertarFalha('cadastro', 'teto-por-hora', new Error(`${ultimaHora} cadastros não confirmados na última hora (teto ${maxCadastrosPorHora()}).`))
+      throw new ApiError(429, 'Muitos cadastros neste momento. Tente novamente em alguns minutos.')
     }
 
     const r = await cadastrar({
@@ -102,9 +118,17 @@ authRouter.post(
   '/verify-email',
   recuperacaoLimiter,
   asyncHandler(async (req, res) => {
-    const { token } = tokenSchema.parse(req.body)
-    const r = await confirmarEmail(token)
-    if (!r) throw new ApiError(400, 'Link inválido ou expirado. Peça um novo e-mail de confirmação.')
+    const { token, senha } = tokenSchema.extend({ senha: z.string().min(1).max(200) }).parse(req.body)
+    const r = await confirmarEmail(token, senha)
+    if ('erro' in r) {
+      throw new ApiError(
+        400,
+        r.erro === 'senha'
+          ? 'Senha incorreta. Use a senha que você escolheu no cadastro.'
+          : 'Link inválido ou expirado. Peça um novo e-mail de confirmação.',
+        { code: r.erro === 'senha' ? 'SENHA_INCORRETA' : 'LINK_INVALIDO' }
+      )
+    }
     await registrarAuditoria(req, { action: 'EMAIL_VERIFICADO', entityType: 'usuario', entityId: r.userId, companyId: r.companyId }, { userId: r.userId })
     res.json({ ok: true })
   })
@@ -155,6 +179,7 @@ const loginSchema = z.object({
 authRouter.post(
   '/login',
   loginLimiter,
+  loginPorContaLimiter,
   asyncHandler(async (req, res) => {
     const parsed = loginSchema.parse(req.body)
     const email = normalizeEmail(parsed.email)

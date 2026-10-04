@@ -20,6 +20,7 @@ import { cleanupOldUnmatchedTenders, cleanupOldWorkerLogs } from '../services/re
 import { checkExpiringDocuments } from '../services/documentAlertService'
 import { configuracaoDeIa } from '../services/analiseEmDupla'
 import { textoDoDiagnostico } from '../lib/diagnosticoDeChave'
+import { alertarFalha, instalarAlertasDoProcesso } from '../services/alertaOperacional'
 
 async function main() {
   console.log('🚀 Iniciando workers da plataforma de licitações...')
@@ -37,6 +38,18 @@ async function main() {
   const workerAnalise = startAnaliseWorker()
 
   console.log('✅ Workers ativos: PNCP, ComprasNet, Novacap, FIEG, SESC GO, SEST SENAT, SESC Regionais, Matcher, Notificador, Análise')
+
+  // Alerta ao administrador só na falha DEFINITIVA (esgotadas as tentativas): uma tentativa
+  // que falha e depois dá certo (portal instável) não é motivo para acordar ninguém.
+  instalarAlertasDoProcesso('workers')
+  const todos = [workerPNCP, workerComprasnet, workerNovacap, workerFieg, workerSescGo, workerSestSenat, workerSescRegional, workerMatcher, workerNotificador, workerAnalise]
+  for (const w of todos) {
+    w.on('failed', (job, err) => {
+      const tentativas = job?.opts?.attempts ?? 1
+      if (job && job.attemptsMade < tentativas) return
+      void alertarFalha('worker ' + w.name, job?.name ?? 'job', err)
+    })
+  }
 
   // Estado da análise por IA no log de partida: modo e FORMATO das chaves (tamanho,
   // prefixo, espaços/aspas), nunca as chaves. Quem investiga um "API key is invalid"
@@ -75,6 +88,7 @@ async function main() {
       console.log(`[SituaçãoUpdate] Concluído — ${checked} verificada(s), ${updated} atualizada(s).`)
     } catch (err) {
       console.error('[SituaçãoUpdate] Erro na varredura:', err)
+      void alertarFalha('rotina', 'situação', err)
     }
   }
   setTimeout(runSituacaoRefresh, 5 * 60 * 1000) // primeira execução 5min após o start
@@ -93,6 +107,7 @@ async function main() {
       console.log(`[Retenção] ${logs} log(s) de worker removido(s).`)
     } catch (err) {
       console.error('[Retenção] Erro na limpeza:', err)
+      void alertarFalha('rotina', 'retenção', err)
     }
   }
   setTimeout(runCleanup, 10 * 60 * 1000) // primeira execução 10min após o start
@@ -107,6 +122,7 @@ async function main() {
       console.log(`[DocumentAlert] Concluído — ${checked} verificado(s), ${alerted} aviso(s) enviado(s).`)
     } catch (err) {
       console.error('[DocumentAlert] Erro na verificação:', err)
+      void alertarFalha('rotina', 'alerta de documentos', err)
     }
   }
   setTimeout(runDocumentAlerts, 15 * 60 * 1000) // primeira execução 15min após o start

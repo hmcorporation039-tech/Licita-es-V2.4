@@ -17,6 +17,8 @@ import { escritaSensivelLimiter } from '../rateLimit'
 import { exigirCotaDaRequisicao } from '../cotas'
 import { registrarAuditoria } from '../../services/auditService'
 import { resumoDeCotas } from '../../services/quotaService'
+import { cnpjValido, cpfValido, somenteDigitos } from '../../lib/documentos'
+import { Prisma } from '@prisma/client'
 
 export const companyRouter = Router()
 
@@ -61,8 +63,37 @@ companyRouter.patch(
   '/',
   requireCompanyOwner,
   asyncHandler(async (req, res) => {
-    const data = updateCompanySchema.parse(req.body)
-    const updated = await prisma.company.update({ where: { id: req.companyId! }, data })
+    const { tipo, cnpj, cpf, ...resto } = updateCompanySchema.parse(req.body)
+    const data: Prisma.CompanyUpdateInput = { ...resto }
+
+    // CPF/CNPJ e tipo identificam a conta (um período de teste por documento). Depois de
+    // preenchidos, só o suporte altera: senão o dono "soltava" o documento para fazer outro
+    // teste grátis, ou tomava o CNPJ de terceiros. Reenviar o mesmo valor (o formulário manda
+    // tudo) é aceito; preencher um documento que ainda não existe também, com validação.
+    const atual = await prisma.company.findUniqueOrThrow({ where: { id: req.companyId! }, select: { tipo: true, cnpj: true, cpf: true } })
+    const digitos = (v: string | null | undefined) => (v ? somenteDigitos(v) : null)
+    const temDocumento = !!(atual.cnpj || atual.cpf)
+    const pedido = { tipo: tipo ?? atual.tipo, cnpj: cnpj === undefined ? digitos(atual.cnpj) : digitos(cnpj), cpf: cpf === undefined ? digitos(atual.cpf) : digitos(cpf) }
+    const igual = pedido.tipo === atual.tipo && pedido.cnpj === digitos(atual.cnpj) && pedido.cpf === digitos(atual.cpf)
+    if (!igual) {
+      if (temDocumento) {
+        throw new ApiError(403, 'O CPF/CNPJ e o tipo de conta não podem ser alterados por aqui. Fale com o suporte.')
+      }
+      if (pedido.cnpj && (pedido.tipo !== 'PESSOA_JURIDICA' || !cnpjValido(pedido.cnpj))) throw new ApiError(400, 'CNPJ inválido.')
+      if (pedido.cpf && (pedido.tipo !== 'PESSOA_FISICA' || !cpfValido(pedido.cpf))) throw new ApiError(400, 'CPF inválido.')
+      Object.assign(data, { tipo: pedido.tipo, cnpj: pedido.cnpj, cpf: pedido.cpf })
+    }
+
+    let updated
+    try {
+      updated = await prisma.company.update({ where: { id: req.companyId! }, data })
+    } catch (err) {
+      // Documento já usado por outra conta: mensagem neutra (não confirma que ele existe).
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        throw new ApiError(409, 'Não foi possível usar este documento. Fale com o suporte.')
+      }
+      throw err
+    }
     await registrarAuditoria(req, {
       action: 'EMPRESA_ALTERADA',
       entityType: 'empresa',

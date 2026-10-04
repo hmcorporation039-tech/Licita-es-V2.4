@@ -46,6 +46,8 @@ export default function EmpresaPage() {
 
   const [name, setName] = useState('')
   const [tipo, setTipo] = useState<CompanyType>('PESSOA_FISICA')
+  // CPF/CNPJ já gravado: só o suporte altera (ver PATCH /api/company).
+  const [documentoTravado, setDocumentoTravado] = useState(false)
   const [documento, setDocumento] = useState('')
   const [companyEmail, setCompanyEmail] = useState('')
   const [telefone, setTelefone] = useState('')
@@ -84,6 +86,7 @@ export default function EmpresaPage() {
       setName(data.name)
       setTipo(data.tipo)
       setDocumento(data.tipo === 'PESSOA_JURIDICA' ? (data.cnpj ?? '') : (data.cpf ?? ''))
+      setDocumentoTravado(!!(data.cnpj || data.cpf))
       setCompanyEmail(data.email ?? '')
       setTelefone(data.telefone ?? '')
       setResponsavel(data.responsavel ?? '')
@@ -245,7 +248,8 @@ export default function EmpresaPage() {
           <select
             value={tipo}
             onChange={(e) => setTipo(e.target.value as CompanyType)}
-            disabled={!souOwner}
+            disabled={!souOwner || documentoTravado}
+            title={documentoTravado ? 'Para alterar o tipo de conta, fale com o suporte.' : undefined}
             className={inputClass}
           >
             <option value="PESSOA_FISICA">Pessoa física</option>
@@ -255,7 +259,8 @@ export default function EmpresaPage() {
             placeholder={tipo === 'PESSOA_JURIDICA' ? 'CNPJ (opcional)' : 'CPF (opcional)'}
             value={documento}
             onChange={(e) => setDocumento(e.target.value)}
-            disabled={!souOwner}
+            disabled={!souOwner || documentoTravado}
+            title={documentoTravado ? 'Para alterar o CPF/CNPJ, fale com o suporte.' : undefined}
             className={inputClass}
           />
           <input

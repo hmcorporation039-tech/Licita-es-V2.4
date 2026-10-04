@@ -73,7 +73,8 @@ export async function enviarConfirmacaoDeEmail(to: string, nome: string | null, 
     html: moldura(
       'Confirme seu e-mail',
       `<p>Olá${nome ? `, ${escapeHtml(nome)}` : ''}! Para ativar sua conta e começar o período de teste, confirme este endereço de e-mail.</p>
-       <p>O link vale por ${validadeHoras} horas e só pode ser usado uma vez.</p>`,
+       <p>O link vale por ${validadeHoras} horas e só pode ser usado uma vez. Ao abrir, informe a senha que você escolheu no cadastro.</p>
+       <p>Se não foi você quem se cadastrou, ignore este e-mail: nenhuma conta será ativada.</p>`,
       link,
       'Confirmar e-mail'
     ),

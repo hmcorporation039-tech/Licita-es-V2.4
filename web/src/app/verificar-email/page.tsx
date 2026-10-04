@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { Suspense, useEffect, useRef, useState } from 'react'
+import { Suspense, useState } from 'react'
 import PublicShell from '@/components/PublicShell'
 import { api, ApiRequestError } from '@/lib/api'
 
@@ -18,30 +18,60 @@ export default function VerificarEmailPage() {
 
 function Conteudo() {
   const token = useSearchParams().get('token')
-  const [estado, setEstado] = useState<'confirmando' | 'ok' | 'erro'>('confirmando')
-  const [mensagem, setMensagem] = useState('')
-  // O link é de uso único: sem esta trava, o modo estrito do React (dev)
-  // dispararia a confirmação duas vezes e a segunda mostraria erro.
-  const jaEnviou = useRef(false)
+  const [estado, setEstado] = useState<'senha' | 'confirmando' | 'ok' | 'erro'>(token ? 'senha' : 'erro')
+  const [mensagem, setMensagem] = useState(token ? '' : 'Link incompleto. Abra o link do e-mail de confirmação.')
+  const [senha, setSenha] = useState('')
+  const [erroSenha, setErroSenha] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (jaEnviou.current) return
-    jaEnviou.current = true
-    if (!token) {
+  // A confirmação pede a senha escolhida no cadastro: assim, se alguém cadastrou o seu
+  // e-mail sem você saber, você não ativa a conta dessa pessoa ao clicar no link.
+  async function confirmar(e: React.FormEvent) {
+    e.preventDefault()
+    setEstado('confirmando')
+    setErroSenha(null)
+    try {
+      await api.post('/api/auth/verify-email', { token, senha })
+      setEstado('ok')
+    } catch (err) {
+      if (err instanceof ApiRequestError && /senha/i.test(err.message)) {
+        setErroSenha(err.message)
+        setEstado('senha')
+        return
+      }
       setEstado('erro')
-      setMensagem('Link incompleto. Abra o link do e-mail de confirmação.')
-      return
+      setMensagem(err instanceof ApiRequestError ? err.message : 'Não foi possível confirmar o e-mail.')
     }
-    // POST (e não GET): programas de segurança de e-mail que "abrem" os links
-    // não consomem a confirmação por acidente.
-    api
-      .post('/api/auth/verify-email', { token })
-      .then(() => setEstado('ok'))
-      .catch((e) => {
-        setEstado('erro')
-        setMensagem(e instanceof ApiRequestError ? e.message : 'Não foi possível confirmar o e-mail.')
-      })
-  }, [token])
+  }
+
+  if (estado === 'senha') {
+    return (
+      <form onSubmit={confirmar}>
+        <h1 className="mb-2 text-2xl font-semibold">Confirme seu e-mail</h1>
+        <p className="mb-4 text-sm text-slate-600">
+          Para ativar a conta, digite a senha que você escolheu no cadastro. Se você não se cadastrou, ignore este link.
+        </p>
+        <label className="block text-sm font-medium text-slate-700" htmlFor="senha">
+          Senha
+        </label>
+        <input
+          id="senha"
+          type="password"
+          autoComplete="current-password"
+          required
+          value={senha}
+          onChange={(e) => setSenha(e.target.value)}
+          className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm"
+        />
+        {erroSenha && <p className="mt-2 text-sm text-red-600">{erroSenha}</p>}
+        <button type="submit" className="mt-4 rounded bg-indigo-700 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-800">
+          Confirmar e ativar
+        </button>
+        <p className="mt-4 text-xs text-slate-500">
+          Esqueceu a senha? Faça o cadastro de novo com o mesmo e-mail: o cadastro pendente é substituído e um novo link é enviado.
+        </p>
+      </form>
+    )
+  }
 
   if (estado === 'confirmando') return <p className="text-sm text-slate-600">Confirmando seu e-mail...</p>
 

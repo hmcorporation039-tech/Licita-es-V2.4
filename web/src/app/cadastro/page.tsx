@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
+import Captcha, { captchaAtivo } from '@/components/Captcha'
 import PublicShell from '@/components/PublicShell'
 import { api, ApiRequestError } from '@/lib/api'
 
@@ -19,6 +20,8 @@ export default function CadastroPage() {
   const [erro, setErro] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
   const [mensagem, setMensagem] = useState<string | null>(null)
+  const [captcha, setCaptcha] = useState<string | null>(null)
+  const aoReceberCaptcha = useCallback((t: string | null) => setCaptcha(t), [])
 
   async function enviar(e: React.FormEvent) {
     e.preventDefault()
@@ -43,6 +46,7 @@ export default function CadastroPage() {
         telefone: telefone.trim() || undefined,
         aceiteTermos: aceite,
         website: isca || undefined,
+        captcha: captcha ?? undefined,
       })
       setMensagem(r.mensagem)
     } catch (err) {
@@ -132,10 +136,11 @@ export default function CadastroPage() {
           </span>
         </label>
 
+        <Captcha onToken={aoReceberCaptcha} />
         {erro && <p className="text-sm text-red-600">{erro}</p>}
         <button
           type="submit"
-          disabled={enviando || !aceite}
+          disabled={enviando || !aceite || (captchaAtivo && !captcha)}
           className="rounded bg-indigo-700 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-800 disabled:opacity-50"
         >
           {enviando ? 'Criando...' : 'Criar conta e começar o teste'}
