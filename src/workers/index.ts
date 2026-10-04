@@ -18,6 +18,8 @@ import { startAnaliseWorker } from './analise'
 import { refreshAllOpenSituacoes } from '../services/situacaoUpdateService'
 import { cleanupOldUnmatchedTenders, cleanupOldWorkerLogs } from '../services/retentionService'
 import { checkExpiringDocuments } from '../services/documentAlertService'
+import { configuracaoDeIa } from '../services/analiseEmDupla'
+import { textoDoDiagnostico } from '../lib/diagnosticoDeChave'
 
 async function main() {
   console.log('🚀 Iniciando workers da plataforma de licitações...')
@@ -35,6 +37,17 @@ async function main() {
   const workerAnalise = startAnaliseWorker()
 
   console.log('✅ Workers ativos: PNCP, ComprasNet, Novacap, FIEG, SESC GO, SEST SENAT, SESC Regionais, Matcher, Notificador, Análise')
+
+  // Estado da análise por IA no log de partida: modo e FORMATO das chaves (tamanho,
+  // prefixo, espaços/aspas), nunca as chaves. Quem investiga um "API key is invalid"
+  // vê aqui, logo ao subir, se a variável chegou diferente do que se copiou.
+  const ia = configuracaoDeIa()
+  console.log(
+    `[IA] análise ${process.env.AI_ANALYSIS_ENABLED === 'true' ? 'LIGADA' : 'desligada'} · modo: ${ia.modo ?? 'nenhum'}` +
+      (ia.modo === 'dupla' ? ' (Gemini analisa, Claude revisa)' : '') +
+      ` · ${textoDoDiagnostico()}`
+  )
+  ia.avisos.forEach((a) => console.warn(`[IA] AVISO: ${a}`))
 
   // Agenda coletas periódicas — envolvido em try/catch de propósito: isso
   // roda toda vez que o processo sobe, então se o Redis estiver indisponível

@@ -221,6 +221,8 @@ export interface RevisaoDaAnalise {
   analista: { provider: string; model: string } | null
   revisor: { provider: string; model: string } | null
   motivo: string | null
+  // Quando a revisão foi tentada (ISO) — distingue análise nova de antiga.
+  em?: string
   // Só o administrador recebe.
   detalheTecnico?: string | null
 }

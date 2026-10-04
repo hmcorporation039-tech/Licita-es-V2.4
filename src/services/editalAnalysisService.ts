@@ -27,6 +27,7 @@ import { analyzeEdital as analyzeWithClaude } from './llm/claudeAnalyzer'
 import { analyzeEdital as analyzeWithGemini } from './llm/geminiAnalyzer'
 import { reviewEdital } from './llm/claudeReviewer'
 import { ConfiguracaoDeIa, configuracaoDeIa, executarPipeline } from './analiseEmDupla'
+import { pareceErroDeChave, textoDoDiagnostico } from '../lib/diagnosticoDeChave'
 
 interface DocumentoDisponivel extends DocumentoComTitulo {
   uri: string
@@ -272,7 +273,10 @@ export async function runEditalAnalysis(
     // O detalhe do erro (mensagem do axios, host/porta interna, stack do SDK)
     // fica só no log do servidor — nunca em errorMsg, que qualquer usuário lê
     // em GET /:id/analysis. Ao usuário vai só uma mensagem genérica.
-    console.error(`[Análise de edital] Falha ao analisar ${tenderId}:`, err instanceof Error ? err.message : err)
+    const msgDoErro = err instanceof Error ? err.message : String(err)
+    console.error(`[Análise de edital] Falha ao analisar ${tenderId}:`, msgDoErro)
+    // Falha do analista por chave recusada: o log mostra o FORMATO das chaves (nunca as chaves).
+    if (pareceErroDeChave(msgDoErro)) console.error(`[Análise de edital] Diagnóstico das chaves: ${textoDoDiagnostico()}`)
     const errorMsg = isFonteFora
       ? 'A fonte de origem está indisponível no momento (não foi possível baixar os documentos do edital). Tente novamente mais tarde.'
       : 'Não foi possível concluir a análise deste edital. Tente novamente mais tarde.'
