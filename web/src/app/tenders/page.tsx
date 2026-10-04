@@ -138,7 +138,6 @@ export default function TendersPage() {
     setOrgao('')
     setNumero('')
     setModalidade('')
-    setSituacao('')
     setMunicipio('')
     setUf('')
     setPublicacaoInicio('')

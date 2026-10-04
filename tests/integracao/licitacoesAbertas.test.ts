@@ -55,7 +55,7 @@ rodar('Somente licitações abertas', () => {
     await prisma.user.create({
       data: { email: `abertas-${sufixo}@teste.local`, passwordHash: await hashPassword('Senha-forte-123'), emailVerifiedAt: new Date(), company: { create: { name: `E ${sufixo}` } } },
     })
-    token = (await (await fetch(base + '/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: `abertas-${sufixo}@teste.local`, password: 'Senha-forte-123' }) })).json()).token
+    token = ((await (await fetch(base + '/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: `abertas-${sufixo}@teste.local`, password: 'Senha-forte-123' }) })).json()) as { token: string }).token
   }, 60_000)
 
   afterAll(async () => {
@@ -74,7 +74,7 @@ rodar('Somente licitações abertas', () => {
   })
 
   it('GET /api/tenders devolve só as abertas', async () => {
-    const r = await (await fetch(`${base}/api/tenders?q=${sufixo}&pageSize=50`, { headers: { Authorization: `Bearer ${token}` } })).json()
+    const r = (await (await fetch(`${base}/api/tenders?q=${sufixo}&pageSize=50`, { headers: { Authorization: `Bearer ${token}` } })).json()) as { items: { fonteId: string }[] }
     const nomes = r.items.map((t: { fonteId: string }) => t.fonteId.replace(`-${sufixo}`, '')).sort()
     expect(nomes).toEqual([...abertas].sort())
   })
