@@ -47,7 +47,7 @@ const data = (d: string | null) => (d ? d.split('-').reverse().join('/') : '—'
 
 export default function RadarPage() {
   const user = useRequireSession()
-  const [aba, setAba] = useState<'vencendo' | 'concorrente'>('vencendo')
+  const [aba, setAba] = useState<'vencendo' | 'concorrente' | 'perfil'>('vencendo')
 
   if (!user) return null
   return (
@@ -61,6 +61,7 @@ export default function RadarPage() {
           [
             ['vencendo', 'Contratos vencendo'],
             ['concorrente', 'Dossiê de concorrente'],
+            ['perfil', 'Perfilador'],
           ] as const
         ).map(([k, rotulo]) => (
           <button
@@ -72,7 +73,7 @@ export default function RadarPage() {
           </button>
         ))}
       </div>
-      {aba === 'vencendo' ? <ContratosVencendo /> : <DossieConcorrente />}
+      {aba === 'vencendo' ? <ContratosVencendo /> : aba === 'concorrente' ? <DossieConcorrente /> : <Perfilador />}
     </main>
   )
 }
@@ -308,5 +309,92 @@ function Lista({ titulo, linhas }: { titulo: string; linhas: [string, string][] 
         </ul>
       )}
     </div>
+  )
+}
+
+interface Perfil {
+  totalDeContratos: number
+  palavrasChave: { termo: string; ocorrencias: number }[]
+  ufs: string[]
+  orgaos: { nome: string; contratos: number }[]
+  faixaDeValor: { minimo: number; maximo: number } | null
+}
+
+function Perfilador() {
+  const [p, setP] = useState<Perfil | null>(null)
+  const [carregando, setCarregando] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
+  const [termos, setTermos] = useState<string[]>([])
+  const [criado, setCriado] = useState(false)
+
+  async function gerar() {
+    setCarregando(true)
+    setErro(null)
+    setP(null)
+    setCriado(false)
+    try {
+      const r = await api.get<Perfil>('/api/radar/perfil')
+      setP(r)
+      setTermos(r.palavrasChave.slice(0, 5).map((k) => k.termo))
+    } catch (e) {
+      setErro(e instanceof ApiRequestError ? e.message : 'Erro ao consultar')
+    } finally {
+      setCarregando(false)
+    }
+  }
+
+  async function criarItem() {
+    if (!p || termos.length === 0) return
+    try {
+      await api.post('/api/monitored-items', { name: 'Sugerido pelo Perfilador: ' + termos.slice(0, 3).join(', '), keywords: termos, ufs: p.ufs.slice(0, 5) })
+      setCriado(true)
+    } catch (e) {
+      setErro(e instanceof ApiRequestError ? e.message : 'Erro ao criar o item')
+    }
+  }
+
+  return (
+    <section className="mt-4">
+      <p className="text-sm text-slate-600">
+        Analisa os contratos públicos que o CNPJ da sua empresa já tem no PNCP e sugere o que monitorar: palavras-chave, estados e faixa de valor.
+      </p>
+      <button onClick={gerar} disabled={carregando} className="mt-3 rounded bg-indigo-600 px-4 py-1.5 text-sm text-white disabled:opacity-50">
+        {carregando ? 'Consultando o PNCP…' : 'Gerar sugestões'}
+      </button>
+      {erro && <p className="mt-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800">{erro}</p>}
+      {p && p.totalDeContratos === 0 && (
+        <p className="mt-4 text-sm text-slate-600">Sua empresa ainda não tem contratos públicos no PNCP nos últimos 2 anos; não há histórico para sugerir.</p>
+      )}
+      {p && p.totalDeContratos > 0 && (
+        <div className="mt-4 space-y-3 rounded border border-slate-200 bg-white p-4">
+          <p className="text-sm text-slate-700">Base: {p.totalDeContratos} contrato(s) da sua empresa.</p>
+          <div>
+            <h3 className="text-sm font-medium text-slate-800">Palavras-chave (marque as que quer monitorar)</h3>
+            <div className="mt-1 flex flex-wrap gap-2">
+              {p.palavrasChave.map((k) => (
+                <label key={k.termo} className="flex items-center gap-1 rounded border border-slate-200 px-2 py-1 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={termos.includes(k.termo)}
+                    onChange={(e) => setTermos((t) => (e.target.checked ? [...t, k.termo] : t.filter((x) => x !== k.termo)))}
+                  />
+                  {k.termo} <span className="text-xs text-slate-500">({k.ocorrencias})</span>
+                </label>
+              ))}
+            </div>
+          </div>
+          <p className="text-sm text-slate-700">Estados onde você mais vendeu: {p.ufs.join(', ') || '—'}</p>
+          {p.faixaDeValor && (
+            <p className="text-sm text-slate-700">
+              Faixa de valor típica dos seus contratos: {brl(p.faixaDeValor.minimo)} a {brl(p.faixaDeValor.maximo)}
+            </p>
+          )}
+          {p.orgaos.length > 0 && <p className="text-sm text-slate-700">Principais órgãos: {p.orgaos.map((o) => o.nome).join('; ')}</p>}
+          <button onClick={criarItem} disabled={termos.length === 0 || criado} className="rounded bg-emerald-600 px-4 py-1.5 text-sm text-white disabled:opacity-50">
+            {criado ? 'Item criado — veja em Itens monitorados' : 'Criar item monitorado com essas sugestões'}
+          </button>
+        </div>
+      )}
+    </section>
   )
 }

@@ -7,7 +7,7 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { prisma } from '../../services/tenderService'
 import { buscarContratos, PncpIndisponivelError } from '../../services/pncpConsultaService'
-import { contratosVencendo, montarDossie } from '../../lib/radar'
+import { contratosVencendo, montarDossie, sugerirPerfil } from '../../lib/radar'
 import { ApiError, asyncHandler } from '../asyncHandler'
 
 export const radarRouter = Router()
@@ -63,5 +63,16 @@ radarRouter.get(
     const hoje = hojeISO()
     const contratos = await comPncp(() => buscarContratos({ niFornecedor: ni }, hoje, { maxPaginas: 4 }))
     res.json({ cnpj: ni, ...montarDossie(contratos, hoje) })
+  })
+)
+
+// Perfilador: o que a empresa já vende ao governo (pelo CNPJ dela) vira sugestão de item monitorado.
+radarRouter.get(
+  '/perfil',
+  asyncHandler(async (req, res) => {
+    const empresa = await prisma.company.findUnique({ where: { id: req.companyId! }, select: { cnpj: true } })
+    if (!empresa?.cnpj) throw new ApiError(400, 'O Perfilador usa o CNPJ da empresa. Cadastre o CNPJ em Empresa para gerar sugestões.')
+    const contratos = await comPncp(() => buscarContratos({ niFornecedor: empresa.cnpj! }, hojeISO(), { maxPaginas: 4 }))
+    res.json(sugerirPerfil(contratos))
   })
 )
