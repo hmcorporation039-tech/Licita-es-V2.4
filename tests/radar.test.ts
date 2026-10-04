@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { contratosVencendo, janelasDeBusca, montarDossie, normalizarContrato, objetoCasaComTermos } from '../src/lib/radar'
-import { buscarContratos, limparCache, PncpIndisponivelError } from '../src/services/pncpConsultaService'
+import { buscarContratos, buscarContratosDoFornecedor, limparCache, PncpIndisponivelError } from '../src/services/pncpConsultaService'
+import { normalizarContratoDaBusca } from '../src/lib/radar'
 
 const bruto = (o: Record<string, unknown> = {}) => ({
   numeroControlePNCP: 'c-1',
@@ -132,7 +133,7 @@ describe('buscarContratos', () => {
       n++
       return { data: [], totalPaginas: 99 }
     }
-    await buscarContratos({ niFornecedor: '22222222000122' }, HOJE, { janelas: 1, maxPaginas: 3, buscar })
+    await buscarContratos({ cnpjOrgao: '11111111000111' }, HOJE, { janelas: 1, maxPaginas: 3, buscar })
     expect(n).toBe(3)
   })
 
@@ -171,5 +172,51 @@ describe('sugerirPerfil', () => {
   it('sem histórico não sugere nada; poucos valores não geram faixa', async () => {
     const { sugerirPerfil } = await import('../src/lib/radar')
     expect(sugerirPerfil([])).toMatchObject({ totalDeContratos: 0, palavrasChave: [], ufs: [], faixaDeValor: null })
+  })
+})
+
+describe('contratos do fornecedor (busca do portal PNCP)', () => {
+  beforeEach(() => limparCache())
+  const item = (o: Record<string, unknown> = {}) => ({
+    numero_controle_pncp: 'x-1', orgao_cnpj: '111', orgao_nome: 'ESTADO X', uf: 'CE', municipio_nome: 'Fortaleza',
+    fornecedor_ni: '05477107000149', fornecedor_nome: 'ORTOPEDIA BRASIL LTDA', description: 'AQUISICAO DE OPME\r\nNUP: 1',
+    valor_global: 1350, data_assinatura: '2026-09-29', data_inicio_vigencia: '2026-09-29', data_fim_vigencia: '2026-12-31',
+    modalidade_licitacao_nome: 'Pregão - Eletrônico', tipo_contrato_nome: 'Empenho', cancelado: false, ...o,
+  })
+
+  it('normaliza o item da busca; cancelado e sem id ficam de fora', () => {
+    const c = normalizarContratoDaBusca(item())!
+    expect(c).toMatchObject({ id: 'x-1', fornecedor: { ni: '05477107000149' }, objeto: 'AQUISICAO DE OPME NUP: 1', categoria: 'Pregão - Eletrônico', vigenciaFim: '2026-12-31' })
+    expect(normalizarContratoDaBusca(item({ cancelado: true }))).toBeNull()
+    expect(normalizarContratoDaBusca(item({ numero_controle_pncp: '' }))).toBeNull()
+  })
+
+  it('só aceita contratos DESTE fornecedor (o CNPJ pode aparecer em outro campo da busca)', async () => {
+    const buscar = async (_u: string, p: Record<string, string | number>) => {
+      expect(p).toMatchObject({ q: '05477107000149', tipos_documento: 'contrato', tam_pagina: 500 })
+      return { total: 3, items: [item(), item({ numero_controle_pncp: 'x-2', fornecedor_ni: '99999999000199' }), item({ numero_controle_pncp: 'x-3' })] }
+    }
+    const r = await buscarContratosDoFornecedor('05477107000149', { buscar })
+    expect(r.map((c) => c.id)).toEqual(['x-1', 'x-3'])
+  })
+
+  it('resposta vazia/instável: tenta de novo; 3 falhas seguidas viram erro claro', async () => {
+    let n = 0
+    const instavel = async () => (++n < 3 ? '' : { total: 1, items: [item()] })
+    expect(await buscarContratosDoFornecedor('05477107000149', { buscar: instavel, esperaMs: 0 })).toHaveLength(1)
+    expect(n).toBe(3)
+    limparCache()
+    await expect(buscarContratosDoFornecedor('05477107000149', { buscar: async () => '', esperaMs: 0 })).rejects.toBeInstanceOf(PncpIndisponivelError)
+  })
+
+  it('pagina até acabar ou até o teto de páginas', async () => {
+    const paginas: number[] = []
+    const cheia = Array.from({ length: 500 }, (_, i) => item({ numero_controle_pncp: 'p' + i }))
+    const buscar = async (_u: string, p: Record<string, string | number>) => {
+      paginas.push(Number(p.pagina))
+      return { total: 5000, items: cheia }
+    }
+    await buscarContratosDoFornecedor('05477107000149', { buscar, maxPaginas: 2 })
+    expect(paginas).toEqual([1, 2])
   })
 })

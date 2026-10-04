@@ -6,7 +6,7 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import { prisma } from '../../services/tenderService'
-import { buscarContratos, PncpIndisponivelError } from '../../services/pncpConsultaService'
+import { buscarContratos, buscarContratosDoFornecedor, PncpIndisponivelError } from '../../services/pncpConsultaService'
 import { contratosVencendo, montarDossie, sugerirPerfil } from '../../lib/radar'
 import { ApiError, asyncHandler } from '../asyncHandler'
 
@@ -61,7 +61,7 @@ radarRouter.get(
   asyncHandler(async (req, res) => {
     const ni = cnpjSchema.parse(req.params.cnpj)
     const hoje = hojeISO()
-    const contratos = await comPncp(() => buscarContratos({ niFornecedor: ni }, hoje, { maxPaginas: 4 }))
+    const contratos = await comPncp(() => buscarContratosDoFornecedor(ni))
     res.json({ cnpj: ni, ...montarDossie(contratos, hoje) })
   })
 )
@@ -72,7 +72,7 @@ radarRouter.get(
   asyncHandler(async (req, res) => {
     const empresa = await prisma.company.findUnique({ where: { id: req.companyId! }, select: { cnpj: true } })
     if (!empresa?.cnpj) throw new ApiError(400, 'O Perfilador usa o CNPJ da empresa. Cadastre o CNPJ em Empresa para gerar sugestões.')
-    const contratos = await comPncp(() => buscarContratos({ niFornecedor: empresa.cnpj! }, hojeISO(), { maxPaginas: 4 }))
+    const contratos = await comPncp(() => buscarContratosDoFornecedor(empresa.cnpj!.replace(/D/g, '')))
     res.json(sugerirPerfil(contratos))
   })
 )

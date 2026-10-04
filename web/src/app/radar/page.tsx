@@ -263,7 +263,7 @@ function DossieConcorrente() {
         </button>
       </div>
       {erro && <p className="mt-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800">{erro}</p>}
-      {d && d.totalDeContratos === 0 && <p className="mt-4 text-sm text-slate-600">Nenhum contrato público encontrado para esse CNPJ nos últimos 2 anos.</p>}
+      {d && d.totalDeContratos === 0 && <p className="mt-4 text-sm text-slate-600">Nenhum contrato público encontrado no PNCP com esse CNPJ como fornecedor.</p>}
       {d && d.totalDeContratos > 0 && (
         <div className="mt-4 space-y-4">
           <div className="rounded border border-slate-200 bg-white p-4">
@@ -271,12 +271,12 @@ function DossieConcorrente() {
             <p className="text-sm text-slate-600">
               {d.totalDeContratos} contrato(s), {brl(d.valorTotal)} no total · de {data(d.primeiraAssinatura)} a {data(d.ultimaAssinatura)}
             </p>
-            <p className="mt-1 text-xs text-slate-500">Considera os contratos publicados no PNCP nos últimos 2 anos (até 2.000 por período).</p>
+            <p className="mt-1 text-xs text-slate-500">Considera os contratos mais recentes em que esse CNPJ é o fornecedor, publicados no PNCP (até 3.000).</p>
           </div>
           <div className="grid gap-4 md:grid-cols-3">
             <Lista titulo="Principais órgãos" linhas={d.porOrgao.map((o) => [o.nome, `${o.contratos} · ${brl(o.valor)}`])} />
             <Lista titulo="Por estado" linhas={d.porUf.slice(0, 10).map((u) => [u.uf, `${u.contratos} · ${brl(u.valor)}`])} />
-            <Lista titulo="Por categoria" linhas={d.porCategoria.map((c) => [c.categoria, `${c.contratos} · ${brl(c.valor)}`])} />
+            <Lista titulo="Por modalidade" linhas={d.porCategoria.map((c) => [c.categoria, `${c.contratos} · ${brl(c.valor)}`])} />
           </div>
           <Lista
             titulo="Contratos dele que vencem em 90 dias (chance de disputar)"
@@ -363,7 +363,7 @@ function Perfilador() {
       </button>
       {erro && <p className="mt-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800">{erro}</p>}
       {p && p.totalDeContratos === 0 && (
-        <p className="mt-4 text-sm text-slate-600">Sua empresa ainda não tem contratos públicos no PNCP nos últimos 2 anos; não há histórico para sugerir.</p>
+        <p className="mt-4 text-sm text-slate-600">Não encontramos contratos públicos no PNCP com o CNPJ da sua empresa como fornecedor; não há histórico para sugerir.</p>
       )}
       {p && p.totalDeContratos > 0 && (
         <div className="mt-4 space-y-3 rounded border border-slate-200 bg-white p-4">
