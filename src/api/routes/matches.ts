@@ -7,6 +7,7 @@ import { Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { prisma } from '../../services/tenderService'
 import { asyncHandler, ApiError } from '../asyncHandler'
+import { Aderencia, calcularAderencia } from '../../lib/aderencia'
 
 export const matchesRouter = Router()
 
@@ -34,9 +35,51 @@ const querySchema = z.object({
     .enum(['true', 'false'])
     .optional()
     .transform((v) => v === 'true'),
+  // 'recentes' (padrão) ou 'nota' (maior nota de aderência primeiro).
+  ordem: z.enum(['recentes', 'nota']).default('recentes'),
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().positive().max(100).default(20),
 })
+
+// Campos mínimos para calcular a nota de aderência de um match.
+const CAMPOS_DA_NOTA = {
+  matchedByCode: true,
+  matchedKeywords: true,
+  tender: { select: { uf: true, valorEstimado: true, encerramentoAt: true, municipioLat: true, municipioLng: true } },
+  monitoredItem: { select: { keywords: true, ufs: true, valorMin: true, valorMax: true, raioKm: true, origemLat: true, origemLng: true } },
+} satisfies Prisma.TenderMatchSelect
+
+type MatchParaNota = Prisma.TenderMatchGetPayload<{ select: typeof CAMPOS_DA_NOTA }>
+type MatchComTudo = Prisma.TenderMatchGetPayload<{ include: { tender: true; monitoredItem: true } }>
+
+// Teto de matches considerados ao ordenar por nota (o feed já é recortado pela
+// janela de prazo, então na prática fica muito abaixo disso).
+const LIMITE_ORDENACAO_POR_NOTA = 5000
+
+// Nota ao vivo (o prazo restante muda com o tempo), a partir do que o match guardou
+// e do item/licitação de hoje.
+function aderenciaDoMatch(m: MatchParaNota): Aderencia {
+  return calcularAderencia({
+    porCodigo: m.matchedByCode,
+    palavrasEncontradas: m.matchedKeywords.length,
+    palavrasTotal: m.monitoredItem.keywords.length,
+    item: {
+      ufs: m.monitoredItem.ufs,
+      valorMin: m.monitoredItem.valorMin != null ? Number(m.monitoredItem.valorMin) : null,
+      valorMax: m.monitoredItem.valorMax != null ? Number(m.monitoredItem.valorMax) : null,
+      raioKm: m.monitoredItem.raioKm,
+      origemLat: m.monitoredItem.origemLat,
+      origemLng: m.monitoredItem.origemLng,
+    },
+    tender: {
+      uf: m.tender.uf,
+      valorEstimado: m.tender.valorEstimado != null ? Number(m.tender.valorEstimado) : null,
+      encerramentoAt: m.tender.encerramentoAt,
+      municipioLat: m.tender.municipioLat,
+      municipioLng: m.tender.municipioLng,
+    },
+  })
+}
 
 // Situações em que a licitação deixou de ser oportunidade viável — ocultadas
 // por padrão no feed de matches (instruções 3.1.4/3.1.5).
@@ -45,7 +88,7 @@ const SITUACOES_INATIVAS = ['REVOGADA', 'SUSPENSA', 'ANULADA', 'CANCELADA'] as c
 matchesRouter.get(
   '/',
   asyncHandler(async (req, res) => {
-    const { unreadOnly, incluirInativas, incluirForaDoPrazo, page, pageSize } = querySchema.parse(req.query)
+    const { unreadOnly, incluirInativas, incluirForaDoPrazo, ordem, page, pageSize } = querySchema.parse(req.query)
 
     // Recorte no nível da licitação relacionada ao match.
     const tenderWhere: Prisma.TenderWhereInput = {}
@@ -69,18 +112,49 @@ matchesRouter.get(
       ...(Object.keys(tenderWhere).length > 0 ? { tender: tenderWhere } : {}),
     }
 
-    const [items, total] = await Promise.all([
-      prisma.tenderMatch.findMany({
-        where,
-        orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-        include: { tender: true, monitoredItem: true },
-      }),
-      prisma.tenderMatch.count({ where }),
-    ])
+    let items: MatchComTudo[]
+    let total: number
 
-    res.json({ items, total, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)) })
+    if (ordem === 'nota') {
+      // A nota depende do tempo (o critério "Prazo" muda a cada dia), então ela
+      // não é ordenável no banco: calcula só sobre os campos necessários de todos
+      // os matches do recorte (limitado) e pagina em memória.
+      const leves = await prisma.tenderMatch.findMany({
+        where,
+        take: LIMITE_ORDENACAO_POR_NOTA,
+        select: { id: true, createdAt: true, ...CAMPOS_DA_NOTA },
+      })
+      const ordenados = leves
+        .map((m) => ({ id: m.id, createdAt: m.createdAt, nota: aderenciaDoMatch(m).nota }))
+        .sort((a, b) => b.nota - a.nota || b.createdAt.getTime() - a.createdAt.getTime())
+      total = ordenados.length
+      const ids = ordenados.slice((page - 1) * pageSize, page * pageSize).map((o) => o.id)
+      const completos = await prisma.tenderMatch.findMany({
+        where: { id: { in: ids } },
+        include: { tender: true, monitoredItem: true },
+      })
+      const porId = new Map(completos.map((m) => [m.id, m]))
+      items = ids.map((id) => porId.get(id)).filter((m): m is MatchComTudo => m !== undefined)
+    } else {
+      ;[items, total] = await Promise.all([
+        prisma.tenderMatch.findMany({
+          where,
+          orderBy: { createdAt: 'desc' },
+          skip: (page - 1) * pageSize,
+          take: pageSize,
+          include: { tender: true, monitoredItem: true },
+        }),
+        prisma.tenderMatch.count({ where }),
+      ])
+    }
+
+    res.json({
+      items: items.map((m) => ({ ...m, aderencia: aderenciaDoMatch(m) })),
+      total,
+      page,
+      pageSize,
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    })
   })
 )
 

@@ -49,6 +49,7 @@ export function startMatcherWorker() {
           companyId: c.companyId,
           userId: c.userId,
           score: c.score,
+          matchedByCode: c.matchedByCode,
           matchedKeywords: c.matchedKeywords,
         })),
         skipDuplicates: true,
