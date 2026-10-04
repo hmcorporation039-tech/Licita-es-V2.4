@@ -146,3 +146,18 @@ export const ROTULO_ACAO: Record<string, string> = {
   SENHA_REDEFINIDA_POR_EMAIL: 'Senha redefinida pelo link do e-mail',
   ADMIN_EMAIL_CONFIRMADO: 'Admin confirmou o e-mail de um usuário',
 }
+
+export interface CriterioDeAderencia {
+  id: 'objeto' | 'prazo' | 'valor' | 'localizacao'
+  rotulo: string
+  pontos: number
+  maximo: number
+  motivo: string
+}
+
+// Nota de aderência (0–100) de um match, com o motivo de cada critério (ver lib/aderencia.ts na API).
+export interface Aderencia {
+  nota: number
+  faixa: 'alta' | 'boa' | 'media' | 'baixa'
+  criterios: CriterioDeAderencia[]
+}

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRequireSession } from '@/hooks/useRequireSession'
 import { api, ApiRequestError } from '@/lib/api'
 import { Paginated, TenderMatch } from '@/lib/types'
+import NotaDeAderencia from '@/components/NotaDeAderencia'
 
 function formatValor(v: string | null) {
   if (!v) return '—'
@@ -15,6 +16,7 @@ export default function MatchesPage() {
   const user = useRequireSession()
   const [data, setData] = useState<Paginated<TenderMatch> | null>(null)
   const [unreadOnly, setUnreadOnly] = useState(false)
+  const [ordem, setOrdem] = useState<'recentes' | 'nota'>('nota')
   const [loading, setLoading] = useState(true)
   const [interesseMsg, setInteresseMsg] = useState<Record<string, string>>({})
   const [clearing, setClearing] = useState(false)
@@ -24,13 +26,14 @@ export default function MatchesPage() {
     setLoading(true)
     const qs = new URLSearchParams({ page: '1', pageSize: '30' })
     if (unreadOnly) qs.set('unreadOnly', 'true')
+    if (ordem === 'nota') qs.set('ordem', 'nota')
     api
       .get<Paginated<TenderMatch>>(`/api/matches?${qs.toString()}`)
       .then(setData)
       .finally(() => setLoading(false))
   }
 
-  useEffect(load, [user, unreadOnly])
+  useEffect(load, [user, unreadOnly, ordem])
 
   async function markAsRead(matchId: string) {
     if (!user) return
@@ -69,6 +72,17 @@ export default function MatchesPage() {
         <h1 className="text-xl font-semibold">Meus matches</h1>
         <div className="flex items-center gap-4">
           <label className="flex items-center gap-2 text-sm text-slate-600">
+            Ordenar por
+            <select
+              value={ordem}
+              onChange={(e) => setOrdem(e.target.value as 'recentes' | 'nota')}
+              className="rounded border border-slate-300 px-2 py-1 text-sm"
+            >
+              <option value="nota">Maior nota de aderência</option>
+              <option value="recentes">Mais recentes</option>
+            </select>
+          </label>
+          <label className="flex items-center gap-2 text-sm text-slate-600">
             <input type="checkbox" checked={unreadOnly} onChange={(e) => setUnreadOnly(e.target.checked)} />
             Só não lidos
           </label>
@@ -103,9 +117,9 @@ export default function MatchesPage() {
                     {m.tender.objetoResumido ?? m.tender.objeto}
                   </Link>
                   <p className="mt-1 text-sm text-slate-500">
-                    {m.tender.fonte} · {m.tender.uf ?? 'UF n/d'} · {formatValor(m.tender.valorEstimado)} · score{' '}
-                    {(m.score * 100).toFixed(0)}%
+                    {m.tender.fonte} · {m.tender.uf ?? 'UF n/d'} · {formatValor(m.tender.valorEstimado)}
                   </p>
+                  <NotaDeAderencia aderencia={m.aderencia} />
                   {m.matchedKeywords.length > 0 && (
                     <p className="mt-1 text-xs text-slate-400">Palavras: {m.matchedKeywords.join(', ')}</p>
                   )}

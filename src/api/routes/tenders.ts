@@ -118,12 +118,14 @@ tendersRouter.get(
     const items = rows.map((t) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const matches = (t as any).tenderMatches as
-        | { score: number; matchedKeywords: string[]; monitoredItem: { id: string; name: string } }[]
+        | { score: number; matchedByCode: boolean; matchedKeywords: string[]; monitoredItem: { id: string; name: string } }[]
         | undefined
       if (!matches) return t
 
+      // `score` é a nota de aderência (nota/100). "Exata" continua sendo o match
+      // por código CATMAT/CATSER, que antes se reconhecia por score = 1.
       const bestScore = matches.reduce((max, m) => Math.max(max, m.score), 0)
-      const classificacao = bestScore >= 0.99 ? 'exata' : bestScore >= 0.7 ? 'alta' : 'media'
+      const classificacao = matches.some((m) => m.matchedByCode) ? 'exata' : bestScore >= 0.7 ? 'alta' : 'media'
 
       return {
         ...t,

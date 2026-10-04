@@ -58,7 +58,7 @@ function TenderRow({ t, somenteRelacionadas }: { t: Tender; somenteRelacionadas:
               className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${CLASSIFICACAO_CLASS[t.match.classificacao]}`}
               title={t.match.itensRelacionados.join(', ')}
             >
-              {CLASSIFICACAO_LABEL[t.match.classificacao]}
+              {CLASSIFICACAO_LABEL[t.match.classificacao]} · nota {Math.round(t.match.score * 100)}
             </span>
           )}
         </td>

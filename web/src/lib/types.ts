@@ -1,6 +1,8 @@
 // ============================================================
 // lib/types.ts — Tipos espelhando as respostas da API
 // ============================================================
+import type { Aderencia } from './adminTypes'
+
 
 export interface User {
   id: string
@@ -136,6 +138,8 @@ export interface TenderMatch {
   createdAt: string
   tender: Tender
   monitoredItem: MonitoredItem
+  // Nota de aderência calculada ao vivo pela API.
+  aderencia: Aderencia
 }
 
 export interface DashboardData {

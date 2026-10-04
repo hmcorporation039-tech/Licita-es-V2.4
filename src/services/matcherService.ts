@@ -7,6 +7,7 @@
 import { ModalidadeEnum, Prisma } from '@prisma/client'
 import { prisma } from './tenderService'
 import { normalize } from '../lib/geoService'
+import { calcularAderencia } from '../lib/aderencia'
 import {
   CODE_MATCH_SCORE,
   Gates,
@@ -14,7 +15,6 @@ import {
   compileKeywordPatterns,
   matchedKeywords,
   passaNosPortoes,
-  scoreDoMatch,
 } from '../lib/matching'
 
 export { CODE_MATCH_SCORE, KEYWORD_MATCH_SCORE }
@@ -33,6 +33,7 @@ const TENDER_SELECT = {
   objeto: true,
   objetoNorm: true,
   valorEstimado: true,
+  encerramentoAt: true,
   municipioLat: true,
   municipioLng: true,
   items: { select: { descricao: true, descricaoNorm: true, catmatCode: true, catserCode: true } },
@@ -44,8 +45,42 @@ export interface MatchCandidate {
   monitoredItemId: string
   companyId: string
   userId: string
+  // Nota de aderência (0–100) dividida por 100 — ver lib/aderencia.ts.
   score: number
   matchedKeywords: string[]
+  matchedByCode: boolean
+}
+
+// Nota de aderência (0–1) de uma licitação para um item. Os portões já passaram;
+// aqui só se mede o QUÃO BOM é o match.
+function scoreDeAderencia(
+  tender: TenderParaMatch,
+  item: {
+    ufs: string[]
+    valorMin: number | null
+    valorMax: number | null
+    raioKm: number | null
+    origemLat: number | null
+    origemLng: number | null
+  },
+  porCodigo: boolean,
+  palavrasEncontradas: number,
+  palavrasTotal: number
+): number {
+  const { nota } = calcularAderencia({
+    porCodigo,
+    palavrasEncontradas,
+    palavrasTotal,
+    item,
+    tender: {
+      uf: tender.uf,
+      valorEstimado: tender.valorEstimado != null ? Number(tender.valorEstimado) : null,
+      encerramentoAt: tender.encerramentoAt,
+      municipioLat: tender.municipioLat,
+      municipioLng: tender.municipioLng,
+    },
+  })
+  return nota / 100
 }
 
 function gatesDoItem(item: {
@@ -125,8 +160,9 @@ export async function findMatchCandidates(tenderId: string): Promise<MatchCandid
       monitoredItemId: mi.id,
       companyId: mi.companyId,
       userId: mi.userId,
-      score: scoreDoMatch(codeMatch),
+      score: scoreDeAderencia(tender, gatesDoItem(mi), codeMatch, encontradas.length, mi.keywords.length),
       matchedKeywords: encontradas,
+      matchedByCode: codeMatch,
     })
   }
 
@@ -152,6 +188,7 @@ export interface RematchCandidate {
   tenderId: string
   score: number
   matchedKeywords: string[]
+  matchedByCode: boolean
 }
 
 const REMATCH_BATCH_SIZE = 500
@@ -245,7 +282,12 @@ export async function findMatchingTendersForItem(
 
       if (encontradas.length === 0 && !codeMatch) continue
 
-      results.push({ tenderId: t.id, score: scoreDoMatch(codeMatch), matchedKeywords: encontradas })
+      results.push({
+        tenderId: t.id,
+        score: scoreDeAderencia(t, gates, codeMatch, encontradas.length, item.keywords.length),
+        matchedKeywords: encontradas,
+        matchedByCode: codeMatch,
+      })
     }
 
     if (lote.length < REMATCH_BATCH_SIZE) break

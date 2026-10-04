@@ -380,8 +380,11 @@ model TenderMatch {
   // aviso (ver workers/notificador.ts), não é mais a chave de visibilidade.
   companyId       String   @map("company_id")
   userId          String   @map("user_id")
-  score           Float                              // Relevância 0–1
+  score           Float                              // Nota de aderência no momento do match, 0–1 (nota/100)
   matchedKeywords String[] @map("matched_keywords")  // Palavras que deram match
+  // Verdadeiro quando o match veio de código CATMAT/CATSER igual (o sinal mais
+  // forte) — a nota de aderência ao vivo (lib/aderencia.ts) precisa disso.
+  matchedByCode   Boolean  @default(false) @map("matched_by_code")
   // Compartilhado entre os membros da empresa de propósito — se um colega já
   // viu, some da lista de não-lidos pra todo mundo. Sem inbox por pessoa.
   read            Boolean  @default(false)

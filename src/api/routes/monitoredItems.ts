@@ -235,6 +235,7 @@ monitoredItemsRouter.post(
         companyId: item.companyId,
         userId: item.userId,
         score: c.score,
+        matchedByCode: c.matchedByCode,
         matchedKeywords: c.matchedKeywords,
       })),
       skipDuplicates: true,
