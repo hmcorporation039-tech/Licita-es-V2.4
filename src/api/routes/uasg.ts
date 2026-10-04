@@ -41,6 +41,7 @@ uasgRouter.get(
         nomeOrgao: true,
         siglaUf: true,
         municipioNome: true,
+        cnpjOrgao: true,
       },
     })
 
