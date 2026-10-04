@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { useRequireSession } from '@/hooks/useRequireSession'
 import { api, ApiRequestError } from '@/lib/api'
 import { AdminUser } from '@/lib/types'
+import type { PlanoComercial } from '@/lib/adminTypes'
+import { AdminTabs } from '@/components/AdminShell'
 
 function formatData(v: string | null) {
   if (!v) return 'sem prazo'
@@ -27,6 +29,8 @@ export default function AdminUsuariosPage() {
   const [password, setPassword] = useState('')
   const [isAdminField, setIsAdminField] = useState(false)
   const [diasValidade, setDiasValidade] = useState('')
+  const [planos, setPlanos] = useState<PlanoComercial[]>([])
+  const [planCode, setPlanCode] = useState('TESTE')
   const [creating, setCreating] = useState(false)
   const [generatedInfo, setGeneratedInfo] = useState<string | null>(null)
 
@@ -47,8 +51,12 @@ export default function AdminUsuariosPage() {
   async function load() {
     setLoading(true)
     try {
-      const data = await api.get<AdminUser[]>('/api/admin/users')
+      const [data, pl] = await Promise.all([
+        api.get<AdminUser[]>('/api/admin/users'),
+        api.get<PlanoComercial[]>('/api/admin/plans'),
+      ])
       setUsers(data)
+      setPlanos(pl.filter((p) => p.active))
     } catch (err) {
       setError(err instanceof ApiRequestError ? err.message : 'Erro ao carregar usuários')
     } finally {
@@ -68,6 +76,7 @@ export default function AdminUsuariosPage() {
         password: password || undefined,
         isAdmin: isAdminField,
         diasValidade: diasValidade ? Number(diasValidade) : null,
+        planCode,
       })
       if (result.generatedPassword) {
         setGeneratedInfo(`Senha gerada para ${result.email}: ${result.generatedPassword} (repasse com segurança — não fica salva em nenhum outro lugar)`)
@@ -124,7 +133,10 @@ export default function AdminUsuariosPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-xl font-semibold">Usuários</h1>
+      <div>
+        <AdminTabs />
+        <h1 className="text-xl font-semibold">Usuários</h1>
+      </div>
 
       <form onSubmit={handleCreate} className="grid gap-3 rounded border border-slate-200 bg-white p-4 sm:grid-cols-2">
         <input
@@ -155,6 +167,16 @@ export default function AdminUsuariosPage() {
           onChange={(e) => setDiasValidade(e.target.value)}
           className={inputClass}
         />
+        <label className="flex items-center gap-2 text-sm text-slate-600 sm:col-span-2">
+          Plano da empresa
+          <select value={planCode} onChange={(e) => setPlanCode(e.target.value)} className="rounded border border-slate-300 px-2 py-1.5 text-sm">
+            {planos.map((p) => (
+              <option key={p.code} value={p.code}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </label>
         <label className="flex items-center gap-2 text-sm text-slate-600 sm:col-span-2">
           <input type="checkbox" checked={isAdminField} onChange={(e) => setIsAdminField(e.target.checked)} />
           Também é administrador

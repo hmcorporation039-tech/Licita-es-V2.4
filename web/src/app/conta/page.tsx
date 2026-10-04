@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRequireSession } from '@/hooks/useRequireSession'
 import { api, ApiRequestError } from '@/lib/api'
 import { replaceSessionToken } from '@/lib/session'
+import UsoDoPlano from '@/components/UsoDoPlano'
 
 export default function ContaPage() {
   const user = useRequireSession()
@@ -23,8 +24,8 @@ export default function ContaPage() {
       setError('A confirmação não bate com a nova senha')
       return
     }
-    if (newPassword.length < 8) {
-      setError('A nova senha precisa ter pelo menos 8 caracteres')
+    if (newPassword.length < 10) {
+      setError('A nova senha precisa ter pelo menos 10 caracteres')
       return
     }
 
@@ -55,6 +56,10 @@ export default function ContaPage() {
       <h1 className="mb-1 text-xl font-semibold">Minha conta</h1>
       <p className="mb-6 text-sm text-slate-500">{user.email}</p>
 
+      <div className="mb-4">
+        <UsoDoPlano />
+      </div>
+
       <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded border border-slate-200 bg-white p-4">
         <h2 className="text-sm font-medium text-slate-800">Trocar senha</h2>
         <input
@@ -68,7 +73,7 @@ export default function ContaPage() {
         <input
           type="password"
           required
-          placeholder="Nova senha (mínimo 8 caracteres)"
+          placeholder="Nova senha (mínimo 10 caracteres)"
           value={newPassword}
           onChange={(e) => setNewPassword(e.target.value)}
           className={inputClass}

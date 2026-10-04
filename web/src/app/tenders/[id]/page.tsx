@@ -16,6 +16,7 @@ import {
 import { MODALIDADE_OPTIONS } from '@/lib/modalidades'
 import { SITUACAO_OPTIONS } from '@/lib/situacoes'
 import { safeHttpUrl } from '@/lib/safeUrl'
+import type { PrazosDaSessao } from '@/lib/adminTypes'
 
 // Documento válido (não vencido) do cofre da empresa, indexado por tipo —
 // pra marcar automaticamente os itens do checklist que a empresa já tem.
@@ -63,6 +64,13 @@ function formatData(v: string | null) {
   return new Date(v).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
+// "AAAA-MM-DD" (dia de calendário, sem fuso) -> "DD/MM/AAAA", sem passar por Date
+// para não deslocar o dia por causa do fuso do navegador.
+function formatDiaIso(dia: string) {
+  const [y, m, d] = dia.split('-')
+  return `${d}/${m}/${y}`
+}
+
 function groupBySection(items: ChecklistItem[]) {
   const sections = new Map<string, ChecklistItem[]>()
   for (const item of items) {
@@ -97,6 +105,7 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
   const [analyzing, setAnalyzing] = useState(false)
   const [ownedDocTypes, setOwnedDocTypes] = useState<Set<string>>(new Set())
   const [plan, setPlan] = useState<ParticipationPlan | null>(null)
+  const [prazos, setPrazos] = useState<PrazosDaSessao | null>(null)
   const [planSaving, setPlanSaving] = useState(false)
   const [newMilestoneLabel, setNewMilestoneLabel] = useState('')
   const [newMilestoneDate, setNewMilestoneDate] = useState('')
@@ -131,6 +140,11 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
     api
       .get<ParticipationPlan>(`/api/tenders/${id}/plano`)
       .then(setPlan)
+      .catch((err) => console.error(err))
+
+    api
+      .get<PrazosDaSessao>(`/api/tenders/${id}/prazos`)
+      .then(setPrazos)
       .catch((err) => console.error(err))
   }, [id, user])
 
@@ -355,6 +369,28 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
                 <InfoField label="Publicação" value={formatData(tender.publicadoAt)} />
                 <InfoField label="Abertura" value={formatData(tender.aberturaAt)} />
               </div>
+
+              {prazos?.disponivel && prazos.limiteImpugnacao && prazos.dataSessao && (
+                <div
+                  className={`mt-4 rounded border p-3 text-sm ${
+                    prazos.limitePassou ? 'border-red-200 bg-red-50 text-red-900' : 'border-indigo-200 bg-indigo-50 text-indigo-950'
+                  }`}
+                >
+                  <p className="font-medium">Prazo para esclarecimento e impugnação (dias úteis)</p>
+                  <p className="mt-1">
+                    Até <strong>{formatDiaIso(prazos.limiteImpugnacao)}</strong> (3 dias úteis antes da sessão de{' '}
+                    {formatDiaIso(prazos.dataSessao)}).{' '}
+                    {prazos.sessaoPassou
+                      ? 'A sessão já ocorreu.'
+                      : prazos.limitePassou
+                        ? 'O prazo já terminou.'
+                        : prazos.diasUteisAteLimite === 0
+                          ? 'Termina hoje.'
+                          : `Faltam ${prazos.diasUteisAteLimite} dia(s) útil(eis).`}
+                  </p>
+                  <p className="mt-1 text-xs opacity-70">{prazos.aviso}</p>
+                </div>
+              )}
 
               {safeHttpUrl(tender.linkEdital) && (
                 <a

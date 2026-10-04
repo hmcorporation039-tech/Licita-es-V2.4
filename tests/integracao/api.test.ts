@@ -106,6 +106,8 @@ rodar('API com banco real', () => {
   }, 60_000)
 
   afterAll(async () => {
+    // Planos criados pelo teste (código TESTE_XXXX) não podem sobrar no banco.
+    await prisma?.subscriptionPlan.deleteMany({ where: { code: { startsWith: 'TESTE_' } } })
     server?.close()
     desconectar()
     await prisma?.$disconnect()
@@ -328,7 +330,7 @@ rodar('API com banco real', () => {
       expect(lista.body.total).toBe(4)
 
       const planos = await http('GET', '/api/admin/plans', 'admin')
-      expect(planos.body.map((p: { code: string }) => p.code)).toEqual(['TESTE', 'ESSENCIAL', 'PROFISSIONAL', 'EMPRESARIAL'])
+      expect(planos.body.map((p: { code: string }) => p.code)).toEqual(expect.arrayContaining(['TESTE', 'ESSENCIAL', 'PROFISSIONAL', 'EMPRESARIAL']))
     })
 
     it('editar um plano muda o limite de quem está nele e fica auditado', async () => {
