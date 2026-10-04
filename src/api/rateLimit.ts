@@ -60,3 +60,24 @@ export const changePasswordLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: 'Muitas tentativas — aguarde alguns minutos e tente de novo' },
 })
+
+// Cadastro público: cada tentativa gera um bcrypt e pode disparar e-mail.
+// Por IP e por hora, para frear criação em massa de contas de teste.
+export const cadastroLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: limite(10),
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { error: 'Muitas tentativas de cadastro — aguarde um pouco e tente de novo' },
+})
+
+// Confirmação de e-mail e recuperação de senha: cada chamada pode disparar um
+// e-mail. Sem limite próprio, dava para usar o sistema para encher a caixa de
+// alguém (ou queimar a cota do provedor de e-mail).
+export const recuperacaoLimiter = rateLimit({
+  windowMs: JANELA_MS,
+  limit: limite(10),
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { error: 'Muitas solicitações — aguarde alguns minutos e tente de novo' },
+})

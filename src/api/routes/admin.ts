@@ -75,6 +75,8 @@ adminRouter.post(
         email,
         name: body.name,
         passwordHash: await hashPassword(tempPassword),
+        // Conta criada pelo admin não passa pela confirmação de e-mail.
+        emailVerifiedAt: new Date(),
         isAdmin: body.isAdmin,
         accessExpiresAt: computeExpiresAt(body.diasValidade),
         // Toda conta precisa de uma Company (ver schema.prisma) — quem se
@@ -119,6 +121,7 @@ adminRouter.get(
         isAdmin: true,
         active: true,
         accessExpiresAt: true,
+        emailVerifiedAt: true,
         createdAt: true,
         passwordHash: true,
       },
@@ -131,6 +134,7 @@ adminRouter.get(
         isAdmin: u.isAdmin,
         active: u.active,
         accessExpiresAt: u.accessExpiresAt,
+        emailConfirmado: u.emailVerifiedAt != null,
         createdAt: u.createdAt,
         hasPassword: u.passwordHash != null,
       }))
@@ -143,6 +147,9 @@ const updateUserSchema = z.object({
   isAdmin: z.boolean().optional(),
   // Redefine o prazo a partir de agora (null = remove o prazo, acesso passa a ser indeterminado)
   diasValidade: z.number().int().positive().nullable().optional(),
+  // Confirma o e-mail à mão (ex.: enquanto o envio de e-mail não está configurado,
+  // ou quando o cliente não recebe a mensagem). Só aceita true.
+  emailConfirmado: z.literal(true).optional(),
 })
 
 adminRouter.patch(
@@ -156,6 +163,7 @@ adminRouter.patch(
       active?: boolean
       isAdmin?: boolean
       accessExpiresAt?: Date | null
+      emailVerifiedAt?: Date
       tokenVersion?: { increment: number }
       disabledByAdmin?: boolean
     } = {}
@@ -171,8 +179,18 @@ adminRouter.patch(
     }
     if (body.isAdmin !== undefined) data.isAdmin = body.isAdmin
     if (body.diasValidade !== undefined) data.accessExpiresAt = computeExpiresAt(body.diasValidade)
+    if (body.emailConfirmado && !existing.emailVerifiedAt) data.emailVerifiedAt = new Date()
 
     const updated = await prisma.user.update({ where: { id: req.params.id }, data })
+    if (body.emailConfirmado && !existing.emailVerifiedAt) {
+      await registrarAuditoria(req, {
+        action: 'ADMIN_EMAIL_CONFIRMADO',
+        entityType: 'usuario',
+        entityId: updated.id,
+        companyId: updated.companyId,
+        metadata: { email: updated.email },
+      })
+    }
     await registrarAuditoria(req, {
       action: 'USUARIO_ALTERADO',
       entityType: 'usuario',

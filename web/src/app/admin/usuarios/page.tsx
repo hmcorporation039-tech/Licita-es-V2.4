@@ -99,6 +99,11 @@ export default function AdminUsuariosPage() {
     await load()
   }
 
+  async function confirmarEmail(u: AdminUser) {
+    await api.patch(`/api/admin/users/${u.id}`, { emailConfirmado: true })
+    await load()
+  }
+
   async function extend(u: AdminUser, dias: number | null) {
     await api.patch(`/api/admin/users/${u.id}`, { diasValidade: dias })
     await load()
@@ -209,9 +214,15 @@ export default function AdminUsuariosPage() {
                   {u.name ?? 'sem nome'} · acesso: {formatData(u.accessExpiresAt)}
                   {isExpired(u.accessExpiresAt) && <span className="ml-1 text-red-600">(expirado)</span>}
                   {!u.hasPassword && <span className="ml-1 text-amber-600">· sem senha definida</span>}
+                  {!u.emailConfirmado && <span className="ml-1 text-amber-600">· e-mail não confirmado</span>}
                 </p>
               </div>
               <div className="flex gap-3 text-sm">
+                {!u.emailConfirmado && (
+                  <button onClick={() => confirmarEmail(u)} className="text-amber-700 hover:underline">
+                    confirmar e-mail
+                  </button>
+                )}
                 <button onClick={() => extend(u, 30)} className="text-indigo-700 hover:underline">
                   +30 dias
                 </button>

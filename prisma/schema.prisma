@@ -39,6 +39,12 @@ model User {
   // usuário — só o admin. Sem isto, o dono reativava alguém que o admin havia
   // bloqueado (ex.: conta de teste que abusou do sistema).
   disabledByAdmin Boolean @default(false) @map("disabled_by_admin")
+  // Cadastro público: o login só é liberado depois de confirmar o e-mail.
+  // Contas criadas pelo admin/dono da empresa nascem verificadas.
+  emailVerifiedAt DateTime? @map("email_verified_at")
+  // Aceite dos termos de uso no cadastro (data e versão do texto aceito).
+  termsAcceptedAt DateTime? @map("terms_accepted_at")
+  termsVersion    String?   @map("terms_version")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -55,6 +61,7 @@ model User {
   checklists         TenderChecklist[]
   companyDocuments   CompanyDocument[]
   participationPlans TenderParticipationPlan[]
+  authTokens         AuthToken[]
 
   @@index([companyId])
   @@map("users")
@@ -646,4 +653,24 @@ model AuditLog {
   @@index([actorUserId, createdAt])
   @@index([action])
   @@map("audit_logs")
+}
+
+// ============================================================
+// CADASTRO PÚBLICO (2.4) — tokens de uso único para confirmar e-mail e
+// recuperar senha. Só o HASH do token é guardado: quem lê o banco não
+// consegue usar um link pendente.
+// ============================================================
+model AuthToken {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  type      String // EMAIL_VERIFY | PASSWORD_RESET
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+  @@map("auth_tokens")
 }

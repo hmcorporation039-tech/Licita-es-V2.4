@@ -16,6 +16,8 @@ const LINKS = [
   { href: '/guia', label: 'Guia' },
 ]
 
+const ROTAS_PUBLICAS = ['/login', '/cadastro', '/verificar-email', '/esqueci-senha', '/redefinir-senha', '/termos', '/privacidade']
+
 export default function Nav() {
   const [user, setUser] = useState<SessionUser | null>(null)
   const pathname = usePathname()
@@ -25,7 +27,9 @@ export default function Nav() {
     setUser(getSessionUser())
   }, [pathname])
 
-  if (pathname === '/login') return null
+  // Páginas públicas (sem sessão) não mostram o menu da área logada.
+  if (pathname && ROTAS_PUBLICAS.some((r) => pathname === r || pathname.startsWith(r + '/'))) return null
+  if (pathname === '/') return null
 
   const links = user?.isAdmin ? [...LINKS, { href: '/admin', label: 'Administração' }] : LINKS
 

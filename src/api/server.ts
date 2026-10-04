@@ -11,6 +11,7 @@ import { ZodError } from 'zod'
 import { authRouter } from './routes/auth'
 import { adminRouter } from './routes/admin'
 import { adminGestaoRouter } from './routes/adminGestao'
+import { publicRouter } from './routes/public'
 import { companyRouter } from './routes/company'
 import { monitoredItemsRouter } from './routes/monitoredItems'
 import { tendersRouter } from './routes/tenders'
@@ -73,6 +74,7 @@ app.use('/api', globalLimiter)
 // Login/sessão — públicos por natureza. Criação de usuário é admin-only
 // (ver /api/admin/users), não existe mais autocadastro aberto.
 app.use('/api/auth', authRouter)
+app.use('/api/public', publicRouter)
 app.use('/api/admin', adminRouter)
 app.use('/api/admin', adminGestaoRouter)
 

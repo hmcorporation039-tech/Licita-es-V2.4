@@ -44,6 +44,7 @@ export interface AdminUser {
   accessExpiresAt: string | null
   createdAt: string
   hasPassword: boolean
+  emailConfirmado: boolean
 }
 
 export interface MonitoredItem {
