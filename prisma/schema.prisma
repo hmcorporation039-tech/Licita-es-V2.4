@@ -690,6 +690,8 @@ model AuthToken {
   tokenHash String    @unique @map("token_hash")
   expiresAt DateTime  @map("expires_at")
   usedAt    DateTime? @map("used_at")
+  // Tentativas erradas (código de confirmação de e-mail): no limite, o código deixa de valer.
+  attempts  Int       @default(0)
   createdAt DateTime  @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

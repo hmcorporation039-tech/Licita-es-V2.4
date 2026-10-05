@@ -74,9 +74,14 @@ export default function LoginPage() {
         />
         {error && <p className="text-sm text-red-600">{error}</p>}
         {naoConfirmado && (
-          <button type="button" onClick={reenviar} className="self-start text-sm text-indigo-700 hover:underline">
-            Reenviar e-mail de confirmação
-          </button>
+          <>
+            <Link href={`/verificar-email?email=${encodeURIComponent(email)}`} className="self-start text-sm text-indigo-700 hover:underline">
+              Digitar o código de confirmação
+            </Link>
+            <button type="button" onClick={reenviar} className="self-start text-sm text-indigo-700 hover:underline">
+              Reenviar código
+            </button>
+          </>
         )}
         {info && <p className="text-sm text-emerald-700">{info}</p>}
         <button

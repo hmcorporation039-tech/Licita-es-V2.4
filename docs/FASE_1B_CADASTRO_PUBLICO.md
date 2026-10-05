@@ -8,7 +8,7 @@ senha e um período gratuito **uma única vez por CPF/CNPJ**. A cobrança contin
 1. `/cadastro` → `POST /api/auth/register` (sempre responde **202**, igual para qualquer situação).
 2. O sistema cria a empresa (plano **Teste**) e o usuário dono, com prazo de acesso de **14 dias**
    (`TRIAL_DIAS`), e envia o e-mail de confirmação (link válido por 48 h, uso único).
-3. `/verificar-email?token=…` → `POST /api/auth/verify-email`. Só depois disso o login é liberado.
+3. A tela de cadastro passa a pedir o **código de 6 dígitos** enviado ao e-mail → `POST /api/auth/verify-email` `{ email, codigo }`. Só depois disso o login é liberado (a conta entra sozinha).
 4. `/esqueci-senha` → `POST /api/auth/forgot-password`; `/redefinir-senha?token=…` →
    `POST /api/auth/reset-password` (link válido por 1 h, uso único).
 5. Teste vencido: o login responde 403 com `code: "ACESSO_EXPIRADO"` até o administrador estender
@@ -55,3 +55,13 @@ Teste de integração com banco real: [tests/integracao/cadastro.test.ts](../tes
   Precisam de advogado antes do lançamento comercial; os campos entre colchetes (foro, razão social,
   DPO, prazos de retenção) estão em aberto.
 - Convidados pelo dono da empresa e contas criadas pelo admin **não** passam pela confirmação de e-mail.
+
+## Confirmação por código (substitui o link)
+- O e-mail traz **só** o código e a frase "Digite o código na tela de cadastro e confirme o seu acesso." (sem link, botão, nome ou marca).
+- Código de 6 dígitos, vale **15 min**, uso único, **5 tentativas** erradas e ele é queimado (é preciso pedir outro; reenvio a cada 60 s).
+- No banco (`auth_tokens`) fica só o **HMAC-SHA256** do código (segredo do servidor + id da conta) e o número de tentativas — nunca o código em claro.
+  Isso dá auditoria sem guardar uma credencial: a trilha registra `CODIGO_ENVIADO`, `CODIGO_INCORRETO` (com nº da tentativa), `CODIGO_BLOQUEADO` e `EMAIL_VERIFICADO`, com IP e data.
+- Limites: por IP e **por conta** (12 tentativas/15 min). Respostas iguais para e-mail desconhecido, conta já confirmada e código errado (não revela quem é cliente).
+- Pré-sequestro: quem cadastra o e-mail de outra pessoa não recebe o código, então não ativa a conta. Cadastro pendente é substituído por um novo.
+- Redefinição de senha continua por link (o e-mail traz o botão), com validade de 1 h.
+- Migration `00000000000021_codigo_de_confirmacao` (coluna `attempts`).
