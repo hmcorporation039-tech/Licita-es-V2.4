@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useCallback, useState } from 'react'
 import Captcha, { captchaAtivo } from '@/components/Captcha'
+import ConfirmarCodigo from '@/components/ConfirmarCodigo'
 import PublicShell from '@/components/PublicShell'
 import { api, ApiRequestError } from '@/lib/api'
 
@@ -58,18 +59,12 @@ export default function CadastroPage() {
 
   const campo = 'rounded border border-slate-300 px-3 py-2 text-sm'
 
+  // Etapa 2: o código enviado ao e-mail. Aparece sempre (a resposta do cadastro é a mesma
+  // exista ou não a conta, para não revelar quem já é cliente).
   if (mensagem) {
     return (
       <PublicShell estreito>
-        <h1 className="mb-2 text-2xl font-semibold">Verifique seu e-mail</h1>
-        <p className="text-sm text-slate-600">{mensagem}</p>
-        <p className="mt-3 text-sm text-slate-500">
-          Não chegou? Veja a caixa de spam e, se precisar, peça um novo link na{' '}
-          <Link href="/login" className="text-indigo-700 hover:underline">
-            tela de entrada
-          </Link>
-          .
-        </p>
+        <ConfirmarCodigo email={email} senha={senha} />
       </PublicShell>
     )
   }

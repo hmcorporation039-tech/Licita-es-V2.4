@@ -21,6 +21,8 @@ export interface EmailEnviado {
   subject: string
   html: string
   link?: string
+  // Código de confirmação (só aparece na caixa de saída de teste; nunca vai para o log).
+  codigo?: string
 }
 export const caixaDeSaidaDeTeste: EmailEnviado[] = []
 
@@ -35,7 +37,8 @@ async function enviar(msg: EmailEnviado): Promise<void> {
     if (!process.env.RESEND_API_KEY) {
       console.warn(
         `[E-mail] RESEND_API_KEY não configurada — "${msg.subject}" não foi enviado.` +
-          (process.env.NODE_ENV !== 'production' && msg.link ? ` Link (somente dev): ${msg.link}` : '')
+          (process.env.NODE_ENV !== 'production' && msg.link ? ` Link (somente dev): ${msg.link}` : '') +
+          (process.env.NODE_ENV !== 'production' && msg.codigo ? ` Código (somente dev): ${msg.codigo}` : '')
       )
       return
     }
@@ -56,28 +59,22 @@ function moldura(titulo: string, corpo: string, link: string, rotuloBotao: strin
     </div>`
 }
 
-export function linkDeVerificacao(token: string): string {
-  return `${appUrl()}/verificar-email?token=${encodeURIComponent(token)}`
-}
-
 export function linkDeRecuperacao(token: string): string {
   return `${appUrl()}/redefinir-senha?token=${encodeURIComponent(token)}`
 }
 
-export async function enviarConfirmacaoDeEmail(to: string, nome: string | null, token: string, validadeHoras: number): Promise<void> {
-  const link = linkDeVerificacao(token)
+// Confirmação do cadastro: SÓ o código e a instrução. Sem link, sem botão, sem nome e sem
+// marca — nada que dê a um terceiro o que clicar ou o que ver sobre a plataforma.
+export async function enviarCodigoDeConfirmacao(to: string, codigo: string): Promise<void> {
   await enviar({
     to,
-    link,
-    subject: 'Confirme seu e-mail',
-    html: moldura(
-      'Confirme seu e-mail',
-      `<p>Olá${nome ? `, ${escapeHtml(nome)}` : ''}! Para ativar sua conta e começar o período de teste, confirme este endereço de e-mail.</p>
-       <p>O link vale por ${validadeHoras} horas e só pode ser usado uma vez. Ao abrir, informe a senha que você escolheu no cadastro.</p>
-       <p>Se não foi você quem se cadastrou, ignore este e-mail: nenhuma conta será ativada.</p>`,
-      link,
-      'Confirmar e-mail'
-    ),
+    codigo,
+    subject: 'Seu código de confirmação',
+    html: `
+    <div style="font-family:Arial,sans-serif;max-width:420px">
+      <p style="font-size:30px;letter-spacing:8px;font-weight:bold;margin:16px 0">${escapeHtml(codigo)}</p>
+      <p>Digite o código na tela de cadastro e confirme o seu acesso.</p>
+    </div>`,
   })
 }
 

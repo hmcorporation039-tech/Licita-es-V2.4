@@ -16,7 +16,7 @@ import { senhaSchema } from '../passwordPolicy'
 import { asyncHandler, ApiError } from '../asyncHandler'
 import { requireAuth } from '../authMiddleware'
 import { registrarAuditoria } from '../../services/auditService'
-import { loginLimiter, loginPorContaLimiter, changePasswordLimiter, cadastroLimiter, recuperacaoLimiter } from '../rateLimit'
+import { loginLimiter, loginPorContaLimiter, codigoPorContaLimiter, changePasswordLimiter, cadastroLimiter, recuperacaoLimiter } from '../rateLimit'
 import { captchaValido, emailDescartavel, maxCadastrosPorHora } from '../../lib/protecaoCadastro'
 import { alertarFalha } from '../../services/alertaOperacional'
 import { cnpjValido, cpfValido } from '../../lib/documentos'
@@ -62,7 +62,7 @@ const cadastroSchema = z
   })
 
 const MENSAGEM_CADASTRO =
-  'Se os dados estiverem corretos, enviamos um e-mail de confirmação. Abra o link recebido para ativar a conta e começar o período de teste.'
+  'Se os dados estiverem corretos, enviamos um código de 6 dígitos para o seu e-mail. Digite-o para ativar a conta e começar o período de teste.'
 
 // Cadastro aberto. A resposta é SEMPRE a mesma (202) — nunca revela se o e-mail
 // ou o documento já tinham conta; o dono do e-mail é avisado por e-mail.
@@ -104,6 +104,7 @@ authRouter.post(
         { action: 'CADASTRO_CRIADO', entityType: 'usuario', entityId: r.userId, companyId: r.companyId, metadata: { tipo: d.tipo, trialDias: trialDias() } },
         { userId: r.userId, email: r.email }
       )
+      await registrarAuditoria(req, { action: 'CODIGO_ENVIADO', entityType: 'usuario', entityId: r.userId, companyId: r.companyId, metadata: { validadeMinutos: 15 } }, { userId: r.userId, email: r.email })
     } else {
       // Só o motivo (visível apenas ao admin): sem e-mail nem documento no log.
       await registrarAuditoria(req, { action: 'CADASTRO_RECUSADO', metadata: { motivo: r.motivo } }, { userId: null, email: null })
@@ -112,21 +113,29 @@ authRouter.post(
   })
 )
 
-const tokenSchema = z.object({ token: z.string().min(20).max(200) })
+const codigoSchema = z.object({ email: z.string().trim().email().max(254), codigo: z.string().regex(/^\d{6}$/, 'O código tem 6 dígitos') })
 
+// Confirma o e-mail com o código enviado no cadastro. Cada tentativa errada é registrada na
+// auditoria (sem o código digitado); ao errar demais o código é queimado e é preciso pedir outro.
 authRouter.post(
   '/verify-email',
   recuperacaoLimiter,
+  codigoPorContaLimiter,
   asyncHandler(async (req, res) => {
-    const { token, senha } = tokenSchema.extend({ senha: z.string().min(1).max(200) }).parse(req.body)
-    const r = await confirmarEmail(token, senha)
-    if ('erro' in r) {
+    const { email, codigo } = codigoSchema.parse(req.body)
+    const r = await confirmarEmail(email, codigo)
+    if (!r.ok) {
+      if (r.userId) {
+        await registrarAuditoria(
+          req,
+          { action: r.erro === 'bloqueado' ? 'CODIGO_BLOQUEADO' : 'CODIGO_INCORRETO', entityType: 'usuario', entityId: r.userId, companyId: r.companyId, metadata: { tentativas: r.tentativas } },
+          { userId: r.userId }
+        )
+      }
       throw new ApiError(
         400,
-        r.erro === 'senha'
-          ? 'Senha incorreta. Use a senha que você escolheu no cadastro.'
-          : 'Link inválido ou expirado. Peça um novo e-mail de confirmação.',
-        { code: r.erro === 'senha' ? 'SENHA_INCORRETA' : 'LINK_INVALIDO' }
+        r.erro === 'bloqueado' ? 'Muitas tentativas erradas. Peça um novo código.' : 'Código incorreto ou expirado.',
+        { code: r.erro === 'bloqueado' ? 'CODIGO_BLOQUEADO' : 'CODIGO_INVALIDO' }
       )
     }
     await registrarAuditoria(req, { action: 'EMAIL_VERIFICADO', entityType: 'usuario', entityId: r.userId, companyId: r.companyId }, { userId: r.userId })
@@ -142,7 +151,7 @@ authRouter.post(
   asyncHandler(async (req, res) => {
     const { email } = emailSchema.parse(req.body)
     await comTempoMinimo(reenviarConfirmacao(email))
-    res.status(202).json({ mensagem: 'Se a conta existir e ainda não estiver confirmada, enviamos um novo link.' })
+    res.status(202).json({ mensagem: 'Se a conta existir e ainda não estiver confirmada, enviamos um novo código.' })
   })
 )
 

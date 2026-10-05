@@ -52,8 +52,7 @@ bruta e se passar por qualquer usuário, inclusive o admin.
 **Já feito:**
 - Um teste grátis por CPF/CNPJ. O dono não troca mais o documento depois de preenchido (antes
   dava para "soltar" o CPF e fazer outro teste).
-- A confirmação de e-mail pede a senha do cadastro. Assim ninguém cadastra o e-mail de outra pessoa
-  e fica com a conta (pré-sequestro).
+- A confirmação do cadastro é por **código de 6 dígitos** enviado ao e-mail (vale 15 min, 5 tentativas), digitado na própria tela de cadastro; o e-mail não traz link nem nome da plataforma. Assim ninguém cadastra o e-mail de outra pessoa e fica com a conta (pré-sequestro).
 - Se a pessoa se cadastra de novo com um e-mail ainda não confirmado, o cadastro antigo é substituído.
   Um CPF/CNPJ preso a um cadastro abandonado há mais de 48 h é liberado.
 - E-mails temporários (mailinator, yopmail etc.) são recusados.

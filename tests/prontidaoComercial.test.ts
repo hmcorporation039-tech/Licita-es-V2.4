@@ -107,3 +107,32 @@ describe('JWT_SECRET', () => {
     expect(jwtSecretFraco({ JWT_SECRET: 'x'.repeat(48) })).toBe(false)
   })
 })
+
+import { MAX_TENTATIVAS_DO_CODIGO, codigoConfere, gerarCodigo, hashDoCodigo } from '../src/lib/tokensDeConta'
+
+describe('código de confirmação de e-mail', () => {
+  it('tem sempre 6 dígitos (com zeros à esquerda) e varia', () => {
+    const codigos = Array.from({ length: 300 }, () => gerarCodigo())
+    expect(codigos.every((c) => /^\d{6}$/.test(c))).toBe(true)
+    expect(new Set(codigos).size).toBeGreaterThan(250)
+  })
+
+  it('o hash depende do código, da conta e do segredo; confere só com o código certo', () => {
+    const h = hashDoCodigo('123456', 'user-1', 'segredo-a')
+    expect(h).toMatch(/^[0-9a-f]{64}$/)
+    expect(h).not.toContain('123456')
+    expect(hashDoCodigo('123457', 'user-1', 'segredo-a')).not.toBe(h)
+    expect(hashDoCodigo('123456', 'user-2', 'segredo-a')).not.toBe(h) // o mesmo código em outra conta tem outro hash
+    expect(hashDoCodigo('123456', 'user-1', 'segredo-b')).not.toBe(h) // sem o segredo do servidor não se testa código offline
+  })
+
+  it('codigoConfere usa o segredo do ambiente e recusa hash malformado', () => {
+    process.env.JWT_SECRET = 'segredo-de-teste-unitario-com-mais-de-32-chars'
+    const h = hashDoCodigo('654321', 'u1')
+    expect(codigoConfere('654321', 'u1', h)).toBe(true)
+    expect(codigoConfere('654322', 'u1', h)).toBe(false)
+    expect(codigoConfere('654321', 'u2', h)).toBe(false)
+    expect(codigoConfere('654321', 'u1', 'nao-e-hex')).toBe(false)
+    expect(MAX_TENTATIVAS_DO_CODIGO).toBe(5)
+  })
+})

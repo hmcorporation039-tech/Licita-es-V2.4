@@ -8,28 +8,32 @@
 //  - Um teste por CPF/CNPJ: o documento (já validado) é único em `companies`.
 //  - Token de uso único, só o hash no banco, e o consumo é atômico (duas
 //    requisições com o mesmo link: só uma vence).
-//  - Pré-sequestro de conta: alguém pode cadastrar o e-mail de outra pessoa com
-//    uma senha que ele conhece. Por isso (1) a confirmação exige a senha do
-//    cadastro — o dono do e-mail, que não a conhece, não ativa a conta do
-//    atacante por engano — e (2) um novo cadastro com um e-mail ainda NÃO
-//    confirmado substitui o anterior (só quem recebe o e-mail confirma).
+//  - Confirmação por CÓDIGO de 6 dígitos (sem link): o código vai por e-mail e é digitado
+//    na tela de cadastro. Vale 15 min, 5 tentativas, uso único; só o HMAC fica no banco.
+//    Pré-sequestro de conta (alguém cadastra o e-mail de outra pessoa): quem não recebe
+//    o e-mail não tem o código e não consegue ativar a conta. Um novo cadastro com um
+//    e-mail ainda NÃO confirmado substitui o anterior.
 // ============================================================
 
 import { Prisma } from '@prisma/client'
 import { prisma } from './tenderService'
-import { hashPassword, normalizeEmail, verifyPasswordConstantTime } from './authService'
+import { hashPassword, normalizeEmail } from './authService'
 import {
   enviarAvisoDeCadastroRepetido,
-  enviarConfirmacaoDeEmail,
+  enviarCodigoDeConfirmacao,
   enviarRecuperacaoDeSenha,
 } from './emailTransacional'
 import { somenteDigitos } from '../lib/documentos'
 import { TERMOS_VERSAO } from '../lib/legal'
 import {
   INTERVALO_ENTRE_ENVIOS_MS,
+  MAX_TENTATIVAS_DO_CODIGO,
   TipoDeToken,
   VALIDADE_DO_TOKEN,
+  codigoConfere,
+  gerarCodigo,
   gerarToken,
+  hashDoCodigo,
   hashDoToken,
   tokenUtilizavel,
 } from '../lib/tokensDeConta'
@@ -58,6 +62,33 @@ async function emitirToken(userId: string, tipo: TipoDeToken, agora = new Date()
     }),
   ])
   return token
+}
+
+// Emite um código de confirmação de e-mail e invalida os anteriores ainda não usados.
+// Devolve null se já foi emitido um há menos de um minuto (evita spam de e-mail).
+async function emitirCodigo(userId: string, agora = new Date()): Promise<string | null> {
+  const recente = await prisma.authToken.findFirst({
+    where: { userId, type: 'EMAIL_CODE', createdAt: { gt: new Date(agora.getTime() - INTERVALO_ENTRE_ENVIOS_MS) } },
+    select: { id: true },
+  })
+  if (recente) return null
+
+  for (let tentativa = 0; tentativa < 3; tentativa++) {
+    const codigo = gerarCodigo()
+    try {
+      await prisma.$transaction([
+        prisma.authToken.updateMany({ where: { userId, type: 'EMAIL_CODE', usedAt: null }, data: { usedAt: agora } }),
+        prisma.authToken.create({
+          data: { userId, type: 'EMAIL_CODE', tokenHash: hashDoCodigo(codigo, userId), expiresAt: new Date(agora.getTime() + VALIDADE_DO_TOKEN.EMAIL_CODE) },
+        }),
+      ])
+      return codigo
+    } catch (err) {
+      // Raríssimo: o mesmo código já foi emitido antes para esta conta (hash único). Sorteia outro.
+      if (!(err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002')) throw err
+    }
+  }
+  return null
 }
 
 // Consome um token: devolve o id do usuário, ou null se inválido/expirado/já usado.
@@ -176,8 +207,8 @@ export async function cadastrar(dados: DadosDeCadastro): Promise<ResultadoDoCada
       },
     })
 
-    const token = await emitirToken(user.id, 'EMAIL_VERIFY', agora)
-    if (token) void enviarConfirmacaoDeEmail(email, dados.nome, token, VALIDADE_DO_TOKEN.EMAIL_VERIFY / 3_600_000)
+    const codigo = await emitirCodigo(user.id, agora)
+    if (codigo) void enviarCodigoDeConfirmacao(email, codigo)
     return { criado: true, userId: user.id, companyId: user.companyId, email }
   } catch (err) {
     // Corrida: outra requisição criou o mesmo e-mail/documento entre a checagem e o insert.
@@ -191,27 +222,44 @@ export async function cadastrar(dados: DadosDeCadastro): Promise<ResultadoDoCada
 export async function reenviarConfirmacao(emailBruto: string): Promise<void> {
   const user = await prisma.user.findUnique({ where: { email: normalizeEmail(emailBruto) } })
   if (!user || !user.active || user.emailVerifiedAt) return
-  const token = await emitirToken(user.id, 'EMAIL_VERIFY')
-  if (token) void enviarConfirmacaoDeEmail(user.email, user.name, token, VALIDADE_DO_TOKEN.EMAIL_VERIFY / 3_600_000)
+  const codigo = await emitirCodigo(user.id)
+  if (codigo) void enviarCodigoDeConfirmacao(user.email, codigo)
 }
 
-// Confirma o e-mail. Exige a senha escolhida no cadastro (ver "pré-sequestro" no topo).
-// Senha errada NÃO consome o link: a pessoa pode tentar de novo.
-export async function confirmarEmail(
-  token: string,
-  senha: string
-): Promise<{ userId: string; companyId: string } | { erro: 'link' | 'senha' }> {
-  const registro = await prisma.authToken.findUnique({ where: { tokenHash: hashDoToken(token) } })
-  if (!registro || registro.type !== 'EMAIL_VERIFY' || !tokenUtilizavel(registro, new Date())) return { erro: 'link' }
-  const dono = await prisma.user.findUnique({ where: { id: registro.userId }, select: { passwordHash: true } })
-  if (!(await verifyPasswordConstantTime(senha, dono?.passwordHash ?? null))) return { erro: 'senha' }
+// Confirma o e-mail com o código de 6 dígitos. O erro nunca diz se o e-mail existe: e-mail
+// desconhecido, conta já confirmada e código vencido respondem igual ('codigo').
+// 'bloqueado' = estourou as tentativas: o código foi invalidado e é preciso pedir outro.
+export type ResultadoDaConfirmacao =
+  | { ok: true; userId: string; companyId: string }
+  | { ok: false; erro: 'codigo' | 'bloqueado'; userId?: string; companyId?: string; tentativas?: number }
 
-  const userId = await consumirToken(token, 'EMAIL_VERIFY')
-  if (!userId) return { erro: 'link' }
-  const user = await prisma.user.findUnique({ where: { id: userId } })
-  if (!user) return { erro: 'link' }
-  if (!user.emailVerifiedAt) await prisma.user.update({ where: { id: userId }, data: { emailVerifiedAt: new Date() } })
-  return { userId, companyId: user.companyId }
+export async function confirmarEmail(emailBruto: string, codigo: string, agora = new Date()): Promise<ResultadoDaConfirmacao> {
+  const user = await prisma.user.findUnique({ where: { email: normalizeEmail(emailBruto) } })
+  if (!user || user.emailVerifiedAt) {
+    hashDoCodigo(codigo, 'conta-inexistente') // mesmo custo de CPU nos dois caminhos
+    return { ok: false, erro: 'codigo' }
+  }
+  const registro = await prisma.authToken.findFirst({
+    where: { userId: user.id, type: 'EMAIL_CODE', usedAt: null, expiresAt: { gt: agora } },
+    orderBy: { createdAt: 'desc' },
+  })
+  if (!registro) return { ok: false, erro: 'codigo', userId: user.id, companyId: user.companyId }
+  if (registro.attempts >= MAX_TENTATIVAS_DO_CODIGO) return { ok: false, erro: 'bloqueado', userId: user.id, companyId: user.companyId }
+
+  if (!codigoConfere(codigo, user.id, registro.tokenHash)) {
+    const atual = await prisma.authToken.update({ where: { id: registro.id }, data: { attempts: { increment: 1 } }, select: { attempts: true } })
+    if (atual.attempts >= MAX_TENTATIVAS_DO_CODIGO) {
+      await prisma.authToken.updateMany({ where: { id: registro.id, usedAt: null }, data: { usedAt: agora } }) // código queimado
+      return { ok: false, erro: 'bloqueado', userId: user.id, companyId: user.companyId, tentativas: atual.attempts }
+    }
+    return { ok: false, erro: 'codigo', userId: user.id, companyId: user.companyId, tentativas: atual.attempts }
+  }
+
+  // Uso único: o "marcar como usado" é condicional, então dois envios simultâneos não passam os dois.
+  const { count } = await prisma.authToken.updateMany({ where: { id: registro.id, usedAt: null }, data: { usedAt: agora } })
+  if (count !== 1) return { ok: false, erro: 'codigo', userId: user.id, companyId: user.companyId }
+  await prisma.user.update({ where: { id: user.id }, data: { emailVerifiedAt: agora } })
+  return { ok: true, userId: user.id, companyId: user.companyId }
 }
 
 export async function solicitarRecuperacao(emailBruto: string): Promise<{ userId: string; companyId: string } | null> {

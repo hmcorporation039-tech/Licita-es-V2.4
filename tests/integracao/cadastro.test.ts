@@ -96,8 +96,8 @@ rodar('Cadastro público e recuperação de senha', () => {
   })
 
   // -----------------------------------------------------------------
-  describe('cadastro e confirmação de e-mail', () => {
-    let tokenConfirmacao = ''
+  describe('cadastro e confirmação de e-mail por código', () => {
+    let codigoInicial = ''
     let bodyPrimeiroCadastro = ''
 
     it('cria conta de teste (14 dias), plano TESTE, termos registrados — e responde 202', async () => {
@@ -118,16 +118,25 @@ rodar('Cadastro público e recuperação de senha', () => {
       expect(dias).toBeLessThan(14.1)
     })
 
-    it('envia o e-mail de confirmação; no banco fica só o HASH do token', async () => {
+    it('o e-mail traz SÓ o código e a instrução — sem link, botão, nome ou marca; no banco fica só o HMAC', async () => {
       const msg = ultimoEmailPara(email('fulano'))
-      expect(msg.subject).toMatch(/Confirme/)
-      expect(msg.link).toMatch(/^https:\/\/site\.teste\/verificar-email\?token=/)
-      tokenConfirmacao = tokenDoLink(msg.link)
+      expect(msg.subject).toBe('Seu código de confirmação')
+      codigoInicial = msg.codigo
+      expect(codigoInicial).toMatch(/^\d{6}$/)
+      expect(msg.link).toBeUndefined()
+      expect(msg.html).not.toMatch(/href|http|<a /i)
+      expect(msg.html).toContain(codigoInicial)
+      expect(msg.html).toContain('Digite o código na tela de cadastro e confirme o seu acesso.')
+      expect(msg.html).not.toMatch(/Fulano|Licita|Monitor/i)
 
       const tokens = await prisma.authToken.findMany({ where: { user: { email: email('fulano') } } })
       expect(tokens).toHaveLength(1)
-      expect(tokens[0].tokenHash).not.toContain(tokenConfirmacao)
-      expect(tokens[0].type).toBe('EMAIL_VERIFY')
+      expect(tokens[0].type).toBe('EMAIL_CODE')
+      expect(tokens[0].tokenHash).not.toContain(codigoInicial) // nunca o código em claro
+      expect(tokens[0].tokenHash).toMatch(/^[0-9a-f]{64}$/)
+      const minutos = (tokens[0].expiresAt.getTime() - Date.now()) / 60_000
+      expect(minutos).toBeGreaterThan(14)
+      expect(minutos).toBeLessThanOrEqual(15)
     })
 
     it('antes de confirmar: senha certa é recusada com código estável; senha errada continua 401', async () => {
@@ -138,15 +147,21 @@ rodar('Cadastro público e recuperação de senha', () => {
       expect(errada.status).toBe(401)
     })
 
-    it('token inválido, truncado ou de outro tipo é recusado', async () => {
-      expect((await http('POST', '/api/auth/verify-email', { token: 'x'.repeat(43), senha: SENHA })).status).toBe(400)
-      expect((await http('POST', '/api/auth/verify-email', { token: 'curto', senha: SENHA })).status).toBe(400)
-      expect((await http('POST', '/api/auth/reset-password', { token: tokenConfirmacao, novaSenha: 'Outra-senha-123' })).status).toBe(400)
+    it('código mal formado é recusado; código errado volta a mesma mensagem de e-mail desconhecido', async () => {
+      expect((await http('POST', '/api/auth/verify-email', { email: email('fulano'), codigo: '12345' })).status).toBe(400)
+      expect((await http('POST', '/api/auth/verify-email', { email: email('fulano'), codigo: 'abcdef' })).status).toBe(400)
+      const errado = codigoInicial === '000000' ? '111111' : '000000'
+      const conhecido = await http('POST', '/api/auth/verify-email', { email: email('fulano'), codigo: errado })
+      const desconhecido = await http('POST', '/api/auth/verify-email', { email: email('ninguem'), codigo: errado })
+      expect(conhecido.status).toBe(400)
+      expect(conhecido.body.code).toBe('CODIGO_INVALIDO')
+      expect(desconhecido.status).toBe(400)
+      expect(desconhecido.body).toEqual(conhecido.body) // não revela se o e-mail tem conta
     })
 
-    it('confirma o e-mail uma vez; reusar o link falha; depois o login funciona', async () => {
-      expect((await http('POST', '/api/auth/verify-email', { token: tokenConfirmacao, senha: SENHA })).status).toBe(200)
-      expect((await http('POST', '/api/auth/verify-email', { token: tokenConfirmacao, senha: SENHA })).status).toBe(400)
+    it('confirma com o código certo, uma vez só; reusar falha; depois o login funciona', async () => {
+      expect((await http('POST', '/api/auth/verify-email', { email: email('fulano'), codigo: codigoInicial })).status).toBe(200)
+      expect((await http('POST', '/api/auth/verify-email', { email: email('fulano'), codigo: codigoInicial })).status).toBe(400)
       const login = await http('POST', '/api/auth/login', { email: email('fulano'), password: SENHA })
       expect(login.status).toBe(200)
       expect(login.body.token).toBeTruthy()
@@ -200,9 +215,9 @@ rodar('Cadastro público e recuperação de senha', () => {
       expect(await prisma.user.count({ where: { email: email('robo') } })).toBe(0)
     })
 
-    it('reenviar confirmação: respeita o intervalo, invalida o link antigo e ignora conta já confirmada', async () => {
+    it('reenviar código: respeita o intervalo, invalida o código antigo e ignora conta já confirmada', async () => {
       await http('POST', '/api/auth/register', cadastro({ email: email('reenvio') }))
-      const primeiro = tokenDoLink(ultimoEmailPara(email('reenvio')).link)
+      const primeiro = ultimoEmailPara(email('reenvio')).codigo
 
       // dentro de 1 minuto: não manda outro
       const n = caixa.length
@@ -213,10 +228,11 @@ rodar('Cadastro público e recuperação de senha', () => {
       await prisma.authToken.updateMany({ where: { user: { email: email('reenvio') } }, data: { createdAt: new Date(Date.now() - 5 * 60_000) } })
       expect((await http('POST', '/api/auth/resend-verification', { email: email('reenvio') })).status).toBe(202)
       expect(caixa.length).toBe(n + 1)
-      const segundo = tokenDoLink(ultimoEmailPara(email('reenvio')).link)
-      expect(segundo).not.toBe(primeiro)
-      expect((await http('POST', '/api/auth/verify-email', { token: primeiro, senha: SENHA })).status).toBe(400)
-      expect((await http('POST', '/api/auth/verify-email', { token: segundo, senha: SENHA })).status).toBe(200)
+      const segundo = ultimoEmailPara(email('reenvio')).codigo
+      if (segundo !== primeiro) {
+        expect((await http('POST', '/api/auth/verify-email', { email: email('reenvio'), codigo: primeiro })).status).toBe(400)
+      }
+      expect((await http('POST', '/api/auth/verify-email', { email: email('reenvio'), codigo: segundo })).status).toBe(200)
 
       // conta já confirmada e e-mail inexistente: mesma resposta, nada enviado
       const m = caixa.length
@@ -227,29 +243,56 @@ rodar('Cadastro público e recuperação de senha', () => {
       expect(caixa.length).toBe(m)
     })
 
-    it('confirmar exige a senha do cadastro; senha errada não gasta o link', async () => {
-      await http('POST', '/api/auth/register', cadastro({ email: email('comsenha') }))
-      const t = tokenDoLink(ultimoEmailPara(email('comsenha')).link)
-      const errada = await http('POST', '/api/auth/verify-email', { token: t, senha: 'nao-e-a-senha-1' })
-      expect(errada.status).toBe(400)
-      expect(errada.body.code).toBe('SENHA_INCORRETA')
-      expect((await http('POST', '/api/auth/verify-email', { token: t })).status).toBe(400) // sem senha: dados inválidos
-      expect((await http('POST', '/api/auth/verify-email', { token: t, senha: SENHA })).status).toBe(200)
+    it('código vencido (15 min) não funciona', async () => {
+      await http('POST', '/api/auth/register', cadastro({ email: email('vencido') }))
+      const c = ultimoEmailPara(email('vencido')).codigo
+      await prisma.authToken.updateMany({ where: { user: { email: email('vencido') } }, data: { expiresAt: new Date(Date.now() - 1000) } })
+      expect((await http('POST', '/api/auth/verify-email', { email: email('vencido'), codigo: c })).status).toBe(400)
     })
 
-    it('pré-sequestro: quem cadastra o e-mail alheio não fica com a conta; o dono recadastra e confirma', async () => {
+    it('5 tentativas erradas queimam o código: nem o certo vale mais; só um código novo', async () => {
+      await http('POST', '/api/auth/register', cadastro({ email: email('forca') }))
+      const certo = ultimoEmailPara(email('forca')).codigo
+      const errado = certo === '000000' ? '111111' : '000000'
+      for (let i = 1; i <= 4; i++) {
+        const r = await http('POST', '/api/auth/verify-email', { email: email('forca'), codigo: errado })
+        expect(r.body.code).toBe('CODIGO_INVALIDO')
+      }
+      const quinta = await http('POST', '/api/auth/verify-email', { email: email('forca'), codigo: errado })
+      expect(quinta.body.code).toBe('CODIGO_BLOQUEADO')
+      const depois = await http('POST', '/api/auth/verify-email', { email: email('forca'), codigo: certo })
+      expect(depois.status).toBe(400) // o código certo também morreu
+      expect((await prisma.user.findUnique({ where: { email: email('forca') } })).emailVerifiedAt).toBeNull()
+
+      // pede um novo código e confirma
+      await prisma.authToken.updateMany({ where: { user: { email: email('forca') } }, data: { createdAt: new Date(Date.now() - 5 * 60_000) } })
+      await http('POST', '/api/auth/resend-verification', { email: email('forca') })
+      const novo = ultimoEmailPara(email('forca')).codigo
+      expect((await http('POST', '/api/auth/verify-email', { email: email('forca'), codigo: novo })).status).toBe(200)
+    })
+
+    it('a auditoria guarda o envio, as tentativas erradas e a confirmação — sem o código', async () => {
+      const u = await prisma.user.findUnique({ where: { email: email('forca') } })
+      const eventos = await prisma.auditLog.findMany({ where: { entityId: u.id }, orderBy: { createdAt: 'asc' } })
+      const acoes = eventos.map((e: { action: string }) => e.action)
+      expect(acoes).toEqual(expect.arrayContaining(['CODIGO_ENVIADO', 'CODIGO_INCORRETO', 'CODIGO_BLOQUEADO', 'EMAIL_VERIFICADO']))
+      expect(JSON.stringify(eventos)).not.toMatch(/"codigo"/i)
+    })
+
+    it('pré-sequestro: quem cadastra o e-mail alheio não consegue ativar a conta (o código vai para o dono do e-mail)', async () => {
       const SENHA_ATACANTE = 'Senha-do-atacante-1'
       await http('POST', '/api/auth/register', cadastro({ email: email('vitima'), senha: SENHA_ATACANTE }))
-      const linkDoAtacante = tokenDoLink(ultimoEmailPara(email('vitima')).link)
-      // a vítima recebe o link mas não sabe a senha do atacante: não ativa a conta dele
-      expect((await http('POST', '/api/auth/verify-email', { token: linkDoAtacante, senha: SENHA })).status).toBe(400)
+      const codigoDaVitima = ultimoEmailPara(email('vitima')).codigo // chegou só na caixa da vítima
+      // o atacante não tem o código: tenta chutar e não ativa nada
+      const chute = codigoDaVitima === '123456' ? '654321' : '123456'
+      expect((await http('POST', '/api/auth/verify-email', { email: email('vitima'), codigo: chute })).status).toBe(400)
+      expect((await http('POST', '/api/auth/login', { email: email('vitima'), password: SENHA_ATACANTE })).status).toBe(403)
 
-      // a vítima se cadastra de novo: o cadastro pendente é substituído
+      // a vítima se cadastra de verdade: o cadastro pendente é substituído, e o código antigo morre
       await http('POST', '/api/auth/register', cadastro({ email: email('vitima') }))
       expect(await prisma.user.count({ where: { email: email('vitima') } })).toBe(1)
-      expect((await http('POST', '/api/auth/verify-email', { token: linkDoAtacante, senha: SENHA_ATACANTE })).status).toBe(400) // link antigo morreu
-      const linkDaVitima = tokenDoLink(ultimoEmailPara(email('vitima')).link)
-      expect((await http('POST', '/api/auth/verify-email', { token: linkDaVitima, senha: SENHA })).status).toBe(200)
+      const novo = ultimoEmailPara(email('vitima')).codigo
+      expect((await http('POST', '/api/auth/verify-email', { email: email('vitima'), codigo: novo })).status).toBe(200)
       expect((await http('POST', '/api/auth/login', { email: email('vitima'), password: SENHA_ATACANTE })).status).toBe(401)
       expect((await http('POST', '/api/auth/login', { email: email('vitima'), password: SENHA })).status).toBe(200)
     })
@@ -268,13 +311,6 @@ rodar('Cadastro público e recuperação de senha', () => {
       await http('POST', '/api/auth/register', cadastro({ documento: gerarCpf() }))
       await http('POST', '/api/auth/register', cadastro({ documento: gerarCpf() }))
       expect(caixa.slice(n).filter((m) => m.to === email('fulano'))).toHaveLength(0) // já avisado neste mesmo teste, há instantes
-    })
-
-    it('link de confirmação vencido (48 h) não funciona', async () => {
-      await http('POST', '/api/auth/register', cadastro({ email: email('vencido') }))
-      const t = tokenDoLink(ultimoEmailPara(email('vencido')).link)
-      await prisma.authToken.updateMany({ where: { user: { email: email('vencido') } }, data: { expiresAt: new Date(Date.now() - 1000) } })
-      expect((await http('POST', '/api/auth/verify-email', { token: t, senha: SENHA })).status).toBe(400)
     })
 
     it('teste vencido: login recusado com código ACESSO_EXPIRADO', async () => {

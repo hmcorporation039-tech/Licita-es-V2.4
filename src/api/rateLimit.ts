@@ -117,3 +117,17 @@ export const estudoPrecosLimiter = rateLimit({
   keyGenerator: (req) => req.userId ?? 'anonimo',
   message: { error: 'Muitas pesquisas de preços — aguarde alguns minutos e tente de novo' },
 })
+
+// Confirmação por código: por CONTA (e-mail digitado), além do limite por IP, para barrar
+// quem tenta adivinhar os 6 dígitos de uma conta específica a partir de muitos IPs.
+export const codigoPorContaLimiter = rateLimit({
+  windowMs: JANELA_MS,
+  limit: limite(12),
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    const email = (req.body as { email?: unknown } | undefined)?.email
+    return typeof email === 'string' ? 'codigo:' + email.trim().toLowerCase() : 'codigo:?'
+  },
+  message: { error: 'Muitas tentativas para esta conta — aguarde alguns minutos e peça um novo código' },
+})
