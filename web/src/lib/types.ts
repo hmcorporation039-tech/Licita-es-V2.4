@@ -34,6 +34,8 @@ export interface Company {
   responsavel: string | null
   endereco: string | null
   cep: string | null
+  baseMunicipio?: string | null
+  baseUf?: string | null
   users: CompanyMember[]
 }
 

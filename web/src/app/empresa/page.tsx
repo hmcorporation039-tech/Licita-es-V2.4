@@ -54,6 +54,8 @@ export default function EmpresaPage() {
   const [responsavel, setResponsavel] = useState('')
   const [endereco, setEndereco] = useState('')
   const [cep, setCep] = useState('')
+  const [baseMunicipio, setBaseMunicipio] = useState('')
+  const [baseUf, setBaseUf] = useState('')
   const [savingCompany, setSavingCompany] = useState(false)
 
   const [memberEmail, setMemberEmail] = useState('')
@@ -92,6 +94,8 @@ export default function EmpresaPage() {
       setResponsavel(data.responsavel ?? '')
       setEndereco(data.endereco ?? '')
       setCep(data.cep ?? '')
+      setBaseMunicipio(data.baseMunicipio ?? '')
+      setBaseUf(data.baseUf ?? '')
     } catch (err) {
       setError(err instanceof ApiRequestError ? err.message : 'Erro ao carregar empresa')
     } finally {
@@ -130,6 +134,8 @@ export default function EmpresaPage() {
         responsavel: responsavel || null,
         endereco: endereco || null,
         cep: cep || null,
+        baseMunicipio: baseMunicipio.trim() && baseUf.trim() ? baseMunicipio.trim() : null,
+        baseUf: baseMunicipio.trim() && baseUf.trim() ? baseUf.trim().toUpperCase() : null,
       })
       setCompany((prev) => (prev ? { ...prev, ...updated } : prev))
       setInfo('Dados da empresa atualizados.')
@@ -292,6 +298,23 @@ export default function EmpresaPage() {
             disabled={!souOwner}
             className={inputClass}
           />
+          <div className="flex gap-2 sm:col-span-2">
+            <input
+              placeholder="Base de entregas: cidade (usada no custo de deslocamento)"
+              value={baseMunicipio}
+              onChange={(e) => setBaseMunicipio(e.target.value)}
+              disabled={!souOwner}
+              className={`${inputClass} flex-1`}
+            />
+            <input
+              placeholder="UF"
+              maxLength={2}
+              value={baseUf}
+              onChange={(e) => setBaseUf(e.target.value.toUpperCase())}
+              disabled={!souOwner}
+              className={`${inputClass} w-20`}
+            />
+          </div>
           <input
             placeholder="Endereço (opcional)"
             value={endereco}

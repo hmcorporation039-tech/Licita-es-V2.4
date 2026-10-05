@@ -107,3 +107,13 @@ export const loginPorContaLimiter = rateLimit({
   },
   message: { error: 'Muitas tentativas para esta conta — aguarde alguns minutos ou redefina a senha' },
 })
+
+// Pesquisa de preços de mercado: cada chamada consulta a API do Compras.gov.br. Por USUÁRIO.
+export const estudoPrecosLimiter = rateLimit({
+  windowMs: JANELA_MS,
+  limit: limite(120),
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  keyGenerator: (req) => req.userId ?? 'anonimo',
+  message: { error: 'Muitas pesquisas de preços — aguarde alguns minutos e tente de novo' },
+})

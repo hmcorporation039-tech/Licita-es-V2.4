@@ -60,3 +60,19 @@ export const api = {
   delete: <T>(path: string, data?: unknown) =>
     request<T>(path, { method: 'DELETE', body: data ? JSON.stringify(data) : undefined }),
 }
+
+// Baixa um arquivo (ex.: PDF) autenticado e dispara o download no navegador.
+export async function baixarArquivo(path: string, nomeSugerido: string): Promise<void> {
+  const token = getSessionToken()
+  const res = await fetch(`${API_URL}${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new ApiRequestError(res.status, body.error ?? `Erro ${res.status}`)
+  }
+  const url = URL.createObjectURL(await res.blob())
+  const a = document.createElement('a')
+  a.href = url
+  a.download = nomeSugerido
+  a.click()
+  URL.revokeObjectURL(url)
+}
