@@ -62,6 +62,7 @@ model User {
   companyDocuments   CompanyDocument[]
   participationPlans TenderParticipationPlan[]
   authTokens         AuthToken[]
+  costStudies        CostStudy[]
 
   @@index([companyId])
   @@map("users")
@@ -99,6 +100,12 @@ model Company {
   // com o cliente (ex.: { "itensMonitorados": 30 }) — ver lib/planos.ts.
   planCode       String   @default("TESTE") @map("plan_code")
   quotaOverrides Json?    @map("quota_overrides")
+  // Base da empresa (de onde sai a entrega): usada no custo de deslocamento do estudo de
+  // custos. Município/UF digitados; as coordenadas vêm da base do IBGE (lib/geoService).
+  baseMunicipio String? @map("base_municipio")
+  baseUf        String? @map("base_uf") @db.Char(2)
+  baseLat       Float?  @map("base_lat")
+  baseLng       Float?  @map("base_lng")
   createdAt DateTime    @default(now()) @map("created_at")
   updatedAt DateTime    @updatedAt @map("updated_at")
 
@@ -109,6 +116,7 @@ model Company {
   participationPlans TenderParticipationPlan[]
   requirementProgress RequirementProgress[]
   tenderMatches      TenderMatch[]
+  costStudies        CostStudy[]
 
   @@map("companies")
 }
@@ -228,6 +236,7 @@ model Tender {
   analysis           TenderAnalysis?
   participationPlans TenderParticipationPlan[]
   requirementProgress RequirementProgress[]
+  costStudies        CostStudy[]
 
   @@index([fonte])
   @@index([uf])
@@ -705,4 +714,27 @@ model RequirementProgress {
 
   @@unique([companyId, tenderId])
   @@map("requirement_progress")
+}
+
+// ============================================================
+// ESTUDO DE CUSTOS da licitação escolhida (preços, custos, deslocamento, prazo e
+// resultado). Um por (empresa, licitação). `dados` guarda só o que o usuário digitou
+// (ver lib/estudoDeCustos.ts); o resultado é sempre recalculado, nunca gravado.
+// ============================================================
+
+model CostStudy {
+  id        String   @id @default(uuid())
+  companyId String   @map("company_id")
+  userId    String   @map("user_id")
+  tenderId  String   @map("tender_id")
+  dados     Json
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tender  Tender  @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, tenderId])
+  @@map("cost_studies")
 }

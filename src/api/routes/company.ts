@@ -19,6 +19,7 @@ import { registrarAuditoria } from '../../services/auditService'
 import { resumoDeCotas } from '../../services/quotaService'
 import { cnpjValido, cpfValido, somenteDigitos } from '../../lib/documentos'
 import { Prisma } from '@prisma/client'
+import { findMunicipioByNomeUf } from '../../lib/geoService'
 
 export const companyRouter = Router()
 
@@ -57,14 +58,28 @@ const updateCompanySchema = z.object({
   responsavel: z.string().min(1).nullable().optional(),
   endereco: z.string().min(1).nullable().optional(),
   cep: z.string().min(1).nullable().optional(),
+  // Base de entregas: de onde sai o fornecimento (custo de deslocamento do estudo de custos).
+  baseMunicipio: z.string().trim().min(2).max(120).nullable().optional(),
+  baseUf: z.string().length(2).nullable().optional(),
 })
 
 companyRouter.patch(
   '/',
   requireCompanyOwner,
   asyncHandler(async (req, res) => {
-    const { tipo, cnpj, cpf, ...resto } = updateCompanySchema.parse(req.body)
+    const { tipo, cnpj, cpf, baseMunicipio, baseUf, ...resto } = updateCompanySchema.parse(req.body)
     const data: Prisma.CompanyUpdateInput = { ...resto }
+
+    // Base de entregas: município + UF viram coordenadas pela base do IBGE. Limpar um limpa o outro.
+    if (baseMunicipio !== undefined || baseUf !== undefined) {
+      if (!baseMunicipio || !baseUf) {
+        Object.assign(data, { baseMunicipio: null, baseUf: null, baseLat: null, baseLng: null })
+      } else {
+        const geo = findMunicipioByNomeUf(baseMunicipio, baseUf)
+        if (!geo) throw new ApiError(400, `Cidade "${baseMunicipio}/${baseUf.toUpperCase()}" não encontrada — confira o nome e a UF.`)
+        Object.assign(data, { baseMunicipio: baseMunicipio.trim(), baseUf: baseUf.toUpperCase(), baseLat: geo.lat, baseLng: geo.lng })
+      }
+    }
 
     // CPF/CNPJ e tipo identificam a conta (um período de teste por documento). Depois de
     // preenchidos, só o suporte altera: senão o dono "soltava" o documento para fazer outro

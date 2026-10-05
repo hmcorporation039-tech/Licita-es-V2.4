@@ -23,6 +23,7 @@ import { uasgRouter } from './routes/uasg'
 import { catalogRouter } from './routes/catalog'
 import { radarRouter } from './routes/radar'
 import { contaRouter } from './routes/conta'
+import { estudosRouter } from './routes/estudos'
 import { requireAuth } from './authMiddleware'
 import { ApiError } from './asyncHandler'
 import { globalLimiter, radarLimiter } from './rateLimit'
@@ -95,6 +96,7 @@ app.use('/api/uasg', requireAuth, uasgRouter)
 app.use('/api/catalog', requireAuth, catalogRouter)
 app.use('/api/radar', requireAuth, radarLimiter, radarRouter)
 app.use('/api/conta', requireAuth, contaRouter)
+app.use('/api/estudos', requireAuth, estudosRouter)
 
 const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
   if (err instanceof ZodError) {

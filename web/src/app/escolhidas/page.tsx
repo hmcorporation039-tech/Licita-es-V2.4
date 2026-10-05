@@ -42,7 +42,7 @@ export default function EscolhidasPage() {
       <h1 className="mb-1 text-xl font-semibold">Licitações escolhidas</h1>
       <p className="mb-4 text-sm text-slate-500">
         Licitações que você marcou como interessado — encontre-as em "Meus matches" e clique em "Marcar como
-        interessado" pra elas aparecerem aqui.
+        interessado" pra elas aparecerem aqui. Em cada uma, o estudo de custos calcula preços de mercado, deslocamento, prazo, lucro ou prejuízo e gera o PDF.
       </p>
 
       {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
@@ -65,9 +65,14 @@ export default function EscolhidasPage() {
                     {formatValor(p.tender.valorEstimado)}
                   </p>
                 </div>
-                <button onClick={() => remover(p.tenderId)} className="shrink-0 text-sm text-red-600 hover:underline">
-                  Remover da lista
-                </button>
+                <div className="flex shrink-0 flex-col items-end gap-2">
+                  <Link href={`/escolhidas/${p.tenderId}`} className="rounded bg-indigo-600 px-3 py-1.5 text-sm text-white hover:bg-indigo-700">
+                    Estudo de custos
+                  </Link>
+                  <button onClick={() => remover(p.tenderId)} className="text-sm text-red-600 hover:underline">
+                    Remover da lista
+                  </button>
+                </div>
               </div>
             </li>
           ))}
