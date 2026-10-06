@@ -74,3 +74,13 @@ Quem tenta cadastrar um e-mail **já cadastrado** recebe `409 EMAIL_JA_CADASTRAD
   opcional (Turnstile), teto global por hora e bloqueio de e-mails temporários.
 - **CPF/CNPJ já usado NÃO é revelado:** continua a resposta neutra (202), por ser mais sensível (expõe que uma empresa é cliente).
 - E-mail com cadastro **ainda não confirmado** não conta como "já cadastrado": o novo cadastro substitui o pendente e envia um novo código.
+
+## CNPJ/CPF que já tem cadastro: a tela avisa (decisão de produto, substitui a resposta neutra)
+Quem tenta cadastrar o CNPJ/CPF de uma empresa já cadastrada, com **outro e-mail**, recebe `409` e a tela explica:
+- `DOCUMENTO_JA_CADASTRADO`: "Já existe um cadastro para este CNPJ" — opções: entrar, recuperar o acesso, ou pedir ao responsável
+  que convide a pessoa (Empresa → Membros).
+- `DOCUMENTO_PENDENTE`: o cadastro existente ainda não foi confirmado — a pessoa deve digitar o código enviado ao e-mail usado nele
+  (cadastro pendente há mais de 48 h é liberado e substituído).
+- O e-mail do cadastro existente aparece **com parte oculta** (ex.: `h***@gmail.com`; a resposta traz também `emailMascarado`), para a pessoa saber qual usar; o e-mail completo nunca é mostrado. O dono da conta recebe um e-mail "Tentativa de cadastro com o CNPJ da sua empresa"
+  (no máximo 1 por hora por destinatário). Nenhuma conta nova é criada e nenhum teste grátis extra é concedido.
+- **Custo conhecido:** a resposta permite descobrir se um CNPJ/CPF é cliente. Mitigações: limite por IP, captcha opcional, teto global por hora.
