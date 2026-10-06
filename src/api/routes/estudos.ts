@@ -20,6 +20,7 @@ import {
 import { findMunicipioByNomeUf, haversineKm } from '../../lib/geoService'
 import { PrecosIndisponiveisError, pesquisarPrecos } from '../../services/pesquisaDePrecosService'
 import { gerarPdfDoEstudo } from '../../services/estudoPdf'
+import { carregarDossie } from '../../services/dossieDaLicitacao'
 
 export const estudosRouter = Router()
 
@@ -90,7 +91,9 @@ async function carregar(companyId: string, tenderId: string) {
 
   const empresa = await prisma.company.findUniqueOrThrow({
     where: { id: companyId },
-    select: { name: true, cnpj: true, cpf: true, baseMunicipio: true, baseUf: true, baseLat: true, baseLng: true },
+    select: {
+      name: true, cnpj: true, cpf: true, baseMunicipio: true, baseUf: true, baseLat: true, baseLng: true,
+    },
   })
 
   const itens: (ItemDaLicitacao & { codigoCatalogo: string | null; tipoCatalogo: 'MATERIAL' | 'SERVICO' | null })[] =
@@ -252,12 +255,19 @@ estudosRouter.get(
     const r = montarResposta(ctx, dados, null)
     const usuario = await prisma.user.findUnique({ where: { id: req.userId! }, select: { name: true, email: true } })
 
+    // O dossiê é um complemento: se algo falhar ao montá-lo, o estudo de custos ainda sai.
+    const dossie = await carregarDossie(req.companyId!, req.params.tenderId).catch((err) => {
+      console.error('[Estudo] Erro ao montar o dossiê:', err)
+      return null
+    })
+
     const pdf = await gerarPdfDoEstudo({
       empresa: {
         nome: ctx.empresa.name,
         documento: ctx.empresa.cnpj ?? ctx.empresa.cpf,
         base: ctx.empresa.baseMunicipio && ctx.empresa.baseUf ? `${ctx.empresa.baseMunicipio}/${ctx.empresa.baseUf}` : null,
       },
+      dossie,
       licitacao: {
         objeto: ctx.tender.objeto,
         orgao: ctx.tender.orgao,
@@ -277,7 +287,7 @@ estudosRouter.get(
     })
     await registrarAuditoria(req, { action: 'ESTUDO_PDF_GERADO', entityType: 'licitacao', entityId: req.params.tenderId })
     res.setHeader('Content-Type', 'application/pdf')
-    res.setHeader('Content-Disposition', `attachment; filename="estudo-de-viabilidade-${req.params.tenderId.slice(0, 8)}.pdf"`)
+    res.setHeader('Content-Disposition', `attachment; filename="dossie-da-licitacao-${req.params.tenderId.slice(0, 8)}.pdf"`)
     res.send(pdf)
   })
 )

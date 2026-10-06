@@ -96,6 +96,12 @@ model Company {
   responsavel String?
   endereco    String?
   cep         String?
+  // Endereço completo: o CEP preenche rua/bairro/cidade/UF e a pessoa informa só o número.
+  enderecoNumero      String? @map("endereco_numero")
+  enderecoComplemento String? @map("endereco_complemento")
+  enderecoBairro      String? @map("endereco_bairro")
+  enderecoCidade      String? @map("endereco_cidade")
+  enderecoUf          String? @map("endereco_uf") @db.Char(2)
   // Plano comercial (código em `plans`) e ajustes pontuais de limite combinados
   // com o cliente (ex.: { "itensMonitorados": 30 }) — ver lib/planos.ts.
   planCode       String   @default("TESTE") @map("plan_code")

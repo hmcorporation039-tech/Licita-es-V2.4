@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRequireSession } from '@/hooks/useRequireSession'
 import { api, ApiRequestError } from '@/lib/api'
 import { Company, CompanyDocument, CompanyMember, CompanyType } from '@/lib/types'
@@ -54,6 +54,14 @@ export default function EmpresaPage() {
   const [responsavel, setResponsavel] = useState('')
   const [endereco, setEndereco] = useState('')
   const [cep, setCep] = useState('')
+  const [numero, setNumero] = useState('')
+  const [complemento, setComplemento] = useState('')
+  const [bairro, setBairro] = useState('')
+  const [cidade, setCidade] = useState('')
+  const [uf, setUf] = useState('')
+  const [cepMsg, setCepMsg] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null)
+  const [buscandoCep, setBuscandoCep] = useState(false)
+  const numeroRef = useRef<HTMLInputElement>(null)
   const [baseMunicipio, setBaseMunicipio] = useState('')
   const [baseUf, setBaseUf] = useState('')
   const [savingCompany, setSavingCompany] = useState(false)
@@ -94,6 +102,11 @@ export default function EmpresaPage() {
       setResponsavel(data.responsavel ?? '')
       setEndereco(data.endereco ?? '')
       setCep(data.cep ?? '')
+      setNumero(data.enderecoNumero ?? '')
+      setComplemento(data.enderecoComplemento ?? '')
+      setBairro(data.enderecoBairro ?? '')
+      setCidade(data.enderecoCidade ?? '')
+      setUf(data.enderecoUf ?? '')
       setBaseMunicipio(data.baseMunicipio ?? '')
       setBaseUf(data.baseUf ?? '')
     } catch (err) {
@@ -119,6 +132,39 @@ export default function EmpresaPage() {
 
   const souOwner = company.users.find((m) => m.id === user.id)?.companyRole === 'OWNER'
 
+  const formatarCep = (v: string) => {
+    const d = v.replace(/\D/g, '').slice(0, 8)
+    return d.length > 5 ? d.slice(0, 5) + '-' + d.slice(5) : d
+  }
+
+  // Ao completar os 8 dígitos do CEP, busca rua, bairro, cidade e UF; sobra só o número.
+  async function aoDigitarCep(valor: string) {
+    const formatado = formatarCep(valor)
+    setCep(formatado)
+    setCepMsg(null)
+    if (formatado.replace(/\D/g, '').length !== 8) return
+    setBuscandoCep(true)
+    try {
+      const r = await api.get<{ logradouro: string; complemento: string; bairro: string; cidade: string; uf: string }>(`/api/company/cep/${formatado.replace(/\D/g, '')}`)
+      setEndereco(r.logradouro)
+      setBairro(r.bairro)
+      setCidade(r.cidade)
+      setUf(r.uf)
+      if (r.complemento) setComplemento(r.complemento)
+      // A base de entregas costuma ser a própria cidade da empresa: sugere se ainda estiver vazia.
+      if (!baseMunicipio.trim() && !baseUf.trim()) {
+        setBaseMunicipio(r.cidade)
+        setBaseUf(r.uf)
+      }
+      setCepMsg({ tipo: 'ok', texto: r.logradouro ? 'Endereço preenchido. Informe só o número.' : 'Cidade preenchida. Informe a rua e o número.' })
+      numeroRef.current?.focus()
+    } catch (err) {
+      setCepMsg({ tipo: 'erro', texto: err instanceof ApiRequestError ? err.message : 'Não foi possível consultar o CEP.' })
+    } finally {
+      setBuscandoCep(false)
+    }
+  }
+
   async function salvarEmpresa(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
@@ -134,6 +180,11 @@ export default function EmpresaPage() {
         responsavel: responsavel || null,
         endereco: endereco || null,
         cep: cep || null,
+        enderecoNumero: numero || null,
+        enderecoComplemento: complemento || null,
+        enderecoBairro: bairro || null,
+        enderecoCidade: cidade || null,
+        enderecoUf: uf.trim() ? uf.trim().toUpperCase() : null,
         baseMunicipio: baseMunicipio.trim() && baseUf.trim() ? baseMunicipio.trim() : null,
         baseUf: baseMunicipio.trim() && baseUf.trim() ? baseUf.trim().toUpperCase() : null,
       })
@@ -291,13 +342,18 @@ export default function EmpresaPage() {
             disabled={!souOwner}
             className={inputClass}
           />
-          <input
-            placeholder="CEP (opcional)"
-            value={cep}
-            onChange={(e) => setCep(e.target.value)}
-            disabled={!souOwner}
-            className={inputClass}
-          />
+          <div>
+            <input
+              placeholder="CEP (preenche o endereço sozinho)"
+              inputMode="numeric"
+              value={cep}
+              onChange={(e) => aoDigitarCep(e.target.value)}
+              disabled={!souOwner}
+              className={`${inputClass} w-full`}
+            />
+            {buscandoCep && <p className="mt-1 text-xs text-slate-500">Buscando endereço…</p>}
+            {cepMsg && <p className={`mt-1 text-xs ${cepMsg.tipo === 'ok' ? 'text-emerald-700' : 'text-amber-700'}`}>{cepMsg.texto}</p>}
+          </div>
           <div className="flex gap-2 sm:col-span-2">
             <input
               placeholder="Base de entregas: cidade (usada no custo de deslocamento)"
@@ -315,13 +371,14 @@ export default function EmpresaPage() {
               className={`${inputClass} w-20`}
             />
           </div>
-          <input
-            placeholder="Endereço (opcional)"
-            value={endereco}
-            onChange={(e) => setEndereco(e.target.value)}
-            disabled={!souOwner}
-            className={`${inputClass} sm:col-span-2`}
-          />
+          <div className="grid gap-3 sm:col-span-2 sm:grid-cols-6">
+            <input placeholder="Rua / avenida" value={endereco} onChange={(e) => setEndereco(e.target.value)} disabled={!souOwner} className={`${inputClass} sm:col-span-4`} />
+            <input ref={numeroRef} placeholder="Número" value={numero} onChange={(e) => setNumero(e.target.value)} disabled={!souOwner} className={`${inputClass} sm:col-span-2`} />
+            <input placeholder="Complemento (sala, bloco…)" value={complemento} onChange={(e) => setComplemento(e.target.value)} disabled={!souOwner} className={`${inputClass} sm:col-span-3`} />
+            <input placeholder="Bairro" value={bairro} onChange={(e) => setBairro(e.target.value)} disabled={!souOwner} className={`${inputClass} sm:col-span-3`} />
+            <input placeholder="Cidade" value={cidade} onChange={(e) => setCidade(e.target.value)} disabled={!souOwner} className={`${inputClass} sm:col-span-4`} />
+            <input placeholder="UF" maxLength={2} value={uf} onChange={(e) => setUf(e.target.value.toUpperCase())} disabled={!souOwner} className={`${inputClass} sm:col-span-2`} />
+          </div>
           {souOwner && (
             <button
               type="submit"

@@ -6,6 +6,7 @@
 
 import PDFDocument from 'pdfkit'
 import { DadosDoEstudo, ItemDaLicitacao, ResultadoDoEstudo } from '../lib/estudoDeCustos'
+import type { DossieDaLicitacao } from './dossieDaLicitacao'
 
 export interface EntradaDoPdf {
   empresa: { nome: string; documento: string | null; base: string | null }
@@ -20,6 +21,8 @@ export interface EntradaDoPdf {
     sessaoEm: Date | null
     linkEdital: string | null
   }
+  // Tudo o que já foi analisado sobre a licitação (habilitação, exigências, alertas); null = não disponível.
+  dossie: DossieDaLicitacao | null
   itens: (ItemDaLicitacao & { codigoCatalogo: string | null })[]
   dados: DadosDoEstudo
   resultado: ResultadoDoEstudo
@@ -52,10 +55,16 @@ const rotuloDaModalidade = (m: string | null) => (m ? (MODALIDADES[m] ?? m) : '�
 
 const COR = { texto: '#1e293b', suave: '#64748b', linha: '#e2e8f0', bom: '#047857', ruim: '#b91c1c', alerta: '#b45309', titulo: '#3730a3' }
 const MARGEM = 40
+const TOPO = 100 // espaço do papel timbrado do Monitor de Licitações no alto de cada página
+
+// Fontes padrão do PDF só têm Latin-1 e algumas pontuações: o resto (textos de edital) vira espaço.
+const seguro = (t: string) => t.replace(/[^\x20-\x7E\u00A0-\u00FF\u2013\u2014\u2018\u2019\u201C\u201D\u2022\u2026\u20AC]/g, ' ').replace(/\s+/g, ' ').trim()
+const ROTULO_CATEGORIA: Record<string, string> = { juridica: 'Jurídica', fiscal: 'Fiscal', economica: 'Econômico-financeira', tecnica: 'Técnica', proposta: 'Proposta', outra: 'Outra' }
+const ROTULO_RESPONSAVEL: Record<string, string> = { fiscal: 'documentos', calculista: 'preços', redator: 'proposta' }
 
 export function gerarPdfDoEstudo(e: EntradaDoPdf): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ size: 'A4', margin: MARGEM, bufferPages: true, info: { Title: 'Estudo de viabilidade da licitação', Author: e.empresa.nome } })
+    const doc = new PDFDocument({ size: 'A4', margins: { top: TOPO, bottom: 50, left: MARGEM, right: MARGEM }, bufferPages: true, info: { Title: 'Dossiê da licitação', Author: e.empresa.nome } })
     const partes: Buffer[] = []
     doc.on('data', (c: Buffer) => partes.push(c))
     doc.on('end', () => resolve(Buffer.concat(partes)))
@@ -83,15 +92,11 @@ export function gerarPdfDoEstudo(e: EntradaDoPdf): Promise<Buffer> {
       doc.font('Helvetica').fontSize(tam).fillColor(cor).text(t, MARGEM, doc.y, { width: largura })
     }
 
-    // ---- Cabeçalho ----
-    doc.font('Helvetica-Bold').fontSize(18).fillColor(COR.titulo).text('Estudo de viabilidade da licitação')
-    doc.font('Helvetica').fontSize(9).fillColor(COR.suave).text(`Gerado em ${dataHora(e.geradoEm)} por ${e.geradoPor}`)
-    doc.moveDown(0.5)
-
-    titulo('Empresa')
-    par('Empresa', e.empresa.nome)
-    if (e.empresa.documento) par('CPF/CNPJ', e.empresa.documento)
-    par('Base de entregas', e.empresa.base ?? 'não informada')
+    // ---- Título (o papel timbrado é desenhado em todas as páginas no final) ----
+    doc.font('Helvetica-Bold').fontSize(17).fillColor(COR.titulo).text('Dossiê da licitação', MARGEM, doc.y, { width: largura })
+    doc.font('Helvetica').fontSize(9).fillColor(COR.suave).text('Estudo de viabilidade, habilitação e exigências do edital', MARGEM, doc.y, { width: largura })
+    doc.text(`Gerado em ${dataHora(e.geradoEm)} por ${seguro(e.geradoPor)}`, MARGEM, doc.y, { width: largura })
+    doc.moveDown(0.3)
 
     titulo('Licitação')
     par('Objeto', e.licitacao.objeto.replace(/\s+/g, ' ').slice(0, 600))
@@ -103,9 +108,82 @@ export function gerarPdfDoEstudo(e: EntradaDoPdf): Promise<Buffer> {
     if (e.licitacao.sessaoEm) par('Sessão / limite das propostas', dataHora(e.licitacao.sessaoEm))
     if (e.licitacao.linkEdital) par('Edital', e.licitacao.linkEdital)
 
+    // ---- Dossiê: o que o edital pede e o que a empresa já tem ----
+    const d = e.dossie
+    if (d) {
+      titulo('Condições da licitação (lidas do edital)')
+      if (!d.analisada) paragrafo('O edital ainda não foi analisado pelo sistema. Solicite a análise do edital para completar esta parte do dossiê.', COR.alerta)
+      for (const c of d.condicoes) par(c.rotulo, seguro(c.valor).slice(0, 700))
+
+      const h = d.habilitacao
+      titulo('Habilitação: documentos da empresa para esta licitação')
+      paragrafo(
+        `Referência de validade: ${h.referencia.dataSessao ? 'data da sessão (' + dataBr(h.referencia.dataSessao) + ')' : 'hoje (a licitação não informa a data da sessão)'}.`,
+        COR.suave,
+        8.5
+      )
+      const resumo = h.resumo
+      paragrafo(`Em ordem: ${resumo.verde}  |  Vencem antes da sessão: ${resumo.amarelo}  |  Faltam ou vencidos: ${resumo.vermelho}  |  A conferir: ${resumo.cinza}`, resumo.vermelho > 0 ? COR.ruim : COR.texto, 9)
+      const bloco = (nome: string, status: 'verde' | 'amarelo' | 'vermelho' | 'cinza', cor: string, limiteDeLinhas = 60) => {
+        const lista = h.requisitos.filter((r) => r.status === status)
+        if (lista.length === 0) return
+        garantir(30)
+        doc.moveDown(0.5).font('Helvetica-Bold').fontSize(10).fillColor(cor).text(`${nome} (${lista.length})`, MARGEM, doc.y, { width: largura })
+        doc.moveDown(0.2)
+        for (const r of lista.slice(0, limiteDeLinhas)) {
+          let linha = `[${status === 'verde' ? 'OK' : status === 'cinza' ? '?' : '!'}] ${seguro(r.label)}`
+          if (r.documento) linha += ` - ${seguro(r.documento.nome)}${r.documento.dataValidade ? ' (válido até ' + dataBr(r.documento.dataValidade) + ')' : ' (sem vencimento)'}`
+          paragrafo(linha, COR.texto, 8.5)
+          if (status === 'amarelo' || status === 'vermelho') paragrafo('     ' + seguro(r.motivo) + (r.acao ? ' ' + seguro(r.acao) : ''), COR.suave, 8)
+        }
+        if (lista.length > limiteDeLinhas) paragrafo(`... e mais ${lista.length - limiteDeLinhas} item(ns).`, COR.suave, 8)
+      }
+      bloco('Documentos que a empresa já tem e valem para esta licitação', 'verde', COR.bom)
+      bloco('Atenção: vencem antes da sessão (renovar a tempo)', 'amarelo', COR.alerta)
+      bloco('FALTAM ou estão vencidos (providenciar)', 'vermelho', COR.ruim)
+      bloco('A conferir no edital ou feitos para cada proposta', 'cinza', COR.suave, 40)
+
+      if (d.exigencias.length > 0) {
+        titulo('Exigências do edital (matriz)')
+        const atendidas = d.exigencias.filter((x) => x.atendida).length
+        paragrafo(`${atendidas} de ${d.exigencias.length} exigência(s) marcada(s) como atendida(s) pela empresa. [x] atendida, [ ] pendente.`, COR.suave, 8.5)
+        for (const x of d.exigencias.slice(0, 120)) {
+          const onde = [x.documento ? seguro(x.documento) : '', x.pagina ? 'pág. ' + seguro(x.pagina) : ''].filter(Boolean).join(', ')
+          paragrafo(`[${x.atendida ? 'x' : ' '}] ${seguro(x.texto).slice(0, 350)}`, x.atendida ? COR.bom : COR.texto, 8.5)
+          paragrafo(
+            `     ${ROTULO_CATEGORIA[x.categoria] ?? x.categoria}${x.responsavel ? ' - responsável: ' + (ROTULO_RESPONSAVEL[x.responsavel] ?? x.responsavel) : ''}${onde ? ' - ' + onde : ''}${x.nota ? ' - nota: ' + seguro(x.nota) : ''}`,
+            COR.suave,
+            7.5
+          )
+        }
+        if (d.exigencias.length > 120) paragrafo(`... e mais ${d.exigencias.length - 120} exigência(s) no sistema.`, COR.suave, 8)
+      }
+
+      if (d.exigenciasTecnicas.length > 0) {
+        titulo('Exigências técnicas')
+        for (const t of d.exigenciasTecnicas.slice(0, 40)) paragrafo('- ' + seguro(t).slice(0, 400), COR.texto, 8.5)
+      }
+
+      if (d.alertas.length > 0) {
+        titulo('Alertas legais (indícios para análise jurídica, não conclusões)')
+        for (const a of d.alertas) {
+          paragrafo(`${a.gravidade === 'alta' ? '[ALTA]' : '[MÉDIA]'} ${seguro(a.titulo)}`, a.gravidade === 'alta' ? COR.ruim : COR.alerta, 9)
+          paragrafo('     ' + seguro(a.detalhe) + ' ' + seguro(a.fundamento), COR.suave, 8)
+        }
+      }
+
+      if (d.riscos.length > 0) {
+        titulo('Riscos apontados na análise do edital')
+        for (const r of d.riscos.slice(0, 30)) {
+          paragrafo(`[${r.severidade === 'alta' ? 'ALTO' : r.severidade === 'media' ? 'MÉDIO' : 'BAIXO'}] ${seguro(r.titulo)}`, r.severidade === 'alta' ? COR.ruim : r.severidade === 'media' ? COR.alerta : COR.texto, 9)
+          paragrafo('     ' + seguro(r.descricao).slice(0, 500), COR.suave, 8)
+        }
+      }
+    }
+
     // ---- Resultado ----
     const r = e.resultado
-    titulo('Resultado')
+    titulo('Estudo de custos: resultado')
     const corLucro = r.lucro >= 0 ? COR.bom : COR.ruim
     par('Receita (seus preços de venda)', brl(r.receita))
     par('Custo dos itens', brl(r.custoItens))
@@ -237,13 +315,24 @@ export function gerarPdfDoEstudo(e: EntradaDoPdf): Promise<Buffer> {
       8
     )
 
-    // Rodapé com numeração em todas as páginas (margem inferior zerada para não abrir página nova).
+    // Papel timbrado do Monitor de Licitações (nome da plataforma) com o nome e o CNPJ/CPF da empresa,
+    // e rodapé, em TODAS as páginas. A margem inferior é zerada para o rodapé não abrir página nova.
     const { start, count } = doc.bufferedPageRange()
     for (let i = start; i < start + count; i++) {
       doc.switchToPage(i)
       doc.page.margins.bottom = 0
+      doc.rect(0, 0, doc.page.width, 8).fill(COR.titulo)
+      doc.font('Helvetica-Bold').fontSize(17).fillColor(COR.titulo).text('Monitor de Licitações', MARGEM, 26, { width: largura, lineBreak: false })
+      doc.font('Helvetica').fontSize(8).fillColor(COR.suave).text('Acompanhamento, análise e estudo de viabilidade de licitações públicas', MARGEM, 47, { width: largura, lineBreak: false })
+      doc.font('Helvetica-Bold').fontSize(9).fillColor(COR.texto).text(
+        seguro(e.empresa.nome) + (e.empresa.documento ? '  -  ' + (e.empresa.documento.replace(/\D/g, '').length === 14 ? 'CNPJ ' : 'CPF ') + seguro(e.empresa.documento) : ''),
+        MARGEM,
+        62,
+        { width: largura, lineBreak: false, ellipsis: true }
+      )
+      doc.moveTo(MARGEM, TOPO - 16).lineTo(MARGEM + largura, TOPO - 16).strokeColor(COR.titulo).lineWidth(1.2).stroke()
       doc.font('Helvetica').fontSize(7.5).fillColor(COR.suave)
-      doc.text(`Estudo de viabilidade - ${e.empresa.nome} - página ${i - start + 1} de ${count}`, MARGEM, doc.page.height - 28, { width: largura, align: 'center', lineBreak: false })
+      doc.text(`Monitor de Licitações - ${seguro(e.empresa.nome)} - página ${i - start + 1} de ${count}`, MARGEM, doc.page.height - 28, { width: largura, align: 'center', lineBreak: false })
     }
     doc.end()
   })
