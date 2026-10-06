@@ -10,6 +10,7 @@ import { z } from 'zod'
 import { prisma } from '../../services/tenderService'
 import { asyncHandler } from '../asyncHandler'
 import { PARTICIPATION_STATUS_VALUES } from './tenders'
+import { TENDER_PUBLICO } from '../../lib/tenderPublico'
 
 export const participationPlansRouter = Router()
 
@@ -25,7 +26,7 @@ participationPlansRouter.get(
     const plans = await prisma.tenderParticipationPlan.findMany({
       where: { companyId: req.companyId!, ...(status ? { status } : {}) },
       orderBy: { updatedAt: 'desc' },
-      include: { tender: true },
+      include: { tender: { select: TENDER_PUBLICO } },
     })
 
     res.json(plans)

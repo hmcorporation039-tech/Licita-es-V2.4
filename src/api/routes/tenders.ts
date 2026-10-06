@@ -23,6 +23,8 @@ import type { EditalAnalysisResult } from '../../services/llm/types'
 import { chaveDaExigencia, ExigenciaVerificada, resumoDaVerificacao } from '../../lib/matrizExigencias'
 import { analiseParaResposta } from '../../lib/analiseParaResposta'
 import { whereLicitacaoAberta } from '../../lib/licitacaoAberta'
+import { TENDER_PUBLICO, semRawJson } from '../../lib/tenderPublico'
+import { MAX_ANALISES_POR_HORA, pedidosDeAnaliseNaUltimaHora } from '../../services/quotaService'
 
 export const tendersRouter = Router()
 
@@ -114,9 +116,9 @@ tendersRouter.get(
           : { publicadoAt: 'desc' },
         skip: (page - 1) * pageSize,
         take: pageSize,
-        include: companyId
-          ? { tenderMatches: { where: { companyId }, include: { monitoredItem: { select: { id: true, name: true } } } } }
-          : undefined,
+        select: companyId
+          ? { ...TENDER_PUBLICO, tenderMatches: { where: { companyId }, include: { monitoredItem: { select: { id: true, name: true } } } } }
+          : TENDER_PUBLICO,
       }),
       prisma.tender.count({ where }),
     ])
@@ -176,7 +178,11 @@ tendersRouter.get(
       }
     }
 
-    res.json(tender)
+    if (!tender) {
+      res.status(404).json({ error: 'Licitação não encontrada' })
+      return
+    }
+    res.json(semRawJson(tender))
   })
 )
 
@@ -190,7 +196,7 @@ const checklistItemSchema = z.object({
 })
 
 const putChecklistSchema = z.object({
-  items: z.array(checklistItemSchema).min(1),
+  items: z.array(checklistItemSchema).min(1).max(300),
 })
 
 // Retorna o checklist do usuário para esta licitação, criando a partir do
@@ -296,6 +302,9 @@ tendersRouter.post(
     // Só chega aqui quem vai de fato gastar IA (análise pronta ou em andamento
     // já voltou acima, de graça — a análise é compartilhada entre as empresas).
     await exigirCotaDaRequisicao(req, 'analisesIaMes')
+    if (!req.isAdmin && (await pedidosDeAnaliseNaUltimaHora(req.companyId!)) >= MAX_ANALISES_POR_HORA) {
+      throw new ApiError(429, 'Muitas análises pedidas na última hora. Aguarde um pouco antes de pedir outra.', { code: 'ANALISES_POR_HORA' })
+    }
 
     const pendente = await prisma.tenderAnalysis.upsert({
       where: { tenderId: req.params.id },

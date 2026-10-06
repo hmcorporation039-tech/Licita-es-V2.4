@@ -7,7 +7,10 @@ import { Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { prisma } from '../../services/tenderService'
 import { asyncHandler, ApiError } from '../asyncHandler'
+import { requireCompanyOwner } from '../authMiddleware'
+import { registrarAuditoria } from '../../services/auditService'
 import { whereLicitacaoAberta } from '../../lib/licitacaoAberta'
+import { TENDER_PUBLICO } from '../../lib/tenderPublico'
 import { Aderencia, calcularAderencia } from '../../lib/aderencia'
 
 export const matchesRouter = Router()
@@ -51,7 +54,7 @@ const CAMPOS_DA_NOTA = {
 } satisfies Prisma.TenderMatchSelect
 
 type MatchParaNota = Prisma.TenderMatchGetPayload<{ select: typeof CAMPOS_DA_NOTA }>
-type MatchComTudo = Prisma.TenderMatchGetPayload<{ include: { tender: true; monitoredItem: true } }>
+type MatchComTudo = Prisma.TenderMatchGetPayload<{ include: { tender: { select: typeof TENDER_PUBLICO }; monitoredItem: true } }>
 
 // Teto de matches considerados ao ordenar por nota (o feed já é recortado pela
 // janela de prazo, então na prática fica muito abaixo disso).
@@ -133,7 +136,7 @@ matchesRouter.get(
       const ids = ordenados.slice((page - 1) * pageSize, page * pageSize).map((o) => o.id)
       const completos = await prisma.tenderMatch.findMany({
         where: { id: { in: ids } },
-        include: { tender: true, monitoredItem: true },
+        include: { tender: { select: TENDER_PUBLICO }, monitoredItem: true },
       })
       const porId = new Map(completos.map((m) => [m.id, m]))
       items = ids.map((id) => porId.get(id)).filter((m): m is MatchComTudo => m !== undefined)
@@ -144,7 +147,7 @@ matchesRouter.get(
           orderBy: { createdAt: 'desc' },
           skip: (page - 1) * pageSize,
           take: pageSize,
-          include: { tender: true, monitoredItem: true },
+          include: { tender: { select: TENDER_PUBLICO }, monitoredItem: true },
         }),
         prisma.tenderMatch.count({ where }),
       ])
@@ -164,8 +167,10 @@ matchesRouter.get(
 // e deixar só o que a coleta encontrar dali pra frente.
 matchesRouter.delete(
   '/',
+  requireCompanyOwner,
   asyncHandler(async (req, res) => {
     const { count } = await prisma.tenderMatch.deleteMany({ where: { companyId: req.companyId! } })
+    await registrarAuditoria(req, { action: 'MATCHES_APAGADOS', entityType: 'empresa', entityId: req.companyId!, metadata: { total: count } })
     res.json({ deleted: count })
   })
 )

@@ -35,8 +35,11 @@ import { verificarProntidao } from '../services/prontidao'
 const app = express()
 
 // Railway/Vercel colocam a API atrás de proxy — sem isso o rate limit enxerga
-// o IP do proxy e limita todo mundo junto.
-app.set('trust proxy', 1)
+// o IP do proxy e limita todo mundo junto. TRUST_PROXY_HOPS = quantos proxies há entre o
+// cliente e a API (1 = só o Railway). Se entrar outro na frente (ex.: Cloudflare), aumente;
+// com menos hops que o real, o X-Forwarded-For fica forjável e o limite por IP é contornado.
+const saltosDeProxy = Number(process.env.TRUST_PROXY_HOPS ?? 1)
+app.set('trust proxy', Number.isInteger(saltosDeProxy) && saltosDeProxy >= 0 && saltosDeProxy <= 5 ? saltosDeProxy : 1)
 
 // preload por si só não entra na lista do navegador — isso exige submeter o
 // domínio em hstspreload.org manualmente; o header só deixa o domínio elegível.
