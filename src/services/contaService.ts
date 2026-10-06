@@ -121,6 +121,15 @@ export interface ResultadoDoCadastro {
   companyId?: string
   email?: string
   motivo?: 'email-existente' | 'documento-existente' | 'documento-pendente'
+  // E-mail do cadastro existente com parte oculta (só nos motivos de documento), p.ex. h***@gmail.com.
+  emailMascarado?: string
+}
+
+// Mostra só a 1ª letra do nome e o domínio: o suficiente para a pessoa reconhecer o próprio e-mail.
+export function mascararEmail(email: string): string {
+  const [nome, dominio] = email.split('@')
+  if (!nome || !dominio) return '***'
+  return nome[0] + '***@' + dominio
 }
 
 // Cadastro nunca confirmado: o usuário nunca entrou, então não há dados dele além
@@ -179,12 +188,16 @@ export async function cadastrar(dados: DadosDeCadastro): Promise<ResultadoDoCada
       dono.users.length > 0 && dono.users.every((u) => !u.emailVerifiedAt && Date.now() - u.createdAt.getTime() > CADASTRO_ABANDONADO_MS)
     if (!abandonado) {
       // Cadastro SÓ pendente (ninguém confirmou o e-mail): a pessoa precisa terminar aquele cadastro.
-      if (dono.users.every((u) => !u.emailVerifiedAt)) return { criado: false, motivo: 'documento-pendente' }
+      if (dono.users.every((u) => !u.emailVerifiedAt)) {
+        const antigo = [...dono.users].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())[0]
+        return { criado: false, motivo: 'documento-pendente', emailMascarado: mascararEmail(antigo.email) }
+      }
       // Já é cliente: o dono da conta é avisado por e-mail (no máximo 1 por hora por destinatário).
       for (const o of dono.users.filter((u) => u.companyRole === 'OWNER' && u.emailVerifiedAt)) {
         if (podeAvisarCadastroRepetido('doc:' + o.email)) void enviarAvisoDeDocumentoRepetido(o.email, dados.tipo === 'PESSOA_JURIDICA' ? 'CNPJ' : 'CPF')
       }
-      return { criado: false, motivo: 'documento-existente' }
+      const responsavel = dono.users.find((u) => u.companyRole === 'OWNER' && u.emailVerifiedAt) ?? dono.users.find((u) => u.emailVerifiedAt) ?? dono.users[0]
+      return { criado: false, motivo: 'documento-existente', emailMascarado: mascararEmail(responsavel.email) }
     }
     for (const u of dono.users) await apagarCadastroNaoConfirmado(u.id)
   }

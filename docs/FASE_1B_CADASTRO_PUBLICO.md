@@ -81,6 +81,6 @@ Quem tenta cadastrar o CNPJ/CPF de uma empresa já cadastrada, com **outro e-mai
   que convide a pessoa (Empresa → Membros).
 - `DOCUMENTO_PENDENTE`: o cadastro existente ainda não foi confirmado — a pessoa deve digitar o código enviado ao e-mail usado nele
   (cadastro pendente há mais de 48 h é liberado e substituído).
-- O **e-mail do cadastro existente não é mostrado**. O dono da conta recebe um e-mail "Tentativa de cadastro com o CNPJ da sua empresa"
+- O e-mail do cadastro existente aparece **com parte oculta** (ex.: `h***@gmail.com`; a resposta traz também `emailMascarado`), para a pessoa saber qual usar; o e-mail completo nunca é mostrado. O dono da conta recebe um e-mail "Tentativa de cadastro com o CNPJ da sua empresa"
   (no máximo 1 por hora por destinatário). Nenhuma conta nova é criada e nenhum teste grátis extra é concedido.
 - **Custo conhecido:** a resposta permite descobrir se um CNPJ/CPF é cliente. Mitigações: limite por IP, captcha opcional, teto global por hora.

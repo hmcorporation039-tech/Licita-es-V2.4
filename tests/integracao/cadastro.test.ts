@@ -194,6 +194,8 @@ rodar('Cadastro público e recuperação de senha', () => {
       expect(pendente.status).toBe(409)
       expect(pendente.body.code).toBe('DOCUMENTO_PENDENTE')
       expect(pendente.body.error).toMatch(/aguardando confirmação para este CPF/)
+      expect(pendente.body.emailMascarado).toMatch(/^.[*]{3}@/)
+      expect(pendente.texto).not.toContain(email('pessoa1'))
       expect(await prisma.user.count({ where: { email: email('pessoa2') } })).toBe(0)
 
       // 2) depois de confirmado, é cliente de verdade
@@ -204,7 +206,10 @@ rodar('Cadastro público e recuperação de senha', () => {
       expect(cliente.status).toBe(409)
       expect(cliente.body.code).toBe('DOCUMENTO_JA_CADASTRADO')
       expect(cliente.body.error).toMatch(/Já existe um cadastro para este CPF/)
-      expect(cliente.texto).not.toContain(email('pessoa1')) // não revela o e-mail do dono da conta
+      expect(cliente.texto).not.toContain(email('pessoa1')) // o e-mail completo nunca aparece
+      const [nome, dom] = email('pessoa1').split('@')
+      expect(cliente.body.emailMascarado).toBe(nome[0] + '***@' + dom)
+      expect(cliente.body.error).toContain(nome[0] + '***@' + dom)
       expect(await prisma.user.count({ where: { email: email('pessoa3') } })).toBe(0)
 
       // o dono recebe o aviso por e-mail (sem código) e quem tentou não recebe nada

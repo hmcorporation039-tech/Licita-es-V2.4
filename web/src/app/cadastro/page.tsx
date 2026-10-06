@@ -171,7 +171,7 @@ export default function CadastroPage() {
             <p className="mt-2 text-xs">
               {conflito === 'EMAIL_JA_CADASTRADO'
                 ? 'Enviamos também um aviso para esse e-mail. Se for outro endereço, corrija-o acima.'
-                : 'Por segurança, não mostramos o e-mail do cadastro existente; o responsável pela conta recebeu um aviso.'}
+                : 'Por segurança, mostramos só parte do e-mail do cadastro; o responsável pela conta recebeu um aviso.'}
             </p>
           </div>
         )}
