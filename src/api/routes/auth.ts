@@ -115,9 +115,21 @@ authRouter.post(
       // dono do e-mail também, por e-mail), em vez de ficar esperando um código que nunca chega.
       // Custo conhecido: a resposta permite saber se um e-mail tem conta; por isso o cadastro tem
       // limite por IP, captcha opcional e este caminho só existe depois de passar por eles.
-      // O mesmo NÃO vale para CPF/CNPJ (revelar que um documento é cliente é mais sensível).
+      // Mesma decisão para o CPF/CNPJ: dizer "já existe cadastro" evita a pessoa esperar um código que
+      // nunca chega. NÃO revelamos o e-mail do dono da conta; ele é avisado por e-mail.
       if (r.motivo === 'email-existente') {
         throw new ApiError(409, MENSAGEM_EMAIL_JA_CADASTRADO, { code: 'EMAIL_JA_CADASTRADO' })
+      }
+      const rotulo = d.tipo === 'PESSOA_JURIDICA' ? 'CNPJ' : 'CPF'
+      if (r.motivo === 'documento-existente') {
+        throw new ApiError(409, `Já existe um cadastro para este ${rotulo}. Peça ao responsável pela conta que convide você, ou entre / recupere o acesso com o e-mail usado no cadastro.`, {
+          code: 'DOCUMENTO_JA_CADASTRADO',
+        })
+      }
+      if (r.motivo === 'documento-pendente') {
+        throw new ApiError(409, `Já existe um cadastro aguardando confirmação para este ${rotulo}. Digite o código enviado ao e-mail usado nele, ou tente de novo mais tarde.`, {
+          code: 'DOCUMENTO_PENDENTE',
+        })
       }
     }
     res.status(202).json({ mensagem: MENSAGEM_CADASTRO })

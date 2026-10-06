@@ -98,12 +98,10 @@ rodar('Cadastro público e recuperação de senha', () => {
   // -----------------------------------------------------------------
   describe('cadastro e confirmação de e-mail por código', () => {
     let codigoInicial = ''
-    let bodyPrimeiroCadastro = ''
 
     it('cria conta de teste (14 dias), plano TESTE, termos registrados — e responde 202', async () => {
       const r = await http('POST', '/api/auth/register', cadastro())
       expect(r.status).toBe(202)
-      bodyPrimeiroCadastro = r.texto
 
       const user = await prisma.user.findUnique({ where: { email: email('fulano') }, include: { company: true } })
       expect(user).not.toBeNull()
@@ -181,14 +179,6 @@ rodar('Cadastro público e recuperação de senha', () => {
       expect(caixa.slice(antes).some((m) => m.to === email('fulano') && m.codigo)).toBe(false)
     })
 
-    it('o aviso de segurança não vaza o documento: CPF já usado com e-mail novo continua com a resposta neutra (202)', async () => {
-      const doc = gerarCpf()
-      expect((await http('POST', '/api/auth/register', cadastro({ email: email('docdono'), documento: doc }))).status).toBe(202)
-      const r = await http('POST', '/api/auth/register', cadastro({ email: email('docoutro'), documento: doc }))
-      expect(r.status).toBe(202)
-      expect(r.body).not.toHaveProperty('code')
-    })
-
     it('e-mail com cadastro AINDA NÃO confirmado não é "já cadastrado": recebe novo código normalmente', async () => {
       await http('POST', '/api/auth/register', cadastro({ email: email('pendente2') }))
       const r = await http('POST', '/api/auth/register', cadastro({ email: email('pendente2') }))
@@ -196,17 +186,59 @@ rodar('Cadastro público e recuperação de senha', () => {
       expect(ultimoEmailPara(email('pendente2')).codigo).toMatch(/^\d{6}$/)
     })
 
-    it('documento já usado em outro cadastro: mesma resposta e nenhum segundo teste gratuito', async () => {
+    it('documento já cadastrado com OUTRO e-mail: a tela é avisada (409), nada é criado e o dono da conta recebe aviso', async () => {
       const doc = gerarCpf()
+      // 1) cadastro ainda pendente (e-mail não confirmado): a mensagem pede para terminar aquele cadastro
       expect((await http('POST', '/api/auth/register', cadastro({ email: email('pessoa1'), documento: doc }))).status).toBe(202)
-      const r = await http('POST', '/api/auth/register', cadastro({ email: email('pessoa2'), documento: doc }))
-      expect(r.status).toBe(202)
-      expect(r.texto).toBe(bodyPrimeiroCadastro)
+      const pendente = await http('POST', '/api/auth/register', cadastro({ email: email('pessoa2'), documento: doc }))
+      expect(pendente.status).toBe(409)
+      expect(pendente.body.code).toBe('DOCUMENTO_PENDENTE')
+      expect(pendente.body.error).toMatch(/aguardando confirmação para este CPF/)
       expect(await prisma.user.count({ where: { email: email('pessoa2') } })).toBe(0)
-      // a máscara não é brecha: o mesmo CPF formatado também é barrado
-      const mascarado = `${doc.slice(0, 3)}.${doc.slice(3, 6)}.${doc.slice(6, 9)}-${doc.slice(9)}`
-      await http('POST', '/api/auth/register', cadastro({ email: email('pessoa3'), documento: mascarado }))
+
+      // 2) depois de confirmado, é cliente de verdade
+      const codigo = ultimoEmailPara(email('pessoa1')).codigo
+      expect((await http('POST', '/api/auth/verify-email', { email: email('pessoa1'), codigo })).status).toBe(200)
+      const antes = caixa.length
+      const cliente = await http('POST', '/api/auth/register', cadastro({ email: email('pessoa3'), documento: doc }))
+      expect(cliente.status).toBe(409)
+      expect(cliente.body.code).toBe('DOCUMENTO_JA_CADASTRADO')
+      expect(cliente.body.error).toMatch(/Já existe um cadastro para este CPF/)
+      expect(cliente.texto).not.toContain(email('pessoa1')) // não revela o e-mail do dono da conta
       expect(await prisma.user.count({ where: { email: email('pessoa3') } })).toBe(0)
+
+      // o dono recebe o aviso por e-mail (sem código) e quem tentou não recebe nada
+      const aviso = caixa.slice(antes).find((m) => m.to === email('pessoa1'))
+      expect(aviso.subject).toMatch(/Tentativa de cadastro com o CPF da sua empresa/)
+      expect(aviso.codigo).toBeUndefined()
+      expect(caixa.slice(antes).some((m) => m.to === email('pessoa3'))).toBe(false)
+
+      // a máscara não é brecha: o mesmo CPF formatado também é barrado, com a mesma mensagem
+      const mascarado = `${doc.slice(0, 3)}.${doc.slice(3, 6)}.${doc.slice(6, 9)}-${doc.slice(9)}`
+      const m = await http('POST', '/api/auth/register', cadastro({ email: email('pessoa4'), documento: mascarado }))
+      expect(m.status).toBe(409)
+      expect(m.body.code).toBe('DOCUMENTO_JA_CADASTRADO')
+      expect(await prisma.user.count({ where: { email: email('pessoa4') } })).toBe(0)
+    })
+
+    it('o aviso ao dono da conta sai no máximo 1 vez por hora', async () => {
+      const doc = gerarCpf()
+      await http('POST', '/api/auth/register', cadastro({ email: email('donoaviso'), documento: doc }))
+      await http('POST', '/api/auth/verify-email', { email: email('donoaviso'), codigo: ultimoEmailPara(email('donoaviso')).codigo })
+      const antes = caixa.length
+      await http('POST', '/api/auth/register', cadastro({ email: email('tent1'), documento: doc }))
+      await http('POST', '/api/auth/register', cadastro({ email: email('tent2'), documento: doc }))
+      await http('POST', '/api/auth/register', cadastro({ email: email('tent3'), documento: doc }))
+      expect(caixa.slice(antes).filter((m) => m.to === email('donoaviso'))).toHaveLength(1)
+    })
+
+    it('CNPJ (pessoa jurídica) usa o rótulo CNPJ na mensagem', async () => {
+      const cnpj = gerarCnpj()
+      await http('POST', '/api/auth/register', cadastro({ email: email('empdono'), tipo: 'PESSOA_JURIDICA', documento: cnpj, empresaNome: 'Empresa X Ltda' }))
+      await http('POST', '/api/auth/verify-email', { email: email('empdono'), codigo: ultimoEmailPara(email('empdono')).codigo })
+      const r = await http('POST', '/api/auth/register', cadastro({ email: email('empoutro'), tipo: 'PESSOA_JURIDICA', documento: cnpj, empresaNome: 'Empresa X Ltda' }))
+      expect(r.status).toBe(409)
+      expect(r.body.error).toMatch(/Já existe um cadastro para este CNPJ/)
     })
 
     it('pessoa jurídica usa CNPJ e o nome da empresa', async () => {

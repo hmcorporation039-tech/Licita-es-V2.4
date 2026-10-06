@@ -20,6 +20,7 @@ import { prisma } from './tenderService'
 import { hashPassword, normalizeEmail } from './authService'
 import {
   enviarAvisoDeCadastroRepetido,
+  enviarAvisoDeDocumentoRepetido,
   enviarCodigoDeConfirmacao,
   enviarRecuperacaoDeSenha,
 } from './emailTransacional'
@@ -119,7 +120,7 @@ export interface ResultadoDoCadastro {
   userId?: string
   companyId?: string
   email?: string
-  motivo?: 'email-existente' | 'documento-existente'
+  motivo?: 'email-existente' | 'documento-existente' | 'documento-pendente'
 }
 
 // Cadastro nunca confirmado: o usuário nunca entrou, então não há dados dele além
@@ -142,10 +143,10 @@ const CADASTRO_ABANDONADO_MS = 48 * 60 * 60 * 1000
 // Aviso "alguém tentou cadastrar seu e-mail": no máximo 1 por hora por destinatário,
 // para o cadastro não virar ferramenta de encher a caixa de alguém.
 const ultimoAvisoRepetido = new Map<string, number>()
-function podeAvisarCadastroRepetido(email: string, agora = Date.now()): boolean {
-  const ultimo = ultimoAvisoRepetido.get(email)
+function podeAvisarCadastroRepetido(chave: string, agora = Date.now()): boolean {
+  const ultimo = ultimoAvisoRepetido.get(chave)
   if (ultimo !== undefined && agora - ultimo < 60 * 60 * 1000) return false
-  ultimoAvisoRepetido.set(email, agora)
+  ultimoAvisoRepetido.set(chave, agora)
   if (ultimoAvisoRepetido.size > 5000) ultimoAvisoRepetido.delete(ultimoAvisoRepetido.keys().next().value as string)
   return true
 }
@@ -162,7 +163,7 @@ export async function cadastrar(dados: DadosDeCadastro): Promise<ResultadoDoCada
 
   const existente = await prisma.user.findUnique({ where: { email }, select: { id: true, emailVerifiedAt: true } })
   if (existente?.emailVerifiedAt) {
-    if (podeAvisarCadastroRepetido(email)) void enviarAvisoDeCadastroRepetido(email)
+    if (podeAvisarCadastroRepetido('email:' + email)) void enviarAvisoDeCadastroRepetido(email)
     return { criado: false, motivo: 'email-existente' }
   }
   // E-mail com cadastro pendente: o novo cadastro substitui o antigo (o link anterior morre).
@@ -171,12 +172,20 @@ export async function cadastrar(dados: DadosDeCadastro): Promise<ResultadoDoCada
   const docWhere = dados.tipo === 'PESSOA_JURIDICA' ? { cnpj: documento } : { cpf: documento }
   const dono = await prisma.company.findFirst({
     where: docWhere,
-    select: { users: { select: { id: true, emailVerifiedAt: true, createdAt: true } } },
+    select: { users: { select: { id: true, email: true, companyRole: true, emailVerifiedAt: true, createdAt: true } } },
   })
   if (dono) {
     const abandonado =
       dono.users.length > 0 && dono.users.every((u) => !u.emailVerifiedAt && Date.now() - u.createdAt.getTime() > CADASTRO_ABANDONADO_MS)
-    if (!abandonado) return { criado: false, motivo: 'documento-existente' }
+    if (!abandonado) {
+      // Cadastro SÓ pendente (ninguém confirmou o e-mail): a pessoa precisa terminar aquele cadastro.
+      if (dono.users.every((u) => !u.emailVerifiedAt)) return { criado: false, motivo: 'documento-pendente' }
+      // Já é cliente: o dono da conta é avisado por e-mail (no máximo 1 por hora por destinatário).
+      for (const o of dono.users.filter((u) => u.companyRole === 'OWNER' && u.emailVerifiedAt)) {
+        if (podeAvisarCadastroRepetido('doc:' + o.email)) void enviarAvisoDeDocumentoRepetido(o.email, dados.tipo === 'PESSOA_JURIDICA' ? 'CNPJ' : 'CPF')
+      }
+      return { criado: false, motivo: 'documento-existente' }
+    }
     for (const u of dono.users) await apagarCadastroNaoConfirmado(u.id)
   }
 
