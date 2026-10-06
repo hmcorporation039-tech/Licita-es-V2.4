@@ -64,6 +64,9 @@ const cadastroSchema = z
 const MENSAGEM_CADASTRO =
   'Se os dados estiverem corretos, enviamos um código de 6 dígitos para o seu e-mail. Digite-o para ativar a conta e começar o período de teste.'
 
+const MENSAGEM_EMAIL_JA_CADASTRADO =
+  'Este e-mail já está cadastrado. Entre na sua conta ou use "Esqueci minha senha" para recuperar o acesso.'
+
 // Cadastro aberto. A resposta é SEMPRE a mesma (202) — nunca revela se o e-mail
 // ou o documento já tinham conta; o dono do e-mail é avisado por e-mail.
 authRouter.post(
@@ -108,6 +111,28 @@ authRouter.post(
     } else {
       // Só o motivo (visível apenas ao admin): sem e-mail nem documento no log.
       await registrarAuditoria(req, { action: 'CADASTRO_RECUSADO', metadata: { motivo: r.motivo } }, { userId: null, email: null })
+      // Decisão de produto: quem tenta cadastrar um e-mail que já tem conta é AVISADO na tela (e o
+      // dono do e-mail também, por e-mail), em vez de ficar esperando um código que nunca chega.
+      // Custo conhecido: a resposta permite saber se um e-mail tem conta; por isso o cadastro tem
+      // limite por IP, captcha opcional e este caminho só existe depois de passar por eles.
+      // Mesma decisão para o CPF/CNPJ: dizer "já existe cadastro" evita a pessoa esperar um código que
+      // nunca chega. mostramos o e-mail do cadastro com parte oculta (h***@dominio) e o dono é avisado por e-mail.
+      if (r.motivo === 'email-existente') {
+        throw new ApiError(409, MENSAGEM_EMAIL_JA_CADASTRADO, { code: 'EMAIL_JA_CADASTRADO' })
+      }
+      const rotulo = d.tipo === 'PESSOA_JURIDICA' ? 'CNPJ' : 'CPF'
+      if (r.motivo === 'documento-existente') {
+        throw new ApiError(409, `Já existe um cadastro para este ${rotulo}. O cadastro foi feito com o e-mail ${r.emailMascarado}. Entre ou recupere o acesso com ele, ou peça ao responsável pela conta que convide você.`, {
+          code: 'DOCUMENTO_JA_CADASTRADO',
+          emailMascarado: r.emailMascarado,
+        })
+      }
+      if (r.motivo === 'documento-pendente') {
+        throw new ApiError(409, `Já existe um cadastro aguardando confirmação para este ${rotulo}. Ele foi feito com o e-mail ${r.emailMascarado}: digite o código enviado para lá, ou tente de novo mais tarde.`, {
+          code: 'DOCUMENTO_PENDENTE',
+          emailMascarado: r.emailMascarado,
+        })
+      }
     }
     res.status(202).json({ mensagem: MENSAGEM_CADASTRO })
   })

@@ -156,3 +156,23 @@ describe('resultado do Resend', () => {
     expect(problemaNoRemetente('Licitações <contato@hemengetecnologia.com.br>')).toBeNull()
   })
 })
+
+import { duracaoDaSessao } from '../src/services/authService'
+import { listPNCPDocuments } from '../src/services/pncpDocumentsService'
+
+describe('endurecimento: sessão e URL do PNCP', () => {
+  it('a sessão dura 7 dias por padrão e SESSION_DAYS ajusta entre 1 e 30', () => {
+    expect(duracaoDaSessao({})).toBe('7d')
+    expect(duracaoDaSessao({ SESSION_DAYS: '14' })).toBe('14d')
+    expect(duracaoDaSessao({ SESSION_DAYS: '1' })).toBe('1d')
+    expect(duracaoDaSessao({ SESSION_DAYS: '30' })).toBe('30d')
+    for (const ruim of ['0', '31', '-3', 'abc', '2.5', '']) expect(duracaoDaSessao({ SESSION_DAYS: ruim })).toBe('7d')
+  })
+
+  it('os identificadores que entram na URL do PNCP só podem ser dígitos', async () => {
+    await expect(listPNCPDocuments('12345678000190/../../x', 2026, 1)).rejects.toThrow(/inválido/)
+    await expect(listPNCPDocuments('12345678000190', '2026/..', 1)).rejects.toThrow(/inválido/)
+    await expect(listPNCPDocuments('12345678000190', 2026, '1?x=1')).rejects.toThrow(/inválido/)
+    await expect(listPNCPDocuments('123', 2026, 1)).rejects.toThrow(/inválido/)
+  })
+})

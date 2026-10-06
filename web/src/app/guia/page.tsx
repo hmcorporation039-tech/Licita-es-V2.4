@@ -155,7 +155,7 @@ export default function GuiaPage() {
             <div key={p.nome} className="rounded border border-slate-200 bg-white p-4">
               <div className="flex items-baseline justify-between gap-2">
                 <p className="font-medium">{p.nome}</p>
-                <a href={p.site} target="_blank" className="text-sm text-indigo-700 hover:underline">
+                <a href={p.site} target="_blank" rel="noopener noreferrer" className="text-sm text-indigo-700 hover:underline">
                   {p.site.replace('https://', '')}
                 </a>
               </div>

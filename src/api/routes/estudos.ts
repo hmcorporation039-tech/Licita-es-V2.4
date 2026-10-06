@@ -9,7 +9,7 @@ import { z } from 'zod'
 import { prisma, garantirItensPNCP } from '../../services/tenderService'
 import { registrarAuditoria } from '../../services/auditService'
 import { asyncHandler, ApiError } from '../asyncHandler'
-import { estudoPrecosLimiter } from '../rateLimit'
+import { estudoCalculoLimiter, estudoPdfLimiter, estudoPrecosLimiter } from '../rateLimit'
 import {
   DadosDoEstudo,
   ItemDaLicitacao,
@@ -190,6 +190,7 @@ estudosRouter.get(
 // Recalcula sem gravar (a tela chama enquanto o usuário digita).
 estudosRouter.post(
   '/:tenderId/calcular',
+  estudoCalculoLimiter,
   asyncHandler(async (req, res) => {
     const { dados } = z.object({ dados: dadosSchema }).parse(req.body)
     const ctx = await carregar(req.companyId!, req.params.tenderId)
@@ -199,6 +200,7 @@ estudosRouter.post(
 
 estudosRouter.put(
   '/:tenderId',
+  estudoCalculoLimiter,
   asyncHandler(async (req, res) => {
     const { dados } = z.object({ dados: dadosSchema }).parse(req.body)
     const ctx = await carregar(req.companyId!, req.params.tenderId)
@@ -243,6 +245,7 @@ estudosRouter.post(
 
 estudosRouter.get(
   '/:tenderId/pdf',
+  estudoPdfLimiter,
   asyncHandler(async (req, res) => {
     const ctx = await carregar(req.companyId!, req.params.tenderId)
     const { dados } = await dadosSalvos(req.companyId!, req.params.tenderId, ctx)

@@ -122,3 +122,21 @@ export async function enviarAvisoDeCadastroRepetido(to: string): Promise<void> {
     ),
   })
 }
+
+// Alguém tentou criar uma conta para o CNPJ/CPF de uma empresa que já é cliente. O dono da conta
+// é avisado (a tela de quem tentou diz que já existe cadastro, mas não revela o e-mail do dono).
+export async function enviarAvisoDeDocumentoRepetido(to: string, tipoDoDocumento: 'CNPJ' | 'CPF'): Promise<void> {
+  const link = `${appUrl()}/login`
+  await enviar({
+    to,
+    link,
+    subject: `Tentativa de cadastro com o ${tipoDoDocumento} da sua empresa`,
+    html: moldura(
+      'Sua empresa já tem cadastro',
+      `<p>Alguém tentou criar uma nova conta usando o ${tipoDoDocumento} da sua empresa, que já está cadastrado com este e-mail.</p>
+       <p>Se foi um colega, convide-o em <strong>Empresa &rarr; Membros</strong> depois de entrar. Se não foi ninguém conhecido, ignore este aviso.</p>`,
+      link,
+      'Entrar'
+    ),
+  })
+}

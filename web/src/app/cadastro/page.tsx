@@ -19,6 +19,7 @@ export default function CadastroPage() {
   const [aceite, setAceite] = useState(false)
   const [isca, setIsca] = useState('') // campo invisível: só robôs preenchem
   const [erro, setErro] = useState<string | null>(null)
+  const [conflito, setConflito] = useState<'EMAIL_JA_CADASTRADO' | 'DOCUMENTO_JA_CADASTRADO' | 'DOCUMENTO_PENDENTE' | null>(null)
   const [enviando, setEnviando] = useState(false)
   const [mensagem, setMensagem] = useState<string | null>(null)
   const [captcha, setCaptcha] = useState<string | null>(null)
@@ -27,6 +28,7 @@ export default function CadastroPage() {
   async function enviar(e: React.FormEvent) {
     e.preventDefault()
     setErro(null)
+    setConflito(null)
     if (senha !== confirmar) {
       setErro('A confirmação não bate com a senha')
       return
@@ -51,6 +53,10 @@ export default function CadastroPage() {
       })
       setMensagem(r.mensagem)
     } catch (err) {
+      if (err instanceof ApiRequestError && (err.code === 'EMAIL_JA_CADASTRADO' || err.code === 'DOCUMENTO_JA_CADASTRADO' || err.code === 'DOCUMENTO_PENDENTE')) {
+        setConflito(err.code)
+        return
+      }
       setErro(err instanceof ApiRequestError ? err.message : 'Erro ao criar a conta')
     } finally {
       setEnviando(false)
@@ -132,6 +138,43 @@ export default function CadastroPage() {
         </label>
 
         <Captcha onToken={aoReceberCaptcha} />
+        {conflito && (
+          <div role="alert" className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+            {conflito === 'EMAIL_JA_CADASTRADO' && <p className="font-medium">Este e-mail já está cadastrado.</p>}
+            {conflito === 'DOCUMENTO_JA_CADASTRADO' && <p className="font-medium">Esta empresa já tem cadastro para este {tipo === 'PESSOA_JURIDICA' ? 'CNPJ' : 'CPF'}.</p>}
+            {conflito === 'DOCUMENTO_PENDENTE' && <p className="font-medium">Já existe um cadastro aguardando confirmação para este {tipo === 'PESSOA_JURIDICA' ? 'CNPJ' : 'CPF'}.</p>}
+            <p className="mt-1">Para acessar, siga uma destas opções:</p>
+            <ul className="mt-1 list-disc pl-5">
+              {conflito === 'DOCUMENTO_PENDENTE' ? (
+                <li>
+                  <Link href="/verificar-email" className="font-medium underline">
+                    Digitar o código de confirmação
+                  </Link>{' '}
+                  (enviado ao e-mail usado nesse cadastro)
+                </li>
+              ) : (
+                <>
+                  <li>
+                    <Link href="/login" className="font-medium underline">
+                      Entrar na sua conta
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/esqueci-senha" className="font-medium underline">
+                      Recuperar o acesso (esqueci minha senha)
+                    </Link>
+                  </li>
+                </>
+              )}
+              {conflito === 'DOCUMENTO_JA_CADASTRADO' && <li>Se você é de outra equipe da mesma empresa, peça ao responsável pela conta para convidar você (Empresa → Membros).</li>}
+            </ul>
+            <p className="mt-2 text-xs">
+              {conflito === 'EMAIL_JA_CADASTRADO'
+                ? 'Enviamos também um aviso para esse e-mail. Se for outro endereço, corrija-o acima.'
+                : 'Por segurança, mostramos só parte do e-mail do cadastro; o responsável pela conta recebeu um aviso.'}
+            </p>
+          </div>
+        )}
         {erro && <p className="text-sm text-red-600">{erro}</p>}
         <button
           type="submit"

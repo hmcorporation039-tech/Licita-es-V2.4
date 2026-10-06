@@ -11,7 +11,12 @@ import { randomInt } from 'node:crypto'
 const SALT_ROUNDS = 10
 // Validade do token de SESSÃO (login) — diferente da validade da CONTA
 // (User.accessExpiresAt), que é quem controla se a conta ainda pode logar.
-const SESSION_DURATION = '30d'
+// Sessão curta limita o estrago de um token roubado (o token fica no navegador). Padrão 7 dias;
+// SESSION_DAYS ajusta (1 a 30). A sessão também é revogada na hora ao trocar a senha ou desativar a conta.
+export function duracaoDaSessao(env: NodeJS.ProcessEnv = process.env): string {
+  const n = Number(env.SESSION_DAYS)
+  return `${Number.isInteger(n) && n >= 1 && n <= 30 ? n : 7}d`
+}
 
 // Segredo curto (ex.: "segredo123") é adivinhável por força bruta offline a partir de
 // qualquer token de sessão: com ele, forja-se sessão de qualquer usuário, inclusive admin.
@@ -70,7 +75,7 @@ export interface SessionTokenPayload {
 
 export function signSessionToken(userId: string, tokenVersion: number): string {
   return jwt.sign({ userId, tokenVersion } satisfies SessionTokenPayload, getJwtSecret(), {
-    expiresIn: SESSION_DURATION,
+    expiresIn: duracaoDaSessao() as jwt.SignOptions['expiresIn'],
   })
 }
 

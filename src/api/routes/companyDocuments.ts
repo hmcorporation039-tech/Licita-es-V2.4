@@ -10,6 +10,8 @@ import { prisma } from '../../services/tenderService'
 import { registrarAuditoria } from '../../services/auditService'
 import { asyncHandler, ApiError } from '../asyncHandler'
 
+const MAX_DOCUMENTOS_POR_EMPRESA = 300
+
 export const companyDocumentsRouter = Router()
 
 const createSchema = z.object({
@@ -33,6 +35,10 @@ companyDocumentsRouter.post(
   '/',
   asyncHandler(async (req, res) => {
     const body = createSchema.parse(req.body)
+    // Teto por empresa: um teste grátis do cadastro público não pode criar linhas sem fim.
+    if ((await prisma.companyDocument.count({ where: { companyId: req.companyId! } })) >= MAX_DOCUMENTOS_POR_EMPRESA) {
+      throw new ApiError(422, `Limite de ${MAX_DOCUMENTOS_POR_EMPRESA} documentos por empresa atingido. Remova algum para cadastrar outro.`)
+    }
     const doc = await prisma.companyDocument.create({
       data: { ...body, companyId: req.companyId!, userId: req.userId! },
     })
