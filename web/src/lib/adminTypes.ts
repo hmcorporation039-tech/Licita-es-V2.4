@@ -16,6 +16,8 @@ export interface RecursoDoPlano {
 
 export interface ResumoDeCotas {
   plano: { codigo: string; nome: string }
+  renovaEm?: string
+  ilimitado?: boolean
   recursos: RecursoDoPlano[]
 }
 

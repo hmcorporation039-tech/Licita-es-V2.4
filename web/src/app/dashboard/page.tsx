@@ -6,6 +6,7 @@ import { useRequireSession } from '@/hooks/useRequireSession'
 import { api } from '@/lib/api'
 import { DashboardData } from '@/lib/types'
 import BrazilMap, { EstadoMapa } from '@/components/BrazilMap'
+import MedidorDeAnalises from '@/components/MedidorDeAnalises'
 
 function formatData(v: string) {
   return new Date(v).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
@@ -56,6 +57,8 @@ export default function DashboardPage() {
             <StatCard label="Matches não lidos" value={data.matchesNaoLidos} href="/matches" />
             <StatCard label="Matches no total" value={data.matchesTotal} href="/matches" />
           </div>
+
+          <MedidorDeAnalises />
 
           <section className="rounded border border-slate-200 bg-white p-4">
             <h2 className="mb-3 text-lg font-semibold">Licitações escolhidas pelo Brasil</h2>

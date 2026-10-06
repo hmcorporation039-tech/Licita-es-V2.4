@@ -13,6 +13,7 @@ import {
   Recurso,
   excedeu,
   inicioDoMesBrasilia,
+  inicioDoProximoMesBrasilia,
   limitesEfetivos,
 } from '../lib/planos'
 
@@ -73,6 +74,8 @@ export async function resumoDeCotas(companyId: string) {
   const [{ planCode, planName, limites }, uso] = await Promise.all([limitesDaEmpresa(companyId), usoDaEmpresa(companyId)])
   return {
     plano: { codigo: planCode, nome: planName },
+    // Quando a contagem mensal de análises volta a zero (1º dia do mês, horário de Brasília).
+    renovaEm: inicioDoProximoMesBrasilia().toISOString(),
     recursos: RECURSOS.map((r) => ({
       recurso: r,
       rotulo: ROTULO_RECURSO[r],

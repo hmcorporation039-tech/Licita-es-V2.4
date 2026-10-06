@@ -13,7 +13,7 @@ export type LimitesDoPlano = Record<Recurso, number | null>
 export const ROTULO_RECURSO: Record<Recurso, string> = {
   itensMonitorados: 'itens monitorados',
   usuarios: 'usuários',
-  analisesIaMes: 'análises de IA no mês',
+  analisesIaMes: 'análises de edital no mês',
 }
 
 // Rede de segurança caso a tabela `plans` esteja vazia ou o plano da empresa
@@ -48,6 +48,12 @@ export function limitesEfetivos(planLimits: unknown, overrides: unknown): Limite
 
 export function excedeu(usado: number, limite: number | null): boolean {
   return limite !== null && usado >= limite
+}
+
+// Início do PRÓXIMO mês no fuso de Brasília: quando a cota mensal de análises volta a zero.
+export function inicioDoProximoMesBrasilia(agora: Date = new Date()): Date {
+  const br = new Date(agora.getTime() - 3 * 60 * 60 * 1000)
+  return new Date(Date.UTC(br.getUTCFullYear(), br.getUTCMonth() + 1, 1, 3, 0, 0))
 }
 
 // Início do mês corrente no fuso de Brasília (UTC-3, sem horário de verão desde 2019).

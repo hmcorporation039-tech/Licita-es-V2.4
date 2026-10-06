@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { clearSessionUser, getSessionUser, SessionUser } from '@/lib/session'
 import { api } from '@/lib/api'
+import { MedidorNoMenu } from '@/components/MedidorDeAnalises'
 
 const LINKS = [
   { href: '/dashboard', label: 'Dashboard' },
@@ -54,6 +55,7 @@ export default function Nav() {
               {link.label}
             </Link>
           ))}
+          {user && <MedidorNoMenu />}
           {user && (
             <span className="ml-2 flex items-center gap-2 border-l border-slate-200 pl-4 text-slate-500">
               <Link href="/conta" className="hover:text-indigo-700 hover:underline">
