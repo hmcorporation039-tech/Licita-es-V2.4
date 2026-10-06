@@ -13,6 +13,7 @@
 import { Resend } from 'resend'
 import { appUrl } from '../lib/appUrl'
 import { escapeHtml } from '../lib/html'
+import { exigirEnvioOk, problemaNoRemetente } from '../lib/resendResultado'
 
 const EMAIL_FROM = process.env.EMAIL_FROM ?? 'noreply@seudominio.com.br'
 
@@ -27,6 +28,14 @@ export interface EmailEnviado {
 export const caixaDeSaidaDeTeste: EmailEnviado[] = []
 
 let resend: Resend | null = null
+
+let remetenteAvisado = false
+function avisarRemetenteUmaVez(): void {
+  if (remetenteAvisado) return
+  remetenteAvisado = true
+  const problema = problemaNoRemetente(process.env.EMAIL_FROM)
+  if (problema) console.warn(`[E-mail] ATENÇÃO: ${problema} Os e-mails de cadastro podem não chegar.`)
+}
 
 async function enviar(msg: EmailEnviado): Promise<void> {
   try {
@@ -43,7 +52,8 @@ async function enviar(msg: EmailEnviado): Promise<void> {
       return
     }
     if (!resend) resend = new Resend(process.env.RESEND_API_KEY)
-    await resend.emails.send({ from: EMAIL_FROM, to: msg.to, subject: msg.subject, html: msg.html })
+    avisarRemetenteUmaVez()
+    exigirEnvioOk(await resend.emails.send({ from: EMAIL_FROM, to: msg.to, subject: msg.subject, html: msg.html }))
   } catch (err) {
     console.error('[E-mail] Falha ao enviar:', err instanceof Error ? err.message : err)
   }
