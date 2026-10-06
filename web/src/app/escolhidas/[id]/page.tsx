@@ -40,7 +40,7 @@ function Numero({
   const [editando, setEditando] = useState<string | null>(null)
   const inteiro = passo === '1'
   const formatado =
-    valor === null
+    valor === null || valor === 0
       ? ''
       : moeda
         ? valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -49,10 +49,10 @@ function Numero({
     <input
       type="text"
       inputMode={inteiro ? 'numeric' : 'decimal'}
-      placeholder={placeholder}
+      placeholder={placeholder ?? (moeda ? 'R$ 0,00' : '0')}
       value={editando ?? formatado}
       onFocus={(e) => {
-        setEditando(valor === null ? '' : String(valor).replace('.', ','))
+        setEditando(valor === null || valor === 0 ? '' : String(valor).replace('.', ','))
         const campoDigitado = e.target
         setTimeout(() => campoDigitado.select(), 0)
       }}
@@ -318,10 +318,10 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
                       )}
                     </td>
                     <td className="px-2 py-2">
-                      <Numero moeda valor={e.custoUnit} aoMudar={(v) => alterar((d) => ({ ...d, itens: { ...d.itens, [it.id]: { custoUnit: v, precoVendaUnit: e.precoVendaUnit } } }))} className="w-28" placeholder="R$" />
+                      <Numero moeda valor={e.custoUnit} aoMudar={(v) => alterar((d) => ({ ...d, itens: { ...d.itens, [it.id]: { custoUnit: v, precoVendaUnit: e.precoVendaUnit } } }))} className="w-28" />
                     </td>
                     <td className="px-2 py-2">
-                      <Numero moeda valor={e.precoVendaUnit} aoMudar={(v) => alterar((d) => ({ ...d, itens: { ...d.itens, [it.id]: { custoUnit: e.custoUnit, precoVendaUnit: v } } }))} className="w-28" placeholder="R$" />
+                      <Numero moeda valor={e.precoVendaUnit} aoMudar={(v) => alterar((d) => ({ ...d, itens: { ...d.itens, [it.id]: { custoUnit: e.custoUnit, precoVendaUnit: v } } }))} className="w-28" />
                     </td>
                     <td className="whitespace-nowrap px-2 py-2 text-slate-700">{brl(l?.precoMinimoUnit ?? null)}</td>
                   </tr>
@@ -394,7 +394,7 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
                 placeholder="Descrição"
                 className="flex-1 rounded border border-slate-300 px-2 py-1 text-sm"
               />
-              <Numero moeda valor={o.valor} aoMudar={(v) => alterar((d) => ({ ...d, outrosCustos: d.outrosCustos.map((x, j) => (j === i ? { ...x, valor: v ?? 0 } : x)) }))} className="w-32" placeholder="R$" />
+              <Numero moeda valor={o.valor} aoMudar={(v) => alterar((d) => ({ ...d, outrosCustos: d.outrosCustos.map((x, j) => (j === i ? { ...x, valor: v ?? 0 } : x)) }))} className="w-32" />
               <button onClick={() => alterar((d) => ({ ...d, outrosCustos: d.outrosCustos.filter((_, j) => j !== i) }))} className="text-sm text-red-600 hover:underline">
                 remover
               </button>
