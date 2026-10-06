@@ -167,14 +167,33 @@ rodar('Cadastro público e recuperação de senha', () => {
       expect(login.body.token).toBeTruthy()
     })
 
-    it('e-mail já cadastrado: MESMA resposta, nenhuma conta nova, dono é avisado', async () => {
+    it('e-mail já cadastrado: a tela é AVISADA (409), nenhuma conta nova, e o dono também recebe aviso por e-mail', async () => {
       const antes = caixa.length
       const r = await http('POST', '/api/auth/register', cadastro({ documento: gerarCpf() }))
-      expect(r.status).toBe(202)
-      expect(r.texto).toBe(bodyPrimeiroCadastro) // indistinguível do cadastro novo
+      expect(r.status).toBe(409)
+      expect(r.body.code).toBe('EMAIL_JA_CADASTRADO')
+      expect(r.body.error).toMatch(/já está cadastrado/)
+      expect(r.body.error).toMatch(/Esqueci minha senha/)
       expect(await prisma.user.count({ where: { email: email('fulano') } })).toBe(1)
       const aviso = caixa.slice(antes).find((m) => m.to === email('fulano'))
       expect(aviso.subject).toMatch(/Tentativa de cadastro/)
+      // nenhum código novo foi emitido para a conta existente
+      expect(caixa.slice(antes).some((m) => m.to === email('fulano') && m.codigo)).toBe(false)
+    })
+
+    it('o aviso de segurança não vaza o documento: CPF já usado com e-mail novo continua com a resposta neutra (202)', async () => {
+      const doc = gerarCpf()
+      expect((await http('POST', '/api/auth/register', cadastro({ email: email('docdono'), documento: doc }))).status).toBe(202)
+      const r = await http('POST', '/api/auth/register', cadastro({ email: email('docoutro'), documento: doc }))
+      expect(r.status).toBe(202)
+      expect(r.body).not.toHaveProperty('code')
+    })
+
+    it('e-mail com cadastro AINDA NÃO confirmado não é "já cadastrado": recebe novo código normalmente', async () => {
+      await http('POST', '/api/auth/register', cadastro({ email: email('pendente2') }))
+      const r = await http('POST', '/api/auth/register', cadastro({ email: email('pendente2') }))
+      expect(r.status).toBe(202)
+      expect(ultimoEmailPara(email('pendente2')).codigo).toMatch(/^\d{6}$/)
     })
 
     it('documento já usado em outro cadastro: mesma resposta e nenhum segundo teste gratuito', async () => {

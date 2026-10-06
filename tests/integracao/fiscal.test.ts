@@ -6,6 +6,7 @@
 import type { AddressInfo } from 'node:net'
 import type { Server } from 'node:http'
 import { randomUUID } from 'node:crypto'
+import { diaEmBrasilia } from '../../src/lib/diasUteis'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 const URL_BANCO = process.env.TEST_DATABASE_URL
@@ -22,7 +23,8 @@ rodar('Painel do Fiscal', () => {
   const SENHA = 'Senha-de-teste-123'
   const tokens: Record<string, string> = {}
   const emDias = (n: number) => new Date(Date.now() + n * 24 * 60 * 60 * 1000)
-  const diaIso = (n: number) => emDias(n).toISOString().slice(0, 10)
+  // Dia de calendário em BRASÍLIA (o sistema trabalha assim): à noite o dia em UTC já é o seguinte.
+  const diaIso = (n: number) => diaEmBrasilia(emDias(n))
 
   async function http(caminho: string, quem: string | null) {
     const res = await fetch(base + caminho, { headers: quem ? { Authorization: `Bearer ${tokens[quem]}` } : {} })
