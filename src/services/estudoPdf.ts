@@ -113,7 +113,12 @@ export function gerarPdfDoEstudo(e: EntradaDoPdf): Promise<Buffer> {
     par('Outros custos', brl(r.custoOutros))
     par(`Impostos (${pct(e.dados.impostosPct)})`, brl(r.impostos))
     par('Custo total', brl(r.custoTotal))
-    par(r.lucro >= 0 ? 'LUCRO' : 'PREJUÍZO', `${brl(r.lucro)}   (margem ${pct(r.margemPct)})`, corLucro)
+    par('TOTAL DOS CUSTOS', brl(r.custoTotal))
+    const estimado = e.licitacao.valorEstimado
+    if (estimado !== null && estimado > 0 && r.custoTotal > estimado) {
+      par('ALERTA', `o total dos custos supera o valor estimado pelo órgão (${brl(estimado)}); concorrer nesse valor daria prejuízo.`, COR.ruim)
+    }
+    if (r.receita > 0) par(r.lucro >= 0 ? 'Lucro estimado' : 'Resultado com seus preços', `${brl(r.lucro)}   (margem ${pct(r.margemPct)})`, corLucro)
     par(`Preço mínimo (margem de ${pct(e.dados.margemDesejadaPct)})`, r.receitaMinima === null ? '—' : brl(r.receitaMinima))
 
     if (r.cenarios.length > 0) {
