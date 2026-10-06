@@ -17,6 +17,10 @@ function isExpired(v: string | null) {
   return v != null && new Date(v).getTime() < Date.now()
 }
 
+// Mesma regra da API (src/api/passwordPolicy.ts).
+const SENHA_MIN = 10
+const SENHA_MAX = 72
+
 export default function AdminUsuariosPage() {
   const user = useRequireSession()
   const router = useRouter()
@@ -37,6 +41,9 @@ export default function AdminUsuariosPage() {
   const [passwordEditId, setPasswordEditId] = useState<string | null>(null)
   const [passwordValue, setPasswordValue] = useState('')
   const [passwordSaving, setPasswordSaving] = useState(false)
+  // Mensagem da troca de senha, mostrada junto ao usuário (o erro geral fica no topo da página,
+  // longe do campo, e parecia que a troca "não fazia nada").
+  const [senhaMsg, setSenhaMsg] = useState<{ id: string; tipo: 'erro' | 'ok'; texto: string } | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -112,21 +119,31 @@ export default function AdminUsuariosPage() {
   async function resetPassword(u: AdminUser) {
     setError(null)
     setGeneratedInfo(null)
+    setSenhaMsg(null)
+    // Mesma regra da API (10 a 72 caracteres): avisa na hora, sem ir ao servidor.
+    if (passwordValue && passwordValue.length < SENHA_MIN) {
+      setSenhaMsg({ id: u.id, tipo: 'erro', texto: `A senha precisa ter pelo menos ${SENHA_MIN} caracteres (você digitou ${passwordValue.length}).` })
+      return
+    }
+    if (passwordValue.length > SENHA_MAX) {
+      setSenhaMsg({ id: u.id, tipo: 'erro', texto: `A senha pode ter no máximo ${SENHA_MAX} caracteres.` })
+      return
+    }
     setPasswordSaving(true)
     try {
       const result = await api.post<{ generatedPassword?: string }>(`/api/admin/users/${u.id}/reset-password`, {
         password: passwordValue || undefined,
       })
-      setGeneratedInfo(
-        result.generatedPassword
-          ? `Nova senha para ${u.email}: ${result.generatedPassword} (repasse com segurança — não fica salva em nenhum outro lugar)`
-          : `Senha de ${u.email} atualizada.`
-      )
+      const aviso = result.generatedPassword
+        ? `Nova senha gerada para ${u.email}: ${result.generatedPassword} (repasse com segurança — não fica salva em nenhum outro lugar)`
+        : `Senha de ${u.email} atualizada. As sessões abertas dessa conta foram encerradas.`
+      setGeneratedInfo(aviso)
+      setSenhaMsg({ id: u.id, tipo: 'ok', texto: aviso })
       setPasswordEditId(null)
       setPasswordValue('')
       await load()
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.message : 'Erro ao trocar senha')
+      setSenhaMsg({ id: u.id, tipo: 'erro', texto: err instanceof ApiRequestError ? err.message : 'Erro ao trocar a senha' })
     } finally {
       setPasswordSaving(false)
     }
@@ -234,6 +251,7 @@ export default function AdminUsuariosPage() {
                 </button>
                 <button
                   onClick={() => {
+                    setSenhaMsg(null)
                     setPasswordEditId(passwordEditId === u.id ? null : u.id)
                     setPasswordValue('')
                   }}
@@ -247,7 +265,7 @@ export default function AdminUsuariosPage() {
                 <div className="mt-2 flex w-full flex-wrap items-center gap-2 border-t border-slate-100 pt-2">
                   <input
                     type="text"
-                    placeholder="Nova senha (vazio = gerar automaticamente)"
+                    placeholder={`Nova senha (mínimo ${SENHA_MIN} caracteres; vazio = gerar automaticamente)`}
                     value={passwordValue}
                     onChange={(e) => setPasswordValue(e.target.value)}
                     className={inputClass}
@@ -267,7 +285,17 @@ export default function AdminUsuariosPage() {
                   >
                     cancelar
                   </button>
+                  {passwordValue && (
+                    <span className={`text-xs ${passwordValue.length < SENHA_MIN ? 'text-amber-700' : 'text-emerald-700'}`}>
+                      {passwordValue.length}/{SENHA_MIN} caracteres
+                    </span>
+                  )}
                 </div>
+              )}
+              {senhaMsg?.id === u.id && (
+                <p role={senhaMsg.tipo === 'erro' ? 'alert' : 'status'} className={`mt-2 text-sm ${senhaMsg.tipo === 'erro' ? 'text-red-600' : 'text-emerald-700'}`}>
+                  {senhaMsg.texto}
+                </p>
               )}
             </li>
           ))}
