@@ -10,29 +10,57 @@ const brl = (n: number | null | undefined) =>
   n === null || n === undefined ? '—' : n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const dataBr = (iso: string | null) => (iso ? iso.split('-').reverse().join('/') : '—')
 
-// Campo numérico: vazio = null.
+// Interpreta o que a pessoa digitou ("1.500,50", "1500,5", "0,5", "500"). Vazio ou inválido = null.
+function lerNumero(texto: string): number | null {
+  let t = texto.replace(/[^0-9.,]/g, '')
+  if (t === '') return null
+  if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.')
+  else if (!/^[0-9]+\.[0-9]{1,2}$/.test(t)) t = t.replace(/\./g, '')
+  const n = Number(t)
+  return Number.isFinite(n) ? Math.max(0, n) : null
+}
+
+// Campo numérico: vazio = null. Com `moeda`, mostra "R$ 1.500,00" quando não está sendo editado;
+// ao clicar, mostra só o número (selecionado) para digitar por cima, sem o "0" sobrando na frente.
 function Numero({
   valor,
   aoMudar,
   passo = '0.01',
+  moeda = false,
   className = '',
   placeholder,
 }: {
   valor: number | null
   aoMudar: (v: number | null) => void
   passo?: string
+  moeda?: boolean
   className?: string
   placeholder?: string
 }) {
+  const [editando, setEditando] = useState<string | null>(null)
+  const inteiro = passo === '1'
+  const formatado =
+    valor === null
+      ? ''
+      : moeda
+        ? valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+        : valor.toLocaleString('pt-BR', { maximumFractionDigits: inteiro ? 0 : 4 })
   return (
     <input
-      type="number"
-      min={0}
-      step={passo}
-      inputMode="decimal"
+      type="text"
+      inputMode={inteiro ? 'numeric' : 'decimal'}
       placeholder={placeholder}
-      value={valor ?? ''}
-      onChange={(e) => aoMudar(e.target.value === '' ? null : Math.max(0, Number(e.target.value)))}
+      value={editando ?? formatado}
+      onFocus={(e) => {
+        setEditando(valor === null ? '' : String(valor).replace('.', ','))
+        const campoDigitado = e.target
+        setTimeout(() => campoDigitado.select(), 0)
+      }}
+      onChange={(e) => {
+        setEditando(e.target.value)
+        aoMudar(lerNumero(e.target.value))
+      }}
+      onBlur={() => setEditando(null)}
       className={`rounded border border-slate-300 px-2 py-1 text-sm ${className}`}
     />
   )
@@ -290,10 +318,10 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
                       )}
                     </td>
                     <td className="px-2 py-2">
-                      <Numero valor={e.custoUnit} aoMudar={(v) => alterar((d) => ({ ...d, itens: { ...d.itens, [it.id]: { custoUnit: v, precoVendaUnit: e.precoVendaUnit } } }))} className="w-28" placeholder="R$" />
+                      <Numero moeda valor={e.custoUnit} aoMudar={(v) => alterar((d) => ({ ...d, itens: { ...d.itens, [it.id]: { custoUnit: v, precoVendaUnit: e.precoVendaUnit } } }))} className="w-28" placeholder="R$" />
                     </td>
                     <td className="px-2 py-2">
-                      <Numero valor={e.precoVendaUnit} aoMudar={(v) => alterar((d) => ({ ...d, itens: { ...d.itens, [it.id]: { custoUnit: e.custoUnit, precoVendaUnit: v } } }))} className="w-28" placeholder="R$" />
+                      <Numero moeda valor={e.precoVendaUnit} aoMudar={(v) => alterar((d) => ({ ...d, itens: { ...d.itens, [it.id]: { custoUnit: e.custoUnit, precoVendaUnit: v } } }))} className="w-28" placeholder="R$" />
                     </td>
                     <td className="whitespace-nowrap px-2 py-2 text-slate-700">{brl(l?.precoMinimoUnit ?? null)}</td>
                   </tr>
@@ -327,15 +355,15 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
           </div>
           <div>
             <label className={campo}>R$ por km</label>
-            <Numero valor={dados.deslocamento.valorPorKm} aoMudar={(v) => alterar((d) => ({ ...d, deslocamento: { ...d.deslocamento, valorPorKm: v ?? 0 } }))} className="w-full" />
+            <Numero moeda valor={dados.deslocamento.valorPorKm} aoMudar={(v) => alterar((d) => ({ ...d, deslocamento: { ...d.deslocamento, valorPorKm: v ?? 0 } }))} className="w-full" />
           </div>
           <div>
             <label className={campo}>Pedágio por viagem</label>
-            <Numero valor={dados.deslocamento.pedagioPorViagem} aoMudar={(v) => alterar((d) => ({ ...d, deslocamento: { ...d.deslocamento, pedagioPorViagem: v ?? 0 } }))} className="w-full" />
+            <Numero moeda valor={dados.deslocamento.pedagioPorViagem} aoMudar={(v) => alterar((d) => ({ ...d, deslocamento: { ...d.deslocamento, pedagioPorViagem: v ?? 0 } }))} className="w-full" />
           </div>
           <div>
             <label className={campo}>Hospedagem/diárias por viagem</label>
-            <Numero valor={dados.deslocamento.hospedagemPorViagem} aoMudar={(v) => alterar((d) => ({ ...d, deslocamento: { ...d.deslocamento, hospedagemPorViagem: v ?? 0 } }))} className="w-full" />
+            <Numero moeda valor={dados.deslocamento.hospedagemPorViagem} aoMudar={(v) => alterar((d) => ({ ...d, deslocamento: { ...d.deslocamento, hospedagemPorViagem: v ?? 0 } }))} className="w-full" />
           </div>
         </div>
         <p className="mt-2 text-sm text-slate-700">
@@ -366,7 +394,7 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
                 placeholder="Descrição"
                 className="flex-1 rounded border border-slate-300 px-2 py-1 text-sm"
               />
-              <Numero valor={o.valor} aoMudar={(v) => alterar((d) => ({ ...d, outrosCustos: d.outrosCustos.map((x, j) => (j === i ? { ...x, valor: v ?? 0 } : x)) }))} className="w-32" placeholder="R$" />
+              <Numero moeda valor={o.valor} aoMudar={(v) => alterar((d) => ({ ...d, outrosCustos: d.outrosCustos.map((x, j) => (j === i ? { ...x, valor: v ?? 0 } : x)) }))} className="w-32" placeholder="R$" />
               <button onClick={() => alterar((d) => ({ ...d, outrosCustos: d.outrosCustos.filter((_, j) => j !== i) }))} className="text-sm text-red-600 hover:underline">
                 remover
               </button>
