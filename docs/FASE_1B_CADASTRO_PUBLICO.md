@@ -65,3 +65,12 @@ Teste de integração com banco real: [tests/integracao/cadastro.test.ts](../tes
 - Pré-sequestro: quem cadastra o e-mail de outra pessoa não recebe o código, então não ativa a conta. Cadastro pendente é substituído por um novo.
 - Redefinição de senha continua por link (o e-mail traz o botão), com validade de 1 h.
 - Migration `00000000000021_codigo_de_confirmacao` (coluna `attempts`).
+
+## E-mail que já tem conta: a tela avisa (decisão de produto)
+Quem tenta cadastrar um e-mail **já cadastrado** recebe `409 EMAIL_JA_CADASTRADO` e a tela mostra um aviso com os caminhos
+"Entrar" e "Recuperar o acesso (esqueci minha senha)". O dono do e-mail também recebe o aviso por e-mail (no máximo 1 por hora).
+- Antes a tela respondia sempre igual e ficava esperando um código que nunca chegava (confuso para quem já era cliente).
+- **Custo conhecido:** essa resposta permite descobrir se um e-mail tem conta. Mitigações: limite por IP (10 cadastros/h), captcha
+  opcional (Turnstile), teto global por hora e bloqueio de e-mails temporários.
+- **CPF/CNPJ já usado NÃO é revelado:** continua a resposta neutra (202), por ser mais sensível (expõe que uma empresa é cliente).
+- E-mail com cadastro **ainda não confirmado** não conta como "já cadastrado": o novo cadastro substitui o pendente e envia um novo código.

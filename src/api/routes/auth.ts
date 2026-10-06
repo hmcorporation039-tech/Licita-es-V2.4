@@ -64,6 +64,9 @@ const cadastroSchema = z
 const MENSAGEM_CADASTRO =
   'Se os dados estiverem corretos, enviamos um código de 6 dígitos para o seu e-mail. Digite-o para ativar a conta e começar o período de teste.'
 
+const MENSAGEM_EMAIL_JA_CADASTRADO =
+  'Este e-mail já está cadastrado. Entre na sua conta ou use "Esqueci minha senha" para recuperar o acesso.'
+
 // Cadastro aberto. A resposta é SEMPRE a mesma (202) — nunca revela se o e-mail
 // ou o documento já tinham conta; o dono do e-mail é avisado por e-mail.
 authRouter.post(
@@ -108,6 +111,14 @@ authRouter.post(
     } else {
       // Só o motivo (visível apenas ao admin): sem e-mail nem documento no log.
       await registrarAuditoria(req, { action: 'CADASTRO_RECUSADO', metadata: { motivo: r.motivo } }, { userId: null, email: null })
+      // Decisão de produto: quem tenta cadastrar um e-mail que já tem conta é AVISADO na tela (e o
+      // dono do e-mail também, por e-mail), em vez de ficar esperando um código que nunca chega.
+      // Custo conhecido: a resposta permite saber se um e-mail tem conta; por isso o cadastro tem
+      // limite por IP, captcha opcional e este caminho só existe depois de passar por eles.
+      // O mesmo NÃO vale para CPF/CNPJ (revelar que um documento é cliente é mais sensível).
+      if (r.motivo === 'email-existente') {
+        throw new ApiError(409, MENSAGEM_EMAIL_JA_CADASTRADO, { code: 'EMAIL_JA_CADASTRADO' })
+      }
     }
     res.status(202).json({ mensagem: MENSAGEM_CADASTRO })
   })
