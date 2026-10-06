@@ -160,3 +160,13 @@ export const estudoPdfLimiter = rateLimit({
   keyGenerator: (req) => req.userId ?? 'anonimo',
   message: { error: 'Muitos PDFs gerados — aguarde alguns minutos e tente de novo' },
 })
+
+// Consulta de CEP (chama um serviço externo): por usuário.
+export const cepLimiter = rateLimit({
+  windowMs: JANELA_MS,
+  limit: limite(60),
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  keyGenerator: (req) => req.userId ?? 'anonimo',
+  message: { error: 'Muitas consultas de CEP — aguarde alguns minutos e tente de novo' },
+})

@@ -197,7 +197,7 @@ rodar('Estudo de custos', () => {
     const r = await http('GET', `/api/estudos/${tenderId}/pdf`, undefined, tokenA)
     expect(r.status).toBe(200)
     expect(r.headers.get('content-type')).toBe('application/pdf')
-    expect(r.headers.get('content-disposition')).toMatch(/attachment; filename="estudo-de-viabilidade-/)
+    expect(r.headers.get('content-disposition')).toMatch(/attachment; filename="dossie-da-licitacao-/)
     expect(r.buf.subarray(0, 5).toString()).toBe('%PDF-')
     expect(await prisma.auditLog.count({ where: { companyId: companyA, action: 'ESTUDO_PDF_GERADO' } })).toBe(1)
   })

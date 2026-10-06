@@ -237,6 +237,7 @@ describe('PDF do estudo', () => {
     const resultado = calcularEstudo(itens, d, ctx)
     const pdf = await gerarPdfDoEstudo({
       empresa: { nome: 'Construtora São João Ltda', documento: '12345678000190', base: 'Goiânia/GO' },
+      dossie: null,
       licitacao: {
         objeto: 'Contratação de serviços de manutenção',
         orgao: 'Prefeitura de Anápolis',

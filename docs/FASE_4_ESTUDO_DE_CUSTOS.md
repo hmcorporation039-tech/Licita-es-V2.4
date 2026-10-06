@@ -27,3 +27,9 @@ Grava-se só o que o usuário digitou; o resultado é recalculado sempre.
 - A API de preços às vezes traz valores errados dos órgãos; por isso a mediana (e o descarte de extremos).
 - Distância é estimativa (linha reta x 1,3), não rota. Preço pago por outros não é o custo da empresa.
 - Licitação sem itens detalhados (fora do PNCP) vira um item único com o objeto inteiro.
+
+## Dossiê em PDF e CEP automático
+- O PDF virou o **dossiê da licitação**: papel timbrado do **Monitor de Licitações** (nome da plataforma) com o nome e o CNPJ/CPF da empresa em todas as páginas, mais rodapé numerado.
+- Além do estudo de custos, traz tudo o que já foi analisado: condições lidas do edital; **habilitação** (documentos que a empresa já tem e valem na data da sessão, os que vencem antes, os que **faltam**, e os a conferir); matriz de exigências marcada pela empresa; exigências técnicas; alertas legais; riscos. Monta-se em `services/dossieDaLicitacao.ts` reaproveitando o semáforo da habilitação; se a montagem falhar, o PDF sai só com o estudo.
+- Sem análise do edital, o dossiê avisa que falta analisar. Textos do edital passam por um filtro (fontes padrão do PDF só têm Latin-1).
+- **CEP:** `GET /api/company/cep/:cep` consulta o ViaCEP (base dos Correios, sem chave) e, se cair, a BrasilAPI; hosts fixos, só 8 dígitos na URL, cache de 24 h e limite por usuário. A API oficial dos Correios exige contrato. Na tela da empresa, ao digitar o CEP preenchem rua, bairro, cidade e UF (e a base de entregas, se estiver vazia); resta o número.

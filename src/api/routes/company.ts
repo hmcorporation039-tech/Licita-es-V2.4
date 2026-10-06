@@ -13,13 +13,14 @@ import { generateTempPassword, hashPassword, normalizeEmail } from '../../servic
 import { senhaSchema } from '../passwordPolicy'
 import { asyncHandler, ApiError } from '../asyncHandler'
 import { requireCompanyOwner } from '../authMiddleware'
-import { escritaSensivelLimiter } from '../rateLimit'
+import { cepLimiter, escritaSensivelLimiter } from '../rateLimit'
 import { exigirCotaDaRequisicao } from '../cotas'
 import { registrarAuditoria } from '../../services/auditService'
 import { resumoDeCotas } from '../../services/quotaService'
 import { cnpjValido, cpfValido, somenteDigitos } from '../../lib/documentos'
 import { Prisma } from '@prisma/client'
 import { findMunicipioByNomeUf } from '../../lib/geoService'
+import { CepIndisponivelError, CepNaoEncontradoError, consultarCep } from '../../lib/cep'
 
 export const companyRouter = Router()
 
@@ -40,7 +41,8 @@ companyRouter.get(
       // Campos explícitos: a linha inteira traria também os ajustes comerciais (quotaOverrides).
       select: {
         id: true, tipo: true, name: true, cnpj: true, cpf: true, email: true, telefone: true, responsavel: true,
-        endereco: true, cep: true, baseMunicipio: true, baseUf: true, planCode: true, createdAt: true, updatedAt: true,
+        endereco: true, cep: true, enderecoNumero: true, enderecoComplemento: true, enderecoBairro: true, enderecoCidade: true,
+        enderecoUf: true, baseMunicipio: true, baseUf: true, planCode: true, createdAt: true, updatedAt: true,
         users: {
           select: { id: true, email: true, name: true, companyRole: true, active: true, createdAt: true },
           orderBy: { createdAt: 'asc' },
@@ -48,6 +50,21 @@ companyRouter.get(
       },
     })
     res.json(company)
+  })
+)
+
+// CEP -> rua, bairro, cidade e UF (a pessoa só informa o número).
+companyRouter.get(
+  '/cep/:cep',
+  cepLimiter,
+  asyncHandler(async (req, res) => {
+    try {
+      res.json(await consultarCep(req.params.cep))
+    } catch (err) {
+      if (err instanceof CepNaoEncontradoError) throw new ApiError(404, err.message)
+      if (err instanceof CepIndisponivelError) throw new ApiError(503, err.message)
+      throw err
+    }
   })
 )
 
@@ -61,6 +78,11 @@ const updateCompanySchema = z.object({
   responsavel: z.string().min(1).nullable().optional(),
   endereco: z.string().min(1).nullable().optional(),
   cep: z.string().min(1).nullable().optional(),
+  enderecoNumero: z.string().trim().max(20).nullable().optional(),
+  enderecoComplemento: z.string().trim().max(80).nullable().optional(),
+  enderecoBairro: z.string().trim().max(80).nullable().optional(),
+  enderecoCidade: z.string().trim().max(80).nullable().optional(),
+  enderecoUf: z.string().length(2).nullable().optional(),
   // Base de entregas: de onde sai o fornecimento (custo de deslocamento do estudo de custos).
   baseMunicipio: z.string().trim().min(2).max(120).nullable().optional(),
   baseUf: z.string().length(2).nullable().optional(),
