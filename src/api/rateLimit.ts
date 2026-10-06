@@ -97,7 +97,7 @@ export const radarLimiter = rateLimit({
 // (muitos IPs) contra um mesmo e-mail não era freado. Só conta as tentativas que falham.
 export const loginPorContaLimiter = rateLimit({
   windowMs: JANELA_MS,
-  limit: limite(10),
+  limit: limite(40),
   standardHeaders: 'draft-7',
   legacyHeaders: false,
   skipSuccessfulRequests: true,
@@ -130,4 +130,33 @@ export const codigoPorContaLimiter = rateLimit({
     return typeof email === 'string' ? 'codigo:' + email.trim().toLowerCase() : 'codigo:?'
   },
   message: { error: 'Muitas tentativas para esta conta — aguarde alguns minutos e peça um novo código' },
+})
+
+// Por USUÁRIO: rematch varre 90 dias de licitações e enfileira e-mails.
+export const rematchLimiter = rateLimit({
+  windowMs: JANELA_MS,
+  limit: limite(10),
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  keyGenerator: (req) => req.userId ?? 'anonimo',
+  message: { error: 'Muitas buscas em andamento — aguarde alguns minutos e tente de novo' },
+})
+
+// Estudo de custos: recalcular enquanto digita é leve; o PDF gasta CPU. Ambos por usuário.
+export const estudoCalculoLimiter = rateLimit({
+  windowMs: JANELA_MS,
+  limit: limite(600),
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  keyGenerator: (req) => req.userId ?? 'anonimo',
+  message: { error: 'Muitas requisições — aguarde alguns minutos e tente de novo' },
+})
+
+export const estudoPdfLimiter = rateLimit({
+  windowMs: JANELA_MS,
+  limit: limite(30),
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  keyGenerator: (req) => req.userId ?? 'anonimo',
+  message: { error: 'Muitos PDFs gerados — aguarde alguns minutos e tente de novo' },
 })

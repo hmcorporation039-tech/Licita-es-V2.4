@@ -34,10 +34,17 @@ export function temCamadaDeTexto(texto: string, paginas: number): boolean {
   return limpo.length / paginas >= MIN_CARACTERES_POR_PAGINA
 }
 
+// PDF patológico (estrutura circular, página gigante) pode travar o parser; o worker não pode ficar preso.
+export const LIMITE_DE_TEMPO_DO_PDF_MS = 90_000
+
 export async function extractPdf(buffer: Buffer): Promise<PdfTexto> {
   const parser = new PDFParse({ data: buffer })
   try {
-    const result = await parser.getText()
+    let timer: NodeJS.Timeout | undefined
+    const limite = new Promise<never>((_, rejeitar) => {
+      timer = setTimeout(() => rejeitar(new Error('Tempo esgotado ao ler o PDF (arquivo muito complexo ou corrompido)')), LIMITE_DE_TEMPO_DO_PDF_MS)
+    })
+    const result = await Promise.race([parser.getText(), limite]).finally(() => clearTimeout(timer))
     const comMarcadores = result.pages?.length ? montarTextoComPaginas(result.pages) : result.text
     return { texto: result.text, paginas: result.total, textoComPaginas: comMarcadores }
   } finally {

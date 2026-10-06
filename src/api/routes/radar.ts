@@ -72,7 +72,7 @@ radarRouter.get(
   asyncHandler(async (req, res) => {
     const empresa = await prisma.company.findUnique({ where: { id: req.companyId! }, select: { cnpj: true } })
     if (!empresa?.cnpj) throw new ApiError(400, 'O Perfilador usa o CNPJ da empresa. Cadastre o CNPJ em Empresa para gerar sugestões.')
-    const contratos = await comPncp(() => buscarContratosDoFornecedor(empresa.cnpj!.replace(/D/g, '')))
+    const contratos = await comPncp(() => buscarContratosDoFornecedor(soDigitos(empresa.cnpj!)))
     res.json(sugerirPerfil(contratos))
   })
 )

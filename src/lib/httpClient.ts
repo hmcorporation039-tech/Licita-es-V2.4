@@ -10,6 +10,8 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+const LIMITE_RESPOSTA_BYTES = 50 * 1024 * 1024
+
 // Cria um cliente axios com delay entre requisições
 function createRateLimitedClient(
   baseURL: string,
@@ -21,6 +23,10 @@ function createRateLimitedClient(
   const client = axios.create({
     baseURL,
     timeout: 30_000,
+    // Portal comprometido ou lento não pode devolver centenas de MB e derrubar o worker por memória.
+    maxContentLength: LIMITE_RESPOSTA_BYTES,
+    maxBodyLength: LIMITE_RESPOSTA_BYTES,
+    maxRedirects: 3,
     headers: {
       'User-Agent': 'LicitacaoMonitor/1.0 (plataforma de monitoramento)',
       ...headers,
@@ -94,3 +100,5 @@ export const sestSenatClient = createRateLimitedClient(
   { Accept: 'application/json', 'Content-Type': 'application/json' }
 )
 sestSenatClient.defaults.timeout = 300_000
+// Exceção documentada: o payload do SEST SENAT passa de 300 MB (ver acima).
+sestSenatClient.defaults.maxContentLength = 800 * 1024 * 1024

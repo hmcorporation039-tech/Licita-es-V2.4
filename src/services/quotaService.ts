@@ -32,15 +32,41 @@ export async function limitesDaEmpresa(companyId: string): Promise<{ planCode: s
   }
 }
 
+// Análises que a empresa pediu e ainda não terminaram. Elas ainda não gravaram consumo (AiUsage só
+// é gravado ao terminar), então sem isto era possível pedir dezenas de análises de uma vez, todas
+// passando pela cota, e o custo de IA estourar o plano. O pedido fica na auditoria (ANALISE_SOLICITADA).
+export const JANELA_EM_ANDAMENTO_MS = 30 * 60 * 1000
+export const MAX_ANALISES_POR_HORA = 10
+
+export async function analisesEmAndamento(companyId: string, agora: Date = new Date()): Promise<number> {
+  const pedidos = await prisma.auditLog.findMany({
+    where: { companyId, action: 'ANALISE_SOLICITADA', createdAt: { gte: new Date(agora.getTime() - JANELA_EM_ANDAMENTO_MS) } },
+    select: { entityId: true },
+    take: 200,
+  })
+  const ids = [...new Set(pedidos.map((p) => p.entityId).filter((i): i is string => !!i))]
+  if (ids.length === 0) return 0
+  return prisma.tenderAnalysis.count({ where: { tenderId: { in: ids }, status: { in: ['PENDING', 'RUNNING'] } } })
+}
+
+// Teto de pedidos por hora, mesmo que falhem: repetir uma análise que falhou gasta IA de novo e
+// a falha (AiUsage "ERRO") não conta na cota.
+export async function pedidosDeAnaliseNaUltimaHora(companyId: string, agora: Date = new Date()): Promise<number> {
+  return prisma.auditLog.count({
+    where: { companyId, action: 'ANALISE_SOLICITADA', createdAt: { gte: new Date(agora.getTime() - 60 * 60 * 1000) } },
+  })
+}
+
 export async function usoDaEmpresa(companyId: string): Promise<UsoDaEmpresa> {
-  const [itensMonitorados, usuarios, analisesIaMes] = await Promise.all([
+  const [itensMonitorados, usuarios, analisesConcluidas, emAndamento] = await Promise.all([
     // Conta todos (ativos ou não): senão desativar e recriar burlaria o limite.
     prisma.monitoredItem.count({ where: { companyId } }),
     prisma.user.count({ where: { companyId, active: true } }),
     // A revisão (2ª chamada) é custo nosso, não do cliente: só a etapa "analise" conta na cota.
     prisma.aiUsage.count({ where: { companyId, status: 'OK', etapa: 'analise', createdAt: { gte: inicioDoMesBrasilia() } } }),
+    analisesEmAndamento(companyId),
   ])
-  return { itensMonitorados, usuarios, analisesIaMes }
+  return { itensMonitorados, usuarios, analisesIaMes: analisesConcluidas + emAndamento }
 }
 
 export async function resumoDeCotas(companyId: string) {

@@ -37,7 +37,10 @@ companyRouter.get(
   asyncHandler(async (req, res) => {
     const company = await prisma.company.findUniqueOrThrow({
       where: { id: req.companyId! },
-      include: {
+      // Campos explícitos: a linha inteira traria também os ajustes comerciais (quotaOverrides).
+      select: {
+        id: true, tipo: true, name: true, cnpj: true, cpf: true, email: true, telefone: true, responsavel: true,
+        endereco: true, cep: true, baseMunicipio: true, baseUf: true, planCode: true, createdAt: true, updatedAt: true,
         users: {
           select: { id: true, email: true, name: true, companyRole: true, active: true, createdAt: true },
           orderBy: { createdAt: 'asc' },

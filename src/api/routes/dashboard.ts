@@ -9,6 +9,7 @@ import { prisma } from '../../services/tenderService'
 import { buildAutoMilestones } from '../../lib/participationPlanTemplate'
 import { asyncHandler } from '../asyncHandler'
 import { whereLicitacaoAberta } from '../../lib/licitacaoAberta'
+import { TENDER_PUBLICO } from '../../lib/tenderPublico'
 
 export const dashboardRouter = Router()
 
@@ -28,7 +29,7 @@ dashboardRouter.get(
         where: { companyId, tender: whereLicitacaoAberta() },
         orderBy: { createdAt: 'desc' },
         take: 5,
-        include: { tender: true, monitoredItem: { select: { name: true } } },
+        include: { tender: { select: TENDER_PUBLICO }, monitoredItem: { select: { name: true } } },
       }),
       prisma.companyDocument.findMany({ where: { companyId, dataValidade: { not: null } } }),
       prisma.tenderParticipationPlan.findMany({

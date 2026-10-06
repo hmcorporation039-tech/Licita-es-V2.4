@@ -51,7 +51,7 @@ uasgRouter.get(
 
 // Resolve códigos UASG já salvos num item monitorado pros dados de exibição
 // (nome, órgão, UF) — usado ao abrir a edição de um item existente.
-const byCodesSchema = z.object({ codes: z.string().min(1) })
+const byCodesSchema = z.object({ codes: z.string().min(1).max(2000) })
 
 uasgRouter.get(
   '/by-codes',
@@ -61,6 +61,7 @@ uasgRouter.get(
       .split(',')
       .map((c) => c.trim())
       .filter(Boolean)
+      .slice(0, 50)
     if (list.length === 0) {
       res.json([])
       return
