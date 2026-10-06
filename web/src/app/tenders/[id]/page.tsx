@@ -2,6 +2,8 @@
 
 import { use, useEffect, useState } from 'react'
 import { useRequireSession } from '@/hooks/useRequireSession'
+import { avisarMudancaDeUso, useUsoDoPlano } from '@/hooks/useUsoDoPlano'
+import MedidorDeAnalises from '@/components/MedidorDeAnalises'
 import { api, ApiRequestError } from '@/lib/api'
 import {
   ChecklistItem,
@@ -98,6 +100,7 @@ function InfoField({ label, value }: { label: string; value: React.ReactNode }) 
 export default function TenderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const user = useRequireSession()
+  const { medida } = useUsoDoPlano(!!user)
 
   const [tender, setTender] = useState<Tender | null>(null)
   const [items, setItems] = useState<ChecklistItem[]>([])
@@ -184,6 +187,7 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
       alert(err instanceof ApiRequestError ? err.message : 'Erro ao analisar o edital')
     } finally {
       setAnalyzing(false)
+      avisarMudancaDeUso() // atualiza os medidores com o consumo desta análise
     }
   }
 
@@ -497,11 +501,14 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
                     Baixa o edital publicado no PNCP e resume valor, prazo, critério de julgamento,
                     exigências técnicas e pontos de atenção — pode levar até 30 segundos.
                   </p>
+                  <MedidorDeAnalises className="mb-3" />
                   <button
                     onClick={() => runAnalysis(false)}
-                    className="rounded bg-indigo-700 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-800"
+                    disabled={medida?.esgotado === true}
+                    title={medida?.esgotado ? 'Você atingiu o limite de análises do plano neste mês.' : undefined}
+                    className="rounded bg-indigo-700 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-800 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    Analisar edital
+                    Analisar edital{medida && medida.restantes !== null && !medida.esgotado ? ` (usa 1 de ${medida.restantes})` : ''}
                   </button>
                 </div>
               )}

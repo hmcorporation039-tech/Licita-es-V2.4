@@ -29,7 +29,8 @@ export const companyRouter = Router()
 companyRouter.get(
   '/usage',
   asyncHandler(async (req, res) => {
-    res.json(await resumoDeCotas(req.companyId!))
+    // O administrador da plataforma nunca é limitado (ver exigirCota): a tela mostra "sem limite".
+    res.json({ ...(await resumoDeCotas(req.companyId!)), ilimitado: req.isAdmin === true })
   })
 )
 
