@@ -194,7 +194,9 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
   const t = estudo.tender
   const linhaPorItem = new Map(resultado.itens.map((l) => [l.id, l]))
   const temCatalogo = estudo.itens.some((i) => i.codigoCatalogo)
-  const corLucro = resultado.lucro >= 0 ? 'text-emerald-700' : 'text-red-700'
+  const corLucro = resultado.lucro >= 0 ? 'text-emerald-700' : 'text-amber-700'
+  // Custo não é prejuízo: o alerta vermelho só aparece quando o custo total passa do valor estimado pelo órgão.
+  const custosAcimaDoEstimado = t.valorEstimado !== null && t.valorEstimado !== undefined && t.valorEstimado > 0 && resultado.custoTotal > t.valorEstimado
 
   return (
     <div className="pb-24">
@@ -458,10 +460,20 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
           <p>Impostos: {brl(resultado.impostos)}</p>
           <p>Custo total: <strong>{brl(resultado.custoTotal)}</strong></p>
         </div>
-        <p className={`mt-3 text-2xl font-semibold ${corLucro}`}>
-          {resultado.lucro >= 0 ? 'Lucro' : 'Prejuízo'}: {brl(resultado.lucro)}
-          {resultado.margemPct !== null && <span className="ml-2 text-base font-normal">(margem {resultado.margemPct.toLocaleString('pt-BR')}%)</span>}
-        </p>
+        <p className="mt-3 text-2xl font-semibold text-slate-900">Total dos custos: {brl(resultado.custoTotal)}</p>
+        {custosAcimaDoEstimado && (
+          <p role="alert" className="mt-2 rounded border border-red-300 bg-red-50 p-2 text-sm font-medium text-red-800">
+            Alerta: o total dos custos ({brl(resultado.custoTotal)}) é maior que o valor estimado pelo órgão ({brl(t.valorEstimado)}). Concorrer nesse valor daria prejuízo.
+          </p>
+        )}
+        {resultado.receita > 0 ? (
+          <p className={`mt-2 text-lg font-semibold ${corLucro}`}>
+            {resultado.lucro >= 0 ? 'Lucro estimado' : 'Resultado com os seus preços'}: {brl(resultado.lucro)}
+            {resultado.margemPct !== null && <span className="ml-2 text-base font-normal">(margem {resultado.margemPct.toLocaleString('pt-BR')}%)</span>}
+          </p>
+        ) : (
+          <p className="mt-2 text-sm text-slate-600">Informe os preços de venda dos itens para ver o lucro estimado.</p>
+        )}
         <p className="mt-1 text-sm text-slate-700">
           Preço mínimo para a margem de {dados.margemDesejadaPct}%: <strong>{resultado.receitaMinima === null ? '—' : brl(resultado.receitaMinima)}</strong>
         </p>
@@ -473,7 +485,7 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
                 <tr>
                   <th className="py-1">Se você der o lance…</th>
                   <th className="py-1">Valor</th>
-                  <th className="py-1">Lucro / prejuízo</th>
+                  <th className="py-1">Resultado</th>
                   <th className="py-1">Margem</th>
                 </tr>
               </thead>
@@ -482,7 +494,7 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
                   <tr key={c.nome} className="border-t border-slate-200">
                     <td className="py-1 pr-2">{c.nome}</td>
                     <td className="py-1 pr-2">{brl(c.receita)}</td>
-                    <td className={`py-1 pr-2 font-medium ${c.lucro >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{brl(c.lucro)}</td>
+                    <td className={`py-1 pr-2 font-medium ${c.lucro >= 0 ? 'text-emerald-700' : 'text-amber-700'}`}>{brl(c.lucro)}</td>
                     <td className="py-1">{c.margemPct === null ? '—' : `${c.margemPct.toLocaleString('pt-BR')}%`}</td>
                   </tr>
                 ))}
