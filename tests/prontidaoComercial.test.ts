@@ -137,6 +137,26 @@ describe('código de confirmação de e-mail', () => {
   })
 })
 
+import { exigirEnvioOk, problemaNoRemetente } from '../src/lib/resendResultado'
+
+describe('resultado do Resend', () => {
+  it('recusa do Resend vira erro com o motivo; sucesso e resposta vazia passam', () => {
+    expect(() => exigirEnvioOk({ error: { name: 'validation_error', message: 'You can only send testing emails to your own email address' } })).toThrow(
+      /Resend recusou o envio \(validation_error\): You can only send testing emails/
+    )
+    expect(() => exigirEnvioOk({ error: null })).not.toThrow()
+    expect(() => exigirEnvioOk({})).not.toThrow()
+    expect(() => exigirEnvioOk(undefined)).not.toThrow()
+  })
+
+  it('detecta remetente que não entrega para clientes', () => {
+    expect(problemaNoRemetente(undefined)).toMatch(/não está definido/)
+    expect(problemaNoRemetente('noreply@seudominio.com.br')).toMatch(/exemplo/)
+    expect(problemaNoRemetente('Licitações <onboarding@resend.dev>')).toMatch(/só entrega para o e-mail dono/)
+    expect(problemaNoRemetente('Licitações <contato@hemengetecnologia.com.br>')).toBeNull()
+  })
+})
+
 import { duracaoDaSessao } from '../src/services/authService'
 import { listPNCPDocuments } from '../src/services/pncpDocumentsService'
 

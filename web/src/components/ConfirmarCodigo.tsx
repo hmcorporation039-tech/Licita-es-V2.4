@@ -109,7 +109,17 @@ export default function ConfirmarCodigo({ email, senha }: { email: string; senha
       <button type="button" onClick={reenviar} disabled={espera > 0} className="self-start text-sm text-indigo-700 hover:underline disabled:text-slate-400 disabled:no-underline">
         {espera > 0 ? `Reenviar código (${espera}s)` : 'Reenviar código'}
       </button>
-      <p className="text-xs text-slate-500">Não chegou? Veja a caixa de spam. Se digitou o e-mail errado, faça o cadastro de novo.</p>
+      <p className="text-xs text-slate-500">
+        Não chegou? Veja a caixa de spam. Se esse e-mail já tiver uma conta, enviamos um aviso com o caminho para{' '}
+        <Link href="/login" className="text-indigo-700 hover:underline">
+          entrar
+        </Link>{' '}
+        ou{' '}
+        <Link href="/esqueci-senha" className="text-indigo-700 hover:underline">
+          recuperar a senha
+        </Link>
+        . Se digitou o e-mail errado, faça o cadastro de novo.
+      </p>
     </form>
   )
 }

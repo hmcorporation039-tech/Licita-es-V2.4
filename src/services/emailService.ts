@@ -3,6 +3,7 @@
 // ============================================================
 
 import { Resend } from 'resend'
+import { exigirEnvioOk } from '../lib/resendResultado'
 import { escapeHtml, safeHttpUrl } from '../lib/html'
 
 const EMAIL_FROM = process.env.EMAIL_FROM ?? 'noreply@seudominio.com.br'
@@ -36,7 +37,7 @@ export async function sendMatchEmail(params: MatchEmailParams) {
 
   const { to, itemName, tenderObjeto, orgao, uf, valorEstimado, linkEdital } = params
 
-  await getResendClient().emails.send({
+  exigirEnvioOk(await getResendClient().emails.send({
     from: EMAIL_FROM,
     to,
     subject: `Nova licitação encontrada: ${itemName}`,
@@ -48,7 +49,7 @@ export async function sendMatchEmail(params: MatchEmailParams) {
       ${valorEstimado ? `<p><strong>Valor estimado:</strong> R$ ${escapeHtml(valorEstimado.toLocaleString('pt-BR'))}</p>` : ''}
       ${linkHtml(linkEdital, 'Ver edital')}
     `,
-  })
+  }))
 }
 
 export interface DocumentExpiryEmailParams {
@@ -68,7 +69,7 @@ export async function sendDocumentExpiryEmail(params: DocumentExpiryEmailParams)
   const vencido = diasRestantes < 0
   const dataFormatada = dataValidade.toLocaleDateString('pt-BR')
 
-  await getResendClient().emails.send({
+  exigirEnvioOk(await getResendClient().emails.send({
     from: EMAIL_FROM,
     to,
     subject: vencido
@@ -80,7 +81,7 @@ export async function sendDocumentExpiryEmail(params: DocumentExpiryEmailParams)
       <p><strong>Validade:</strong> ${escapeHtml(dataFormatada)} ${vencido ? '(já venceu)' : `(em ${diasRestantes} dia(s))`}</p>
       <p>Renove esse documento pra não perder o prazo de nenhuma licitação em andamento.</p>
     `,
-  })
+  }))
 }
 
 export const ROTULO_CAMPO_ALTERADO: Record<string, string> = {
@@ -109,7 +110,7 @@ export async function sendTenderChangedEmail(params: TenderChangedEmailParams) {
   const { to, tenderObjeto, campos, orgao, encerramentoAt, linkEdital } = params
   const rotulos = campos.map((campo) => ROTULO_CAMPO_ALTERADO[campo] ?? campo)
 
-  await getResendClient().emails.send({
+  exigirEnvioOk(await getResendClient().emails.send({
     from: EMAIL_FROM,
     to,
     subject: 'Uma licitação que você acompanha foi alterada',
@@ -128,5 +129,5 @@ export async function sendTenderChangedEmail(params: TenderChangedEmailParams) {
       <p>Confira o edital atualizado antes de enviar sua proposta.</p>
       ${linkHtml(linkEdital, 'Ver edital')}
     `,
-  })
+  }))
 }
