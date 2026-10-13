@@ -32,10 +32,10 @@ async function main() {
 
   const user = await prisma.user.upsert({
     where: { email },
-    update: { passwordHash, isAdmin: true, active: true, accessExpiresAt: null, disabledByAdmin: false, tokenVersion: { increment: 1 } },
+    update: { passwordHash, isAdmin: true, active: true, accessExpiresAt: null, disabledByAdmin: false, emailVerifiedAt: new Date(), tokenVersion: { increment: 1 } },
     // Toda conta precisa de uma Company (ver schema.prisma) — o primeiro
     // admin ganha uma individual, criada junto na mesma escrita.
-    create: { email, name, passwordHash, isAdmin: true, company: { create: { name: name ?? email } } },
+    create: { email, name, passwordHash, isAdmin: true, emailVerifiedAt: new Date(), company: { create: { name: name ?? email } } },
   })
 
   console.log(`Admin pronto: ${user.email} (id ${user.id})`)
