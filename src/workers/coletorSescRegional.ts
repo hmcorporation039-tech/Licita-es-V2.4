@@ -26,6 +26,44 @@ import { saveWorkerLog } from '../services/tenderService'
 import { NormalizedTender } from '../types'
 import { salvarLote } from './coletorHtmlShared'
 
+const MAX_REDIRECTS_SESC = 3
+const MAX_RESPOSTA_SESC_BYTES = 20 * 1024 * 1024
+
+const REDIRECTS_ENTRE_HOSTS_CONHECIDOS: Record<string, string[]> = {
+  'docs.google.com': ['googleusercontent.com'],
+}
+
+function hostAutorizadoPara(hostOrigem: string, hostDestino: string): boolean {
+  if (hostDestino === hostOrigem) return true
+  return (REDIRECTS_ENTRE_HOSTS_CONHECIDOS[hostOrigem] ?? []).some(
+    (sufixo) => hostDestino === sufixo || hostDestino.endsWith(`.${sufixo}`)
+  )
+}
+
+export function redirectPermitido(origem: string, destino: { protocol?: string; hostname?: string; host?: string }): boolean {
+  try {
+    const url = new URL(origem)
+    const hostDestino = (destino.hostname ?? destino.host ?? '').replace(/:\d+$/, '').replace(/^www\./, '')
+    const protocoloDestino = destino.protocol ?? ''
+    const rebaixou = url.protocol === 'https:' && protocoloDestino === 'http:'
+    return !rebaixou && hostAutorizadoPara(url.hostname.replace(/^www\./, ''), hostDestino)
+  } catch {
+    return false
+  }
+}
+
+function opcoesDeRede(url: string) {
+  return {
+    maxRedirects: MAX_REDIRECTS_SESC,
+    maxContentLength: MAX_RESPOSTA_SESC_BYTES,
+    beforeRedirect: (opcoes: { protocol?: string; hostname?: string; host?: string }) => {
+      if (!redirectPermitido(url, opcoes)) {
+        throw new Error(`Redirect recusado: ${url} tentou levar para outro host ou rebaixar para HTTP`)
+      }
+    },
+  }
+}
+
 interface Sessao {
   cookie?: string
   referer?: string
@@ -36,7 +74,7 @@ interface Sessao {
 // Abre a página de sessão da unidade (se houver) e guarda os cookies que o
 // portal entrega, para reenviá-los nas páginas seguintes.
 async function abrirSessao(sessaoUrl: string, agente?: Agent): Promise<Sessao> {
-  const response = await sescRegionalClient.get(sessaoUrl, { timeout: 45_000, httpsAgent: agente })
+  const response = await sescRegionalClient.get(sessaoUrl, { timeout: 45_000, httpsAgent: agente, ...opcoesDeRede(sessaoUrl) })
   const setCookie = response.headers['set-cookie'] as string[] | undefined
   const cookie = setCookie?.map((c) => c.split(';')[0]).join('; ')
   return { cookie: cookie || undefined, referer: sessaoUrl, agente }
@@ -47,6 +85,7 @@ async function baixarPagina(url: string, sessao: Sessao = {}, unidade?: SescUnid
     responseType: 'arraybuffer' as const,
     timeout: 45_000,
     httpsAgent: sessao.agente,
+    ...opcoesDeRede(url),
     headers: {
       ...(sessao.cookie ? { Cookie: sessao.cookie } : {}),
       ...(sessao.referer ? { Referer: sessao.referer } : {}),
@@ -63,9 +102,15 @@ async function baixarPagina(url: string, sessao: Sessao = {}, unidade?: SescUnid
   return decodificarHtml(Buffer.from(response.data), String(response.headers['content-type'] ?? ''))
 }
 
-function mesmoDominio(a: string, b: string): boolean {
+export function mesmoDominio(a: string, b: string): boolean {
   try {
-    return new URL(a).hostname.replace(/^www\./, '') === new URL(b).hostname.replace(/^www\./, '')
+    const proxima = new URL(a)
+    const atual = new URL(b)
+    return (
+      proxima.hostname.replace(/^www\./, '') === atual.hostname.replace(/^www\./, '') &&
+      proxima.protocol === atual.protocol &&
+      proxima.port === atual.port
+    )
   } catch {
     return false
   }

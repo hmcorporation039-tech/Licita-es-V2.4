@@ -15,6 +15,7 @@
 import 'dotenv/config'
 import { execFileSync } from 'child_process'
 import { PrismaClient } from '@prisma/client'
+import { confirmarAlvoRemoto } from './lib/alvoDoBanco'
 
 const BASELINE = '00000000000000_baseline'
 const dry = process.argv.includes('--dry')
@@ -67,6 +68,8 @@ async function main() {
     console.error('DATABASE_URL não definida. Exporte a do banco que você quer migrar.')
     process.exit(1)
   }
+
+  if (!dry) await confirmarAlvoRemoto('aplicar migrations (e marcar o baseline como aplicado, se faltar)')
 
   const urlMigracao = urlDeMigracao()
   process.env.DATABASE_URL = urlMigracao

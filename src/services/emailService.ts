@@ -39,7 +39,7 @@ export async function sendMatchEmail(params: MatchEmailParams) {
   await getResendClient().emails.send({
     from: EMAIL_FROM,
     to,
-    subject: `Nova licitação encontrada: ${itemName}`,
+    subject: `Nova licitação encontrada: ${itemName.replace(/[\r\n]+/g, ' ').slice(0, 150)}`,
     html: `
       <h2>Encontramos uma licitação para "${escapeHtml(itemName)}"</h2>
       <p><strong>Objeto:</strong> ${escapeHtml(tenderObjeto)}</p>

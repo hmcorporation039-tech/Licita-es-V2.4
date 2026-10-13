@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   RegistroSestSenat,
+  codigoFilialSestSenat,
+  deduplicarPorFonteId,
+  empresaPorCnpjSestSenat,
   filtrarSomenteAbertos,
   normalizarRegistroSestSenat,
   parseSestSenatDadosAbertos,
@@ -68,7 +71,7 @@ describe('normalizarRegistroSestSenat', () => {
     const r = registro({})
     const tender = normalizarRegistroSestSenat(r)
     expect(tender.fonte).toBe('SEST_SENAT')
-    expect(tender.fonteId).toBe('SESTSENAT-SEST-00007-2021')
+    expect(tender.fonteId).toBe('SESTSENAT-SEST-DEX-00007-2021')
     expect(tender.modalidade).toBe('PREGAO_ELETRONICO')
     expect(tender.orgaoCnpj).toBe('73471989000195')
     expect(tender.uf).toBe('DF')
@@ -97,5 +100,46 @@ describe('normalizarRegistroSestSenat', () => {
 
     const sestRow = registro({ empresa: 'SEST' })
     expect(normalizarRegistroSestSenat(sestRow).orgaoCnpj).toBe('73471989000195')
+  })
+})
+
+describe('fonteId por filial', () => {
+  it('extrai o código da filial antes do primeiro separador', () => {
+    expect(codigoFilialSestSenat('A 003 - SEST - CUIABA/MT')).toBe('A-003')
+    expect(codigoFilialSestSenat('DN 146 - SEST - ITUIUTABA/MG')).toBe('DN-146')
+    expect(codigoFilialSestSenat('')).toBe('SEM-FILIAL')
+    expect(codigoFilialSestSenat(null)).toBe('SEM-FILIAL')
+  })
+
+  it('não junta o mesmo código de edital publicado por filiais diferentes', () => {
+    const cuiaba = normalizarRegistroSestSenat(registro({ nomeFilial: 'A 003 - SEST - CUIABA/MT', codigoEdital: 'DL 0052/2024' }))
+    const araraquara = normalizarRegistroSestSenat(registro({ nomeFilial: 'B 030 - SEST - ARARAQUARA/SP', codigoEdital: 'DL 0052/2024' }))
+    expect(cuiaba.fonteId).toBe('SESTSENAT-SEST-A-003-DL-0052-2024')
+    expect(araraquara.fonteId).not.toBe(cuiaba.fonteId)
+  })
+
+  it('identifica a empresa pelo CNPJ gravado', () => {
+    expect(empresaPorCnpjSestSenat('73471989000195')).toBe('SEST')
+    expect(empresaPorCnpjSestSenat('73471963000147')).toBe('SENAT')
+    expect(empresaPorCnpjSestSenat('00000000000000')).toBeNull()
+  })
+})
+
+describe('deduplicarPorFonteId', () => {
+  const base = registro({ situacao: 'Edital Aberto', nomeFilial: 'B 045 - SEST - FEIRA DE SANTANA/BA', codigoEdital: 'DL004386-7/2026' })
+
+  it('escolhe o mesmo registro qualquer que seja a ordem de chegada', () => {
+    const a = normalizarRegistroSestSenat({ ...base, objeto: 'CONFECÇÃO DE 1.200 MEDALHAS', dataProposta: '10/10/2026' })
+    const b = normalizarRegistroSestSenat({ ...base, objeto: 'CONFECÇÃO DE 1.200 (MIL E DUZENTOS) MEDALHAS', dataProposta: '10/10/2026' })
+    const ida = deduplicarPorFonteId([a, b])
+    const volta = deduplicarPorFonteId([b, a])
+    expect(ida).toHaveLength(1)
+    expect(ida[0].objeto).toBe(volta[0].objeto)
+  })
+
+  it('prefere o registro com encerramento mais recente', () => {
+    const antigo = normalizarRegistroSestSenat({ ...base, objeto: 'VERSAO ANTIGA', dataProposta: '01/10/2026' })
+    const novo = normalizarRegistroSestSenat({ ...base, objeto: 'VERSAO NOVA', dataProposta: '20/10/2026' })
+    expect(deduplicarPorFonteId([novo, antigo])[0].objeto).toBe('VERSAO NOVA')
   })
 })

@@ -94,6 +94,47 @@ function empresaDoRegistro(r: RegistroSestSenat): SestSenatEmpresa {
   return valor.includes('SENAT') ? 'SENAT' : 'SEST'
 }
 
+export function empresaPorCnpjSestSenat(cnpj: string | null | undefined): SestSenatEmpresa | null {
+  const encontrada = (Object.keys(CNPJ_POR_EMPRESA) as SestSenatEmpresa[]).find((e) => CNPJ_POR_EMPRESA[e] === cnpj)
+  return encontrada ?? null
+}
+
+function slugFonteId(valor: string): string {
+  return valor
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+export function codigoFilialSestSenat(nomeFilial: string | null | undefined): string {
+  const nome = (nomeFilial ?? '').trim()
+  if (!nome) return 'SEM-FILIAL'
+  const prefixo = nome.split(' - ')[0]
+  return slugFonteId(prefixo) || slugFonteId(nome) || 'SEM-FILIAL'
+}
+
+export function fonteIdSestSenat(empresa: SestSenatEmpresa, nomeFilial: string | null | undefined, codigoEdital: string): string {
+  return `SESTSENAT-${empresa}-${codigoFilialSestSenat(nomeFilial)}-${codigoEdital.trim().replace(/[/\s]+/g, '-')}`
+}
+
+function compararParaDeduplicar(a: NormalizedTender, b: NormalizedTender): number {
+  const tempoA = a.encerramentoAt?.getTime() ?? -Infinity
+  const tempoB = b.encerramentoAt?.getTime() ?? -Infinity
+  if (tempoA !== tempoB) return tempoA > tempoB ? 1 : -1
+  return a.objeto.localeCompare(b.objeto)
+}
+
+export function deduplicarPorFonteId(tenders: NormalizedTender[]): NormalizedTender[] {
+  const porFonteId = new Map<string, NormalizedTender>()
+  for (const tender of tenders) {
+    const atual = porFonteId.get(tender.fonteId)
+    if (!atual || compararParaDeduplicar(tender, atual) > 0) porFonteId.set(tender.fonteId, tender)
+  }
+  return [...porFonteId.values()]
+}
+
 export function normalizarRegistroSestSenat(r: RegistroSestSenat): NormalizedTender {
   const empresa = empresaDoRegistro(r)
   const modalidadeNorm = (r.modalidade ?? '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
@@ -103,7 +144,7 @@ export function normalizarRegistroSestSenat(r: RegistroSestSenat): NormalizedTen
 
   return {
     fonte: 'SEST_SENAT',
-    fonteId: `SESTSENAT-${empresa}-${r.codigoEdital.trim().replace(/[/\s]+/g, '-')}`,
+    fonteId: fonteIdSestSenat(empresa, r.nomeFilial, r.codigoEdital),
     modalidade: SEST_SENAT_MODALIDADE_MAP[modalidadeNorm] ?? 'OUTROS',
     objeto,
     objetoResumido: truncate(objeto),

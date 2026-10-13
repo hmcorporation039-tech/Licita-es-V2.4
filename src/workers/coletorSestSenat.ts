@@ -17,11 +17,13 @@ import { redisConnection } from '../queues'
 import { sestSenatClient } from '../lib/httpClient'
 import {
   SestSenatEmpresa,
+  deduplicarPorFonteId,
   filtrarSomenteAbertos,
   normalizarRegistroSestSenat,
   parseSestSenatDadosAbertos,
 } from '../services/sestSenatParser'
 import { saveWorkerLog } from '../services/tenderService'
+import { migrarFonteIdsLegadosSestSenat } from '../services/sestSenatMigracaoService'
 import { salvarLote } from './coletorHtmlShared'
 
 const EMPRESAS: SestSenatEmpresa[] = ['SEST', 'SENAT']
@@ -37,44 +39,47 @@ export function startColetorSestSenatWorker() {
       let totalUpdated = 0
       let hadErrors = false
 
-      for (const empresa of EMPRESAS) {
-        try {
-          const response = await sestSenatClient.post(
-            '/edital/dadosAbertos',
-            { filtro: { empresa: [empresa] } },
-            { responseType: 'text', transformResponse: (data) => data }
-          )
-          const registros = parseSestSenatDadosAbertos(response.data as string)
-          const abertos = filtrarSomenteAbertos(registros)
-          // normalizarRegistroSestSenat não usa `empresa` (o filtro do
-          // servidor é inconsistente — ver aviso em sestSenatParser.ts):
-          // cada registro se rotula sozinho pelo próprio campo `empresa`.
-          const tenders = abertos.map((r) => normalizarRegistroSestSenat(r))
-          totalFetched += tenders.length
-
-          const result = await salvarLote(tenders, `SEST SENAT Worker (${empresa})`)
-          totalNew += result.totalNew
-          totalDupes += result.totalDupes
-          totalUpdated += result.totalUpdated
-
+      try {
+        const migracao = await migrarFonteIdsLegadosSestSenat()
+        if (migracao.renomeados > 0 || migracao.conflitos > 0) {
           console.log(
-            `[SEST SENAT Worker] ${empresa}: ${registros.length} registro(s) na fonte, ${abertos.length} em aberto.`
+            `[SEST SENAT Worker] Identificadores legados: ${migracao.renomeados} renomeado(s), ${migracao.conflitos} em conflito mantido(s).`
           )
-        } catch (err) {
-          hadErrors = true
-          console.error(`[SEST SENAT Worker] Erro na coleta de ${empresa}:`, err)
         }
+
+        const response = await sestSenatClient.post(
+          '/edital/dadosAbertos',
+          { filtro: { empresa: EMPRESAS } },
+          { responseType: 'text', transformResponse: (data) => data }
+        )
+        const registros = parseSestSenatDadosAbertos(response.data as string)
+        response.data = null
+        const abertos = filtrarSomenteAbertos(registros)
+        const tenders = deduplicarPorFonteId(abertos.map((r) => normalizarRegistroSestSenat(r)))
+        totalFetched += tenders.length
+
+        const result = await salvarLote(tenders, 'SEST SENAT Worker')
+        totalNew += result.totalNew
+        totalDupes += result.totalDupes
+        totalUpdated += result.totalUpdated
+
+        console.log(
+          `[SEST SENAT Worker] ${registros.length} registro(s) na fonte, ${abertos.length} em aberto, ${tenders.length} licitação(ões) única(s).`
+        )
+      } catch (err) {
+        hadErrors = true
+        console.error('[SEST SENAT Worker] Erro na coleta:', err)
       }
 
       await saveWorkerLog({
         worker: 'coletor-sest-senat',
-        status: hadErrors ? 'PARTIAL' : 'SUCCESS',
+        status: hadErrors ? 'FAILED' : 'SUCCESS',
         fonte: 'SEST_SENAT',
         totalFetched,
         totalNew,
         totalDupes,
         totalUpdated,
-        errorMsg: hadErrors ? 'Uma ou mais empresas (SEST/SENAT) falharam — ver logs do worker' : undefined,
+        errorMsg: hadErrors ? 'A coleta do SEST SENAT falhou — ver logs do worker' : undefined,
         startedAt,
         finishedAt: new Date(),
       })

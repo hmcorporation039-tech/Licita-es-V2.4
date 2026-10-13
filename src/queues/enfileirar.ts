@@ -12,7 +12,7 @@
 // projeto antes (ver comentários em workers/index.ts).
 // ============================================================
 
-import { Queue } from 'bullmq'
+import { JobsOptions, Queue } from 'bullmq'
 
 export const TIMEOUT_ENFILEIRAR_MS = Number(process.env.QUEUE_ENQUEUE_TIMEOUT_MS ?? 5_000)
 
@@ -29,13 +29,14 @@ export async function enfileirarSemTravar<T extends object>(
   queue: Queue,
   nome: string,
   dados: T,
-  contexto: string
+  contexto: string,
+  opcoes?: JobsOptions
 ): Promise<boolean> {
   let timer: NodeJS.Timeout | undefined
 
   try {
     await Promise.race([
-      queue.add(nome, dados),
+      queue.add(nome, dados, opcoes),
       new Promise((_resolve, reject) => {
         timer = setTimeout(
           () => reject(new EnfileiramentoExpirado(queue.name, TIMEOUT_ENFILEIRAR_MS)),

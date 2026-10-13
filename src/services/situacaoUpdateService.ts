@@ -21,6 +21,7 @@ import { SituacaoEnum } from '@prisma/client'
 import { pncpClient } from '../lib/httpClient'
 import { PNCP_SITUACAO_COMPRA_ID_MAP } from '../types'
 import { prisma } from './tenderService'
+import { identificadorCompraPncpValido } from '../lib/pncpIdentificador'
 
 // Mesmo mapa usado na coleta (pncpParser). Centralizado em types/index.ts.
 const SITUACAO_COMPRA_ID_MAP: Record<number, SituacaoEnum> = PNCP_SITUACAO_COMPRA_ID_MAP
@@ -52,7 +53,7 @@ export async function refreshTenderSituacao(tenderId: string): Promise<boolean> 
   const raw = tender.rawJson as Record<string, unknown>
   const ano = raw.anoCompra as number | undefined
   const sequencial = raw.sequencialCompra as number | undefined
-  if (!ano || !sequencial) return false
+  if (!ano || !sequencial || !identificadorCompraPncpValido(tender.orgaoCnpj, ano, sequencial)) return false
 
   const response = await pncpClient.get<PNCPCompraStatus>(
     `/v1/orgaos/${tender.orgaoCnpj}/compras/${ano}/${sequencial}`

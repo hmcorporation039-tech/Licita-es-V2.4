@@ -3,7 +3,7 @@
 // Rate limit: 1 req/segundo por domínio (APIs gov)
 // ============================================================
 
-import axios, { AxiosInstance } from 'axios'
+import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios'
 
 // Delay simples para respeitar rate limit
 function sleep(ms: number): Promise<void> {
@@ -11,6 +11,17 @@ function sleep(ms: number): Promise<void> {
 }
 
 const LIMITE_RESPOSTA_BYTES = 50 * 1024 * 1024
+const MAX_TENTATIVAS_EXTRAS = 3
+const ESPERA_BASE_MS = 10_000
+const ESPERA_MAXIMA_MS = 60_000
+
+type ConfigComTentativas = InternalAxiosRequestConfig & { tentativasExtras?: number }
+
+export function esperaAntesDeTentarDeNovo(tentativa: number, retryAfter?: string | null): number {
+  const segundos = Number(retryAfter)
+  if (Number.isFinite(segundos) && segundos > 0) return Math.min(segundos * 1000, ESPERA_MAXIMA_MS)
+  return Math.min(ESPERA_BASE_MS * 2 ** (tentativa - 1), ESPERA_MAXIMA_MS)
+}
 
 // Cria um cliente axios com delay entre requisições
 function createRateLimitedClient(
@@ -47,12 +58,18 @@ function createRateLimitedClient(
 
   client.interceptors.response.use(
     (res) => res,
-    async (err) => {
-      // Retry automático em 429 (too many requests) ou 503
-      if (err.response?.status === 429 || err.response?.status === 503) {
-        console.warn('[httpClient] Rate limit atingido — aguardando 10s...')
-        await sleep(10_000)
-        return client.request(err.config)
+    async (err: AxiosError) => {
+      const config = err.config as ConfigComTentativas | undefined
+      const status = err.response?.status
+      if (config && (status === 429 || status === 503)) {
+        const tentativa = (config.tentativasExtras ?? 0) + 1
+        if (tentativa <= MAX_TENTATIVAS_EXTRAS) {
+          const espera = esperaAntesDeTentarDeNovo(tentativa, err.response?.headers?.['retry-after'] as string | undefined)
+          console.warn(`[httpClient] HTTP ${status} — nova tentativa ${tentativa}/${MAX_TENTATIVAS_EXTRAS} em ${Math.round(espera / 1000)}s...`)
+          await sleep(espera)
+          config.tentativasExtras = tentativa
+          return client.request(config)
+        }
       }
       return Promise.reject(err)
     }

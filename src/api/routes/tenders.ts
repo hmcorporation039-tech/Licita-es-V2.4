@@ -25,6 +25,8 @@ import { analiseParaResposta } from '../../lib/analiseParaResposta'
 import { whereLicitacaoAberta } from '../../lib/licitacaoAberta'
 import { TENDER_PUBLICO, semRawJson } from '../../lib/tenderPublico'
 import { MAX_ANALISES_POR_HORA, pedidosDeAnaliseNaUltimaHora } from '../../services/quotaService'
+import { desfazerReserva, reservarAnalise } from '../../services/reservaDeAnalise'
+import { falhouHaPouco } from '../../lib/esperaDeReanalise'
 
 export const tendersRouter = Router()
 
@@ -299,6 +301,12 @@ tendersRouter.post(
       }
     }
 
+    if (!force && existing && falhouHaPouco(existing, req.isAdmin === true)) {
+      throw new ApiError(429, 'A última análise deste edital não deu certo há pouco. Tente de novo mais tarde.', {
+        code: 'ANALISE_FALHOU_HA_POUCO',
+      })
+    }
+
     // Só chega aqui quem vai de fato gastar IA (análise pronta ou em andamento
     // já voltou acima, de graça — a análise é compartilhada entre as empresas).
     await exigirCotaDaRequisicao(req, 'analisesIaMes')
@@ -306,20 +314,11 @@ tendersRouter.post(
       throw new ApiError(429, 'Muitas análises pedidas na última hora. Aguarde um pouco antes de pedir outra.', { code: 'ANALISES_POR_HORA' })
     }
 
-    const pendente = await prisma.tenderAnalysis.upsert({
-      where: { tenderId: req.params.id },
-      update: { status: 'PENDING', errorMsg: null },
-      create: { tenderId: req.params.id, status: 'PENDING' },
-    })
-
-    const enfileirou = await enfileirarSemTravar(
-      analiseQueue,
-      'analisar-edital',
-      { tenderId: req.params.id, companyId: req.companyId!, userId: req.userId! },
-      'Análise'
-    )
-    if (!enfileirou) {
-      throw new ApiError(503, 'A fila de análise está indisponível no momento — tente de novo em alguns minutos')
+    const reservada = await reservarAnalise(req.params.id, force)
+    if (!reservada) {
+      const emAndamento = await prisma.tenderAnalysis.findUnique({ where: { tenderId: req.params.id } })
+      res.status(202).json(emAndamento ? analiseParaResposta(emAndamento, req.isAdmin === true) : null)
+      return
     }
 
     await registrarAuditoria(req, {
@@ -329,7 +328,19 @@ tendersRouter.post(
       metadata: { forcada: force },
     })
 
-    res.status(202).json(analiseParaResposta(pendente, req.isAdmin === true))
+    const enfileirou = await enfileirarSemTravar(
+      analiseQueue,
+      'analisar-edital',
+      { tenderId: req.params.id, companyId: req.companyId!, userId: req.userId! },
+      'Análise',
+      { deduplication: { id: `analise-${req.params.id}` } }
+    )
+    if (!enfileirou) {
+      await desfazerReserva(req.params.id, existing)
+      throw new ApiError(503, 'A fila de análise está indisponível no momento — tente de novo em alguns minutos')
+    }
+
+    res.status(202).json(analiseParaResposta(reservada, req.isAdmin === true))
   })
 )
 

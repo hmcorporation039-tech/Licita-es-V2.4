@@ -28,6 +28,26 @@ const SITUACAO_FECHADA = /encerrad|cancelad|revogad|anulad|homologad|fracassad|c
 export const SESCGO_CNPJ = '03671444000147'
 export const SESCGO_RAZAO_SOCIAL = 'Serviço Social do Comércio - SESC - Administração Regional no Estado de Goiás'
 
+function idDoAnexo(tender: NormalizedTender): number {
+  const id = Number(tender.linkEdital?.match(/\/download\/(\d+)/)?.[1])
+  return Number.isFinite(id) ? id : Number.MAX_SAFE_INTEGER
+}
+
+export function desambiguarFonteIdsRepetidos(tenders: NormalizedTender[]): NormalizedTender[] {
+  const grupos = new Map<string, NormalizedTender[]>()
+  for (const tender of tenders) grupos.set(tender.fonteId, [...(grupos.get(tender.fonteId) ?? []), tender])
+
+  return [...grupos.values()].flatMap((grupo) => {
+    if (grupo.length === 1) return grupo
+    const ordenados = [...grupo].sort((a, b) => idDoAnexo(a) - idDoAnexo(b) || a.objeto.localeCompare(b.objeto))
+    return ordenados.map((tender, i) => {
+      if (i === 0) return tender
+      const sufixo = idDoAnexo(tender) === Number.MAX_SAFE_INTEGER ? `S${i}` : String(idDoAnexo(tender))
+      return { ...tender, fonteId: `${tender.fonteId}-${sufixo}` }
+    })
+  })
+}
+
 export function parseSescGoListagem(html: string): NormalizedTender[] {
   const $ = cheerio.load(html)
   const tenders: NormalizedTender[] = []
@@ -81,5 +101,5 @@ export function parseSescGoListagem(html: string): NormalizedTender[] {
     })
   })
 
-  return tenders
+  return desambiguarFonteIdsRepetidos(tenders)
 }

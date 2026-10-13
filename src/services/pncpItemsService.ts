@@ -11,6 +11,7 @@
 
 import axios from 'axios'
 import { NormalizedTenderItem } from '../types'
+import { assertIdentificadorCompraPncp } from '../lib/pncpIdentificador'
 
 interface PNCPItemRaw {
   numeroItem: number
@@ -30,6 +31,7 @@ export async function fetchPNCPItens(
   anoCompra: number | string,
   sequencialCompra: number | string
 ): Promise<NormalizedTenderItem[]> {
+  assertIdentificadorCompraPncp(cnpj, anoCompra, sequencialCompra)
   const url = `https://pncp.gov.br/api/pncp/v1/orgaos/${cnpj}/compras/${anoCompra}/${sequencialCompra}/itens`
   const response = await axios.get<PNCPItemRaw[]>(url, { timeout: 20_000 })
   const raw = Array.isArray(response.data) ? response.data : []

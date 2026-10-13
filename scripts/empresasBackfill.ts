@@ -19,6 +19,7 @@
 
 import { randomUUID } from 'node:crypto'
 import { prisma } from '../src/services/tenderService'
+import { confirmarAlvoRemoto } from './lib/alvoDoBanco'
 
 const BATCH_SIZE = 500
 
@@ -72,6 +73,7 @@ async function backfillTenderMatches() {
 }
 
 async function main() {
+  await confirmarAlvoRemoto('criar/vincular empresas para os usuários existentes')
   await backfillUsuarios()
   await backfillTabela('monitored_items')
   await backfillTabela('company_documents')
