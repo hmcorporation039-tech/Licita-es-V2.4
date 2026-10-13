@@ -9,6 +9,7 @@ import { prisma } from '../../services/tenderService'
 import { buscarContratos, buscarContratosDoFornecedor, PncpIndisponivelError } from '../../services/pncpConsultaService'
 import { contratosVencendo, montarDossie, sugerirPerfil } from '../../lib/radar'
 import { ApiError, asyncHandler } from '../asyncHandler'
+import { normalize } from '../../lib/geoService'
 
 export const radarRouter = Router()
 
@@ -27,6 +28,44 @@ async function comPncp<T>(fn: () => Promise<T>): Promise<T> {
     throw err
   }
 }
+
+const buscaOrgaoSchema = z.object({ q: z.string().trim().min(3).max(120) })
+
+radarRouter.get(
+  '/orgaos',
+  asyncHandler(async (req, res) => {
+    const { q } = buscaOrgaoSchema.parse(req.query)
+    const qNorm = normalize(q)
+
+    const [dasLicitacoes, dasUasgs] = await Promise.all([
+      prisma.tender.findMany({
+        where: { orgaoNorm: { contains: qNorm }, orgaoCnpj: { not: null } },
+        distinct: ['orgaoCnpj'],
+        orderBy: { orgaoCnpj: 'asc' },
+        take: 15,
+        select: { orgao: true, orgaoCnpj: true, uf: true },
+      }),
+      prisma.uasg.findMany({
+        where: { ativo: true, cnpjOrgao: { not: null }, OR: [{ nomeOrgaoNorm: { contains: qNorm } }, { nomeUasgNorm: { contains: qNorm } }] },
+        take: 15,
+        orderBy: { nomeOrgao: 'asc' },
+        select: { nomeOrgao: true, nomeUasg: true, siglaUf: true, cnpjOrgao: true },
+      }),
+    ])
+
+    const porCnpj = new Map<string, { cnpj: string; nome: string; uf: string | null }>()
+    for (const t of dasLicitacoes) {
+      const cnpj = soDigitos(t.orgaoCnpj ?? '')
+      if (cnpj.length === 14 && !porCnpj.has(cnpj)) porCnpj.set(cnpj, { cnpj, nome: t.orgao ?? cnpj, uf: t.uf })
+    }
+    for (const u of dasUasgs) {
+      const cnpj = soDigitos(u.cnpjOrgao ?? '')
+      if (cnpj.length === 14 && !porCnpj.has(cnpj)) porCnpj.set(cnpj, { cnpj, nome: u.nomeOrgao ?? u.nomeUasg, uf: u.siglaUf })
+    }
+
+    res.json([...porCnpj.values()].slice(0, 20))
+  })
+)
 
 const vencendoSchema = z.object({
   cnpjOrgao: cnpjSchema,

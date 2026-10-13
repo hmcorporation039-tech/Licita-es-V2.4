@@ -49,7 +49,7 @@ export default function EscolhidasPage() {
         title="Licitações escolhidas"
         description={
           <p className="max-w-3xl">
-            Licitações que você marcou como interessado — encontre-as em “Meus matches” e clique em “Marcar como interessado” pra elas aparecerem
+            Licitações em que você decidiu concorrer. Para incluir uma, use “Escolher esta licitação” no detalhe da licitação ou “Marcar como interessado” em “Meus matches”.
             aqui. Em cada uma, o estudo de custos calcula preços de mercado, deslocamento, prazo, lucro ou prejuízo e gera o PDF.
           </p>
         }
@@ -71,7 +71,7 @@ export default function EscolhidasPage() {
         !error && (
           <EmptyState
             title="Nenhuma licitação escolhida ainda"
-            description="Em “Meus matches”, use “Marcar como interessado” nas licitações em que você pretende concorrer."
+            description="Abra uma licitação e use “Escolher esta licitação”, ou use “Marcar como interessado” em “Meus matches”."
             action={
               <LinkButton href="/matches" size="sm">
                 Ir para Meus matches

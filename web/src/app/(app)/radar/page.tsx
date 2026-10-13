@@ -66,12 +66,10 @@ interface Dossie {
   ultimosContratos: Contrato[]
   vencendoEm90Dias: Contrato[]
 }
-interface UasgBusca {
-  codigoUasg: string
-  nomeUasg: string
-  nomeOrgao: string | null
-  siglaUf: string | null
-  cnpjOrgao: string | null
+interface OrgaoEncontrado {
+  cnpj: string
+  nome: string
+  uf: string | null
 }
 
 const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
@@ -205,7 +203,7 @@ export default function RadarPage() {
 
 function ContratosVencendo() {
   const [busca, setBusca] = useState('')
-  const [opcoes, setOpcoes] = useState<UasgBusca[]>([])
+  const [opcoes, setOpcoes] = useState<OrgaoEncontrado[]>([])
   const [orgao, setOrgao] = useState<{ cnpj: string; nome: string } | null>(null)
   const [dias, setDias] = useState(120)
   const [todos, setTodos] = useState(false)
@@ -234,19 +232,18 @@ function ContratosVencendo() {
     setBusca(texto)
     if (texto.trim().length < 3) return setOpcoes([])
     try {
-      const r = await api.get<UasgBusca[]>(`/api/uasg/search?q=${encodeURIComponent(texto.trim())}`)
+      const r = await api.get<OrgaoEncontrado[]>(`/api/radar/orgaos?q=${encodeURIComponent(texto.trim())}`)
       if (minha !== ultimaBusca.current) return
-      const comCnpj = r.filter((o) => o.cnpjOrgao)
-      setOpcoes(comCnpj)
-      setSemResultado(comCnpj.length === 0)
+      setOpcoes(r)
+      setSemResultado(r.length === 0)
     } catch {
       if (minha === ultimaBusca.current) setOpcoes([])
     }
   }
 
-  function escolherOrgao(o: UasgBusca) {
+  function escolherOrgao(o: OrgaoEncontrado) {
     ultimaBusca.current += 1
-    setOrgao({ cnpj: o.cnpjOrgao!, nome: `${o.nomeOrgao ?? o.nomeUasg}${o.siglaUf ? ' — ' + o.siglaUf : ''}` })
+    setOrgao({ cnpj: o.cnpj, nome: `${o.nome}${o.uf ? ' — ' + o.uf : ''}` })
     setOpcoes([])
     setSemResultado(false)
   }
@@ -317,7 +314,7 @@ function ContratosVencendo() {
                 <ul id={listaId} role="listbox" aria-label="Órgãos encontrados" className="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded border border-line bg-surface text-sm">
                   {opcoes.map((o, i) => (
                     <li
-                      key={o.codigoUasg}
+                      key={o.cnpj}
                       id={`${listaId}-${i}`}
                       role="option"
                       aria-selected={i === ativo}
@@ -326,8 +323,8 @@ function ContratosVencendo() {
                       onClick={() => escolherOrgao(o)}
                       className={cx('cursor-pointer border-b border-line-soft px-3 py-2 last:border-0', i === ativo && 'bg-accent-soft')}
                     >
-                      <span className="text-ink">{o.nomeOrgao ?? o.nomeUasg}</span>{' '}
-                      {o.siglaUf && <span className="font-mono text-xs text-muted">{o.siglaUf}</span>}
+                      <span className="text-ink">{o.nome}</span>{' '}
+                      {o.uf && <span className="font-mono text-xs text-muted">{o.uf}</span>}
                     </li>
                   ))}
                 </ul>

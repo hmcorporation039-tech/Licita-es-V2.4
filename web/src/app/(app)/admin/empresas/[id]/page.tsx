@@ -236,7 +236,7 @@ function Conteudo({ id }: { id: string }) {
               return (
                 <Metric
                   key={r.recurso}
-                  label={<span className="capitalize">{r.rotulo}</span>}
+                  label={<span className="inline-block first-letter:uppercase">{r.rotulo}</span>}
                   value={nf.format(r.usado)}
                   detail={<DetalheDaCota r={r} />}
                   tone={situacao === 'excedido' ? 'danger' : situacao === 'atingido' ? 'warn' : 'default'}

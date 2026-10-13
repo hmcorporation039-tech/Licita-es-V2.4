@@ -76,7 +76,7 @@ export function textoDoPrazo(data: Date | null, agora: Date = new Date()): strin
   if (restante < 0) return 'Encerrado'
   const horas = Math.floor(restante / HORA)
   if (horas < 1) return 'em menos de 1 h'
-  if (horas <= 48) return `em ${horas} h`
+  if (restante <= 48 * HORA) return `em ${horas} h`
   const dias = Math.floor(restante / (24 * HORA))
   return `em ${dias} ${dias === 1 ? 'dia' : 'dias'}`
 }
@@ -96,7 +96,7 @@ export function Prazo({
   const valida = pura ? fimDoDiaEmBrasilia(data) : paraData(data)
   const tom = tomDoPrazo(valida)
   const relativo = textoDoPrazo(valida)
-  const absoluto = valida ? formatarData(data, { comHora: !semHora && !pura, anoCurto: true }) : '—'
+  const absoluto = valida ? formatarData(data, { comHora: !semHora && !pura }) : '—'
 
   return (
     <span className={cx('inline-flex min-w-0', layout === 'stack' ? 'flex-col' : 'flex-wrap items-baseline gap-x-2', className)}>

@@ -541,7 +541,7 @@ export default function EmpresaPage() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="Tipo de documento" className="sm:col-span-2">
                 <Select value={docTipo} onChange={(e) => onSelectDocTipo(e.target.value)}>
-                  <option value="">Documento avulso (fora da lista padrão)</option>
+                  <option value="">Documento avulso</option>
                   {SECOES_DE_DOCUMENTO.map((g) => (
                     <optgroup key={g.secao} label={g.secao}>
                       {g.opcoes.map((opt) => (

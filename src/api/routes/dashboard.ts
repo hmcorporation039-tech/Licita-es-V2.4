@@ -93,8 +93,8 @@ dashboardRouter.get(
 // mapa — mesma lógica de "farol": vermelho pisca quando tá muito em cima da
 // hora, amarelo quando ainda dá tempo mas já é prá se organizar, verde
 // quando foi escolhida mas o prazo tá tranquilo (ou não tem data definida).
-const MAPA_URGENTE_DIAS = 3
-const MAPA_ANDAMENTO_DIAS = 15
+const MAPA_URGENTE_DIAS = 2
+const MAPA_ANDAMENTO_DIAS = 7
 
 dashboardRouter.get(
   '/mapa',

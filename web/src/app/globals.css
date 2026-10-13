@@ -116,7 +116,7 @@ dialog::backdrop {
     fill-opacity: 1;
   }
   50% {
-    fill-opacity: 0.35;
+    fill-opacity: 0.7;
   }
 }
 

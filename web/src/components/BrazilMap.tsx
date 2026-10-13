@@ -50,8 +50,8 @@ const COR_BORDA_ATIVA = 'var(--color-ink)'
 
 const LEGENDA: Array<{ urgencia: Urgencia; rotulo: string }> = [
   { urgencia: 'selecionada', rotulo: 'Selecionada' },
-  { urgencia: 'andamento', rotulo: 'Prazo se aproximando' },
-  { urgencia: 'urgente', rotulo: 'Prestes a encerrar' },
+  { urgencia: 'andamento', rotulo: 'Encerra em até 7 dias' },
+  { urgencia: 'urgente', rotulo: 'Encerra em até 48 h' },
 ]
 
 const LABEL_PRAZO = (dias: number | null) => {
@@ -126,7 +126,7 @@ export default function BrazilMap({ estados }: { estados: EstadoMapa[] }) {
             title="Nenhuma licitação escolhida ainda"
             description={
               <>
-                Marque licitações como &quot;interessado&quot; em <TextLink href="/matches">Meus matches</TextLink> pra elas aparecerem aqui.
+                Escolha licitações no detalhe (“Escolher esta licitação”) ou em <TextLink href="/matches">Meus matches</TextLink> para elas aparecerem aqui.
               </>
             }
           />

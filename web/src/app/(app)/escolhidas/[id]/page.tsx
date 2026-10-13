@@ -341,9 +341,9 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
                   return (
                     <Tr key={it.id}>
                       <Td className="max-w-[260px]">
-                        <span className="text-ink">
+                        <span className="line-clamp-2 text-ink" title={it.descricao}>
                           {it.numero ? <span className="font-mono text-muted">{it.numero}. </span> : ''}
-                          {it.descricao.slice(0, 160)}
+                          {it.descricao}
                         </span>
                         {it.codigoCatalogo && (
                           <span className="mt-0.5 block font-mono text-2xs text-muted">
