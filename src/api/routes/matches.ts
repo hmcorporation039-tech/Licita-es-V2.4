@@ -153,8 +153,14 @@ matchesRouter.get(
       ])
     }
 
+    const planosEscolhidos = await prisma.tenderParticipationPlan.findMany({
+      where: { companyId: req.companyId!, tenderId: { in: items.map((m) => m.tenderId) }, status: 'VOU_PARTICIPAR' },
+      select: { tenderId: true },
+    })
+    const escolhidas = new Set(planosEscolhidos.map((p) => p.tenderId))
+
     res.json({
-      items: items.map((m) => ({ ...m, aderencia: aderenciaDoMatch(m) })),
+      items: items.map((m) => ({ ...m, aderencia: aderenciaDoMatch(m), escolhida: escolhidas.has(m.tenderId) })),
       total,
       page,
       pageSize,

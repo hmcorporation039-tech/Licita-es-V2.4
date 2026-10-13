@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Clock } from 'lucide-react'
 import { cx } from './cx'
+import { ehDataPura, fimDoDiaEmBrasilia, formatarData, paraData } from '@/lib/datas'
 
 export type Tom = 'neutral' | 'accent' | 'ok' | 'warn' | 'danger'
 
@@ -76,12 +77,9 @@ export function textoDoPrazo(data: Date | null, agora: Date = new Date()): strin
   const horas = Math.floor(restante / HORA)
   if (horas < 1) return 'em menos de 1 h'
   if (horas <= 48) return `em ${horas} h`
-  const dias = Math.round(restante / (24 * HORA))
+  const dias = Math.floor(restante / (24 * HORA))
   return `em ${dias} ${dias === 1 ? 'dia' : 'dias'}`
 }
-
-const formatoData = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
-const formatoDia = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', timeZone: 'America/Sao_Paulo' })
 
 export function Prazo({
   data,
@@ -94,19 +92,19 @@ export function Prazo({
   semHora?: boolean
   className?: string
 }) {
-  const quando = data ? new Date(data) : null
-  const valida = quando && !Number.isNaN(quando.getTime()) ? quando : null
+  const pura = typeof data === 'string' || data instanceof Date ? ehDataPura(data) : false
+  const valida = pura ? fimDoDiaEmBrasilia(data) : paraData(data)
   const tom = tomDoPrazo(valida)
   const relativo = textoDoPrazo(valida)
-  const absoluto = valida ? (semHora ? formatoDia : formatoData).format(valida).replace(',', '') : '—'
+  const absoluto = valida ? formatarData(data, { comHora: !semHora && !pura, anoCurto: true }) : '—'
 
   return (
     <span className={cx('inline-flex min-w-0', layout === 'stack' ? 'flex-col' : 'flex-wrap items-baseline gap-x-2', className)}>
-      <span className={cx('inline-flex items-center gap-1.5 text-sm', tom === 'neutral' ? 'text-ink-2' : cx('font-semibold', TEXTO[tom]))}>
+      <span className={cx('inline-flex items-center gap-1.5 whitespace-nowrap text-sm', tom === 'neutral' ? 'text-ink-2' : cx('font-semibold', TEXTO[tom]))}>
         {tom !== 'neutral' && <Clock size={13} strokeWidth={2.25} aria-hidden />}
         {relativo}
       </span>
-      {valida && <span className="font-mono text-xs text-muted">{absoluto}</span>}
+      {valida && <span className="whitespace-nowrap font-mono text-xs text-muted">{absoluto}</span>}
     </span>
   )
 }

@@ -3,7 +3,7 @@ import { cx } from './cx'
 
 export function TableWrap({ children, className, minWidth }: { children: ReactNode; className?: string; minWidth?: number }) {
   return (
-    <div className={cx('min-w-0 overflow-x-auto rounded border border-line bg-surface', className)}>
+    <div className={cx('relative min-w-0 overflow-x-auto rounded border border-line bg-surface', className)}>
       <div style={minWidth ? { minWidth } : undefined}>{children}</div>
     </div>
   )

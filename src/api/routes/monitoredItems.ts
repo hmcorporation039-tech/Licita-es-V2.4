@@ -71,7 +71,7 @@ const createSchema = z.object({
   origemUf: z.string().length(2).nullable().optional(),
 })
 
-const updateSchema = createSchema.partial()
+const updateSchema = createSchema.partial().extend({ active: z.boolean().optional() })
 
 // Resolve nome+UF de cidade em lat/lng usando a base do IBGE
 function geocodeOrigem(municipio: string, uf: string): { lat: number; lng: number } {

@@ -60,6 +60,7 @@ const querySchema = z.object({
     .enum(['true', 'false'])
     .optional()
     .transform((v) => v === 'true'),
+  ordem: z.enum(['prazo', 'recentes']).default('prazo'),
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().positive().max(100).default(20),
 })
@@ -79,6 +80,7 @@ tendersRouter.get(
       q,
       somenteRelacionadas,
       agrupar,
+      ordem,
       page,
       pageSize,
     } = querySchema.parse(req.query)
@@ -114,9 +116,13 @@ tendersRouter.get(
     const [rows, total] = await Promise.all([
       prisma.tender.findMany({
         where,
-        orderBy: agrupar
-          ? [{ uf: 'asc' }, { orgao: 'asc' }, { publicadoAt: 'desc' }]
-          : { publicadoAt: 'desc' },
+        orderBy: [
+          ...(agrupar ? [{ uf: 'asc' as const }, { orgao: 'asc' as const }] : []),
+          ...(ordem === 'prazo'
+            ? [{ encerramentoAt: { sort: 'asc' as const, nulls: 'last' as const } }, { aberturaAt: { sort: 'asc' as const, nulls: 'last' as const } }]
+            : []),
+          { publicadoAt: 'desc' as const },
+        ],
         skip: (page - 1) * pageSize,
         take: pageSize,
         select: companyId

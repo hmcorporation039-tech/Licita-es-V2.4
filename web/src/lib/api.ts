@@ -8,13 +8,28 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3333'
 
 export class ApiRequestError extends Error {
   status: number
-  // Código estável enviado pela API (ex.: EMAIL_NAO_VERIFICADO, COTA_EXCEDIDA).
   code?: string
-  constructor(status: number, message: string, code?: string) {
+  campos: Record<string, string>
+  constructor(status: number, message: string, code?: string, campos: Record<string, string> = {}) {
     super(message)
     this.status = status
     this.code = code
+    this.campos = campos
   }
+}
+
+interface DetalheDeValidacao {
+  path?: unknown[]
+  message?: string
+}
+
+function camposComErro(detalhes: DetalheDeValidacao[]): Record<string, string> {
+  const campos: Record<string, string> = {}
+  for (const d of detalhes) {
+    const campo = String(d.path?.[0] ?? '')
+    if (campo && d.message && !campos[campo]) campos[campo] = d.message
+  }
+  return campos
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -39,11 +54,10 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
       clearSessionUser()
       window.location.href = '/login'
     }
-    const detail =
-      Array.isArray(body.details) && body.details.length > 0
-        ? ' (' + body.details.map((d: { path?: unknown[]; message?: string }) => `${(d.path ?? []).join('.')}: ${d.message}`).join('; ') + ')'
-        : ''
-    throw new ApiRequestError(res.status, (body.error ?? `Erro ${res.status}`) + detail, typeof body.code === 'string' ? body.code : undefined)
+    const detalhes: DetalheDeValidacao[] = Array.isArray(body.details) ? body.details : []
+    const mensagens = [...new Set(detalhes.map((d) => d.message).filter((m): m is string => Boolean(m)))]
+    const mensagem = mensagens.length > 0 ? mensagens.join('. ') : (body.error ?? `Erro ${res.status}`)
+    throw new ApiRequestError(res.status, mensagem, typeof body.code === 'string' ? body.code : undefined, camposComErro(detalhes))
   }
 
   return body as T

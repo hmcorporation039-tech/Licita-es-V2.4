@@ -103,7 +103,7 @@ function Rodape({ user, onSair }: { user: SessionUser | null; onSair: () => void
     <div className="flex flex-col gap-3 border-t border-line pt-3">
       <MedidorNoMenu />
       <div className="flex items-center justify-between gap-2 px-2">
-        <Link href="/conta" className="min-w-0 text-xs leading-4 text-muted hover:text-ink">
+        <Link href="/conta" title={user.email} className="min-w-0 text-xs leading-4 text-muted hover:text-ink">
           <span className="block truncate font-medium text-ink">{user.name ?? user.email}</span>
           {user.name && <span className="block truncate">{user.email}</span>}
         </Link>

@@ -11,7 +11,7 @@ export interface Aba<T extends string> {
 }
 
 const ABA =
-  '-mb-px inline-flex h-10 shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-0.5 text-sm transition-colors'
+  'inline-flex h-10 shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-0.5 text-sm transition-colors'
 const ATIVA = 'border-accent font-semibold text-accent'
 const INATIVA = 'border-transparent text-muted hover:border-line-strong hover:text-ink'
 
@@ -49,7 +49,7 @@ export function Tabs<T extends string>({
   }
 
   return (
-    <div role="tablist" aria-label={label} onKeyDown={aoTeclar} className={cx('flex gap-6 overflow-x-auto border-b border-line', className)}>
+    <div role="tablist" aria-label={label} onKeyDown={aoTeclar} className={cx('flex gap-6 overflow-x-auto overflow-y-hidden shadow-[inset_0_-1px_0_var(--color-line)]', className)}>
       {tabs.map((t, i) => {
         const ativa = t.id === value
         return (
@@ -77,7 +77,7 @@ export function Tabs<T extends string>({
 
 export function TabLinks({ items, label, className }: { items: Array<{ href: string; label: ReactNode; active: boolean; count?: number }>; label: string; className?: string }) {
   return (
-    <nav aria-label={label} className={cx('flex gap-6 overflow-x-auto border-b border-line', className)}>
+    <nav aria-label={label} className={cx('flex gap-6 overflow-x-auto overflow-y-hidden shadow-[inset_0_-1px_0_var(--color-line)]', className)}>
       {items.map((item) => (
         <Link key={item.href} href={item.href} aria-current={item.active ? 'page' : undefined} className={cx(ABA, item.active ? ATIVA : INATIVA)}>
           {item.label}

@@ -136,6 +136,20 @@ rodar('API com banco real', () => {
       expect((await http('PATCH', `/api/tenders/${tenderId}/plano/status`, 'a', { status: 'VOU_PARTICIPAR' })).status).toBe(200)
     })
 
+    it('desativar e reativar o item muda o active de verdade', async () => {
+      const off = await http('PATCH', `/api/monitored-items/${itemA}`, 'a', { active: false })
+      expect(off.status).toBe(200)
+      expect(off.body.active).toBe(false)
+      const on = await http('PATCH', `/api/monitored-items/${itemA}`, 'a', { active: true })
+      expect(on.body.active).toBe(true)
+    })
+
+    it('palavra-chave de 1 letra é recusada com mensagem por campo', async () => {
+      const r = await http('POST', '/api/monitored-items', 'a', { name: 'Curta', keywords: ['a'] })
+      expect(r.status).toBe(400)
+      expect(r.body.details[0].path[0]).toBe('keywords')
+    })
+
     it('empresa B não enxerga nada de A nas listagens', async () => {
       const itens = await http('GET', '/api/monitored-items', 'b')
       expect(itens.body.map((i: { id: string }) => i.id)).not.toContain(itemA)
