@@ -1,39 +1,115 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: var(--font-plex-sans), "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), "IBM Plex Mono", ui-monospace, monospace;
+
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1rem;
+  --text-sm: 0.8125rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base: 0.875rem;
+  --text-base--line-height: 1.375rem;
+  --text-lg: 1rem;
+  --text-lg--line-height: 1.5rem;
+  --text-xl: 1.25rem;
+  --text-xl--line-height: 1.75rem;
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 2rem;
+  --text-3xl: 2rem;
+  --text-3xl--line-height: 2.5rem;
+  --text-4xl: 2.5rem;
+  --text-4xl--line-height: 3rem;
+
+  --color-canvas: #f7f6f2;
+  --color-surface: #ffffff;
+  --color-sunken: #fbfaf7;
+  --color-line: #e4e2dc;
+  --color-line-soft: #eeece6;
+  --color-line-strong: #d3d0c7;
+  --color-ink: #1a1c1f;
+  --color-ink-2: #3d4046;
+  --color-muted: #5b5f66;
+  --color-faint: #74777d;
+
+  --color-accent: #1f3a5f;
+  --color-accent-hover: #172c49;
+  --color-accent-soft: #e9eef4;
+  --color-accent-line: #9fb3cd;
+
+  --color-danger: #b42318;
+  --color-danger-soft: #fdf1ef;
+  --color-danger-line: #f1c4be;
+  --color-warn: #a15c07;
+  --color-warn-soft: #fdf6e9;
+  --color-warn-line: #ecd3a5;
+  --color-ok: #1e6b3a;
+  --color-ok-soft: #eef6f0;
+  --color-ok-line: #bcd9c4;
+
+  --color-indigo-50: #f2f5f9;
+  --color-indigo-100: #e3e9f1;
+  --color-indigo-200: #c7d3e3;
+  --color-indigo-300: #9fb3cd;
+  --color-indigo-400: #6f8aae;
+  --color-indigo-500: #4a6890;
+  --color-indigo-600: #2f4e78;
+  --color-indigo-700: #1f3a5f;
+  --color-indigo-800: #172c49;
+  --color-indigo-900: #112136;
+  --color-indigo-950: #0a1522;
+
+  --color-slate-50: #fbfaf7;
+  --color-slate-100: #f3f1ec;
+  --color-slate-200: #e4e2dc;
+  --color-slate-300: #d3d0c7;
+  --color-slate-400: #74777d;
+  --color-slate-500: #5b5f66;
+  --color-slate-600: #4a4d52;
+  --color-slate-700: #3d4046;
+  --color-slate-800: #2a2c30;
+  --color-slate-900: #1a1c1f;
+  --color-slate-950: #0f1012;
+}
+
 :root {
   color-scheme: light;
-  --background: #ffffff;
-  --foreground: #171717;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-/* Base maior (16px → 17.5px) — todas as classes text-* do Tailwind usam
-   rem, então isso deixa a letra visivelmente maior em toda a plataforma
-   sem precisar trocar classe por classe em cada página. */
 html {
-  font-size: 17.5px;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  /* Antes caía num Arial genérico, ignorando a fonte Geist já carregada
-     em layout.tsx (var(--font-sans), definida no @theme acima) — Geist é
-     desenhada pra tela e renderiza mais nítida que Arial. */
-  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--text-base--line-height);
+  font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
 }
 
-/* Sinalização "piscando" no mapa do Brasil (dashboard) — estados com
-   licitação escolhida urgente (vermelho) ou recém-selecionada (verde). */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+:where(input, select, textarea):focus-visible {
+  outline-offset: 0;
+}
+
+::selection {
+  background: var(--color-accent-soft);
+}
+
+dialog::backdrop {
+  background: rgb(26 28 31 / 0.4);
+}
+
 @keyframes map-blink {
   0%,
   100% {
@@ -43,6 +119,19 @@ body {
     fill-opacity: 0.35;
   }
 }
+
 .map-blink {
   animation: map-blink 1.3s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map-blink {
+    animation: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+  }
 }

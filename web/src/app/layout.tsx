@@ -1,33 +1,30 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
-import Nav from "@/components/Nav";
+import type { Metadata } from 'next'
+import { IBM_Plex_Mono, IBM_Plex_Sans } from 'next/font/google'
+import './globals.css'
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+const plexSans = IBM_Plex_Sans({
+  variable: '--font-plex-sans',
+  subsets: ['latin'],
+  weight: ['400', '500', '600'],
+  display: 'swap',
+})
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+const plexMono = IBM_Plex_Mono({
+  variable: '--font-plex-mono',
+  subsets: ['latin'],
+  weight: ['400', '500'],
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
-  title: "Monitor de Licitações",
-  description: "Monitoramento de licitações PNCP + ComprasNet",
-};
+  title: 'Monitor de Licitações',
+  description: 'Licitações abertas para o seu negócio, com prazo, edital e habilitação no mesmo lugar.',
+}
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
-    <html
-      lang="pt-BR"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col bg-slate-50 text-slate-900">
-        <Nav />
-        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6">{children}</main>
-      </body>
+    <html lang="pt-BR" className={`${plexSans.variable} ${plexMono.variable} h-full`}>
+      <body className="min-h-full bg-canvas text-ink antialiased">{children}</body>
     </html>
-  );
+  )
 }
