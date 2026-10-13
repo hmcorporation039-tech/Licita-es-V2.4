@@ -1,8 +1,5 @@
 'use client'
 
-// Captcha Cloudflare Turnstile no cadastro. Só aparece quando
-// NEXT_PUBLIC_TURNSTILE_SITE_KEY está configurada (a API confere com TURNSTILE_SECRET_KEY).
-
 import { useEffect, useRef } from 'react'
 
 const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY

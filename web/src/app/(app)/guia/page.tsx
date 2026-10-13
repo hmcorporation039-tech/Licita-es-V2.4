@@ -1,4 +1,5 @@
-import Link from 'next/link'
+import { ExternalLink, TriangleAlert } from 'lucide-react'
+import { PageHeader, TextLink } from '@/components/ui'
 
 const PLATAFORMAS = [
   {
@@ -61,28 +62,28 @@ const PLATAFORMAS = [
 
 const DISPENSA_PASSOS = [
   {
-    titulo: '1. Acessar o portal do Comprasnet',
+    titulo: 'Acessar o portal do Comprasnet',
     texto: 'cnetmobile.estaleiro.serpro.gov.br/comprasnet-web/public/compras',
   },
   {
-    titulo: '2. Definir os parâmetros de pesquisa',
+    titulo: 'Definir os parâmetros de pesquisa',
     texto: 'Situação: Em andamento · Etapa: Abertas para participação · Modalidade: Dispensa',
   },
   {
-    titulo: '3. Analisar o resultado da pesquisa',
+    titulo: 'Analisar o resultado da pesquisa',
     texto:
       'Desconsiderar: propostas com prazo superior a 30/60 dias, datas anteriores à atual, eventos pendentes de publicação, compras revogadas ou suspensas.',
   },
   {
-    titulo: '4. Consultar o objeto da compra',
+    titulo: 'Consultar o objeto da compra',
     texto: 'Buscar por palavras-chave do seu ramo; usar "Mostrar detalhes da compra" para ver a descrição completa.',
   },
   {
-    titulo: '5. Consultar os itens da compra',
+    titulo: 'Consultar os itens da compra',
     texto: 'Pelo ícone "Acompanhar Compra": itens, quantidade, valor estimado unitário e descrição detalhada.',
   },
   {
-    titulo: '6. Consultar a documentação da contratação',
+    titulo: 'Consultar a documentação da contratação',
     texto:
       'Em "Documentos e demais informações da contratação no PNCP" → "Arquivos", localizar o Aviso de Contratação Direta e verificar valor, data da sessão, SRP, prazo de entrega, condições de pagamento e exigências técnicas.',
   },
@@ -110,66 +111,100 @@ const ERROS_COMUNS = [
 
 export default function GuiaPage() {
   return (
-    <div className="flex flex-col gap-10 pb-10">
-      <section>
-        <h1 className="text-xl font-semibold">Guia prático</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Baseado no checklist de documentação para licitações públicas (Lei nº 14.133/2021). Consulte o
-          checklist interativo dentro de cada <Link href="/tenders" className="text-indigo-700 hover:underline">licitação</Link>.
-        </p>
-      </section>
+    <>
+      <PageHeader
+        title="Guia prático"
+        description={
+          <>
+            Baseado no checklist de documentação para licitações públicas (Lei nº 14.133/2021). Consulte o checklist interativo dentro de cada{' '}
+            <TextLink href="/tenders">licitação</TextLink>.
+          </>
+        }
+      />
 
-      <section>
-        <h2 className="mb-3 text-lg font-semibold">Pontos de atenção — erros comuns</h2>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {ERROS_COMUNS.map((e) => (
-            <div key={e.titulo} className="rounded border border-amber-300 bg-amber-50 p-4">
-              <p className="font-medium text-amber-900">⚠ {e.titulo}</p>
-              <p className="mt-1 text-sm text-amber-800">{e.texto}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+      <div className="flex max-w-prose flex-col gap-10 pb-10 text-base leading-relaxed text-ink-2">
+        <section aria-labelledby="guia-erros" className="flex flex-col gap-3">
+          <h2 id="guia-erros" className="text-lg font-semibold text-ink">
+            Pontos de atenção — erros comuns
+          </h2>
+          <ul className="flex flex-col divide-y divide-line-soft rounded border border-line bg-surface">
+            {ERROS_COMUNS.map((e) => (
+              <li key={e.titulo} className="flex gap-3 px-4 py-3.5">
+                <TriangleAlert size={16} strokeWidth={2} className="mt-1 shrink-0 text-warn" aria-hidden />
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  <p className="font-semibold text-ink">{e.titulo}</p>
+                  <p>{e.texto}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
 
-      <section>
-        <h2 className="mb-3 text-lg font-semibold">Como consultar dispensas eletrônicas no Comprasnet</h2>
-        <ol className="flex flex-col gap-3">
-          {DISPENSA_PASSOS.map((p) => (
-            <li key={p.titulo} className="rounded border border-slate-200 bg-white p-4">
-              <p className="font-medium">{p.titulo}</p>
-              <p className="mt-1 text-sm text-slate-600">{p.texto}</p>
-            </li>
-          ))}
-        </ol>
-      </section>
+        <section aria-labelledby="guia-dispensas" className="flex flex-col gap-3">
+          <h2 id="guia-dispensas" className="text-lg font-semibold text-ink">
+            Como consultar dispensas eletrônicas no Comprasnet
+          </h2>
+          <ol className="flex flex-col divide-y divide-line-soft rounded border border-line bg-surface">
+            {DISPENSA_PASSOS.map((p, i) => (
+              <li key={p.titulo} className="flex gap-4 px-4 py-3.5">
+                <span aria-hidden className="w-6 shrink-0 pt-px font-mono text-sm font-medium text-muted">
+                  {String(i + 1).padStart(2, '0')}
+                </span>
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  <p className="font-semibold text-ink">
+                    <span className="sr-only">{i + 1}. </span>
+                    {p.titulo}
+                  </p>
+                  <p className={i === 0 ? 'break-all font-mono text-sm' : undefined}>{p.texto}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
 
-      <section>
-        <h2 className="mb-3 text-lg font-semibold">Principais plataformas de licitação</h2>
-        <p className="mb-3 text-sm text-slate-500">
-          A lei aplicável depende de quem compra, não da plataforma: órgãos da administração direta seguem a
-          Lei 14.133/2021; estatais (Banco do Brasil, Caixa, Correios) seguem a Lei 13.303/2016 quando compram
-          para si mesmas.
-        </p>
-        <div className="flex flex-col gap-3">
-          {PLATAFORMAS.map((p) => (
-            <div key={p.nome} className="rounded border border-slate-200 bg-white p-4">
-              <div className="flex items-baseline justify-between gap-2">
-                <p className="font-medium">{p.nome}</p>
-                <a href={p.site} target="_blank" rel="noopener noreferrer" className="text-sm text-indigo-700 hover:underline">
-                  {p.site.replace('https://', '')}
-                </a>
-              </div>
-              <p className="mt-1 text-sm text-slate-600">
-                <span className="font-medium">Cadastro:</span> {p.cadastro}
-              </p>
-              <p className="mt-1 text-sm text-slate-600">
-                <span className="font-medium">Base legal:</span> {p.lei}
-              </p>
-              <p className="mt-1 text-sm text-slate-400">{p.obs}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-    </div>
+        <section aria-labelledby="guia-plataformas" className="flex flex-col gap-3">
+          <h2 id="guia-plataformas" className="text-lg font-semibold text-ink">
+            Principais plataformas de licitação
+          </h2>
+          <p>
+            A lei aplicável depende de quem compra, não da plataforma: órgãos da administração direta seguem a Lei 14.133/2021; estatais (Banco do
+            Brasil, Caixa, Correios) seguem a Lei 13.303/2016 quando compram para si mesmas.
+          </p>
+          <ul className="flex flex-col divide-y divide-line-soft rounded border border-line bg-surface">
+            {PLATAFORMAS.map((p) => (
+              <li key={p.nome} className="flex flex-col gap-2 px-4 py-4">
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
+                  <h3 className="font-semibold text-ink">{p.nome}</h3>
+                  <a
+                    href={p.site}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex shrink-0 items-center gap-1 self-start break-all font-mono text-xs text-accent underline decoration-accent-line underline-offset-[3px] hover:decoration-accent"
+                  >
+                    {p.site.replace('https://', '')}
+                    <ExternalLink size={12} aria-hidden />
+                    <span className="sr-only"> (abre em nova aba)</span>
+                  </a>
+                </div>
+                <dl className="flex flex-col gap-1.5 text-sm">
+                  <div className="flex flex-col gap-0.5 sm:flex-row sm:gap-3">
+                    <dt className="shrink-0 text-xs font-medium text-muted sm:w-20 sm:pt-0.5">Cadastro</dt>
+                    <dd>{p.cadastro}</dd>
+                  </div>
+                  <div className="flex flex-col gap-0.5 sm:flex-row sm:gap-3">
+                    <dt className="shrink-0 text-xs font-medium text-muted sm:w-20 sm:pt-0.5">Base legal</dt>
+                    <dd>{p.lei}</dd>
+                  </div>
+                  <div className="flex flex-col gap-0.5 sm:flex-row sm:gap-3">
+                    <dt className="shrink-0 text-xs font-medium text-muted sm:w-20 sm:pt-0.5">Observação</dt>
+                    <dd className="text-muted">{p.obs}</dd>
+                  </div>
+                </dl>
+              </li>
+            ))}
+          </ul>
+        </section>
+      </div>
+    </>
   )
 }

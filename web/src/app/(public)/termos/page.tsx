@@ -1,19 +1,17 @@
-import PublicShell from '@/components/PublicShell'
+import { PublicProse } from '@/components/PublicShell'
+import { Notice } from '@/components/ui'
 
 export const metadata = { title: 'Termos de Uso — Monitor de Licitações' }
 
-// MINUTA. Texto-base para revisão por advogado; não vale como contrato até ser revisado.
-// Ao alterar, atualize TERMOS_VERSAO em src/lib/legal.ts (API).
 export default function TermosPage() {
   return (
-    <PublicShell>
-      <div className="mb-6 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-        <strong>Minuta em revisão.</strong> Este texto é um ponto de partida e será revisado por advogado antes do lançamento
+    <PublicProse>
+      <h1 className="text-2xl font-semibold tracking-[-0.01em] text-ink">Termos de Uso</h1>
+      <Notice tone="warn" title="Minuta em revisão." className="mt-4">
+        Este texto é um ponto de partida e será revisado por advogado antes do lançamento
         comercial. Versão: 2026-10-minuta-1.
-      </div>
-      <article className="mx-auto max-w-3xl text-sm leading-relaxed text-slate-700 [&_h2]:mb-2 [&_h2]:mt-6 [&_h2]:text-base [&_h2]:font-semibold [&_h2]:text-slate-900 [&_p]:mb-2 [&_ul]:mb-2 [&_ul]:list-disc [&_ul]:pl-5">
-        <h1 className="mb-4 text-2xl font-semibold text-slate-900">Termos de Uso</h1>
-
+      </Notice>
+      <div className="text-base leading-relaxed text-ink-2 marker:text-faint [&_h2]:mb-3 [&_h2]:mt-8 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:text-ink [&_li]:pl-1 [&_p]:mb-3 [&_strong]:font-semibold [&_strong]:text-ink [&_ul]:mb-3 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-5">
         <h2>1. O serviço</h2>
         <p>
           O Monitor de Licitações é uma plataforma que coleta licitações publicadas em fontes públicas, permite acompanhá-las por
@@ -78,7 +76,7 @@ export default function TermosPage() {
 
         <h2>9. Foro e contato</h2>
         <p>[A definir com o advogado: foro, razão social, CNPJ e e-mail de contato.]</p>
-      </article>
-    </PublicShell>
+      </div>
+    </PublicProse>
   )
 }

@@ -3,16 +3,23 @@
 import { useSearchParams } from 'next/navigation'
 import { Suspense, useState } from 'react'
 import ConfirmarCodigo from '@/components/ConfirmarCodigo'
-import PublicShell from '@/components/PublicShell'
+import { PublicCard } from '@/components/PublicShell'
+import { Button, Carregando, Field, Input } from '@/components/ui'
 
-// Para quem fechou a tela do cadastro: informa o e-mail e digita o código recebido.
+const TITULO = 'Confirmar acesso'
+const DESCRICAO = 'Informe o e-mail do cadastro para digitar o código que você recebeu.'
+
 export default function VerificarEmailPage() {
   return (
-    <PublicShell estreito>
-      <Suspense fallback={<p className="text-sm text-slate-500">Carregando...</p>}>
-        <Conteudo />
-      </Suspense>
-    </PublicShell>
+    <Suspense
+      fallback={
+        <PublicCard title={TITULO} description={DESCRICAO}>
+          <Carregando linhas={2} />
+        </PublicCard>
+      }
+    >
+      <Conteudo />
+    </Suspense>
   )
 }
 
@@ -24,26 +31,21 @@ function Conteudo() {
   if (pronto) return <ConfirmarCodigo email={email.trim()} />
 
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault()
-        setPronto(true)
-      }}
-      className="flex flex-col gap-3"
-    >
-      <h1 className="text-2xl font-semibold">Confirmar acesso</h1>
-      <p className="text-sm text-slate-600">Informe o e-mail do cadastro para digitar o código que você recebeu.</p>
-      <input
-        type="email"
-        required
-        placeholder="voce@empresa.com.br"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        className="rounded border border-slate-300 px-3 py-2 text-sm"
-      />
-      <button type="submit" className="rounded bg-indigo-700 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-800">
-        Continuar
-      </button>
-    </form>
+    <PublicCard title={TITULO} description={DESCRICAO}>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          setPronto(true)
+        }}
+        className="flex flex-col gap-4"
+      >
+        <Field label="E-mail" required>
+          <Input type="email" autoComplete="email" placeholder="voce@empresa.com.br" value={email} onChange={(e) => setEmail(e.target.value)} />
+        </Field>
+        <Button type="submit" variant="primary" className="w-full">
+          Continuar
+        </Button>
+      </form>
+    </PublicCard>
   )
 }

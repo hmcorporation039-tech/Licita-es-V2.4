@@ -1,8 +1,39 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useId, useState, type KeyboardEvent } from 'react'
+import { FileSearch, Lightbulb, ListPlus, Search } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
 import { api, ApiRequestError } from '@/lib/api'
+import {
+  Button,
+  Carregando,
+  Checkbox,
+  DescriptionList,
+  EmptyState,
+  ErrorState,
+  Field,
+  FormError,
+  Input,
+  Metric,
+  MetricRow,
+  Notice,
+  PageHeader,
+  Panel,
+  Prazo,
+  Select,
+  StatusTag,
+  Table,
+  TableWrap,
+  Tabs,
+  Td,
+  TextLink,
+  Th,
+  THead,
+  Tr,
+  cx,
+  useAbaNaUrl,
+  type Aba,
+} from '@/components/ui'
 
 interface Contrato {
   id: string
@@ -44,37 +75,34 @@ interface UasgBusca {
 
 const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
 const data = (d: string | null) => (d ? d.split('-').reverse().join('/') : '—')
+const fimDoDia = (d: string | null) => (d ? `${d}T23:59:59-03:00` : null)
+
+type AbaDoRadar = 'vencendo' | 'concorrente' | 'perfil'
+const ABAS: Aba<AbaDoRadar>[] = [
+  { id: 'vencendo', label: 'Contratos vencendo' },
+  { id: 'concorrente', label: 'Dossiê de concorrente' },
+  { id: 'perfil', label: 'Perfilador' },
+]
+const IDS_DAS_ABAS = ABAS.map((a) => a.id)
 
 export default function RadarPage() {
   const user = useRequireSession()
-  const [aba, setAba] = useState<'vencendo' | 'concorrente' | 'perfil'>('vencendo')
+  const [aba, setAba] = useAbaNaUrl<AbaDoRadar>(IDS_DAS_ABAS, 'vencendo')
 
   if (!user) return null
   return (
-    <main className="mx-auto max-w-6xl px-4 py-6">
-      <h1 className="text-2xl font-semibold text-slate-900">Radar de oportunidades</h1>
-      <p className="mt-1 text-sm text-slate-600">
-        Dados públicos de contratos do PNCP: veja o que está para vencer nos órgãos que você atende e estude seus concorrentes.
-      </p>
-      <div className="mt-4 flex gap-2 border-b border-slate-200">
-        {(
-          [
-            ['vencendo', 'Contratos vencendo'],
-            ['concorrente', 'Dossiê de concorrente'],
-            ['perfil', 'Perfilador'],
-          ] as const
-        ).map(([k, rotulo]) => (
-          <button
-            key={k}
-            onClick={() => setAba(k)}
-            className={`-mb-px border-b-2 px-3 py-2 text-sm ${aba === k ? 'border-indigo-600 font-medium text-indigo-700' : 'border-transparent text-slate-600 hover:text-slate-900'}`}
-          >
-            {rotulo}
-          </button>
-        ))}
+    <>
+      <PageHeader
+        title="Radar de oportunidades"
+        description="Dados públicos de contratos do PNCP: veja o que está para vencer nos órgãos que você atende e estude seus concorrentes."
+      />
+      <div className="flex flex-col gap-5">
+        <Tabs tabs={ABAS} value={aba} onChange={setAba} label="Seções do radar" />
+        <div role="tabpanel" aria-labelledby={`aba-${aba}`} className="flex flex-col gap-5">
+          {aba === 'vencendo' ? <ContratosVencendo /> : aba === 'concorrente' ? <DossieConcorrente /> : <Perfilador />}
+        </div>
       </div>
-      {aba === 'vencendo' ? <ContratosVencendo /> : aba === 'concorrente' ? <DossieConcorrente /> : <Perfilador />}
-    </main>
+    </>
   )
 }
 
@@ -87,6 +115,13 @@ function ContratosVencendo() {
   const [resp, setResp] = useState<RespostaVencendo | null>(null)
   const [carregando, setCarregando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+  const [ativo, setAtivo] = useState(-1)
+  const campoId = useId()
+  const listaId = `${campoId}-orgaos`
+
+  useEffect(() => {
+    setAtivo(-1)
+  }, [opcoes])
 
   async function procurarOrgao(q: string) {
     setBusca(q)
@@ -105,6 +140,11 @@ function ContratosVencendo() {
     }
   }
 
+  function escolherOrgao(o: UasgBusca) {
+    setOrgao({ cnpj: o.cnpjOrgao!, nome: `${o.nomeOrgao ?? o.nomeUasg}${o.siglaUf ? ' — ' + o.siglaUf : ''}` })
+    setOpcoes([])
+  }
+
   async function consultar() {
     if (!orgao) return
     setCarregando(true)
@@ -119,112 +159,145 @@ function ContratosVencendo() {
     }
   }
 
-  return (
-    <section className="mt-4">
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="relative min-w-[18rem] flex-1">
-          <label className="block text-xs text-slate-600">Órgão (nome ou CNPJ)</label>
-          <input
-            value={orgao ? orgao.nome : busca}
-            onChange={(e) => {
-              setOrgao(null)
-              void procurarOrgao(e.target.value)
-            }}
-            className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
-            placeholder="Ex.: Prefeitura de Goiânia ou 01.612.092/0001-23"
-          />
-          {opcoes.length > 0 && !orgao && (
-            <ul className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded border border-slate-200 bg-white text-sm shadow">
-              {opcoes.map((o) => (
-                <li key={o.codigoUasg}>
-                  <button
-                    className="block w-full px-2 py-1.5 text-left hover:bg-slate-50"
-                    onClick={() => {
-                      setOrgao({ cnpj: o.cnpjOrgao!, nome: `${o.nomeOrgao ?? o.nomeUasg}${o.siglaUf ? ' — ' + o.siglaUf : ''}` })
-                      setOpcoes([])
-                    }}
-                  >
-                    {o.nomeOrgao ?? o.nomeUasg} {o.siglaUf && <span className="text-slate-500">({o.siglaUf})</span>}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-        <div>
-          <label className="block text-xs text-slate-600">Vencem em até</label>
-          <select value={dias} onChange={(e) => setDias(Number(e.target.value))} className="rounded border border-slate-300 px-2 py-1.5 text-sm">
-            {[30, 60, 90, 120, 180, 365].map((d) => (
-              <option key={d} value={d}>
-                {d} dias
-              </option>
-            ))}
-          </select>
-        </div>
-        <label className="flex items-center gap-1 pb-1.5 text-sm text-slate-700">
-          <input type="checkbox" checked={todos} onChange={(e) => setTodos(e.target.checked)} /> Mostrar também fora do meu ramo
-        </label>
-        <button
-          onClick={consultar}
-          disabled={!orgao || carregando}
-          className="rounded bg-indigo-600 px-4 py-1.5 text-sm text-white disabled:opacity-50"
-        >
-          {carregando ? 'Consultando o PNCP…' : 'Consultar'}
-        </button>
-      </div>
+  const listaAberta = opcoes.length > 0 && !orgao
 
-      {erro && <p className="mt-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800">{erro}</p>}
-      {resp && (
-        <div className="mt-4">
-          <p className="text-sm text-slate-700">
-            {resp.totalVencendo} contrato(s) vencem nesse prazo
-            {resp.termosUsados.length > 0 && !todos
-              ? `; mostrando os que casam com seus itens monitorados (${resp.contratos.length}).`
-              : resp.termosUsados.length === 0
-                ? '. Cadastre itens monitorados com palavras-chave para destacar o que é do seu ramo.'
-                : '.'}
-          </p>
-          <div className="mt-2 overflow-x-auto rounded border border-slate-200 bg-white">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 text-xs text-slate-600">
-                <tr>
-                  <th className="px-3 py-2">Vence</th>
-                  <th className="px-3 py-2">Objeto</th>
-                  <th className="px-3 py-2">Fornecedor atual</th>
-                  <th className="px-3 py-2 text-right">Valor</th>
-                </tr>
-              </thead>
-              <tbody>
-                {resp.contratos.map((c) => (
-                  <tr key={c.id} className="border-t border-slate-100 align-top">
-                    <td className="whitespace-nowrap px-3 py-2">
-                      {data(c.vigenciaFim)}
-                      <span className="block text-xs text-slate-500">em {c.diasRestantes} dia(s)</span>
-                    </td>
-                    <td className="px-3 py-2">
-                      {c.noSeuRamo && <span className="mr-1 rounded bg-emerald-100 px-1.5 py-0.5 text-[11px] text-emerald-800">no seu ramo</span>}
-                      {c.objeto.slice(0, 220)}
-                    </td>
-                    <td className="px-3 py-2">
-                      {c.fornecedor.nome}
-                      <span className="block text-xs text-slate-500">{c.fornecedor.ni}</span>
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-2 text-right">{brl(c.valorGlobal)}</td>
-                  </tr>
-                ))}
-                {resp.contratos.length === 0 && (
-                  <tr>
-                    <td colSpan={4} className="px-3 py-6 text-center text-slate-500">
-                      Nenhum contrato encontrado.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+  function aoTeclar(e: KeyboardEvent<HTMLInputElement>) {
+    if (!listaAberta) return
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setAtivo((i) => Math.min(opcoes.length - 1, i + 1))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setAtivo((i) => Math.max(0, i - 1))
+    } else if (e.key === 'Enter' && ativo >= 0 && opcoes[ativo]) {
+      e.preventDefault()
+      escolherOrgao(opcoes[ativo])
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      setOpcoes([])
+    }
+  }
+
+  return (
+    <>
+      <Panel>
+        <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end">
+          <Field label="Órgão (nome ou CNPJ)" id={campoId} className="sm:min-w-[18rem] sm:flex-1">
+            <div id={`${campoId}-caixa`} className="relative">
+              <Input
+                id={campoId}
+                role="combobox"
+                aria-autocomplete="list"
+                aria-expanded={listaAberta}
+                aria-controls={listaId}
+                aria-activedescendant={listaAberta && ativo >= 0 ? `${listaId}-${ativo}` : undefined}
+                autoComplete="off"
+                value={orgao ? orgao.nome : busca}
+                onChange={(e) => {
+                  setOrgao(null)
+                  void procurarOrgao(e.target.value)
+                }}
+                onKeyDown={aoTeclar}
+                placeholder="Ex.: Prefeitura de Goiânia ou 01.612.092/0001-23"
+              />
+              {listaAberta && (
+                <ul id={listaId} role="listbox" aria-label="Órgãos encontrados" className="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded border border-line bg-surface text-sm">
+                  {opcoes.map((o, i) => (
+                    <li
+                      key={o.codigoUasg}
+                      id={`${listaId}-${i}`}
+                      role="option"
+                      aria-selected={i === ativo}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onMouseEnter={() => setAtivo(i)}
+                      onClick={() => escolherOrgao(o)}
+                      className={cx('cursor-pointer border-b border-line-soft px-3 py-2 last:border-0', i === ativo && 'bg-accent-soft')}
+                    >
+                      <span className="text-ink">{o.nomeOrgao ?? o.nomeUasg}</span>{' '}
+                      {o.siglaUf && <span className="font-mono text-xs text-muted">{o.siglaUf}</span>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </Field>
+          <Field label="Vencem em até" className="sm:w-36">
+            <Select value={dias} onChange={(e) => setDias(Number(e.target.value))}>
+              {[30, 60, 90, 120, 180, 365].map((d) => (
+                <option key={d} value={d}>
+                  {d} dias
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Checkbox className="sm:pb-2.5" label="Mostrar também fora do meu ramo" checked={todos} onChange={(e) => setTodos(e.target.checked)} />
+          <Button variant="primary" icon={Search} loading={carregando} disabled={!orgao} onClick={consultar}>
+            {carregando ? 'Consultando o PNCP…' : 'Consultar'}
+          </Button>
         </div>
+      </Panel>
+
+      {carregando && <Carregando linhas={5} texto="Consultando o PNCP…" />}
+      {erro && <ErrorState message={erro} onRetry={consultar} />}
+      {resp && (
+        <section className="flex flex-col gap-3" aria-label="Contratos vencendo">
+          <p className="text-sm text-ink-2">
+            <span className="font-mono">{resp.totalVencendo}</span> contrato(s) vencem nesse prazo
+            {resp.termosUsados.length > 0 && !todos ? (
+              <>
+                ; mostrando os que casam com seus itens monitorados (<span className="font-mono">{resp.contratos.length}</span>).
+              </>
+            ) : resp.termosUsados.length === 0 ? (
+              '. Cadastre itens monitorados com palavras-chave para destacar o que é do seu ramo.'
+            ) : (
+              '.'
+            )}
+          </p>
+          {resp.contratos.length === 0 ? (
+            <EmptyState title="Nenhum contrato encontrado." description="Aumente o prazo ou marque para mostrar também o que está fora do seu ramo." />
+          ) : (
+            <TableWrap minWidth={760}>
+              <Table>
+                <THead>
+                  <tr>
+                    <Th className="w-32">Vence</Th>
+                    <Th>Objeto</Th>
+                    <Th className="w-56">Fornecedor atual</Th>
+                    <Th align="right" className="w-36">
+                      Valor
+                    </Th>
+                  </tr>
+                </THead>
+                <tbody>
+                  {resp.contratos.map((c) => (
+                    <Tr key={c.id}>
+                      <Td>
+                        <Prazo data={fimDoDia(c.vigenciaFim)} semHora />
+                      </Td>
+                      <Td>
+                        {c.noSeuRamo && (
+                          <StatusTag tone="accent" className="mb-1">
+                            no seu ramo
+                          </StatusTag>
+                        )}
+                        <p className="text-ink">{c.objeto.slice(0, 220)}</p>
+                      </Td>
+                      <Td>
+                        <p className="text-ink-2">{c.fornecedor.nome}</p>
+                        <p className="font-mono text-xs text-muted">{c.fornecedor.ni}</p>
+                      </Td>
+                      <Td numeric>
+                        {brl(c.valorGlobal)}
+                      </Td>
+                    </Tr>
+                  ))}
+                </tbody>
+              </Table>
+            </TableWrap>
+          )}
+        </section>
       )}
-    </section>
+    </>
   )
 }
 
@@ -248,67 +321,120 @@ function DossieConcorrente() {
   }
 
   return (
-    <section className="mt-4">
-      <div className="flex flex-wrap items-end gap-3">
-        <div>
-          <label className="block text-xs text-slate-600">CNPJ do concorrente</label>
-          <input value={cnpj} onChange={(e) => setCnpj(e.target.value)} className="w-64 rounded border border-slate-300 px-2 py-1.5 text-sm" placeholder="00.000.000/0000-00" />
+    <>
+      <Panel>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+          <Field label="CNPJ do concorrente" className="sm:w-64">
+            <Input inputMode="numeric" className="font-mono" value={cnpj} onChange={(e) => setCnpj(e.target.value)} placeholder="00.000.000/0000-00" />
+          </Field>
+          <Button variant="primary" icon={FileSearch} loading={carregando} disabled={cnpj.replace(/\D/g, '').length !== 14} onClick={consultar}>
+            {carregando ? 'Consultando o PNCP…' : 'Gerar dossiê'}
+          </Button>
         </div>
-        <button
-          onClick={consultar}
-          disabled={cnpj.replace(/\D/g, '').length !== 14 || carregando}
-          className="rounded bg-indigo-600 px-4 py-1.5 text-sm text-white disabled:opacity-50"
-        >
-          {carregando ? 'Consultando o PNCP…' : 'Gerar dossiê'}
-        </button>
-      </div>
-      {erro && <p className="mt-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800">{erro}</p>}
-      {d && d.totalDeContratos === 0 && <p className="mt-4 text-sm text-slate-600">Nenhum contrato público encontrado no PNCP com esse CNPJ como fornecedor.</p>}
+      </Panel>
+
+      {carregando && <Carregando linhas={5} texto="Consultando o PNCP…" />}
+      {erro && <ErrorState message={erro} onRetry={consultar} />}
+      {d && d.totalDeContratos === 0 && <EmptyState title="Nenhum contrato público encontrado no PNCP com esse CNPJ como fornecedor." />}
       {d && d.totalDeContratos > 0 && (
-        <div className="mt-4 space-y-4">
-          <div className="rounded border border-slate-200 bg-white p-4">
-            <h2 className="text-lg font-medium text-slate-900">{d.fornecedor?.nome}</h2>
-            <p className="text-sm text-slate-600">
-              {d.totalDeContratos} contrato(s), {brl(d.valorTotal)} no total · de {data(d.primeiraAssinatura)} a {data(d.ultimaAssinatura)}
-            </p>
-            <p className="mt-1 text-xs text-slate-500">Considera os contratos mais recentes em que esse CNPJ é o fornecedor, publicados no PNCP (até 3.000).</p>
+        <>
+          <section className="flex flex-col gap-3" aria-label="Resumo do concorrente">
+            <div className="flex flex-col gap-1">
+              <h2 className="text-lg font-semibold text-ink">{d.fornecedor?.nome}</h2>
+              <p className="text-xs text-muted">Considera os contratos mais recentes em que esse CNPJ é o fornecedor, publicados no PNCP (até 3.000).</p>
+            </div>
+            <MetricRow>
+              <Metric label="Contratos" value={d.totalDeContratos} />
+              <Metric label="Valor total" value={<span className="break-all text-xl sm:text-2xl">{brl(d.valorTotal)}</span>} />
+              <Metric label="Primeira assinatura" value={data(d.primeiraAssinatura)} />
+              <Metric label="Última assinatura" value={data(d.ultimaAssinatura)} />
+            </MetricRow>
+          </section>
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+            <Agrupamento titulo="Principais órgãos" coluna="Órgão" linhas={d.porOrgao.map((o) => ({ rotulo: o.nome, contratos: o.contratos, valor: o.valor }))} />
+            <Agrupamento titulo="Por estado" coluna="UF" linhas={d.porUf.slice(0, 10).map((u) => ({ rotulo: u.uf, contratos: u.contratos, valor: u.valor }))} />
+            <Agrupamento titulo="Por modalidade" coluna="Modalidade" linhas={d.porCategoria.map((c) => ({ rotulo: c.categoria, contratos: c.contratos, valor: c.valor }))} />
           </div>
-          <div className="grid gap-4 md:grid-cols-3">
-            <Lista titulo="Principais órgãos" linhas={d.porOrgao.map((o) => [o.nome, `${o.contratos} · ${brl(o.valor)}`])} />
-            <Lista titulo="Por estado" linhas={d.porUf.slice(0, 10).map((u) => [u.uf, `${u.contratos} · ${brl(u.valor)}`])} />
-            <Lista titulo="Por modalidade" linhas={d.porCategoria.map((c) => [c.categoria, `${c.contratos} · ${brl(c.valor)}`])} />
-          </div>
-          <Lista
-            titulo="Contratos dele que vencem em 90 dias (chance de disputar)"
-            linhas={d.vencendoEm90Dias.slice(0, 15).map((c) => [`${data(c.vigenciaFim)} — ${c.orgao.nome}: ${c.objeto.slice(0, 90)}`, brl(c.valorGlobal)])}
-          />
-          <Lista
-            titulo="Últimos contratos assinados"
-            linhas={d.ultimosContratos.map((c) => [`${data(c.assinatura)} — ${c.orgao.nome}: ${c.objeto.slice(0, 90)}`, brl(c.valorGlobal)])}
-          />
-        </div>
+          <ListaDeContratos titulo="Contratos dele que vencem em 90 dias (chance de disputar)" colunaData="Vence" contratos={d.vencendoEm90Dias.slice(0, 15)} prazo />
+          <ListaDeContratos titulo="Últimos contratos assinados" colunaData="Assinatura" contratos={d.ultimosContratos} />
+        </>
+      )}
+    </>
+  )
+}
+
+function Agrupamento({ titulo, coluna, linhas }: { titulo: string; coluna: string; linhas: { rotulo: string; contratos: number; valor: number }[] }) {
+  return (
+    <section className="flex min-w-0 flex-col gap-2">
+      <h3 className="text-sm font-semibold text-ink">{titulo}</h3>
+      {linhas.length === 0 ? (
+        <p className="rounded border border-dashed border-line-strong px-4 py-3 text-sm text-muted">Nada a mostrar.</p>
+      ) : (
+        <TableWrap>
+          <Table>
+            <THead>
+              <tr>
+                <Th>{coluna}</Th>
+                <Th align="right">Contr.</Th>
+                <Th align="right">Valor</Th>
+              </tr>
+            </THead>
+            <tbody>
+              {linhas.map((l, i) => (
+                <Tr key={i}>
+                  <Td className="break-words text-ink-2">{l.rotulo}</Td>
+                  <Td numeric muted>
+                    {l.contratos}
+                  </Td>
+                  <Td numeric>{brl(l.valor)}</Td>
+                </Tr>
+              ))}
+            </tbody>
+          </Table>
+        </TableWrap>
       )}
     </section>
   )
 }
 
-function Lista({ titulo, linhas }: { titulo: string; linhas: [string, string][] }) {
+function ListaDeContratos({ titulo, colunaData, contratos, prazo = false }: { titulo: string; colunaData: string; contratos: Contrato[]; prazo?: boolean }) {
   return (
-    <div className="rounded border border-slate-200 bg-white p-3">
-      <h3 className="mb-2 text-sm font-medium text-slate-800">{titulo}</h3>
-      {linhas.length === 0 ? (
-        <p className="text-xs text-slate-500">Nada a mostrar.</p>
+    <section className="flex min-w-0 flex-col gap-2">
+      <h3 className="text-sm font-semibold text-ink">{titulo}</h3>
+      {contratos.length === 0 ? (
+        <p className="rounded border border-dashed border-line-strong px-4 py-3 text-sm text-muted">Nada a mostrar.</p>
       ) : (
-        <ul className="space-y-1 text-sm">
-          {linhas.map(([a, b], i) => (
-            <li key={i} className="flex justify-between gap-3">
-              <span className="text-slate-700">{a}</span>
-              <span className="whitespace-nowrap text-slate-500">{b}</span>
-            </li>
-          ))}
-        </ul>
+        <TableWrap minWidth={640}>
+          <Table>
+            <THead>
+              <tr>
+                <Th className="w-32">{colunaData}</Th>
+                <Th>Órgão e objeto</Th>
+                <Th align="right" className="w-36">
+                  Valor
+                </Th>
+              </tr>
+            </THead>
+            <tbody>
+              {contratos.map((c) => (
+                <Tr key={c.id}>
+                  <Td>
+                    {prazo ? <Prazo data={fimDoDia(c.vigenciaFim)} semHora /> : <span className="font-mono text-ink-2">{data(c.assinatura)}</span>}
+                  </Td>
+                  <Td>
+                    <p className="text-ink">{c.orgao.nome}</p>
+                    <p className="text-xs text-muted">{c.objeto.slice(0, 90)}</p>
+                  </Td>
+                  <Td numeric>
+                    {brl(c.valorGlobal)}
+                  </Td>
+                </Tr>
+              ))}
+            </tbody>
+          </Table>
+        </TableWrap>
       )}
-    </div>
+    </section>
   )
 }
 
@@ -354,47 +480,78 @@ function Perfilador() {
   }
 
   return (
-    <section className="mt-4">
-      <p className="text-sm text-slate-600">
-        Analisa os contratos públicos que o CNPJ da sua empresa já tem no PNCP e sugere o que monitorar: palavras-chave, estados e faixa de valor.
-      </p>
-      <button onClick={gerar} disabled={carregando} className="mt-3 rounded bg-indigo-600 px-4 py-1.5 text-sm text-white disabled:opacity-50">
-        {carregando ? 'Consultando o PNCP…' : 'Gerar sugestões'}
-      </button>
-      {erro && <p className="mt-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800">{erro}</p>}
+    <>
+      <Panel>
+        <div className="flex flex-col items-start gap-3">
+          <p className="max-w-prose text-sm text-ink-2">
+            Analisa os contratos públicos que o CNPJ da sua empresa já tem no PNCP e sugere o que monitorar: palavras-chave, estados e faixa de valor.
+          </p>
+          <Button variant="primary" icon={Lightbulb} loading={carregando} onClick={gerar}>
+            {carregando ? 'Consultando o PNCP…' : 'Gerar sugestões'}
+          </Button>
+        </div>
+      </Panel>
+
+      {carregando && <Carregando linhas={4} texto="Consultando o PNCP…" />}
+      {erro && !p && <ErrorState message={erro} onRetry={gerar} />}
       {p && p.totalDeContratos === 0 && (
-        <p className="mt-4 text-sm text-slate-600">Não encontramos contratos públicos no PNCP com o CNPJ da sua empresa como fornecedor; não há histórico para sugerir.</p>
+        <EmptyState title="Não encontramos contratos públicos no PNCP com o CNPJ da sua empresa como fornecedor; não há histórico para sugerir." />
       )}
       {p && p.totalDeContratos > 0 && (
-        <div className="mt-4 space-y-3 rounded border border-slate-200 bg-white p-4">
-          <p className="text-sm text-slate-700">Base: {p.totalDeContratos} contrato(s) da sua empresa.</p>
-          <div>
-            <h3 className="text-sm font-medium text-slate-800">Palavras-chave (marque as que quer monitorar)</h3>
-            <div className="mt-1 flex flex-wrap gap-2">
-              {p.palavrasChave.map((k) => (
-                <label key={k.termo} className="flex items-center gap-1 rounded border border-slate-200 px-2 py-1 text-sm">
-                  <input
-                    type="checkbox"
+        <Panel
+          title="Sugestões"
+          description={
+            <>
+              Base: <span className="font-mono">{p.totalDeContratos}</span> contrato(s) da sua empresa.
+            </>
+          }
+        >
+          <div className="flex flex-col gap-5">
+            <fieldset className="flex min-w-0 flex-col gap-2">
+              <legend className="mb-2 text-xs font-medium text-muted">Palavras-chave (marque as que quer monitorar)</legend>
+              <div className="flex flex-wrap gap-2">
+                {p.palavrasChave.map((k) => (
+                  <Checkbox
+                    key={k.termo}
+                    className="rounded border border-line px-2 py-1.5"
                     checked={termos.includes(k.termo)}
                     onChange={(e) => setTermos((t) => (e.target.checked ? [...t, k.termo] : t.filter((x) => x !== k.termo)))}
+                    label={
+                      <>
+                        {k.termo} <span className="font-mono text-xs text-muted">{k.ocorrencias}</span>
+                      </>
+                    }
                   />
-                  {k.termo} <span className="text-xs text-slate-500">({k.ocorrencias})</span>
-                </label>
-              ))}
+                ))}
+              </div>
+            </fieldset>
+
+            <DescriptionList
+              columns={2}
+              items={[
+                { label: 'Estados onde você mais vendeu', value: p.ufs.join(', ') || '—', mono: true },
+                ...(p.faixaDeValor
+                  ? [{ label: 'Faixa de valor típica dos seus contratos', value: `${brl(p.faixaDeValor.minimo)} a ${brl(p.faixaDeValor.maximo)}`, mono: true }]
+                  : []),
+                ...(p.orgaos.length > 0 ? [{ label: 'Principais órgãos', value: p.orgaos.map((o) => o.nome).join('; ') }] : []),
+              ]}
+            />
+
+            <div className="flex flex-col items-start gap-2 border-t border-line-soft pt-4">
+              {criado ? (
+                <Notice tone="ok">
+                  Item criado — veja em <TextLink href="/items">Itens monitorados</TextLink>.
+                </Notice>
+              ) : (
+                <Button variant="primary" icon={ListPlus} disabled={termos.length === 0 || criado} onClick={criarItem}>
+                  Criar item com essas sugestões
+                </Button>
+              )}
+              {erro && <FormError>{erro}</FormError>}
             </div>
           </div>
-          <p className="text-sm text-slate-700">Estados onde você mais vendeu: {p.ufs.join(', ') || '—'}</p>
-          {p.faixaDeValor && (
-            <p className="text-sm text-slate-700">
-              Faixa de valor típica dos seus contratos: {brl(p.faixaDeValor.minimo)} a {brl(p.faixaDeValor.maximo)}
-            </p>
-          )}
-          {p.orgaos.length > 0 && <p className="text-sm text-slate-700">Principais órgãos: {p.orgaos.map((o) => o.nome).join('; ')}</p>}
-          <button onClick={criarItem} disabled={termos.length === 0 || criado} className="rounded bg-emerald-600 px-4 py-1.5 text-sm text-white disabled:opacity-50">
-            {criado ? 'Item criado — veja em Itens monitorados' : 'Criar item monitorado com essas sugestões'}
-          </button>
-        </div>
+        </Panel>
       )}
-    </section>
+    </>
   )
 }

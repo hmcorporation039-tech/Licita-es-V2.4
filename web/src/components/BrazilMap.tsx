@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type KeyboardEvent } from 'react'
 import Link from 'next/link'
 import brazil from '@svg-maps/brazil'
+import { EmptyState, TextLink, cx } from '@/components/ui'
 
 export type Urgencia = 'urgente' | 'andamento' | 'selecionada'
 
@@ -33,16 +34,20 @@ interface BrazilMapData {
 
 const mapData = brazil as BrazilMapData
 
-// Cores no estilo "farol" — mesma lógica descrita pelo usuário: verde =
-// escolhida sem urgência, amarelo = prazo se aproximando, vermelho = prestes
-// a encerrar. Vermelho e verde piscam (mais urgência de atenção / reforço
-// visual de "selecionada"); amarelo fica estável, já é um alerta por si só.
 const COR: Record<Urgencia, string> = {
-  urgente: '#dc2626',
-  andamento: '#d97706',
-  selecionada: '#16a34a',
+  urgente: 'var(--color-danger)',
+  andamento: 'var(--color-indigo-600)',
+  selecionada: 'var(--color-indigo-300)',
 }
-const COR_VAZIO = '#e2e8f0'
+const COR_VAZIO = 'var(--color-line-soft)'
+const COR_BORDA = 'var(--color-line-strong)'
+const COR_BORDA_ATIVA = 'var(--color-ink)'
+
+const LEGENDA: Array<{ urgencia: Urgencia; rotulo: string }> = [
+  { urgencia: 'selecionada', rotulo: 'Selecionada' },
+  { urgencia: 'andamento', rotulo: 'Prazo se aproximando' },
+  { urgencia: 'urgente', rotulo: 'Prestes a encerrar' },
+]
 
 const LABEL_PRAZO = (dias: number | null) => {
   if (dias === null) return 'Sem prazo de encerramento definido'
@@ -56,84 +61,118 @@ export default function BrazilMap({ estados }: { estados: EstadoMapa[] }) {
 
   const porUf = new Map(estados.map((e) => [e.uf, e]))
   const ativo = ufSelecionada ? porUf.get(ufSelecionada) : null
+  const nomePorUf = new Map(mapData.locations.map((l) => [l.id.toUpperCase(), l.name]))
+
+  function alternar(uf: string) {
+    setUfSelecionada(uf === ufSelecionada ? null : uf)
+  }
+
+  function aoTeclar(e: KeyboardEvent<SVGPathElement>, uf: string) {
+    if (e.key !== 'Enter' && e.key !== ' ') return
+    e.preventDefault()
+    alternar(uf)
+  }
 
   return (
-    <div className="flex flex-col gap-4 sm:flex-row">
-      <svg
-        viewBox={mapData.viewBox}
-        className="w-full max-w-sm shrink-0"
-        role="img"
-        aria-label="Mapa do Brasil com as licitações escolhidas por estado"
-      >
-        {mapData.locations.map((loc) => {
-          const uf = loc.id.toUpperCase()
-          const estado = porUf.get(uf)
-          const cor = estado ? COR[estado.urgenciaPrioritaria] : COR_VAZIO
-          const pisca = !!estado && estado.urgenciaPrioritaria !== 'andamento'
-          return (
-            <path
-              key={loc.id}
-              d={loc.path}
-              fill={cor}
-              stroke={uf === ufSelecionada ? '#1e293b' : '#94a3b8'}
-              strokeWidth={uf === ufSelecionada ? 1.4 : 0.5}
-              className={`${pisca ? 'map-blink' : ''} ${estado ? 'cursor-pointer' : ''}`}
-              onClick={() => estado && setUfSelecionada(uf === ufSelecionada ? null : uf)}
-            >
-              <title>
-                {loc.name}
-                {estado ? ` — ${estado.tenders.length} licitação(ões) escolhida(s)` : ' — nenhuma licitação escolhida'}
-              </title>
-            </path>
-          )
-        })}
-      </svg>
+    <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
+      <div className="flex w-full shrink-0 flex-col gap-3 sm:w-[300px]">
+        <svg viewBox={mapData.viewBox} className="w-full max-w-[300px] self-center" role="group" aria-label="Mapa do Brasil com as licitações escolhidas por estado">
+          {mapData.locations.map((loc) => {
+            const uf = loc.id.toUpperCase()
+            const estado = porUf.get(uf)
+            const cor = estado ? COR[estado.urgenciaPrioritaria] : COR_VAZIO
+            const pisca = !!estado && estado.urgenciaPrioritaria !== 'andamento'
+            const selecionado = uf === ufSelecionada
+            const descricao = `${loc.name}${estado ? ` — ${estado.tenders.length} licitação(ões) escolhida(s)` : ' — nenhuma licitação escolhida'}`
+            return (
+              <path
+                key={loc.id}
+                d={loc.path}
+                fill={cor}
+                stroke={selecionado ? COR_BORDA_ATIVA : COR_BORDA}
+                strokeWidth={selecionado ? 1.4 : 0.5}
+                className={cx(pisca && 'map-blink', estado && 'cursor-pointer')}
+                role={estado ? 'button' : undefined}
+                tabIndex={estado ? 0 : undefined}
+                aria-label={estado ? descricao : undefined}
+                aria-pressed={estado ? selecionado : undefined}
+                aria-hidden={estado ? undefined : true}
+                onClick={() => estado && alternar(uf)}
+                onKeyDown={(e) => estado && aoTeclar(e, uf)}
+              >
+                <title>{descricao}</title>
+              </path>
+            )
+          })}
+        </svg>
+        <ul aria-label="Legenda do mapa" className="flex flex-wrap gap-x-3 gap-y-1 text-2xs text-muted">
+          {LEGENDA.map((item) => (
+            <li key={item.urgencia} className="inline-flex items-center gap-1.5">
+              <span aria-hidden className="inline-block size-2 rounded-sm" style={{ background: COR[item.urgencia] }} />
+              {item.rotulo}
+            </li>
+          ))}
+        </ul>
+      </div>
 
-      <div className="min-w-0 flex-1">
-        <div className="mb-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
-          <span className="flex items-center gap-1.5">
-            <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: COR.selecionada }} />
-            Selecionada
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: COR.andamento }} />
-            Em andamento (prazo se aproximando)
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: COR.urgente }} />
-            Prestes a encerrar
-          </span>
-        </div>
-
+      <div className="flex min-w-0 flex-1 flex-col gap-3">
         {estados.length === 0 ? (
-          <p className="text-sm text-slate-500">
-            Nenhuma licitação escolhida ainda. Marque licitações como &quot;interessado&quot; em{' '}
-            <Link href="/matches" className="text-indigo-700 hover:underline">
-              Meus matches
-            </Link>{' '}
-            pra elas aparecerem aqui.
-          </p>
-        ) : ativo ? (
-          <div>
-            <p className="mb-2 text-sm font-semibold text-slate-700">
-              {ativo.uf} — {ativo.tenders.length} licitação(ões) escolhida(s)
-            </p>
-            <ul className="flex flex-col gap-2">
-              {ativo.tenders.map((t) => (
-                <li key={t.id} className="rounded border border-slate-200 p-2 text-xs">
-                  <Link href={`/tenders/${t.id}`} className="font-medium text-indigo-700 hover:underline">
-                    {t.municipio ?? 'Município n/d'} — {t.orgao ?? 'Órgão n/d'}
-                  </Link>
-                  <p className="mt-0.5 truncate text-slate-500" title={t.objeto}>
-                    {t.objeto}
-                  </p>
-                  <p className="mt-0.5 text-slate-400">{LABEL_PRAZO(t.diasRestantes)}</p>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <EmptyState
+            title="Nenhuma licitação escolhida ainda"
+            description={
+              <>
+                Marque licitações como &quot;interessado&quot; em <TextLink href="/matches">Meus matches</TextLink> pra elas aparecerem aqui.
+              </>
+            }
+          />
         ) : (
-          <p className="text-sm text-slate-500">Clique num estado colorido pra ver as licitações escolhidas ali.</p>
+          <>
+            <div className="flex flex-wrap gap-1.5" aria-label="Estados com licitações escolhidas" role="group">
+              {estados.map((e) => {
+                const selecionado = e.uf === ufSelecionada
+                return (
+                  <button
+                    key={e.uf}
+                    type="button"
+                    onClick={() => alternar(e.uf)}
+                    aria-pressed={selecionado}
+                    title={nomePorUf.get(e.uf) ?? e.uf}
+                    className={cx(
+                      'inline-flex h-7 items-center gap-1.5 rounded border px-2 text-xs transition-colors',
+                      selecionado ? 'border-accent bg-accent-soft font-semibold text-accent' : 'border-line-strong bg-surface text-ink-2 hover:bg-sunken',
+                    )}
+                  >
+                    <span aria-hidden className="inline-block size-1.5 rounded-sm" style={{ background: COR[e.urgenciaPrioritaria] }} />
+                    <span className="font-mono">{e.uf}</span>
+                    <span className="font-mono text-muted">{e.tenders.length}</span>
+                  </button>
+                )
+              })}
+            </div>
+
+            {ativo ? (
+              <div className="flex flex-col gap-2">
+                <p className="text-sm font-semibold text-ink">
+                  {nomePorUf.get(ativo.uf) ?? ativo.uf} <span className="font-normal text-muted">· {ativo.tenders.length} licitação(ões) escolhida(s)</span>
+                </p>
+                <ul className="flex flex-col divide-y divide-line-soft rounded border border-line">
+                  {ativo.tenders.map((t) => (
+                    <li key={t.id} className="flex min-w-0 flex-col gap-0.5 px-3 py-2.5">
+                      <Link href={`/tenders/${t.id}`} className="truncate text-sm font-medium text-ink hover:text-accent hover:underline">
+                        {t.municipio ?? 'Município n/d'} — {t.orgao ?? 'Órgão n/d'}
+                      </Link>
+                      <p className="truncate text-xs text-muted" title={t.objeto}>
+                        {t.objeto}
+                      </p>
+                      <p className={cx('text-xs', t.urgencia === 'urgente' ? 'font-medium text-danger' : 'text-faint')}>{LABEL_PRAZO(t.diasRestantes)}</p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <p className="text-sm text-muted">Escolha um estado no mapa ou na lista acima pra ver as licitações escolhidas ali.</p>
+            )}
+          </>
         )}
       </div>
     </div>

@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { Check, Star, Trash2 } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
 import { api, ApiRequestError } from '@/lib/api'
 import { Paginated, TenderMatch } from '@/lib/types'
 import NotaDeAderencia from '@/components/NotaDeAderencia'
+import { Button, Carregando, Checkbox, EmptyState, ErrorState, Field, LinkButton, PageHeader, Select, StatusTag, cx, useDialogo } from '@/components/ui'
 
 function formatValor(v: string | null) {
   if (!v) return '—'
@@ -18,18 +20,22 @@ export default function MatchesPage() {
   const [unreadOnly, setUnreadOnly] = useState(false)
   const [ordem, setOrdem] = useState<'recentes' | 'nota'>('nota')
   const [loading, setLoading] = useState(true)
+  const [erro, setErro] = useState(false)
   const [interesseMsg, setInteresseMsg] = useState<Record<string, string>>({})
   const [clearing, setClearing] = useState(false)
+  const { confirmar, dialogo } = useDialogo()
 
   function load() {
     if (!user) return
     setLoading(true)
+    setErro(false)
     const qs = new URLSearchParams({ page: '1', pageSize: '30' })
     if (unreadOnly) qs.set('unreadOnly', 'true')
     if (ordem === 'nota') qs.set('ordem', 'nota')
     api
       .get<Paginated<TenderMatch>>(`/api/matches?${qs.toString()}`)
       .then(setData)
+      .catch(() => setErro(true))
       .finally(() => setLoading(false))
   }
 
@@ -43,10 +49,10 @@ export default function MatchesPage() {
 
   async function marcarInteresse(matchId: string, tenderId: string) {
     if (!user) return
-    setInteresseMsg((m) => ({ ...m, [matchId]: 'Salvando...' }))
+    setInteresseMsg((m) => ({ ...m, [matchId]: 'Salvando…' }))
     try {
       await api.patch(`/api/tenders/${tenderId}/plano/status`, { status: 'VOU_PARTICIPAR' })
-      setInteresseMsg((m) => ({ ...m, [matchId]: '✓ Marcada em "Licitações escolhidas"' }))
+      setInteresseMsg((m) => ({ ...m, [matchId]: 'Marcada em "Licitações escolhidas"' }))
     } catch (err) {
       setInteresseMsg((m) => ({ ...m, [matchId]: err instanceof ApiRequestError ? err.message : 'Erro' }))
     }
@@ -54,7 +60,13 @@ export default function MatchesPage() {
 
   async function clearAllMatches() {
     if (!user) return
-    if (!confirm('Apagar todos os matches encontrados? Essa ação não pode ser desfeita.')) return
+    const ok = await confirmar({
+      titulo: 'Apagar todos os matches encontrados?',
+      mensagem: 'Essa ação não pode ser desfeita.',
+      confirmarRotulo: 'Apagar todos',
+      perigo: true,
+    })
+    if (!ok) return
     setClearing(true)
     try {
       await api.delete('/api/matches')
@@ -67,81 +79,95 @@ export default function MatchesPage() {
   if (!user) return null
 
   return (
-    <div>
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Meus matches</h1>
-        <div className="flex items-center gap-4">
-          <label className="flex items-center gap-2 text-sm text-slate-600">
-            Ordenar por
-            <select
-              value={ordem}
-              onChange={(e) => setOrdem(e.target.value as 'recentes' | 'nota')}
-              className="rounded border border-slate-300 px-2 py-1 text-sm"
-            >
+    <>
+      <PageHeader
+        title="Meus matches"
+        description={data ? `${data.total.toLocaleString('pt-BR')} ${data.total === 1 ? 'match encontrado' : 'matches encontrados'}` : 'Licitações que combinam com os seus itens monitorados'}
+        actions={
+          data &&
+          data.total > 0 && (
+            <Button variant="danger" size="sm" icon={Trash2} onClick={clearAllMatches} loading={clearing}>
+              {clearing ? 'Apagando…' : 'Apagar todos os matches'}
+            </Button>
+          )
+        }
+      />
+
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-end gap-x-5 gap-y-3">
+          <Field label="Ordenar por" className="w-full sm:w-64">
+            <Select value={ordem} onChange={(e) => setOrdem(e.target.value as 'recentes' | 'nota')}>
               <option value="nota">Maior nota de aderência</option>
               <option value="recentes">Mais recentes</option>
-            </select>
-          </label>
-          <label className="flex items-center gap-2 text-sm text-slate-600">
-            <input type="checkbox" checked={unreadOnly} onChange={(e) => setUnreadOnly(e.target.checked)} />
-            Só não lidos
-          </label>
-          {data && data.total > 0 && (
-            <button
-              type="button"
-              onClick={clearAllMatches}
-              disabled={clearing}
-              className="rounded border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
-            >
-              {clearing ? 'Apagando...' : 'Apagar todos os matches'}
-            </button>
-          )}
+            </Select>
+          </Field>
+          <Checkbox label="Só não lidos" checked={unreadOnly} onChange={(e) => setUnreadOnly(e.target.checked)} className="pb-2.5" />
         </div>
-      </div>
 
-      {loading ? (
-        <p className="text-sm text-slate-500">Carregando...</p>
-      ) : data?.items.length === 0 ? (
-        <p className="text-sm text-slate-500">
-          Nenhum match ainda. Cadastre itens monitorados e clique em &quot;Buscar agora&quot; para varrer o
-          que já foi coletado.
-        </p>
-      ) : (
-        <ul className="flex flex-col gap-3">
-          {data?.items.map((m) => (
-            <li key={m.id} className={`rounded border p-4 ${m.read ? 'border-slate-200 bg-white' : 'border-indigo-300 bg-indigo-50'}`}>
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-xs text-slate-500">Item: {m.monitoredItem.name}</p>
-                  <Link href={`/tenders/${m.tenderId}`} className="font-medium text-indigo-700 hover:underline">
+        {erro ? (
+          <ErrorState message="Não foi possível carregar os matches." onRetry={load} />
+        ) : loading ? (
+          <Carregando linhas={5} texto="Carregando matches…" />
+        ) : !data || data.items.length === 0 ? (
+          <EmptyState
+            title={unreadOnly ? 'Nenhum match não lido' : 'Nenhum match ainda'}
+            description='Cadastre itens monitorados e clique em "Buscar agora" para varrer o que já foi coletado.'
+            action={
+              <LinkButton href="/items" size="sm">
+                Ir para itens monitorados
+              </LinkButton>
+            }
+          />
+        ) : (
+          <ul className="flex flex-col divide-y divide-line-soft rounded border border-line bg-surface">
+            {data.items.map((m) => (
+              <li key={m.id} className="flex flex-col gap-3 px-4 py-3.5 md:flex-row md:items-start md:justify-between md:gap-6">
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <p className="flex items-center gap-2 text-xs text-muted">
+                    {!m.read && (
+                      <>
+                        <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-accent" />
+                        <span className="sr-only">Não lido.</span>
+                      </>
+                    )}
+                    <span className="truncate">Item: {m.monitoredItem.name}</span>
+                  </p>
+                  <Link href={`/tenders/${m.tenderId}`} className={cx('text-sm text-ink hover:text-accent hover:underline', m.read ? 'font-medium' : 'font-semibold')}>
                     {m.tender.objetoResumido ?? m.tender.objeto}
                   </Link>
-                  <p className="mt-1 text-sm text-slate-500">
-                    {m.tender.fonte} · {m.tender.uf ?? 'UF n/d'} · {formatValor(m.tender.valorEstimado)}
+                  <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
+                    <StatusTag mono>{m.tender.fonte}</StatusTag>
+                    <span className="font-mono">{m.tender.uf ?? 'UF n/d'}</span>
+                    <span aria-hidden>·</span>
+                    <span className="font-mono">{formatValor(m.tender.valorEstimado)}</span>
                   </p>
                   <NotaDeAderencia aderencia={m.aderencia} />
-                  {m.matchedKeywords.length > 0 && (
-                    <p className="mt-1 text-xs text-slate-400">Palavras: {m.matchedKeywords.join(', ')}</p>
-                  )}
+                  {m.matchedKeywords.length > 0 && <p className="text-xs text-faint">Palavras: {m.matchedKeywords.join(', ')}</p>}
                 </div>
-                <div className="flex shrink-0 flex-col items-end gap-1 text-sm">
-                  <div className="flex gap-3">
-                    <button onClick={() => marcarInteresse(m.id, m.tenderId)} className="text-emerald-700 hover:underline">
-                      ★ Marcar como interessado
-                    </button>
+                <div className="flex shrink-0 flex-col items-start gap-1.5 md:items-end">
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" icon={Star} onClick={() => marcarInteresse(m.id, m.tenderId)}>
+                      Marcar como interessado
+                    </Button>
                     {!m.read && (
-                      <button onClick={() => markAsRead(m.id)} className="text-indigo-700 hover:underline">
+                      <Button size="sm" variant="ghost" icon={Check} onClick={() => markAsRead(m.id)}>
                         Marcar como lido
-                      </button>
+                      </Button>
                     )}
                   </div>
-                  {interesseMsg[m.id] && <p className="text-xs text-slate-500">{interesseMsg[m.id]}</p>}
+                  {interesseMsg[m.id] && (
+                    <p role="status" className="text-xs text-muted">
+                      {interesseMsg[m.id]}
+                    </p>
+                  )}
                 </div>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {dialogo}
+    </>
   )
 }

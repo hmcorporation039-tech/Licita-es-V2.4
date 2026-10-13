@@ -1,10 +1,10 @@
 'use client'
 
-import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useEffect } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { useRequireSession } from '@/hooks/useRequireSession'
 import type { SessionUser } from '@/lib/session'
+import { PageHeader, TabLinks } from '@/components/ui'
 
 const ABAS = [
   { href: '/admin', label: 'Visão geral', exato: true },
@@ -18,28 +18,27 @@ const ABAS = [
 export function AdminTabs() {
   const pathname = usePathname()
   return (
-    <div className="mb-4 flex flex-wrap items-center gap-1 border-b border-slate-200">
-      {ABAS.map((a) => {
-        const ativa = a.exato ? pathname === a.href : pathname?.startsWith(a.href)
-        return (
-          <Link
-            key={a.href}
-            href={a.href}
-            className={`-mb-px border-b-2 px-3 py-2 text-sm ${
-              ativa ? 'border-indigo-700 font-medium text-indigo-700' : 'border-transparent text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            {a.label}
-          </Link>
-        )
-      })}
+    <TabLinks
+      label="Seções da administração"
+      items={ABAS.map((a) => ({
+        href: a.href,
+        label: a.label,
+        active: a.exato ? pathname === a.href : Boolean(pathname?.startsWith(a.href)),
+      }))}
+    />
+  )
+}
+
+export function AdminCabecalho({ titulo }: { titulo: string }) {
+  return (
+    <div className="flex flex-col gap-4">
+      <PageHeader eyebrow="Administração" title={titulo} />
+      <AdminTabs />
     </div>
   )
 }
 
-// Moldura comum das telas do administrador: exige sessão de admin e mostra as abas.
-// `children` só é renderizado depois que a sessão é validada.
-export default function AdminShell({ titulo, children }: { titulo: string; children: (user: SessionUser) => React.ReactNode }) {
+export default function AdminShell({ titulo, children }: { titulo: string; children: (user: SessionUser) => ReactNode }) {
   const user = useRequireSession()
   const router = useRouter()
 
@@ -50,10 +49,9 @@ export default function AdminShell({ titulo, children }: { titulo: string; child
   if (!user || !user.isAdmin) return null
 
   return (
-    <div>
-      <AdminTabs />
-      <h1 className="mb-4 text-xl font-semibold">{titulo}</h1>
+    <>
+      <AdminCabecalho titulo={titulo} />
       {children(user)}
-    </div>
+    </>
   )
 }

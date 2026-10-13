@@ -1,15 +1,30 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import Link from 'next/link'
+import { useEffect, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react'
+import { Pause, Pencil, Play, Plus, RefreshCw, Save, Trash2 } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
 import { api, ApiRequestError } from '@/lib/api'
 import { MonitoredItem, UasgResult } from '@/lib/types'
 import { MODALIDADE_OPTIONS } from '@/lib/modalidades'
 import UasgPicker from '@/components/UasgPicker'
 import CatalogPicker from '@/components/CatalogPicker'
+import {
+  Button,
+  Carregando,
+  Checkbox,
+  EmptyState,
+  ErrorState,
+  Field,
+  FormError,
+  Input,
+  PageHeader,
+  Panel,
+  StatusTag,
+  TextLink,
+  cx,
+  useDialogo,
+} from '@/components/ui'
 
-// Anexa um código à string separada por vírgula, sem duplicar.
 function anexarCodigo(atual: string, codigo: string): string {
   const lista = atual.split(',').map((c) => c.trim()).filter(Boolean)
   if (lista.includes(codigo)) return atual
@@ -21,25 +36,146 @@ function ModalidadeCheckboxes({ selected, onChange }: { selected: string[]; onCh
     onChange(selected.includes(value) ? selected.filter((v) => v !== value) : [...selected, value])
   }
   return (
-    <div className="flex flex-wrap gap-x-3 gap-y-1">
+    <div className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
       {MODALIDADE_OPTIONS.map((opt) => (
-        <label key={opt.value} className="flex items-center gap-1 text-xs text-slate-600">
-          <input type="checkbox" checked={selected.includes(opt.value)} onChange={() => toggle(opt.value)} />
-          {opt.label}
-        </label>
+        <Checkbox key={opt.value} label={opt.label} checked={selected.includes(opt.value)} onChange={() => toggle(opt.value)} />
       ))}
+    </div>
+  )
+}
+
+type Par<T> = readonly [T, Dispatch<SetStateAction<T>>]
+
+interface CamposDoItem {
+  name: Par<string>
+  keywords: Par<string>
+  catmatCodes: Par<string>
+  catserCodes: Par<string>
+  modalidades: Par<string[]>
+  orgaos: Par<string>
+  uasg: Par<UasgResult[]>
+  ufs: Par<string>
+  valorMax: Par<string>
+  raioKm: Par<string>
+  origemMunicipio: Par<string>
+  origemUf: Par<string>
+}
+
+function Grupo({ legenda, dica, children }: { legenda: string; dica?: string; children: ReactNode }) {
+  return (
+    <fieldset className="flex min-w-0 flex-col gap-3 rounded border border-line-soft p-3 sm:col-span-2">
+      <legend className="px-1 text-xs font-medium text-muted">{legenda}</legend>
+      {dica && <p className="-mt-1 text-xs text-muted">{dica}</p>}
+      {children}
+    </fieldset>
+  )
+}
+
+function FormularioDoItem({
+  campos,
+  nomeObrigatorio,
+  onPickOrgao,
+}: {
+  campos: CamposDoItem
+  nomeObrigatorio?: boolean
+  onPickOrgao: (nomeOrgao: string) => void
+}) {
+  const [name, setName] = campos.name
+  const [keywords, setKeywords] = campos.keywords
+  const [catmatCodes, setCatmatCodes] = campos.catmatCodes
+  const [catserCodes, setCatserCodes] = campos.catserCodes
+  const [modalidades, setModalidades] = campos.modalidades
+  const [orgaos, setOrgaos] = campos.orgaos
+  const [uasg, setUasg] = campos.uasg
+  const [ufs, setUfs] = campos.ufs
+  const [valorMax, setValorMax] = campos.valorMax
+  const [raioKm, setRaioKm] = campos.raioKm
+  const [origemMunicipio, setOrigemMunicipio] = campos.origemMunicipio
+  const [origemUf, setOrigemUf] = campos.origemUf
+
+  return (
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <Field label="Nome do item" required={nomeObrigatorio} className="sm:col-span-2">
+        <Input placeholder="Ex: Notebooks para o escritório" value={name} onChange={(e) => setName(e.target.value)} />
+      </Field>
+      <Field label="Palavras-chave" hint="Separadas por vírgula." className="sm:col-span-2">
+        <Input placeholder="Ex: notebook, computador portátil" value={keywords} onChange={(e) => setKeywords(e.target.value)} />
+      </Field>
+
+      <div className="flex min-w-0 flex-col gap-2">
+        <Field label="Buscar no catálogo CATMAT">
+          <CatalogPicker tipo="material" onAdd={(c) => setCatmatCodes((v) => anexarCodigo(v, c))} />
+        </Field>
+        <Field label="Códigos CATMAT" hint="Opcional. Match exato, mais preciso que palavra-chave.">
+          <Input className="font-mono" placeholder="Ex: 150500, 461733" value={catmatCodes} onChange={(e) => setCatmatCodes(e.target.value)} />
+        </Field>
+      </div>
+      <div className="flex min-w-0 flex-col gap-2">
+        <Field label="Buscar no catálogo CATSER">
+          <CatalogPicker tipo="servico" onAdd={(c) => setCatserCodes((v) => anexarCodigo(v, c))} />
+        </Field>
+        <Field label="Códigos CATSER" hint="Opcional. Para serviços.">
+          <Input className="font-mono" placeholder="Ex: 5380, 24830" value={catserCodes} onChange={(e) => setCatserCodes(e.target.value)} />
+        </Field>
+      </div>
+
+      <Field label="UFs" hint="Siglas de 2 letras separadas por vírgula. Vazio = nacional.">
+        <Input placeholder="Ex: DF, SP" value={ufs} onChange={(e) => setUfs(e.target.value)} />
+      </Field>
+      <Field label="Valor máximo (R$)" hint="Opcional.">
+        <Input type="number" inputMode="decimal" className="font-mono" value={valorMax} onChange={(e) => setValorMax(e.target.value)} />
+      </Field>
+
+      <Field label="Órgãos" hint="Opcional. Separados por vírgula." className="sm:col-span-2">
+        <Input placeholder="Ex: PREFEITURA DE UBERLÂNDIA, UNIVERSIDADE FEDERAL" value={orgaos} onChange={(e) => setOrgaos(e.target.value)} />
+      </Field>
+
+      <Field label="UASGs" hint="Opcional. Só afeta licitações do ComprasNet; ao escolher, o órgão é sugerido no campo acima." className="sm:col-span-2">
+        <UasgPicker selected={uasg} onChange={setUasg} onPickOrgao={onPickOrgao} />
+      </Field>
+
+      <Grupo legenda="Modalidades" dica="Opcional. Vazio = todas.">
+        <ModalidadeCheckboxes selected={modalidades} onChange={setModalidades} />
+      </Grupo>
+
+      <Grupo
+        legenda="Filtro por raio de distância"
+        dica="Opcional, útil para serviço presencial. Se preenchido, tem prioridade sobre a lista de UFs."
+      >
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[8rem_minmax(0,1fr)_6rem]">
+          <Field label="Raio (km)">
+            <Input type="number" min={1} inputMode="numeric" className="font-mono" placeholder="100" value={raioKm} onChange={(e) => setRaioKm(e.target.value)} />
+          </Field>
+          <Field label="Cidade de referência">
+            <Input placeholder="Ex: Juazeiro" value={origemMunicipio} onChange={(e) => setOrigemMunicipio(e.target.value)} />
+          </Field>
+          <Field label="UF">
+            <Input placeholder="BA" maxLength={2} className="font-mono uppercase" value={origemUf} onChange={(e) => setOrigemUf(e.target.value.toUpperCase())} />
+          </Field>
+        </div>
+      </Grupo>
+    </div>
+  )
+}
+
+function Linha({ rotulo, children }: { rotulo: string; children: ReactNode }) {
+  return (
+    <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-3">
+      <dt className="shrink-0 text-xs text-muted sm:w-28">{rotulo}</dt>
+      <dd className="flex min-w-0 flex-wrap items-center gap-1 text-sm text-ink-2">{children}</dd>
     </div>
   )
 }
 
 export default function ItemsPage() {
   const user = useRequireSession()
+  const { confirmar, dialogo } = useDialogo()
   const [items, setItems] = useState<MonitoredItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [erroCarregar, setErroCarregar] = useState<string | null>(null)
   const [rematchMsg, setRematchMsg] = useState<Record<string, string>>({})
 
-  // Form state
   const [name, setName] = useState('')
   const [keywords, setKeywords] = useState('')
   const [catmatCodes, setCatmatCodes] = useState('')
@@ -54,15 +190,12 @@ export default function ItemsPage() {
   const [origemUf, setOrigemUf] = useState('')
   const [creating, setCreating] = useState(false)
 
-  // Ao escolher uma UASG, sugere o nome do órgão no campo de Órgãos (que
-  // funciona tanto pro PNCP quanto pro ComprasNet) — sem duplicar se já tiver.
   function sugerirOrgao(nomeOrgao: string, atual: string, setter: (v: string) => void) {
     const existentes = atual.split(',').map((o) => o.trim().toLowerCase()).filter(Boolean)
     if (existentes.includes(nomeOrgao.toLowerCase())) return
     setter(atual ? `${atual}, ${nomeOrgao}` : nomeOrgao)
   }
 
-  // Edição de um item já cadastrado
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [editKeywords, setEditKeywords] = useState('')
@@ -81,11 +214,12 @@ export default function ItemsPage() {
 
   async function loadItems() {
     setLoading(true)
+    setErroCarregar(null)
     try {
       const data = await api.get<MonitoredItem[]>('/api/monitored-items')
       setItems(data)
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.message : 'Erro ao carregar itens')
+      setErroCarregar(err instanceof ApiRequestError ? err.message : 'Erro ao carregar itens')
     } finally {
       setLoading(false)
     }
@@ -193,7 +327,7 @@ export default function ItemsPage() {
 
   async function handleDelete(itemId: string) {
     if (!user) return
-    if (!confirm('Remover este item monitorado?')) return
+    if (!(await confirmar({ titulo: 'Remover este item monitorado?', mensagem: 'Ele deixa de buscar licitações novas.', confirmarRotulo: 'Remover', perigo: true }))) return
     await api.delete(`/api/monitored-items/${itemId}`)
     await loadItems()
   }
@@ -223,297 +357,168 @@ export default function ItemsPage() {
 
   if (!user) return null
 
+  const camposNovos: CamposDoItem = {
+    name: [name, setName],
+    keywords: [keywords, setKeywords],
+    catmatCodes: [catmatCodes, setCatmatCodes],
+    catserCodes: [catserCodes, setCatserCodes],
+    modalidades: [modalidades, setModalidades],
+    orgaos: [orgaos, setOrgaos],
+    uasg: [uasgSelected, setUasgSelected],
+    ufs: [ufs, setUfs],
+    valorMax: [valorMax, setValorMax],
+    raioKm: [raioKm, setRaioKm],
+    origemMunicipio: [origemMunicipio, setOrigemMunicipio],
+    origemUf: [origemUf, setOrigemUf],
+  }
+
+  const camposEditados: CamposDoItem = {
+    name: [editName, setEditName],
+    keywords: [editKeywords, setEditKeywords],
+    catmatCodes: [editCatmatCodes, setEditCatmatCodes],
+    catserCodes: [editCatserCodes, setEditCatserCodes],
+    modalidades: [editModalidades, setEditModalidades],
+    orgaos: [editOrgaos, setEditOrgaos],
+    uasg: [editUasgSelected, setEditUasgSelected],
+    ufs: [editUfs, setEditUfs],
+    valorMax: [editValorMax, setEditValorMax],
+    raioKm: [editRaioKm, setEditRaioKm],
+    origemMunicipio: [editOrigemMunicipio, setEditOrigemMunicipio],
+    origemUf: [editOrigemUf, setEditOrigemUf],
+  }
+
   return (
-    <div className="flex flex-col gap-8">
-      <section>
-        <h1 className="mb-4 text-xl font-semibold">Itens monitorados</h1>
+    <>
+      <PageHeader
+        title="Itens monitorados"
+        description={
+          <>
+            Quer ver o que já chegou? Vá para <TextLink href="/matches">Meus matches</TextLink>.
+          </>
+        }
+      />
 
-        <form onSubmit={handleCreate} className="mb-6 grid gap-3 rounded border border-slate-200 bg-white p-4 sm:grid-cols-2">
-          <input
-            required
-            placeholder="Nome do item (ex: Notebooks para o escritório)"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="rounded border border-slate-300 px-3 py-2 text-sm sm:col-span-2"
-          />
-          <input
-            placeholder="Palavras-chave, separadas por vírgula (ex: notebook, computador portátil)"
-            value={keywords}
-            onChange={(e) => setKeywords(e.target.value)}
-            className="rounded border border-slate-300 px-3 py-2 text-sm sm:col-span-2"
-          />
-          <div className="flex flex-col gap-1.5">
-            <CatalogPicker tipo="material" onAdd={(c) => setCatmatCodes((v) => anexarCodigo(v, c))} />
-            <input
-              placeholder="Códigos CATMAT (opcional — match exato, mais preciso que palavra-chave)"
-              value={catmatCodes}
-              onChange={(e) => setCatmatCodes(e.target.value)}
-              className="rounded border border-slate-300 px-3 py-2 text-sm"
-            />
+      <Panel title="Cadastrar item" description="Descreva o que você vende; as licitações que casarem aparecem em Meus matches.">
+        <form onSubmit={handleCreate} className="flex flex-col gap-4">
+          <FormularioDoItem campos={camposNovos} nomeObrigatorio onPickOrgao={(nomeOrgao) => sugerirOrgao(nomeOrgao, orgaos, setOrgaos)} />
+          <FormError>{error}</FormError>
+          <div className="flex flex-wrap gap-2">
+            <Button type="submit" variant="primary" icon={Plus} loading={creating}>
+              {creating ? 'Criando…' : 'Cadastrar item'}
+            </Button>
           </div>
-          <div className="flex flex-col gap-1.5">
-            <CatalogPicker tipo="servico" onAdd={(c) => setCatserCodes((v) => anexarCodigo(v, c))} />
-            <input
-              placeholder="Códigos CATSER (opcional — serviços)"
-              value={catserCodes}
-              onChange={(e) => setCatserCodes(e.target.value)}
-              className="rounded border border-slate-300 px-3 py-2 text-sm"
-            />
-          </div>
-          <input
-            placeholder="UFs — siglas de 2 letras separadas por vírgula, ex: DF, SP (vazio = nacional)"
-            value={ufs}
-            onChange={(e) => setUfs(e.target.value)}
-            className="rounded border border-slate-300 px-3 py-2 text-sm"
-          />
-          <input
-            type="number"
-            placeholder="Valor máximo (opcional)"
-            value={valorMax}
-            onChange={(e) => setValorMax(e.target.value)}
-            className="rounded border border-slate-300 px-3 py-2 text-sm"
-          />
-
-          <input
-            placeholder="Órgãos, separados por vírgula (ex: PREFEITURA DE UBERLÂNDIA, UNIVERSIDADE FEDERAL)"
-            value={orgaos}
-            onChange={(e) => setOrgaos(e.target.value)}
-            className="rounded border border-slate-300 px-3 py-2 text-sm sm:col-span-2"
-          />
-
-          <div className="sm:col-span-2">
-            <UasgPicker
-              selected={uasgSelected}
-              onChange={setUasgSelected}
-              onPickOrgao={(nomeOrgao) => sugerirOrgao(nomeOrgao, orgaos, setOrgaos)}
-            />
-          </div>
-
-          <div className="sm:col-span-2 rounded border border-slate-200 p-3">
-            <p className="mb-2 text-xs font-medium text-slate-500">
-              Modalidades (opcional — vazio = todas)
-            </p>
-            <ModalidadeCheckboxes selected={modalidades} onChange={setModalidades} />
-          </div>
-
-          <div className="sm:col-span-2 rounded border border-dashed border-slate-300 p-3">
-            <p className="mb-2 text-xs font-medium text-slate-500">
-              Filtro por raio de distância (opcional) — útil pra serviço presencial. Se preenchido, tem
-              prioridade sobre a lista de UFs acima.
-            </p>
-            <div className="grid gap-2 sm:grid-cols-3">
-              <input
-                type="number"
-                min={1}
-                placeholder="Raio em km (ex: 100)"
-                value={raioKm}
-                onChange={(e) => setRaioKm(e.target.value)}
-                className="rounded border border-slate-300 px-3 py-2 text-sm"
-              />
-              <input
-                placeholder="Cidade de referência (ex: Juazeiro)"
-                value={origemMunicipio}
-                onChange={(e) => setOrigemMunicipio(e.target.value)}
-                className="rounded border border-slate-300 px-3 py-2 text-sm"
-              />
-              <input
-                placeholder="UF (ex: BA)"
-                maxLength={2}
-                value={origemUf}
-                onChange={(e) => setOrigemUf(e.target.value.toUpperCase())}
-                className="rounded border border-slate-300 px-3 py-2 text-sm"
-              />
-            </div>
-          </div>
-
-          {error && <p className="text-sm text-red-600 sm:col-span-2">{error}</p>}
-          <button
-            type="submit"
-            disabled={creating}
-            className="rounded bg-indigo-700 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-800 disabled:opacity-50 sm:col-span-2"
-          >
-            {creating ? 'Criando...' : 'Cadastrar item'}
-          </button>
         </form>
+      </Panel>
 
+      <Panel title="Itens cadastrados" padding="none">
         {loading ? (
-          <p className="text-sm text-slate-500">Carregando...</p>
+          <Carregando className="p-4" />
+        ) : erroCarregar ? (
+          <ErrorState className="m-4" message={erroCarregar} onRetry={loadItems} />
         ) : items.length === 0 ? (
-          <p className="text-sm text-slate-500">Nenhum item monitorado ainda. Cadastre o primeiro acima.</p>
+          <EmptyState className="m-4" title="Nenhum item monitorado ainda" description="Cadastre o primeiro no formulário acima para começar a receber licitações." />
         ) : (
-          <ul className="flex flex-col gap-3">
+          <ul className="divide-y divide-line-soft">
             {items.map((item) =>
               editingId === item.id ? (
-                <li key={item.id} className="rounded border border-indigo-300 bg-indigo-50 p-4">
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    <input
-                      placeholder="Nome do item"
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
-                      className="rounded border border-slate-300 px-3 py-2 text-sm sm:col-span-2"
-                    />
-                    <input
-                      placeholder="Palavras-chave, separadas por vírgula"
-                      value={editKeywords}
-                      onChange={(e) => setEditKeywords(e.target.value)}
-                      className="rounded border border-slate-300 px-3 py-2 text-sm sm:col-span-2"
-                    />
-                    <div className="flex flex-col gap-1.5">
-                      <CatalogPicker tipo="material" onAdd={(c) => setEditCatmatCodes((v) => anexarCodigo(v, c))} />
-                      <input
-                        placeholder="Códigos CATMAT (opcional)"
-                        value={editCatmatCodes}
-                        onChange={(e) => setEditCatmatCodes(e.target.value)}
-                        className="rounded border border-slate-300 px-3 py-2 text-sm"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <CatalogPicker tipo="servico" onAdd={(c) => setEditCatserCodes((v) => anexarCodigo(v, c))} />
-                      <input
-                        placeholder="Códigos CATSER (opcional)"
-                        value={editCatserCodes}
-                        onChange={(e) => setEditCatserCodes(e.target.value)}
-                        className="rounded border border-slate-300 px-3 py-2 text-sm"
-                      />
-                    </div>
-                    <input
-                      placeholder="UFs — siglas de 2 letras separadas por vírgula, ex: DF, SP (vazio = nacional)"
-                      value={editUfs}
-                      onChange={(e) => setEditUfs(e.target.value)}
-                      className="rounded border border-slate-300 px-3 py-2 text-sm"
-                    />
-                    <input
-                      placeholder="Órgãos, separados por vírgula (opcional)"
-                      value={editOrgaos}
-                      onChange={(e) => setEditOrgaos(e.target.value)}
-                      className="rounded border border-slate-300 px-3 py-2 text-sm sm:col-span-2"
-                    />
-                    <input
-                      type="number"
-                      placeholder="Valor máximo (opcional)"
-                      value={editValorMax}
-                      onChange={(e) => setEditValorMax(e.target.value)}
-                      className="rounded border border-slate-300 px-3 py-2 text-sm"
-                    />
-                    <div className="sm:col-span-2">
-                      <UasgPicker
-                        selected={editUasgSelected}
-                        onChange={setEditUasgSelected}
-                        onPickOrgao={(nomeOrgao) => sugerirOrgao(nomeOrgao, editOrgaos, setEditOrgaos)}
-                      />
-                    </div>
-                    <div className="sm:col-span-2 rounded border border-slate-200 bg-white p-3">
-                      <p className="mb-2 text-xs font-medium text-slate-500">Modalidades (opcional — vazio = todas)</p>
-                      <ModalidadeCheckboxes selected={editModalidades} onChange={setEditModalidades} />
-                    </div>
-                    <div className="sm:col-span-2 rounded border border-dashed border-slate-300 bg-white p-3">
-                      <p className="mb-2 text-xs font-medium text-slate-500">
-                        Filtro por raio de distância — tem prioridade sobre a lista de UFs quando preenchido.
-                      </p>
-                      <div className="grid gap-2 sm:grid-cols-3">
-                        <input
-                          type="number"
-                          min={1}
-                          placeholder="Raio em km"
-                          value={editRaioKm}
-                          onChange={(e) => setEditRaioKm(e.target.value)}
-                          className="rounded border border-slate-300 px-3 py-2 text-sm"
-                        />
-                        <input
-                          placeholder="Cidade de referência"
-                          value={editOrigemMunicipio}
-                          onChange={(e) => setEditOrigemMunicipio(e.target.value)}
-                          className="rounded border border-slate-300 px-3 py-2 text-sm"
-                        />
-                        <input
-                          placeholder="UF"
-                          maxLength={2}
-                          value={editOrigemUf}
-                          onChange={(e) => setEditOrigemUf(e.target.value.toUpperCase())}
-                          className="rounded border border-slate-300 px-3 py-2 text-sm"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  {editError && <p className="mt-2 text-sm text-red-600">{editError}</p>}
-                  <div className="mt-3 flex gap-3">
-                    <button
-                      onClick={() => handleSaveEdit(item.id)}
-                      disabled={editSaving}
-                      className="rounded bg-indigo-700 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-800 disabled:opacity-50"
-                    >
-                      {editSaving ? 'Salvando...' : 'Salvar alterações'}
-                    </button>
-                    <button onClick={cancelEdit} className="rounded border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50">
+                <li key={item.id} className="flex flex-col gap-4 border-l-2 border-accent bg-sunken px-4 py-4">
+                  <p className="text-sm font-semibold text-ink">Editando: {item.name}</p>
+                  <FormularioDoItem campos={camposEditados} onPickOrgao={(nomeOrgao) => sugerirOrgao(nomeOrgao, editOrgaos, setEditOrgaos)} />
+                  <FormError>{editError}</FormError>
+                  <div className="flex flex-wrap gap-2">
+                    <Button variant="primary" icon={Save} loading={editSaving} onClick={() => handleSaveEdit(item.id)}>
+                      {editSaving ? 'Salvando…' : 'Salvar alterações'}
+                    </Button>
+                    <Button variant="secondary" onClick={cancelEdit}>
                       Cancelar
-                    </button>
+                    </Button>
                   </div>
                 </li>
               ) : (
-                <li key={item.id} className="rounded border border-slate-200 bg-white p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="font-medium">
-                        {item.name}{' '}
-                        {!item.active && <span className="text-xs text-slate-400">(inativo)</span>}
-                      </p>
+                <li key={item.id} className="flex flex-col gap-3 px-4 py-3.5 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
+                  <div className="flex min-w-0 flex-col gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className={cx('text-sm font-semibold', item.active ? 'text-ink' : 'text-muted')}>{item.name}</p>
+                      {item.active ? <StatusTag>Ativo</StatusTag> : <StatusTag tone="warn">Inativo</StatusTag>}
+                    </div>
+                    <dl className="flex flex-col gap-1.5">
                       {item.keywords.length > 0 && (
-                        <p className="text-sm text-slate-500">Palavras-chave: {item.keywords.join(', ')}</p>
+                        <Linha rotulo="Palavras-chave">
+                          {item.keywords.map((k) => (
+                            <StatusTag key={k}>{k}</StatusTag>
+                          ))}
+                        </Linha>
                       )}
-                      {(item.catmatCodes.length > 0 || item.catserCodes.length > 0) && (
-                        <p className="text-sm text-slate-500">
-                          {item.catmatCodes.length > 0 && `CATMAT: ${item.catmatCodes.join(', ')}`}
-                          {item.catmatCodes.length > 0 && item.catserCodes.length > 0 && ' · '}
-                          {item.catserCodes.length > 0 && `CATSER: ${item.catserCodes.join(', ')}`}
-                        </p>
+                      {item.catmatCodes.length > 0 && (
+                        <Linha rotulo="CATMAT">
+                          {item.catmatCodes.map((c) => (
+                            <StatusTag key={c} mono>
+                              {c}
+                            </StatusTag>
+                          ))}
+                        </Linha>
+                      )}
+                      {item.catserCodes.length > 0 && (
+                        <Linha rotulo="CATSER">
+                          {item.catserCodes.map((c) => (
+                            <StatusTag key={c} mono>
+                              {c}
+                            </StatusTag>
+                          ))}
+                        </Linha>
                       )}
                       {item.modalidades.length > 0 && (
-                        <p className="text-sm text-slate-500">
-                          Modalidades:{' '}
-                          {item.modalidades
-                            .map((m) => MODALIDADE_OPTIONS.find((o) => o.value === m)?.label ?? m)
-                            .join(', ')}
-                        </p>
+                        <Linha rotulo="Modalidades">
+                          {item.modalidades.map((m) => MODALIDADE_OPTIONS.find((o) => o.value === m)?.label ?? m).join(', ')}
+                        </Linha>
                       )}
                       {item.raioKm ? (
-                        <p className="text-sm text-slate-500">
-                          Raio de {item.raioKm}km de {item.origemMunicipio}/{item.origemUf}
-                        </p>
+                        <Linha rotulo="Raio">
+                          <span>
+                            <span className="font-mono">{item.raioKm} km</span> de {item.origemMunicipio}/{item.origemUf}
+                          </span>
+                        </Linha>
                       ) : (
-                        item.ufs.length > 0 && <p className="text-sm text-slate-500">UFs: {item.ufs.join(', ')}</p>
+                        item.ufs.length > 0 && (
+                          <Linha rotulo="UFs">
+                            {item.ufs.map((u) => (
+                              <StatusTag key={u} mono>
+                                {u}
+                              </StatusTag>
+                            ))}
+                          </Linha>
+                        )
                       )}
-                      {item.orgaos.length > 0 && (
-                        <p className="text-sm text-slate-500">Órgãos: {item.orgaos.join(', ')}</p>
-                      )}
+                      {item.orgaos.length > 0 && <Linha rotulo="Órgãos">{item.orgaos.join(', ')}</Linha>}
+                    </dl>
+                  </div>
+                  <div className="flex shrink-0 flex-col gap-1.5 lg:items-end">
+                    <div className="flex flex-wrap gap-1.5">
+                      <Button size="sm" variant="secondary" icon={RefreshCw} onClick={() => handleRematch(item.id)}>
+                        Buscar agora
+                      </Button>
+                      <Button size="sm" variant="ghost" icon={Pencil} onClick={() => startEdit(item)}>
+                        Editar
+                      </Button>
+                      <Button size="sm" variant="ghost" icon={item.active ? Pause : Play} onClick={() => handleToggleActive(item)}>
+                        {item.active ? 'Desativar' : 'Ativar'}
+                      </Button>
+                      <Button size="sm" variant="ghost" icon={Trash2} onClick={() => handleDelete(item.id)}>
+                        Remover
+                      </Button>
                     </div>
-                    <div className="flex shrink-0 flex-col items-end gap-1 text-sm">
-                      <div className="flex gap-3">
-                        <button onClick={() => handleRematch(item.id)} className="text-indigo-700 hover:underline">
-                          Buscar agora
-                        </button>
-                        <button onClick={() => startEdit(item)} className="text-slate-600 hover:underline">
-                          Editar
-                        </button>
-                        <button onClick={() => handleToggleActive(item)} className="text-slate-600 hover:underline">
-                          {item.active ? 'Desativar' : 'Ativar'}
-                        </button>
-                        <button onClick={() => handleDelete(item.id)} className="text-red-600 hover:underline">
-                          Remover
-                        </button>
-                      </div>
-                      {rematchMsg[item.id] && <p className="text-xs text-slate-500">{rematchMsg[item.id]}</p>}
-                    </div>
+                    <p role="status" className="text-xs text-muted lg:text-right">
+                      {rematchMsg[item.id]}
+                    </p>
                   </div>
                 </li>
               )
             )}
           </ul>
         )}
-      </section>
+      </Panel>
 
-      <p className="text-sm text-slate-500">
-        Quer ver o que já chegou? Vá para <Link href="/matches" className="text-indigo-700 hover:underline">Meus matches</Link>.
-      </p>
-    </div>
+      {dialogo}
+    </>
   )
 }

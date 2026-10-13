@@ -1,10 +1,12 @@
 'use client'
 
 import { useState } from 'react'
+import { Download, KeyRound, Trash2 } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
 import { api, ApiRequestError } from '@/lib/api'
 import { replaceSessionToken } from '@/lib/session'
 import UsoDoPlano from '@/components/UsoDoPlano'
+import { Button, Field, FormError, Input, Notice, PageHeader, Panel, Textarea, useDialogo } from '@/components/ui'
 
 export default function ContaPage() {
   const user = useRequireSession()
@@ -49,63 +51,44 @@ export default function ContaPage() {
 
   if (!user) return null
 
-  const inputClass = 'rounded border border-slate-300 px-3 py-2 text-sm'
-
   return (
-    <div className="mx-auto max-w-sm">
-      <h1 className="mb-1 text-xl font-semibold">Minha conta</h1>
-      <p className="mb-6 text-sm text-slate-500">{user.email}</p>
+    <>
+      <PageHeader title="Minha conta" description={user.email} />
 
-      <div className="mb-4">
+      <div className="flex w-full max-w-xl flex-col gap-6">
         <UsoDoPlano />
+
+        <Panel title="Trocar senha">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <Field label="Senha atual" required>
+              <Input type="password" autoComplete="current-password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
+            </Field>
+            <Field label="Nova senha" hint="Mínimo de 10 caracteres." required>
+              <Input type="password" autoComplete="new-password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+            </Field>
+            <Field label="Confirmar nova senha" required>
+              <Input type="password" autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+            </Field>
+
+            <FormError>{error}</FormError>
+            {success && <Notice tone="ok">Senha alterada com sucesso.</Notice>}
+
+            <div className="flex flex-wrap gap-2">
+              <Button type="submit" variant="primary" icon={KeyRound} loading={saving}>
+                {saving ? 'Salvando…' : 'Salvar nova senha'}
+              </Button>
+            </div>
+          </form>
+        </Panel>
+
+        <SeusDados />
       </div>
-
-      <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded border border-slate-200 bg-white p-4">
-        <h2 className="text-sm font-medium text-slate-800">Trocar senha</h2>
-        <input
-          type="password"
-          required
-          placeholder="Senha atual"
-          value={currentPassword}
-          onChange={(e) => setCurrentPassword(e.target.value)}
-          className={inputClass}
-        />
-        <input
-          type="password"
-          required
-          placeholder="Nova senha (mínimo 10 caracteres)"
-          value={newPassword}
-          onChange={(e) => setNewPassword(e.target.value)}
-          className={inputClass}
-        />
-        <input
-          type="password"
-          required
-          placeholder="Confirmar nova senha"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          className={inputClass}
-        />
-
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        {success && <p className="text-sm text-emerald-700">Senha alterada com sucesso.</p>}
-
-        <button
-          type="submit"
-          disabled={saving}
-          className="rounded bg-indigo-700 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-800 disabled:opacity-50"
-        >
-          {saving ? 'Salvando...' : 'Salvar nova senha'}
-        </button>
-      </form>
-
-      <SeusDados />
-    </div>
+    </>
   )
 }
 
-// Direitos do titular (LGPD): baixar uma cópia dos dados e pedir a exclusão da conta.
 function SeusDados() {
+  const { confirmar, dialogo } = useDialogo()
   const [baixando, setBaixando] = useState(false)
   const [senha, setSenha] = useState('')
   const [motivo, setMotivo] = useState('')
@@ -134,6 +117,13 @@ function SeusDados() {
   async function pedirExclusao(e: React.FormEvent) {
     e.preventDefault()
     setErro(null)
+    const confirmado = await confirmar({
+      titulo: 'Pedir a exclusão definitiva?',
+      mensagem: 'A exclusão apaga a empresa, todos os usuários e os dados cadastrados, e não pode ser desfeita.',
+      confirmarRotulo: 'Pedir exclusão',
+      perigo: true,
+    })
+    if (!confirmado) return
     try {
       const r = await api.post<{ mensagem: string }>('/api/conta/solicitar-exclusao', { senha, motivo: motivo.trim() || undefined })
       setMensagem(r.mensagem)
@@ -145,52 +135,45 @@ function SeusDados() {
   }
 
   return (
-    <section className="mt-4 flex flex-col gap-3 rounded border border-slate-200 bg-white p-4">
-      <h2 className="text-sm font-medium text-slate-800">Seus dados</h2>
-      <p className="text-xs text-slate-500">Baixe uma cópia dos dados da sua conta e da empresa, ou peça a exclusão definitiva.</p>
-      <button
-        onClick={baixar}
-        disabled={baixando}
-        className="rounded border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-      >
-        {baixando ? 'Gerando...' : 'Baixar meus dados'}
-      </button>
-      {!abrirExclusao ? (
-        <button onClick={() => setAbrirExclusao(true)} className="text-left text-xs text-red-700 hover:underline">
-          Excluir minha conta e os dados da empresa...
-        </button>
-      ) : (
-        <form onSubmit={pedirExclusao} className="flex flex-col gap-2 rounded border border-red-200 bg-red-50 p-3">
-          <p className="text-xs text-red-800">
-            A exclusão apaga a empresa, todos os usuários e os dados cadastrados, e não pode ser desfeita. Só o dono da empresa pode pedir.
-          </p>
-          <input
-            type="password"
-            required
-            placeholder="Sua senha"
-            value={senha}
-            onChange={(e) => setSenha(e.target.value)}
-            className="rounded border border-slate-300 px-3 py-2 text-sm"
-          />
-          <textarea
-            placeholder="Motivo (opcional)"
-            value={motivo}
-            onChange={(e) => setMotivo(e.target.value)}
-            className="rounded border border-slate-300 px-3 py-2 text-sm"
-            rows={2}
-          />
-          <div className="flex gap-2">
-            <button type="submit" className="rounded bg-red-700 px-3 py-2 text-sm font-medium text-white hover:bg-red-800">
-              Pedir exclusão
-            </button>
-            <button type="button" onClick={() => setAbrirExclusao(false)} className="text-sm text-slate-600">
-              Cancelar
-            </button>
-          </div>
-        </form>
-      )}
-      {mensagem && <p className="text-sm text-emerald-700">{mensagem}</p>}
-      {erro && <p className="text-sm text-red-600">{erro}</p>}
-    </section>
+    <Panel title="Seus dados" description="Baixe uma cópia dos dados da sua conta e da empresa, ou peça a exclusão definitiva.">
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" icon={Download} loading={baixando} onClick={baixar}>
+            {baixando ? 'Gerando…' : 'Baixar meus dados'}
+          </Button>
+          {!abrirExclusao && (
+            <Button variant="danger" icon={Trash2} onClick={() => setAbrirExclusao(true)}>
+              Excluir conta e dados da empresa…
+            </Button>
+          )}
+        </div>
+
+        {abrirExclusao && (
+          <form onSubmit={pedirExclusao} className="flex flex-col gap-4 rounded border border-danger-line p-4">
+            <p className="text-sm text-ink-2">
+              A exclusão apaga a empresa, todos os usuários e os dados cadastrados, e não pode ser desfeita. Só o dono da empresa pode pedir.
+            </p>
+            <Field label="Sua senha" required>
+              <Input type="password" autoComplete="current-password" value={senha} onChange={(e) => setSenha(e.target.value)} />
+            </Field>
+            <Field label="Motivo" hint="Opcional.">
+              <Textarea rows={2} value={motivo} onChange={(e) => setMotivo(e.target.value)} />
+            </Field>
+            <div className="flex flex-wrap gap-2">
+              <Button type="submit" variant="danger" icon={Trash2}>
+                Pedir exclusão
+              </Button>
+              <Button variant="ghost" onClick={() => setAbrirExclusao(false)}>
+                Cancelar
+              </Button>
+            </div>
+          </form>
+        )}
+
+        {mensagem && <Notice tone="ok">{mensagem}</Notice>}
+        <FormError>{erro}</FormError>
+      </div>
+      {dialogo}
+    </Panel>
   )
 }

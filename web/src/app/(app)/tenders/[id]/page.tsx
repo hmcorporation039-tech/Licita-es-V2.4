@@ -1,6 +1,7 @@
 'use client'
 
-import { use, useEffect, useState } from 'react'
+import { use, useEffect, useState, type ReactNode } from 'react'
+import { ExternalLink, Loader2, Plus, RotateCcw, Trash2 } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
 import { avisarMudancaDeUso, useUsoDoPlano } from '@/hooks/useUsoDoPlano'
 import MedidorDeAnalises from '@/components/MedidorDeAnalises'
@@ -22,9 +23,36 @@ import type { PrazosDaSessao } from '@/lib/adminTypes'
 import PainelDoFiscal from '@/components/PainelDoFiscal'
 import MatrizDeExigencias from '@/components/MatrizDeExigencias'
 import RelatorioDaRevisao from '@/components/RelatorioDaRevisao'
+import {
+  Button,
+  buttonClasses,
+  Carregando,
+  Checkbox,
+  DescriptionList,
+  EmptyState,
+  ErrorState,
+  Field,
+  Input,
+  LinkButton,
+  Notice,
+  PageHeader,
+  Panel,
+  Prazo,
+  Select,
+  StatusTag,
+  Table,
+  TableWrap,
+  Tabs,
+  Td,
+  Th,
+  THead,
+  Tr,
+  useAbaNaUrl,
+  useDialogo,
+  type Aba,
+  type Tom,
+} from '@/components/ui'
 
-// Documento válido (não vencido) do cofre da empresa, indexado por tipo —
-// pra marcar automaticamente os itens do checklist que a empresa já tem.
 function validDocumentTypes(docs: CompanyDocument[]): Set<string> {
   const now = Date.now()
   const valid = new Set<string>()
@@ -36,21 +64,15 @@ function validDocumentTypes(docs: CompanyDocument[]): Set<string> {
   return valid
 }
 
-const SEVERIDADE_STYLE: Record<string, string> = {
-  alta: 'border-red-300 bg-red-50 text-red-900',
-  media: 'border-amber-300 bg-amber-50 text-amber-900',
-  baixa: 'border-slate-300 bg-slate-50 text-slate-700',
+const TOM_DA_SEVERIDADE: Record<string, Tom> = {
+  alta: 'danger',
+  media: 'warn',
+  baixa: 'neutral',
 }
 
-const TABS = [
-  { id: 'informacoes', label: 'Informações' },
-  { id: 'itens', label: 'Itens' },
-  { id: 'analise', label: 'Análise' },
-  { id: 'habilitacao', label: 'Habilitação' },
-  { id: 'exigencias', label: 'Exigências' },
-  { id: 'checklist', label: 'Checklist' },
-  { id: 'plano', label: 'Plano de participação' },
-] as const
+const ABAS = ['informacoes', 'itens', 'analise', 'habilitacao', 'exigencias', 'checklist', 'plano'] as const
+
+type TabId = (typeof ABAS)[number]
 
 const STATUS_OPTIONS: { value: ParticipationStatus; label: string }[] = [
   { value: 'AVALIANDO', label: 'Avaliando' },
@@ -59,7 +81,21 @@ const STATUS_OPTIONS: { value: ParticipationStatus; label: string }[] = [
   { value: 'PARTICIPEI', label: 'Participei' },
 ]
 
-type TabId = (typeof TABS)[number]['id']
+type TenderComEncerramento = Tender & { encerramentoAt?: string | null }
+
+const FONTES_COM_ABERTURA_NO_INICIO_DAS_PROPOSTAS = new Set(['PNCP', 'COMPRASNET'])
+
+function fimDasPropostas(t: TenderComEncerramento): string | null {
+  if (t.encerramentoAt) return t.encerramentoAt
+  if (FONTES_COM_ABERTURA_NO_INICIO_DAS_PROPOSTAS.has(t.fonte)) return null
+  return t.aberturaAt
+}
+
+function cnpjDoProcesso(numeroControle: string | null): string | null {
+  const m = numeroControle?.match(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})-/)
+  if (!m) return null
+  return `${m[1]}.${m[2]}.${m[3]}/${m[4]}-${m[5]}`
+}
 
 function formatValor(v: string | null) {
   if (!v) return '—'
@@ -71,8 +107,12 @@ function formatData(v: string | null) {
   return new Date(v).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
-// "AAAA-MM-DD" (dia de calendário, sem fuso) -> "DD/MM/AAAA", sem passar por Date
-// para não deslocar o dia por causa do fuso do navegador.
+function formatQuantidade(q: string | null) {
+  if (!q) return '—'
+  const n = Number(q)
+  return Number.isNaN(n) ? q : n.toLocaleString('pt-BR')
+}
+
 function formatDiaIso(dia: string) {
   const [y, m, d] = dia.split('-')
   return `${d}/${m}/${y}`
@@ -87,27 +127,28 @@ function groupBySection(items: ChecklistItem[]) {
   return Array.from(sections.entries())
 }
 
-// Campo estilo "grid de rótulos" da tela de informações do processo (BLL)
-function InfoField({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div>
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-0.5 text-sm text-slate-800">{value ?? '—'}</p>
-    </div>
-  )
+function rotuloDaFonte(fonte: string) {
+  return fonte.replace(/_/g, ' ')
+}
+
+function Mono({ children }: { children: ReactNode }) {
+  return <span className="font-mono">{children}</span>
 }
 
 export default function TenderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const user = useRequireSession()
   const { medida } = useUsoDoPlano(!!user)
+  const { avisar, dialogo } = useDialogo()
 
-  const [tender, setTender] = useState<Tender | null>(null)
+  const [tender, setTender] = useState<TenderComEncerramento | null>(null)
   const [items, setItems] = useState<ChecklistItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [erroAoCarregar, setErroAoCarregar] = useState<string | null>(null)
+  const [tentativa, setTentativa] = useState(0)
   const [saving, setSaving] = useState(false)
   const [newItemLabel, setNewItemLabel] = useState('')
-  const [activeTab, setActiveTab] = useState<TabId>('informacoes')
+  const [activeTab, setActiveTab] = useAbaNaUrl<TabId>(ABAS, 'informacoes')
 
   const [analysis, setAnalysis] = useState<TenderAnalysis | null>(null)
   const [analyzing, setAnalyzing] = useState(false)
@@ -121,6 +162,7 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
   useEffect(() => {
     if (!user) return
     setLoading(true)
+    setErroAoCarregar(null)
     Promise.all([
       api.get<Tender>(`/api/tenders/${id}`),
       api.get<TenderChecklist>(`/api/tenders/${id}/checklist`),
@@ -129,6 +171,7 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
         setTender(tenderData)
         setItems(checklistData.items)
       })
+      .catch((err) => setErroAoCarregar(err instanceof ApiRequestError ? err.message : 'Não foi possível carregar a licitação.'))
       .finally(() => setLoading(false))
 
     api
@@ -140,7 +183,6 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
       .get<TenderAnalysis>(`/api/tenders/${id}/analysis`)
       .then((a) => {
         setAnalysis(a)
-        // Reabriu a página com a revisão ainda rodando: retoma o acompanhamento.
         if (a.revisao?.status === 'EM_ANDAMENTO') void aguardarAnalise().catch((e) => console.error(e))
       })
       .catch((err) => {
@@ -158,11 +200,8 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
       .get<PrazosDaSessao>(`/api/tenders/${id}/prazos`)
       .then(setPrazos)
       .catch((err) => console.error(err))
-  }, [id, user])
+  }, [id, user, tentativa])
 
-  // A análise agora roda num worker (baixar vários PDFs e chamar o modelo leva
-  // minutos, e o proxy cortava a requisição antes de terminar). O POST só
-  // enfileira; o estado vem daqui.
   async function runAnalysis(force: boolean) {
     setAnalyzing(true)
     try {
@@ -175,8 +214,6 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
         await aguardarAnalise()
       }
 
-      // A análise pode ter trazido prazo de impugnação/esclarecimento —
-      // busca o plano de novo pra esses marcos aparecerem sem precisar recarregar.
       if (user) {
         api
           .get<ParticipationPlan>(`/api/tenders/${id}/plano`)
@@ -184,16 +221,19 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
           .catch((err) => console.error(err))
       }
     } catch (err) {
-      alert(err instanceof ApiRequestError ? err.message : 'Erro ao analisar o edital')
+      void avisar({
+        titulo: 'Não foi possível analisar o edital',
+        mensagem: err instanceof ApiRequestError ? err.message : 'Erro ao analisar o edital',
+      })
     } finally {
       setAnalyzing(false)
-      avisarMudancaDeUso() // atualiza os medidores com o consumo desta análise
+      avisarMudancaDeUso()
     }
   }
 
   async function aguardarAnalise() {
     const INTERVALO_MS = 4000
-    const TENTATIVAS_MAX = 360 // ~24 minutos (análise + revisão em segundo plano)
+    const TENTATIVAS_MAX = 360
 
     for (let tentativa = 0; tentativa < TENTATIVAS_MAX; tentativa++) {
       await new Promise((resolve) => setTimeout(resolve, INTERVALO_MS))
@@ -201,7 +241,6 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
       try {
         const atual = await api.get<TenderAnalysis>(`/api/tenders/${id}/analysis`)
         setAnalysis(atual)
-        // A análise preliminar já aparece (DONE), mas seguimos atualizando até a revisão terminar.
         if (atual.status !== 'PENDING' && atual.status !== 'RUNNING' && atual.revisao?.status !== 'EM_ANDAMENTO') return
       } catch (err) {
         if (!(err instanceof ApiRequestError && err.status === 404)) throw err
@@ -319,81 +358,135 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
     persistPlan(plan.status, next)
   }
 
-  if (!user || loading) return <p className="text-sm text-slate-500">Carregando...</p>
-  if (!tender) return <p className="text-sm text-red-600">Licitação não encontrada.</p>
+  if (!user || loading) return <Carregando linhas={6} texto="Carregando licitação…" />
+  if (erroAoCarregar) {
+    return (
+      <>
+        <PageHeader title="Licitação" back={{ href: '/tenders', label: 'Licitações' }} />
+        <ErrorState message={erroAoCarregar} onRetry={() => setTentativa((n) => n + 1)} />
+      </>
+    )
+  }
+  if (!tender) {
+    return (
+      <EmptyState
+        title="Licitação não encontrada."
+        action={
+          <LinkButton href="/tenders" size="sm">
+            Voltar para Licitações
+          </LinkButton>
+        }
+      />
+    )
+  }
 
   const total = items.length
   const done = items.filter((i) => i.checked).length
+  const modalidadeLabel = MODALIDADE_OPTIONS.find((o) => o.value === tender.modalidade)?.label ?? tender.modalidade
+  const situacaoLabel = SITUACAO_OPTIONS.find((o) => o.value === tender.situacao)?.label ?? tender.situacao
+  const local = tender.municipio ? `${tender.municipio}/${tender.uf ?? ''}` : tender.uf
+  const cnpj = cnpjDoProcesso(tender.numeroControle)
+  const linkEdital = safeHttpUrl(tender.linkEdital)
+
+  const abas: Aba<TabId>[] = [
+    { id: 'informacoes', label: 'Informações' },
+    { id: 'itens', label: 'Itens', count: tender.items?.length },
+    { id: 'analise', label: 'Análise' },
+    { id: 'habilitacao', label: 'Habilitação' },
+    { id: 'exigencias', label: 'Exigências' },
+    {
+      id: 'checklist',
+      label: (
+        <>
+          Checklist
+          <span className="rounded-sm bg-line-soft px-1 font-mono text-2xs text-muted">
+            {done}/{total}
+          </span>
+        </>
+      ),
+    },
+    { id: 'plano', label: 'Plano de participação' },
+  ]
+
+  const informacoes: Array<{ label: ReactNode; value: ReactNode; mono?: boolean }> = [
+    { label: 'Órgão', value: tender.orgao },
+    { label: 'Nº edital / processo', value: tender.numeroControle, mono: true },
+    { label: 'Fonte', value: rotuloDaFonte(tender.fonte) },
+    { label: 'Modalidade', value: modalidadeLabel },
+    { label: 'Situação', value: situacaoLabel },
+    { label: 'Cidade/UF', value: local },
+    { label: 'Valor estimado', value: formatValor(tender.valorEstimado), mono: true },
+    ...(tender.valorHomologado ? [{ label: 'Valor homologado', value: formatValor(tender.valorHomologado), mono: true }] : []),
+    ...(tender.fonte === 'PNCP' && tender.srp != null ? [{ label: 'Registro de Preços', value: tender.srp ? 'Sim' : 'Não' }] : []),
+    { label: 'Publicação', value: formatData(tender.publicadoAt), mono: true },
+    { label: 'Abertura', value: formatData(tender.aberturaAt), mono: true },
+    ...(tender.encerramentoAt ? [{ label: 'Encerramento das propostas', value: formatData(tender.encerramentoAt), mono: true }] : []),
+  ]
 
   return (
-    <div className="flex flex-col gap-4">
-      <section className="rounded border border-slate-200 bg-white p-4">
-        <h1 className="text-lg font-semibold">{tender.objetoResumido ?? tender.objeto}</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          {tender.fonte} · {tender.orgao ?? 'órgão n/d'} · {tender.uf ?? 'UF n/d'} · {formatValor(tender.valorEstimado)}
-        </p>
-      </section>
+    <>
+      {dialogo}
 
-      <div className="flex flex-col gap-4 sm:flex-row">
-        <nav className="flex shrink-0 gap-1 overflow-x-auto sm:w-44 sm:flex-col sm:gap-2 sm:overflow-visible">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`whitespace-nowrap rounded px-3 py-2 text-left text-sm font-medium transition ${
-                activeTab === tab.id
-                  ? 'bg-indigo-700 text-white'
-                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-              }`}
-            >
-              {tab.label}
-              {tab.id === 'checklist' && (
-                <span className={activeTab === tab.id ? 'ml-1 text-indigo-100' : 'ml-1 text-slate-400'}>
-                  ({done}/{total})
-                </span>
-              )}
-            </button>
-          ))}
-        </nav>
+      <PageHeader
+        back={{ href: '/tenders', label: 'Licitações' }}
+        eyebrow={
+          <div className="flex flex-wrap items-center gap-1.5">
+            <StatusTag>{modalidadeLabel}</StatusTag>
+            {tender.srp && <StatusTag>Registro de preços</StatusTag>}
+            <StatusTag mono>{rotuloDaFonte(tender.fonte)}</StatusTag>
+            <StatusTag dot>{situacaoLabel}</StatusTag>
+          </div>
+        }
+        title={<span className="block max-w-[920px] text-xl leading-7">{tender.objetoResumido ?? tender.objeto}</span>}
+        description={
+          <>
+            {tender.orgao ?? 'Órgão n/d'}
+            {local ? ` · ${local}` : ''}
+            {cnpj && (
+              <>
+                {' · CNPJ '}
+                <Mono>{cnpj}</Mono>
+              </>
+            )}
+          </>
+        }
+        actions={
+          linkEdital && (
+            <a href={linkEdital} target="_blank" rel="noopener noreferrer" className={buttonClasses('secondary', 'md')}>
+              Ver edital original
+              <ExternalLink size={16} aria-hidden />
+            </a>
+          )
+        }
+      />
 
-        <div className="min-w-0 flex-1">
+      <Panel>
+        <DescriptionList
+          columns={4}
+          items={[
+            { label: 'Valor estimado', value: <span className="text-lg font-medium">{formatValor(tender.valorEstimado)}</span>, mono: true },
+            { label: 'Fim do envio de propostas', value: <Prazo data={fimDasPropostas(tender)} layout="inline" /> },
+            { label: 'Nº do processo', value: tender.numeroControle ? <span className="break-all">{tender.numeroControle}</span> : '—', mono: true },
+            { label: 'Publicação', value: formatData(tender.publicadoAt), mono: true },
+          ]}
+        />
+      </Panel>
+
+      <div className="flex flex-col gap-5">
+        <Tabs tabs={abas} value={activeTab} onChange={setActiveTab} label="Seções da licitação" />
+
+        <div role="tabpanel" id={`painel-${activeTab}`} aria-labelledby={`aba-${activeTab}`} className="min-w-0">
           {activeTab === 'informacoes' && (
-            <section className="rounded border border-slate-200 bg-white p-4">
-              <h2 className="mb-3 text-lg font-semibold">Informações do processo</h2>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <InfoField label="Órgão" value={tender.orgao} />
-                <InfoField label="Nº edital / processo" value={tender.numeroControle} />
-                <InfoField label="Fonte" value={tender.fonte} />
-                <InfoField
-                  label="Modalidade"
-                  value={MODALIDADE_OPTIONS.find((o) => o.value === tender.modalidade)?.label ?? tender.modalidade}
-                />
-                <InfoField
-                  label="Situação"
-                  value={SITUACAO_OPTIONS.find((o) => o.value === tender.situacao)?.label ?? tender.situacao}
-                />
-                <InfoField label="Cidade/UF" value={tender.municipio ? `${tender.municipio}/${tender.uf ?? ''}` : tender.uf} />
-                <InfoField label="Valor estimado" value={formatValor(tender.valorEstimado)} />
-                {tender.valorHomologado && (
-                  <InfoField label="Valor homologado" value={formatValor(tender.valorHomologado)} />
-                )}
-                {tender.fonte === 'PNCP' && tender.srp != null && (
-                  <InfoField label="Registro de Preços" value={tender.srp ? 'Sim' : 'Não'} />
-                )}
-                <InfoField label="Publicação" value={formatData(tender.publicadoAt)} />
-                <InfoField label="Abertura" value={formatData(tender.aberturaAt)} />
-              </div>
+            <div className="flex flex-col gap-4">
+              <Panel title="Informações do processo">
+                <DescriptionList columns={3} items={informacoes} />
+              </Panel>
 
               {prazos?.disponivel && prazos.limiteImpugnacao && prazos.dataSessao && (
-                <div
-                  className={`mt-4 rounded border p-3 text-sm ${
-                    prazos.limitePassou ? 'border-red-200 bg-red-50 text-red-900' : 'border-indigo-200 bg-indigo-50 text-indigo-950'
-                  }`}
-                >
-                  <p className="font-medium">Prazo para esclarecimento e impugnação (dias úteis)</p>
-                  <p className="mt-1">
-                    Até <strong>{formatDiaIso(prazos.limiteImpugnacao)}</strong> (3 dias úteis antes da sessão de{' '}
-                    {formatDiaIso(prazos.dataSessao)}).{' '}
+                <Notice tone={prazos.limitePassou ? 'danger' : 'info'} title="Prazo para esclarecimento e impugnação (dias úteis)">
+                  <p>
+                    Até <strong className="font-mono font-semibold">{formatDiaIso(prazos.limiteImpugnacao)}</strong> (3 dias úteis antes da sessão de{' '}
+                    <Mono>{formatDiaIso(prazos.dataSessao)}</Mono>).{' '}
                     {prazos.sessaoPassou
                       ? 'A sessão já ocorreu.'
                       : prazos.limitePassou
@@ -402,387 +495,356 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
                           ? 'Termina hoje.'
                           : `Faltam ${prazos.diasUteisAteLimite} dia(s) útil(eis).`}
                   </p>
-                  <p className="mt-1 text-xs opacity-70">{prazos.aviso}</p>
-                </div>
+                  {prazos.aviso && <p className="mt-1 text-xs text-muted">{prazos.aviso}</p>}
+                </Notice>
               )}
 
-              {safeHttpUrl(tender.linkEdital) && (
-                <a
-                  href={safeHttpUrl(tender.linkEdital)!}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-4 inline-block text-sm text-indigo-700 hover:underline"
-                >
-                  Ver edital original
-                </a>
-              )}
-
-              <details className="mt-4 text-sm text-slate-600">
-                <summary className="cursor-pointer text-slate-500">Objeto completo</summary>
-                <p className="mt-2 whitespace-pre-wrap">{tender.objeto}</p>
-              </details>
-            </section>
+              <Panel>
+                <details className="text-sm">
+                  <summary className="cursor-pointer font-medium text-ink-2 hover:text-ink">Objeto completo</summary>
+                  <p className="mt-3 whitespace-pre-wrap text-base leading-relaxed text-ink-2">{tender.objeto}</p>
+                </details>
+              </Panel>
+            </div>
           )}
 
           {activeTab === 'habilitacao' && <PainelDoFiscal tenderId={id} />}
 
           {activeTab === 'exigencias' && <MatrizDeExigencias tenderId={id} />}
 
-          {activeTab === 'itens' && (
-            <section className="rounded border border-slate-200 bg-white p-4">
-              <h2 className="mb-1 text-lg font-semibold">Itens da licitação</h2>
-              {!tender.items || tender.items.length === 0 ? (
-                <p className="text-sm text-slate-500">Nenhum item detalhado disponível para esta licitação.</p>
-              ) : (
-                <>
-                  <p className="mb-3 text-sm text-slate-500">
-                    Códigos CATMAT/CATSER de cada item — use pra cadastrar um item monitorado com match exato,
-                    sem depender de palavra-chave.
+          {activeTab === 'itens' &&
+            (!tender.items || tender.items.length === 0 ? (
+              <EmptyState title="Nenhum item detalhado disponível para esta licitação." />
+            ) : (
+              <section className="flex flex-col gap-3">
+                <div className="flex flex-col gap-0.5">
+                  <h2 className="text-sm font-semibold text-ink">Itens da licitação</h2>
+                  <p className="text-xs text-muted">
+                    Códigos CATMAT/CATSER de cada item — use pra cadastrar um item monitorado com match exato, sem depender de palavra-chave.
                   </p>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-slate-200 text-left text-xs text-slate-400">
-                          <th className="py-1 pr-3">Descrição</th>
-                          <th className="py-1 pr-3">CATMAT</th>
-                          <th className="py-1 pr-3">CATSER</th>
-                          <th className="py-1 pr-3">Qtd.</th>
-                          <th className="py-1">Valor unit.</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {tender.items.map((it) => (
-                          <tr key={it.id} className="border-b border-slate-100 align-top last:border-0">
-                            <td className="py-2 pr-3">
-                              {it.descricao}
-                              {it.descricaoDetalhada && (
-                                <span className="mt-1 block text-xs text-slate-500">{it.descricaoDetalhada}</span>
-                              )}
-                              {it.criterioJulgamento && (
-                                <span className="mt-0.5 block text-xs text-slate-400">
-                                  Critério: {it.criterioJulgamento}
-                                </span>
-                              )}
-                            </td>
-                            <td className="py-2 pr-3 font-mono text-xs">{it.catmatCode ?? '—'}</td>
-                            <td className="py-2 pr-3 font-mono text-xs">{it.catserCode ?? '—'}</td>
-                            <td className="py-2 pr-3">
-                              {it.quantidade ?? '—'} {it.unidadeMedida ?? ''}
-                            </td>
-                            <td className="py-2">{formatValor(it.valorUnitario)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
-              )}
-            </section>
-          )}
+                </div>
+                <TableWrap minWidth={820}>
+                  <Table>
+                    <THead>
+                      <tr>
+                        <Th>Item</Th>
+                        <Th>Descrição</Th>
+                        <Th>CATMAT</Th>
+                        <Th>CATSER</Th>
+                        <Th align="right">Qtd.</Th>
+                        <Th align="right">Valor unit.</Th>
+                        <Th align="right">Valor total</Th>
+                      </tr>
+                    </THead>
+                    <tbody>
+                      {tender.items.map((it) => (
+                        <Tr key={it.id}>
+                          <Td muted className="whitespace-nowrap align-top font-mono">
+                            {it.numeroItem ?? '—'}
+                          </Td>
+                          <Td className="align-top">
+                            <span className="font-medium text-ink">{it.descricao}</span>
+                            {it.descricaoDetalhada && <span className="mt-1 block text-xs text-muted">{it.descricaoDetalhada}</span>}
+                            {it.criterioJulgamento && <span className="mt-0.5 block text-xs text-faint">Critério: {it.criterioJulgamento}</span>}
+                          </Td>
+                          <Td className="whitespace-nowrap align-top font-mono text-xs">
+                            {it.catmatCode ?? '—'}
+                          </Td>
+                          <Td className="whitespace-nowrap align-top font-mono text-xs">
+                            {it.catserCode ?? '—'}
+                          </Td>
+                          <Td numeric className="align-top">
+                            {formatQuantidade(it.quantidade)} <span className="font-sans text-xs text-muted">{it.unidadeMedida ?? ''}</span>
+                          </Td>
+                          <Td numeric className="align-top">
+                            {formatValor(it.valorUnitario)}
+                          </Td>
+                          <Td numeric className="align-top">
+                            {formatValor(it.valorTotal)}
+                          </Td>
+                        </Tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                </TableWrap>
+              </section>
+            ))}
 
           {activeTab === 'analise' && (
-            <section className="rounded border border-slate-200 bg-white p-4">
-              <div className="mb-2 flex items-center justify-between">
-                <h2 className="text-lg font-semibold">Análise</h2>
-                {analysis?.status === 'DONE' && (
-                  <button
-                    onClick={() => runAnalysis(true)}
-                    disabled={analyzing}
-                    className="text-sm text-indigo-700 hover:underline disabled:opacity-50"
-                  >
+            <Panel
+              title="Análise"
+              actions={
+                analysis?.status === 'DONE' && (
+                  <Button variant="ghost" size="sm" icon={RotateCcw} onClick={() => runAnalysis(true)} disabled={analyzing}>
                     Reanalisar
-                  </button>
-                )}
-              </div>
-
+                  </Button>
+                )
+              }
+            >
               {!analysis && !analyzing && (
-                <div>
-                  <p className="mb-3 text-sm text-slate-500">
-                    Baixa o edital publicado no PNCP e resume valor, prazo, critério de julgamento,
-                    exigências técnicas e pontos de atenção — pode levar até 30 segundos.
+                <div className="flex flex-col items-start gap-3">
+                  <p className="max-w-prose text-sm text-ink-2">
+                    Baixa o edital publicado no PNCP e resume valor, prazo, critério de julgamento, exigências técnicas e pontos de atenção — pode levar
+                    até 30 segundos.
                   </p>
-                  <MedidorDeAnalises className="mb-3" />
-                  <button
+                  <MedidorDeAnalises className="w-full max-w-sm" />
+                  <Button
+                    variant="primary"
                     onClick={() => runAnalysis(false)}
                     disabled={medida?.esgotado === true}
                     title={medida?.esgotado ? 'Você atingiu o limite de análises do plano neste mês.' : undefined}
-                    className="rounded bg-indigo-700 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-800 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Analisar edital{medida && medida.restantes !== null && !medida.esgotado ? ` (usa 1 de ${medida.restantes})` : ''}
-                  </button>
+                  </Button>
                 </div>
               )}
 
-              {analyzing && <p className="text-sm text-slate-500">Baixando e analisando o edital...</p>}
+              {analyzing && (
+                <p role="status" className="inline-flex items-center gap-2 text-sm text-muted">
+                  <Loader2 size={16} className="animate-spin" aria-hidden />
+                  Baixando e analisando o edital…
+                </p>
+              )}
 
               {!analyzing && analysis?.status === 'NO_DOCUMENTS' && (
-                <p className="text-sm text-slate-500">{analysis.errorMsg ?? 'Nenhum documento disponível para análise.'}</p>
+                <p className="text-sm text-muted">{analysis.errorMsg ?? 'Nenhum documento disponível para análise.'}</p>
               )}
 
               {!analyzing && analysis?.status === 'FAILED' && (
-                <div>
-                  <p className="mb-3 text-sm text-red-600">{analysis.errorMsg ?? 'A análise falhou.'}</p>
-                  <button
-                    onClick={() => runAnalysis(true)}
-                    className="rounded bg-indigo-700 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-800"
-                  >
-                    Tentar novamente
-                  </button>
-                </div>
+                <Notice
+                  tone="danger"
+                  action={
+                    <Button size="sm" variant="secondary" icon={RotateCcw} onClick={() => runAnalysis(true)}>
+                      Tentar novamente
+                    </Button>
+                  }
+                >
+                  {analysis.errorMsg ?? 'A análise falhou.'}
+                </Notice>
               )}
 
               {!analyzing && analysis?.status === 'DONE' && analysis.resultado && (
-                <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-5">
                   {analysis.documentoNome && (
-                    <p className="text-xs text-slate-400">Documento analisado: {analysis.documentoNome}</p>
+                    <p className="text-xs text-muted">
+                      Documento analisado: <span className="font-mono">{analysis.documentoNome}</span>
+                    </p>
                   )}
                   <RelatorioDaRevisao revisao={analysis.revisao ?? null} />
                   {user?.isAdmin && analysis.rascunho && (
-                    <details className="rounded border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+                    <details className="rounded border border-line bg-sunken p-3 text-xs text-ink-2">
                       <summary className="cursor-pointer font-medium">Admin: rascunho do analista (antes da revisão)</summary>
-                      <pre className="mt-2 max-h-96 overflow-auto whitespace-pre-wrap">{JSON.stringify(analysis.rascunho, null, 2)}</pre>
+                      <pre className="mt-2 max-h-96 overflow-auto whitespace-pre-wrap font-mono">{JSON.stringify(analysis.rascunho, null, 2)}</pre>
                     </details>
                   )}
-                  <p className="text-sm text-slate-700">{analysis.resultado.resumo}</p>
+                  <p className="max-w-prose text-base leading-relaxed text-ink">{analysis.resultado.resumo}</p>
 
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="rounded border border-slate-200 p-3">
-                      <p className="text-xs text-slate-400">Valor estimado</p>
-                      <p className="text-sm">{analysis.resultado.valorEstimado}</p>
-                    </div>
-                    <div className="rounded border border-slate-200 p-3">
-                      <p className="text-xs text-slate-400">Data da sessão</p>
-                      <p className="text-sm">{analysis.resultado.dataSessao || '—'}</p>
-                    </div>
-                    <div className="rounded border border-slate-200 p-3">
-                      <p className="text-xs text-slate-400">Registro de preços (SRP)</p>
-                      <p className="text-sm">{analysis.resultado.registroPrecos || '—'}</p>
-                    </div>
-                    <div className="rounded border border-slate-200 p-3">
-                      <p className="text-xs text-slate-400">Prazo de entrega</p>
-                      <p className="text-sm">{analysis.resultado.prazoEntrega}</p>
-                    </div>
-                    <div className="rounded border border-slate-200 p-3">
-                      <p className="text-xs text-slate-400">Local / entrega</p>
-                      <p className="text-sm">{analysis.resultado.local || '—'}</p>
-                    </div>
-                    <div className="rounded border border-slate-200 p-3">
-                      <p className="text-xs text-slate-400">Pagamento</p>
-                      <p className="text-sm">{analysis.resultado.pagamento || '—'}</p>
-                    </div>
-                    <div className="rounded border border-slate-200 p-3">
-                      <p className="text-xs text-slate-400">Critério de julgamento</p>
-                      <p className="text-sm">{analysis.resultado.criterioJulgamento}</p>
-                    </div>
-                    <div className="rounded border border-slate-200 p-3">
-                      <p className="text-xs text-slate-400">Adesão a ata (carona)</p>
-                      <p className="text-sm">{analysis.resultado.adesaoAta || '—'}</p>
-                    </div>
-                    <div className="rounded border border-slate-200 p-3">
-                      <p className="text-xs text-slate-400">Prazo para esclarecimento</p>
-                      <p className="text-sm">{analysis.resultado.prazoEsclarecimento}</p>
-                    </div>
-                    <div className="rounded border border-slate-200 p-3">
-                      <p className="text-xs text-slate-400">Prazo para impugnação</p>
-                      <p className="text-sm">{analysis.resultado.prazoImpugnacao}</p>
-                    </div>
-                  </div>
+                  <DescriptionList
+                    columns={3}
+                    className="border-y border-line-soft py-4"
+                    items={[
+                      { label: 'Valor estimado', value: analysis.resultado.valorEstimado },
+                      { label: 'Data da sessão', value: analysis.resultado.dataSessao || '—' },
+                      { label: 'Registro de preços (SRP)', value: analysis.resultado.registroPrecos || '—' },
+                      { label: 'Prazo de entrega', value: analysis.resultado.prazoEntrega },
+                      { label: 'Local / entrega', value: analysis.resultado.local || '—' },
+                      { label: 'Pagamento', value: analysis.resultado.pagamento || '—' },
+                      { label: 'Critério de julgamento', value: analysis.resultado.criterioJulgamento },
+                      { label: 'Adesão a ata (carona)', value: analysis.resultado.adesaoAta || '—' },
+                      { label: 'Prazo para esclarecimento', value: analysis.resultado.prazoEsclarecimento },
+                      { label: 'Prazo para impugnação', value: analysis.resultado.prazoImpugnacao },
+                    ]}
+                  />
 
                   {analysis.resultado.exigenciasTecnicas.length > 0 && (
-                    <div>
-                      <p className="mb-1 text-sm font-medium text-slate-800">Exigências técnicas</p>
-                      <ul className="list-inside list-disc text-sm text-slate-600">
+                    <section className="flex flex-col gap-2">
+                      <h3 className="text-sm font-semibold text-ink">Exigências técnicas</h3>
+                      <ul className="list-outside list-disc pl-5 text-sm text-ink-2 marker:text-faint">
                         {analysis.resultado.exigenciasTecnicas.map((e, i) => (
-                          <li key={i}>{e}</li>
+                          <li key={i} className="py-0.5">
+                            {e}
+                          </li>
                         ))}
                       </ul>
-                    </div>
+                    </section>
                   )}
 
                   {analysis.resultado.documentosExigidos.length > 0 && (
-                    <div>
-                      <p className="mb-1 text-sm font-medium text-slate-800">
-                        Documentos específicos deste edital (além do checklist padrão)
-                      </p>
-                      <ul className="flex flex-col gap-1 text-sm text-slate-600">
+                    <section className="flex flex-col gap-2">
+                      <h3 className="text-sm font-semibold text-ink">Documentos específicos deste edital (além do checklist padrão)</h3>
+                      <ul className="flex flex-col divide-y divide-line-soft rounded border border-line">
                         {analysis.resultado.documentosExigidos.map((doc, i) => (
-                          <li key={i} className="flex items-center gap-2">
-                            <span>{doc}</span>
-                            <button
-                              onClick={() => addChecklistItem(doc)}
-                              className="text-xs text-indigo-700 hover:underline"
-                            >
-                              + adicionar ao checklist
-                            </button>
+                          <li key={i} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm text-ink-2">
+                            <span className="min-w-0">{doc}</span>
+                            <Button variant="ghost" size="sm" icon={Plus} onClick={() => addChecklistItem(doc)}>
+                              Adicionar ao checklist
+                            </Button>
                           </li>
                         ))}
                       </ul>
-                    </div>
+                    </section>
                   )}
 
                   {analysis.resultado.riscos.length > 0 && (
-                    <div>
-                      <p className="mb-1 text-sm font-medium text-slate-800">Pontos de atenção</p>
-                      <div className="flex flex-col gap-2">
+                    <section className="flex flex-col gap-2">
+                      <h3 className="text-sm font-semibold text-ink">Pontos de atenção</h3>
+                      <ul className="flex flex-col divide-y divide-line-soft rounded border border-line">
                         {analysis.resultado.riscos.map((r, i) => (
-                          <div key={i} className={`rounded border p-3 text-sm ${SEVERIDADE_STYLE[r.severidade] ?? SEVERIDADE_STYLE.baixa}`}>
-                            <p className="font-medium">
-                              ⚠ {r.titulo} <span className="text-xs font-normal">({r.severidade})</span>
-                            </p>
-                            <p className="mt-1">{r.descricao}</p>
-                          </div>
+                          <li key={i} className="flex flex-col gap-1 px-3 py-2.5 text-sm">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-medium text-ink">{r.titulo}</span>
+                              <StatusTag tone={TOM_DA_SEVERIDADE[r.severidade] ?? 'neutral'}>{r.severidade}</StatusTag>
+                            </div>
+                            <p className="text-ink-2">{r.descricao}</p>
+                          </li>
                         ))}
-                      </div>
-                    </div>
+                      </ul>
+                    </section>
                   )}
                 </div>
               )}
-            </section>
+            </Panel>
           )}
 
           {activeTab === 'checklist' && (
-            <section>
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-lg font-semibold">Checklist de habilitação</h2>
-                <span className="text-sm text-slate-500">
-                  {done}/{total} documentos {saving && '· salvando...'}
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-wrap items-end justify-between gap-2">
+                <div className="flex flex-col gap-1">
+                  <h2 className="text-lg font-semibold text-ink">Checklist de habilitação</h2>
+                  <p className="max-w-prose text-sm text-muted">
+                    Baseado no guia de habilitação da Lei 14.133/2021. Personalize adicionando os documentos específicos exigidos neste edital.
+                  </p>
+                </div>
+                <span role="status" className="text-sm text-muted">
+                  <Mono>
+                    {done}/{total}
+                  </Mono>{' '}
+                  documentos{saving && ' · salvando…'}
                 </span>
               </div>
-              <p className="mb-4 text-sm text-slate-500">
-                Baseado no guia de habilitação da Lei 14.133/2021. Personalize adicionando os documentos
-                específicos exigidos neste edital.
-              </p>
 
-              <div className="flex flex-col gap-5">
-                {groupBySection(items).map(([section, sectionItems]) => (
-                  <div key={section} className="rounded border border-slate-200 bg-white p-4">
-                    <h3 className="mb-2 font-medium text-slate-800">{section}</h3>
-                    <ul className="flex flex-col gap-2">
-                      {sectionItems.map((item) => {
-                        const owned = !item.custom && ownedDocTypes.has(item.id)
-                        return (
-                          <li key={item.id} className="flex items-start gap-2 text-sm">
-                            <input
-                              type="checkbox"
-                              checked={item.checked}
-                              onChange={() => toggleItem(item.id)}
-                              className="mt-0.5"
+              {groupBySection(items).map(([section, sectionItems]) => (
+                <Panel key={section} title={section} padding="none">
+                  <ul className="flex flex-col divide-y divide-line-soft">
+                    {sectionItems.map((item) => {
+                      const owned = !item.custom && ownedDocTypes.has(item.id)
+                      return (
+                        <li key={item.id} className="flex items-start justify-between gap-3 px-4 py-2.5">
+                          <Checkbox
+                            checked={item.checked}
+                            onChange={() => toggleItem(item.id)}
+                            label={
+                              <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+                                <span className={item.checked ? 'text-muted' : undefined}>{item.label}</span>
+                                {owned && <StatusTag tone="ok">Você já tem</StatusTag>}
+                              </span>
+                            }
+                            hint={item.hint}
+                          />
+                          {item.custom && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              icon={Trash2}
+                              onClick={() => removeCustomItem(item.id)}
+                              aria-label={`Remover ${item.label}`}
                             />
-                            <span>
-                              {item.label}
-                              {item.hint && <span className="text-slate-400"> — {item.hint}</span>}
-                              {owned && (
-                                <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">
-                                  ✓ você já tem
-                                </span>
-                              )}
-                            </span>
-                            {item.custom && (
-                              <button
-                                onClick={() => removeCustomItem(item.id)}
-                                className="ml-auto text-xs text-red-600 hover:underline"
-                              >
-                                remover
-                              </button>
-                            )}
-                          </li>
-                        )
-                      })}
-                    </ul>
-                  </div>
-                ))}
-              </div>
+                          )}
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </Panel>
+              ))}
 
-              <form onSubmit={addCustomItem} className="mt-4 flex gap-2">
-                <input
-                  placeholder="Adicionar documento específico deste edital"
-                  value={newItemLabel}
-                  onChange={(e) => setNewItemLabel(e.target.value)}
-                  className="flex-1 rounded border border-slate-300 px-3 py-2 text-sm"
-                />
-                <button type="submit" className="rounded bg-indigo-700 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-800">
+              <form onSubmit={addCustomItem} className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                <Field label="Documento específico deste edital" className="flex-1">
+                  <Input placeholder="Ex: Atestado de capacidade técnica" value={newItemLabel} onChange={(e) => setNewItemLabel(e.target.value)} />
+                </Field>
+                <Button type="submit" variant="primary" icon={Plus}>
                   Adicionar
-                </button>
+                </Button>
               </form>
-            </section>
+            </div>
           )}
 
           {activeTab === 'plano' && (
-            <section className="rounded border border-slate-200 bg-white p-4">
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-lg font-semibold">Plano de participação</h2>
-                {planSaving && <span className="text-xs text-slate-400">salvando...</span>}
-              </div>
-
+            <Panel title="Plano de participação" actions={planSaving && <span className="text-xs text-muted">salvando…</span>}>
               {!plan ? (
-                <p className="text-sm text-slate-500">Carregando...</p>
+                <Carregando />
               ) : (
-                <>
-                  <div className="mb-4">
-                    <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
-                      Status
-                    </label>
-                    <select
-                      value={plan.status}
-                      onChange={(e) => changePlanStatus(e.target.value as ParticipationStatus)}
-                      className="rounded border border-slate-300 px-3 py-2 text-sm"
-                    >
+                <div className="flex flex-col gap-4">
+                  <Field label="Status" className="max-w-xs">
+                    <Select value={plan.status} onChange={(e) => changePlanStatus(e.target.value as ParticipationStatus)}>
                       {STATUS_OPTIONS.map((opt) => (
                         <option key={opt.value} value={opt.value}>
                           {opt.label}
                         </option>
                       ))}
-                    </select>
-                  </div>
+                    </Select>
+                  </Field>
 
                   {!analysis && (
-                    <p className="mb-4 text-xs text-slate-400">
-                      Rode a "Análise" pra trazer os prazos de impugnação e esclarecimento pra essa linha do
-                      tempo — eles não vêm nos dados estruturados do PNCP.
+                    <p className="text-xs text-muted">
+                      Rode a &quot;Análise&quot; pra trazer os prazos de impugnação e esclarecimento pra essa linha do tempo — eles não vêm nos dados
+                      estruturados do PNCP.
                     </p>
                   )}
 
-                  <ul className="flex flex-col gap-2">
-                    {plan.milestones.map((m) => (
-                      <li key={m.id} className="flex items-start gap-2 rounded border border-slate-200 p-3 text-sm">
-                        <input type="checkbox" checked={m.done} onChange={() => toggleMilestone(m.id)} className="mt-0.5" />
-                        <div className="flex-1">
-                          <p className="font-medium text-slate-800">{m.label}</p>
-                          {m.date && <p className="text-xs text-slate-500">{formatData(m.date)}</p>}
-                          {m.detalhe && <p className="text-xs text-slate-500">{m.detalhe}</p>}
-                        </div>
-                        {m.custom && (
-                          <button onClick={() => removeMilestone(m.id)} className="text-xs text-red-600 hover:underline">
-                            remover
-                          </button>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
+                  {plan.milestones.length > 0 && (
+                    <ul className="flex flex-col divide-y divide-line-soft rounded border border-line">
+                      {plan.milestones.map((m) => (
+                        <li key={m.id} className="flex items-start justify-between gap-3 px-3 py-2.5">
+                          <Checkbox
+                            checked={m.done}
+                            onChange={() => toggleMilestone(m.id)}
+                            label={<span className={m.done ? 'text-muted line-through' : 'font-medium'}>{m.label}</span>}
+                            hint={m.detalhe ?? undefined}
+                          />
+                          <div className="flex shrink-0 items-start gap-2">
+                            {m.date &&
+                              (m.done ? (
+                                <span className="font-mono text-xs text-muted">{formatData(m.date)}</span>
+                              ) : (
+                                <Prazo data={m.date} className="items-end text-right" />
+                              ))}
+                            {m.custom && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                icon={Trash2}
+                                onClick={() => removeMilestone(m.id)}
+                                aria-label={`Remover ${m.label}`}
+                                className="w-8 px-0"
+                              />
+                            )}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
 
-                  <form onSubmit={addMilestone} className="mt-4 flex flex-wrap gap-2">
-                    <input
-                      placeholder="Adicionar etapa própria (ex: reunião interna de decisão)"
-                      value={newMilestoneLabel}
-                      onChange={(e) => setNewMilestoneLabel(e.target.value)}
-                      className="flex-1 rounded border border-slate-300 px-3 py-2 text-sm"
-                    />
-                    <input
-                      type="date"
-                      value={newMilestoneDate}
-                      onChange={(e) => setNewMilestoneDate(e.target.value)}
-                      className="rounded border border-slate-300 px-3 py-2 text-sm"
-                    />
-                    <button type="submit" className="rounded bg-indigo-700 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-800">
+                  <form onSubmit={addMilestone} className="grid grid-cols-1 items-end gap-2 sm:grid-cols-[minmax(0,1fr)_11rem_auto]">
+                    <Field label="Nova etapa">
+                      <Input
+                        placeholder="Ex: reunião interna de decisão"
+                        value={newMilestoneLabel}
+                        onChange={(e) => setNewMilestoneLabel(e.target.value)}
+                      />
+                    </Field>
+                    <Field label="Data">
+                      <Input type="date" value={newMilestoneDate} onChange={(e) => setNewMilestoneDate(e.target.value)} />
+                    </Field>
+                    <Button type="submit" variant="primary" icon={Plus}>
                       Adicionar
-                    </button>
+                    </Button>
                   </form>
-                </>
+                </div>
               )}
-            </section>
+            </Panel>
           )}
         </div>
       </div>
-    </div>
+    </>
   )
 }

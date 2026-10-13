@@ -1,14 +1,38 @@
 'use client'
 
 import Link from 'next/link'
-import { use, useCallback, useEffect, useState } from 'react'
+import { use, useCallback, useEffect, useState, type ReactNode } from 'react'
+import { ArrowLeft, ArrowRight, ShieldCheck } from 'lucide-react'
 import AdminShell from '@/components/AdminShell'
 import { api, ApiRequestError } from '@/lib/api'
 import { ROTULO_ACAO } from '@/lib/adminTypes'
 import type { DetalheEmpresa, Limites, PlanoComercial } from '@/lib/adminTypes'
+import {
+  Button,
+  Carregando,
+  DescriptionList,
+  EmptyState,
+  ErrorState,
+  Field,
+  Input,
+  Metric,
+  MetricRow,
+  Notice,
+  Panel,
+  Select,
+  StatusTag,
+  Table,
+  TableWrap,
+  Td,
+  TextLink,
+  THead,
+  Th,
+  Tr,
+} from '@/components/ui'
 
 const data = (v: string | null) => (v ? new Date(v).toLocaleDateString('pt-BR') : '—')
 const dataHora = (v: string) => new Date(v).toLocaleString('pt-BR')
+const nf = new Intl.NumberFormat('pt-BR')
 
 export default function AdminEmpresaDetalhePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -21,13 +45,34 @@ const CAMPOS: { chave: keyof Limites; rotulo: string }[] = [
   { chave: 'analisesIaMes', rotulo: 'Análises de IA / mês' },
 ]
 
+function Secao({ titulo, contagem, descricao, acoes, children }: { titulo: string; contagem?: number; descricao?: ReactNode; acoes?: ReactNode; children: ReactNode }) {
+  return (
+    <section className="flex min-w-0 flex-col gap-2.5">
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <h2 className="text-sm font-semibold text-ink">
+            {titulo}
+            {contagem !== undefined && <span className="ml-1.5 font-mono text-xs font-normal text-muted">{nf.format(contagem)}</span>}
+          </h2>
+          {descricao && <p className="text-xs text-muted">{descricao}</p>}
+        </div>
+        {acoes}
+      </div>
+      {children}
+    </section>
+  )
+}
+
+function Vazio({ children }: { children: ReactNode }) {
+  return <p className="rounded border border-dashed border-line-strong bg-surface px-4 py-3 text-sm text-muted">{children}</p>
+}
+
 function Conteudo({ id }: { id: string }) {
   const [d, setD] = useState<DetalheEmpresa | null>(null)
   const [planos, setPlanos] = useState<PlanoComercial[]>([])
   const [erro, setErro] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
   const [planCode, setPlanCode] = useState('')
-  // texto: '' = vale o plano; 'ilimitado' = null; número = limite
   const [ajustes, setAjustes] = useState<Record<string, string>>({})
   const [salvando, setSalvando] = useState(false)
 
@@ -81,186 +126,300 @@ function Conteudo({ id }: { id: string }) {
     }
   }
 
-  if (erro && !d) return <p className="text-sm text-red-600">{erro}</p>
-  if (!d) return <p className="text-sm text-slate-500">Carregando...</p>
+  if (erro && !d)
+    return (
+      <ErrorState
+        message={erro}
+        onRetry={() => {
+          setErro(null)
+          carregar()
+        }}
+      />
+    )
+  if (!d) return <Carregando linhas={6} />
 
   const e = d.empresa
-  const secao = 'rounded border border-slate-200 bg-white p-4'
 
   return (
-    <div className="flex flex-col gap-4">
-      <div>
-        <Link href="/admin/empresas" className="text-sm text-indigo-700 hover:underline">
-          ← Empresas
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-3">
+        <Link href="/admin/empresas" className="inline-flex items-center gap-1.5 self-start text-sm text-muted hover:text-ink">
+          <ArrowLeft size={16} aria-hidden />
+          Empresas
         </Link>
-        <h2 className="mt-1 text-lg font-semibold">{e.name}</h2>
-        <p className="text-sm text-slate-500">
-          {e.cnpj ?? e.cpf ?? 'sem documento'} · {e.email ?? 'sem e-mail'} · criada em {data(e.createdAt)}
-        </p>
-        <p className="mt-1 text-xs text-slate-400">Esta consulta foi registrada na trilha de auditoria.</p>
+        <div className="flex flex-col gap-1">
+          <h2 className="text-xl font-semibold text-ink">{e.name}</h2>
+          <p className="inline-flex items-center gap-1.5 text-xs text-muted">
+            <ShieldCheck size={14} aria-hidden />
+            Esta consulta foi registrada na trilha de auditoria.
+          </p>
+        </div>
       </div>
 
-      <section className={secao}>
-        <h3 className="mb-3 text-sm font-medium">Plano e limites</h3>
-        <div className="flex flex-wrap items-end gap-4">
-          <label className="flex flex-col text-xs text-slate-600">
-            Plano
-            <select value={planCode} onChange={(ev) => setPlanCode(ev.target.value)} className="mt-1 rounded border border-slate-300 px-2 py-1.5 text-sm">
-              {planos.map((p) => (
-                <option key={p.code} value={p.code}>
-                  {p.name}
-                  {p.active ? '' : ' (inativo)'}
-                </option>
-              ))}
-            </select>
-          </label>
-          {CAMPOS.map((c) => (
-            <label key={c.chave} className="flex flex-col text-xs text-slate-600">
-              Ajuste: {c.rotulo}
-              <input
-                value={ajustes[c.chave] ?? ''}
-                onChange={(ev) => setAjustes({ ...ajustes, [c.chave]: ev.target.value })}
-                placeholder="vale o plano"
-                className="mt-1 w-36 rounded border border-slate-300 px-2 py-1.5 text-sm"
-              />
-            </label>
-          ))}
-          <button
-            onClick={salvar}
-            disabled={salvando}
-            className="rounded bg-indigo-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-800 disabled:opacity-50"
+      <Panel title="Dados da empresa">
+        <DescriptionList
+          columns={4}
+          items={[
+            { label: 'Documento', value: e.cnpj ?? e.cpf ?? 'sem documento', mono: true },
+            { label: 'E-mail', value: e.email ?? 'sem e-mail', mono: Boolean(e.email) },
+            { label: 'Telefone', value: e.telefone, mono: true },
+            { label: 'Responsável', value: e.responsavel },
+            { label: 'Criada em', value: data(e.createdAt), mono: true },
+          ]}
+        />
+      </Panel>
+
+      <Panel title="Plano e limites" description='Ajuste em branco = vale o limite do plano. Escreva um número, ou "ilimitado", para combinar um limite diferente só com esta empresa.'>
+        <div className="flex flex-col gap-4">
+          <form
+            onSubmit={(ev) => {
+              ev.preventDefault()
+              salvar()
+            }}
+            className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(0,1fr))_auto]"
           >
-            {salvando ? 'Salvando...' : 'Salvar'}
-          </button>
-        </div>
-        <p className="mt-2 text-xs text-slate-500">
-          Ajuste em branco = vale o limite do plano. Escreva um número, ou &quot;ilimitado&quot;, para combinar um limite diferente só com esta
-          empresa.
-        </p>
-        {msg && <p className="mt-2 text-sm text-emerald-700">{msg}</p>}
-        {erro && <p className="mt-2 text-sm text-red-600">{erro}</p>}
-
-        <ul className="mt-4 grid gap-3 md:grid-cols-3">
-          {d.cotas.recursos.map((r) => (
-            <li key={r.recurso} className="rounded bg-slate-50 p-3 text-sm">
-              <p className="text-xs capitalize text-slate-500">{r.rotulo}</p>
-              <p className={`text-lg font-semibold ${r.excedido ? 'text-red-600' : 'text-slate-900'}`}>
-                {r.usado} / {r.limite === null ? '∞' : r.limite}
-              </p>
-            </li>
-          ))}
-        </ul>
-        <p className="mt-3 text-xs text-slate-500">
-          IA acumulada: {d.iaAcumulada.chamadas} chamadas · {d.iaAcumulada.tokensEntrada.toLocaleString('pt-BR')} tokens de entrada ·{' '}
-          {d.iaAcumulada.tokensSaida.toLocaleString('pt-BR')} de saída
-          {d.iaAcumulada.custoEstimadoUsd ? ` · ~US$ ${d.iaAcumulada.custoEstimadoUsd.toFixed(2)}` : ''}
-        </p>
-      </section>
-
-      <section className={secao}>
-        <h3 className="mb-2 text-sm font-medium">Usuários ({d.usuarios.length})</h3>
-        <table className="w-full text-left text-sm">
-          <thead className="text-xs uppercase text-slate-500">
-            <tr>
-              <th className="py-1">E-mail</th>
-              <th>Papel</th>
-              <th>Situação</th>
-              <th>Acesso até</th>
-            </tr>
-          </thead>
-          <tbody>
-            {d.usuarios.map((u) => (
-              <tr key={u.id} className="border-t border-slate-100">
-                <td className="py-1.5">
-                  {u.email}
-                  {u.isAdmin && <span className="ml-1 rounded bg-indigo-100 px-1 text-xs text-indigo-800">admin</span>}
-                </td>
-                <td>{u.companyRole === 'OWNER' ? 'Dono' : 'Membro'}</td>
-                <td>{u.active ? 'ativo' : u.disabledByAdmin ? 'desativado pelo admin' : 'inativo'}</td>
-                <td>{u.accessExpiresAt ? data(u.accessExpiresAt) : 'sem prazo'}</td>
-              </tr>
+            <Field label="Plano">
+              <Select value={planCode} onChange={(ev) => setPlanCode(ev.target.value)}>
+                {planos.map((p) => (
+                  <option key={p.code} value={p.code}>
+                    {p.name}
+                    {p.active ? '' : ' (inativo)'}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            {CAMPOS.map((c) => (
+              <Field key={c.chave} label={`Ajuste: ${c.rotulo}`}>
+                <Input
+                  value={ajustes[c.chave] ?? ''}
+                  onChange={(ev) => setAjustes({ ...ajustes, [c.chave]: ev.target.value })}
+                  placeholder="vale o plano"
+                  className="font-mono"
+                />
+              </Field>
             ))}
-          </tbody>
-        </table>
-      </section>
+            <Button type="submit" variant="primary" loading={salvando}>
+              {salvando ? 'Salvando…' : 'Salvar'}
+            </Button>
+          </form>
 
-      <section className={secao}>
-        <h3 className="mb-2 text-sm font-medium">Itens monitorados ({d.itensMonitorados.length}) · {d.matches} matches</h3>
+          {msg && <Notice tone="ok">{msg}</Notice>}
+          {erro && <Notice tone="danger">{erro}</Notice>}
+
+          <MetricRow>
+            {d.cotas.recursos.map((r) => (
+              <Metric
+                key={r.recurso}
+                label={<span className="capitalize">{r.rotulo}</span>}
+                value={nf.format(r.usado)}
+                detail={r.limite === null ? 'sem limite' : <span className="font-mono">de {nf.format(r.limite)}{r.excedido ? ' · excedido' : ''}</span>}
+                tone={r.excedido ? 'danger' : 'default'}
+              />
+            ))}
+          </MetricRow>
+
+          <p className="text-xs text-muted">
+            IA acumulada: <span className="font-mono text-ink-2">{nf.format(d.iaAcumulada.chamadas)}</span> chamadas ·{' '}
+            <span className="font-mono text-ink-2">{nf.format(d.iaAcumulada.tokensEntrada)}</span> tokens de entrada ·{' '}
+            <span className="font-mono text-ink-2">{nf.format(d.iaAcumulada.tokensSaida)}</span> de saída
+            {d.iaAcumulada.custoEstimadoUsd ? (
+              <>
+                {' '}
+                · <span className="font-mono text-ink-2">~US$ {d.iaAcumulada.custoEstimadoUsd.toFixed(2)}</span>
+              </>
+            ) : null}
+          </p>
+        </div>
+      </Panel>
+
+      <Secao titulo="Usuários" contagem={d.usuarios.length}>
+        {d.usuarios.length === 0 ? (
+          <Vazio>Nenhum usuário.</Vazio>
+        ) : (
+          <TableWrap minWidth={640}>
+            <Table>
+              <THead>
+                <tr>
+                  <Th>E-mail</Th>
+                  <Th>Papel</Th>
+                  <Th>Situação</Th>
+                  <Th align="right">Acesso até</Th>
+                </tr>
+              </THead>
+              <tbody>
+                {d.usuarios.map((u) => (
+                  <Tr key={u.id}>
+                    <Td>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="font-mono text-xs text-ink">{u.email}</span>
+                        {u.isAdmin && <StatusTag mono>admin</StatusTag>}
+                      </div>
+                    </Td>
+                    <Td>{u.companyRole === 'OWNER' ? 'Dono' : 'Membro'}</Td>
+                    <Td>
+                      {u.active ? (
+                        <StatusTag>ativo</StatusTag>
+                      ) : u.disabledByAdmin ? (
+                        <StatusTag tone="danger">desativado pelo admin</StatusTag>
+                      ) : (
+                        <StatusTag tone="warn">inativo</StatusTag>
+                      )}
+                    </Td>
+                    <Td numeric muted>
+                      {u.accessExpiresAt ? data(u.accessExpiresAt) : 'sem prazo'}
+                    </Td>
+                  </Tr>
+                ))}
+              </tbody>
+            </Table>
+          </TableWrap>
+        )}
+      </Secao>
+
+      <Secao
+        titulo="Itens monitorados"
+        contagem={d.itensMonitorados.length}
+        descricao={
+          <>
+            <span className="font-mono">{nf.format(d.matches)}</span> matches
+          </>
+        }
+      >
         {d.itensMonitorados.length === 0 ? (
-          <p className="text-sm text-slate-500">Nenhum item.</p>
+          <Vazio>Nenhum item.</Vazio>
         ) : (
-          <ul className="flex flex-col gap-1 text-sm">
-            {d.itensMonitorados.map((i) => (
-              <li key={i.id} className="border-t border-slate-100 py-1">
-                <span className="font-medium">{i.name}</span>{' '}
-                <span className="text-xs text-slate-500">
-                  {[...i.keywords, ...i.catmatCodes.map((c) => `CATMAT ${c}`), ...i.catserCodes.map((c) => `CATSER ${c}`)].slice(0, 6).join(', ')}
-                  {i.ufs.length ? ` · ${i.ufs.join('/')}` : ' · nacional'}
-                  {i.active ? '' : ' · inativo'}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <TableWrap minWidth={640}>
+            <Table>
+              <THead>
+                <tr>
+                  <Th>Item</Th>
+                  <Th>Termos e códigos</Th>
+                  <Th>Abrangência</Th>
+                  <Th>Situação</Th>
+                </tr>
+              </THead>
+              <tbody>
+                {d.itensMonitorados.map((i) => (
+                  <Tr key={i.id}>
+                    <Td className="font-medium">{i.name}</Td>
+                    <Td muted className="text-xs">
+                      {[...i.keywords, ...i.catmatCodes.map((c) => `CATMAT ${c}`), ...i.catserCodes.map((c) => `CATSER ${c}`)].slice(0, 6).join(', ')}
+                    </Td>
+                    <Td className="font-mono text-xs">{i.ufs.length ? i.ufs.join('/') : 'nacional'}</Td>
+                    <Td>
+                      <StatusTag>{i.active ? 'ativo' : 'inativo'}</StatusTag>
+                    </Td>
+                  </Tr>
+                ))}
+              </tbody>
+            </Table>
+          </TableWrap>
         )}
-      </section>
+      </Secao>
 
-      <section className={secao}>
-        <h3 className="mb-2 text-sm font-medium">Cofre de documentos ({d.documentos.length})</h3>
-        <p className="mb-2 text-xs text-slate-500">Só os metadados: o cofre não armazena o arquivo.</p>
+      <Secao titulo="Cofre de documentos" contagem={d.documentos.length} descricao="Só os metadados: o cofre não armazena o arquivo.">
         {d.documentos.length === 0 ? (
-          <p className="text-sm text-slate-500">Nenhum documento.</p>
+          <Vazio>Nenhum documento.</Vazio>
         ) : (
-          <ul className="flex flex-col gap-1 text-sm">
-            {d.documentos.map((doc) => {
-              const vencido = doc.dataValidade && new Date(doc.dataValidade).getTime() < Date.now()
-              return (
-                <li key={doc.id} className="flex justify-between border-t border-slate-100 py-1">
-                  <span>{doc.nome}</span>
-                  <span className={vencido ? 'text-red-600' : 'text-slate-500'}>
-                    {doc.dataValidade ? `validade ${data(doc.dataValidade)}${vencido ? ' (vencido)' : ''}` : 'sem validade'}
-                  </span>
-                </li>
-              )
-            })}
-          </ul>
+          <TableWrap minWidth={520}>
+            <Table>
+              <THead>
+                <tr>
+                  <Th>Documento</Th>
+                  <Th align="right">Validade</Th>
+                </tr>
+              </THead>
+              <tbody>
+                {d.documentos.map((doc) => {
+                  const vencido = doc.dataValidade && new Date(doc.dataValidade).getTime() < Date.now()
+                  return (
+                    <Tr key={doc.id}>
+                      <Td>{doc.nome}</Td>
+                      <Td className="whitespace-nowrap text-right">
+                        {doc.dataValidade ? (
+                          <span className="inline-flex items-center justify-end gap-2">
+                            {vencido && <StatusTag tone="danger">vencido</StatusTag>}
+                            <span className="font-mono text-ink-2">{data(doc.dataValidade)}</span>
+                          </span>
+                        ) : (
+                          <span className="text-muted">sem validade</span>
+                        )}
+                      </Td>
+                    </Tr>
+                  )
+                })}
+              </tbody>
+            </Table>
+          </TableWrap>
         )}
-      </section>
+      </Secao>
 
-      <section className={secao}>
-        <h3 className="mb-2 text-sm font-medium">Decisões de participação ({d.planosDeParticipacao.length})</h3>
+      <Secao titulo="Decisões de participação" contagem={d.planosDeParticipacao.length}>
         {d.planosDeParticipacao.length === 0 ? (
-          <p className="text-sm text-slate-500">Nenhuma.</p>
+          <Vazio>Nenhuma.</Vazio>
         ) : (
-          <ul className="flex flex-col gap-1 text-sm">
-            {d.planosDeParticipacao.map((p) => (
-              <li key={p.tenderId} className="border-t border-slate-100 py-1">
-                <span className="rounded bg-slate-100 px-1.5 text-xs">{p.status.replace(/_/g, ' ').toLowerCase()}</span>{' '}
-                <Link href={`/tenders/${p.tenderId}`} className="text-indigo-700 hover:underline">
-                  {p.tender.objeto.slice(0, 110)}
-                </Link>
-              </li>
-            ))}
-          </ul>
+          <TableWrap minWidth={560}>
+            <Table>
+              <THead>
+                <tr>
+                  <Th>Situação</Th>
+                  <Th>Objeto</Th>
+                </tr>
+              </THead>
+              <tbody>
+                {d.planosDeParticipacao.map((p) => (
+                  <Tr key={p.tenderId}>
+                    <Td className="w-px whitespace-nowrap">
+                      <StatusTag>{p.status.replace(/_/g, ' ').toLowerCase()}</StatusTag>
+                    </Td>
+                    <Td>
+                      <TextLink href={`/tenders/${p.tenderId}`}>{p.tender.objeto.slice(0, 110)}</TextLink>
+                    </Td>
+                  </Tr>
+                ))}
+              </tbody>
+            </Table>
+          </TableWrap>
         )}
-      </section>
+      </Secao>
 
-      <section className={secao}>
-        <div className="mb-2 flex items-center justify-between">
-          <h3 className="text-sm font-medium">Atividade recente</h3>
-          <Link href={`/admin/auditoria?companyId=${e.id}`} className="text-xs text-indigo-700 hover:underline">
-            ver tudo na auditoria →
+      <Secao
+        titulo="Atividade recente"
+        acoes={
+          <Link
+            href={`/admin/auditoria?companyId=${e.id}`}
+            className="inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline"
+          >
+            Ver tudo na auditoria
+            <ArrowRight size={14} aria-hidden />
           </Link>
-        </div>
-        <ul className="flex flex-col gap-1 text-sm">
-          {d.auditoriaRecente.map((ev) => (
-            <li key={ev.id} className="border-t border-slate-100 py-1">
-              <span className="text-xs text-slate-400">{dataHora(ev.createdAt)}</span> · {ROTULO_ACAO[ev.action] ?? ev.action}
-              <span className="text-xs text-slate-500"> · {ev.actorEmail ?? 'sistema'}</span>
-            </li>
-          ))}
-          {d.auditoriaRecente.length === 0 && <li className="text-slate-500">Sem eventos.</li>}
-        </ul>
-      </section>
+        }
+      >
+        {d.auditoriaRecente.length === 0 ? (
+          <Vazio>Sem eventos.</Vazio>
+        ) : (
+          <TableWrap minWidth={600}>
+            <Table>
+              <THead>
+                <tr>
+                  <Th>Quando</Th>
+                  <Th>Ação</Th>
+                  <Th>Quem</Th>
+                </tr>
+              </THead>
+              <tbody>
+                {d.auditoriaRecente.map((ev) => (
+                  <Tr key={ev.id}>
+                    <Td className="whitespace-nowrap font-mono text-xs text-muted">{dataHora(ev.createdAt)}</Td>
+                    <Td>{ROTULO_ACAO[ev.action] ?? ev.action}</Td>
+                    <Td className="font-mono text-xs text-muted">{ev.actorEmail ?? 'sistema'}</Td>
+                  </Tr>
+                ))}
+              </tbody>
+            </Table>
+          </TableWrap>
+        )}
+      </Secao>
     </div>
   )
 }

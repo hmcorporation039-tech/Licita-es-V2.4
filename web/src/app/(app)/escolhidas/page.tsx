@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { Calculator, X } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
 import { api, ApiRequestError } from '@/lib/api'
 import { ParticipationPlanListItem } from '@/lib/types'
+import { Button, Carregando, EmptyState, ErrorState, LinkButton, PageHeader, StatusTag, Table, TableWrap, Td, Th, THead, Tr } from '@/components/ui'
 
 function formatValor(v: string | null) {
   if (!v) return '—'
@@ -38,46 +40,85 @@ export default function EscolhidasPage() {
   if (!user) return null
 
   return (
-    <div>
-      <h1 className="mb-1 text-xl font-semibold">Licitações escolhidas</h1>
-      <p className="mb-4 text-sm text-slate-500">
-        Licitações que você marcou como interessado — encontre-as em "Meus matches" e clique em "Marcar como
-        interessado" pra elas aparecerem aqui. Em cada uma, o estudo de custos calcula preços de mercado, deslocamento, prazo, lucro ou prejuízo e gera o PDF.
-      </p>
+    <>
+      <PageHeader
+        title="Licitações escolhidas"
+        description={
+          <p className="max-w-3xl">
+            Licitações que você marcou como interessado — encontre-as em “Meus matches” e clique em “Marcar como interessado” pra elas aparecerem
+            aqui. Em cada uma, o estudo de custos calcula preços de mercado, deslocamento, prazo, lucro ou prejuízo e gera o PDF.
+          </p>
+        }
+      />
 
-      {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
+      {error && (
+        <ErrorState
+          message={error}
+          onRetry={() => {
+            setError(null)
+            load()
+          }}
+        />
+      )}
 
       {loading ? (
-        <p className="text-sm text-slate-500">Carregando...</p>
+        <Carregando linhas={4} texto="Carregando licitações escolhidas…" />
       ) : plans.length === 0 ? (
-        <p className="text-sm text-slate-500">Nenhuma licitação escolhida ainda.</p>
+        !error && (
+          <EmptyState
+            title="Nenhuma licitação escolhida ainda"
+            description="Em “Meus matches”, use “Marcar como interessado” nas licitações em que você pretende concorrer."
+            action={
+              <LinkButton href="/matches" size="sm">
+                Ir para Meus matches
+              </LinkButton>
+            }
+          />
+        )
       ) : (
-        <ul className="flex flex-col gap-3">
-          {plans.map((p) => (
-            <li key={p.id} className="rounded border border-slate-200 bg-white p-4">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <Link href={`/tenders/${p.tenderId}`} className="font-medium text-indigo-700 hover:underline">
-                    {p.tender.objetoResumido ?? p.tender.objeto}
-                  </Link>
-                  <p className="mt-1 text-sm text-slate-500">
-                    {p.tender.fonte} · {p.tender.orgao ?? 'órgão n/d'} · {p.tender.uf ?? 'UF n/d'} ·{' '}
-                    {formatValor(p.tender.valorEstimado)}
-                  </p>
-                </div>
-                <div className="flex shrink-0 flex-col items-end gap-2">
-                  <Link href={`/escolhidas/${p.tenderId}`} className="rounded bg-indigo-600 px-3 py-1.5 text-sm text-white hover:bg-indigo-700">
-                    Estudo de custos
-                  </Link>
-                  <button onClick={() => remover(p.tenderId)} className="text-sm text-red-600 hover:underline">
-                    Remover da lista
-                  </button>
-                </div>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <TableWrap minWidth={820}>
+          <Table>
+            <THead>
+              <tr>
+                <Th>Objeto</Th>
+                <Th>Fonte</Th>
+                <Th>UF</Th>
+                <Th align="right">Valor estimado</Th>
+                <Th align="right">
+                  <span className="sr-only">Ações</span>
+                </Th>
+              </tr>
+            </THead>
+            <tbody>
+              {plans.map((p) => (
+                <Tr key={p.id} interactive>
+                  <Td className="max-w-[420px]">
+                    <Link href={`/tenders/${p.tenderId}`} className="line-clamp-2 font-medium text-ink hover:text-accent hover:underline">
+                      {p.tender.objetoResumido ?? p.tender.objeto}
+                    </Link>
+                    <p className="mt-0.5 truncate text-xs text-muted">{p.tender.orgao ?? 'órgão n/d'}</p>
+                  </Td>
+                  <Td>
+                    <StatusTag mono>{p.tender.fonte}</StatusTag>
+                  </Td>
+                  <Td className="font-mono">{p.tender.uf ?? 'n/d'}</Td>
+                  <Td numeric>{formatValor(p.tender.valorEstimado)}</Td>
+                  <Td>
+                    <div className="flex justify-end gap-2">
+                      <LinkButton href={`/escolhidas/${p.tenderId}`} size="sm" icon={Calculator}>
+                        Estudo de custos
+                      </LinkButton>
+                      <Button size="sm" variant="ghost" icon={X} onClick={() => remover(p.tenderId)}>
+                        Remover da lista
+                      </Button>
+                    </div>
+                  </Td>
+                </Tr>
+              ))}
+            </tbody>
+          </Table>
+        </TableWrap>
       )}
-    </div>
+    </>
   )
 }

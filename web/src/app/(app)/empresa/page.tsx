@@ -1,12 +1,33 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { FilePlus, Pause, Play, Save, Trash2, UserPlus, UserRoundCog } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
 import { api, ApiRequestError } from '@/lib/api'
 import { Company, CompanyDocument, CompanyMember, CompanyType } from '@/lib/types'
 import { DOCUMENT_TYPE_OPTIONS, documentTypeLabel } from '@/lib/documentTypes'
-
-const inputClass = 'rounded border border-slate-300 px-3 py-2 text-sm'
+import {
+  Button,
+  Carregando,
+  EmptyState,
+  ErrorState,
+  Field,
+  FormError,
+  Input,
+  Notice,
+  PageHeader,
+  Panel,
+  Select,
+  StatusTag,
+  Table,
+  TableWrap,
+  Td,
+  Th,
+  THead,
+  Tr,
+  useDialogo,
+  type Tom,
+} from '@/components/ui'
 
 type ValidadeStatus = 'sem-validade' | 'valido' | 'vence-em-breve' | 'vencido'
 
@@ -25,20 +46,37 @@ const STATUS_LABEL: Record<ValidadeStatus, string> = {
   vencido: 'Vencido',
 }
 
-const STATUS_CLASS: Record<ValidadeStatus, string> = {
-  'sem-validade': 'bg-slate-100 text-slate-600',
-  valido: 'bg-emerald-100 text-emerald-800',
-  'vence-em-breve': 'bg-amber-100 text-amber-800',
-  vencido: 'bg-red-100 text-red-800',
+const STATUS_TOM: Record<ValidadeStatus, Tom> = {
+  'sem-validade': 'neutral',
+  valido: 'neutral',
+  'vence-em-breve': 'warn',
+  vencido: 'danger',
 }
+
+const SECOES_DE_DOCUMENTO = DOCUMENT_TYPE_OPTIONS.reduce<{ secao: string; opcoes: typeof DOCUMENT_TYPE_OPTIONS }[]>((grupos, opt) => {
+  const grupo = grupos.find((g) => g.secao === opt.section)
+  if (grupo) grupo.opcoes.push(opt)
+  else grupos.push({ secao: opt.section, opcoes: [opt] })
+  return grupos
+}, [])
 
 function formatData(v: string | null) {
   if (!v) return '—'
   return new Date(v).toLocaleDateString('pt-BR')
 }
 
+function Secao({ titulo, children }: { titulo: string; children: ReactNode }) {
+  return (
+    <fieldset className="flex min-w-0 flex-col gap-3">
+      <legend className="mb-3 text-xs font-semibold text-ink-2">{titulo}</legend>
+      {children}
+    </fieldset>
+  )
+}
+
 export default function EmpresaPage() {
   const user = useRequireSession()
+  const { confirmar, dialogo } = useDialogo()
   const [company, setCompany] = useState<Company | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -46,7 +84,6 @@ export default function EmpresaPage() {
 
   const [name, setName] = useState('')
   const [tipo, setTipo] = useState<CompanyType>('PESSOA_FISICA')
-  // CPF/CNPJ já gravado: só o suporte altera (ver PATCH /api/company).
   const [documentoTravado, setDocumentoTravado] = useState(false)
   const [documento, setDocumento] = useState('')
   const [companyEmail, setCompanyEmail] = useState('')
@@ -74,6 +111,7 @@ export default function EmpresaPage() {
   const [docs, setDocs] = useState<CompanyDocument[]>([])
   const [docsLoading, setDocsLoading] = useState(true)
   const [docsError, setDocsError] = useState<string | null>(null)
+  const [docsErroCarregar, setDocsErroCarregar] = useState<string | null>(null)
   const [docTipo, setDocTipo] = useState('')
   const [docNome, setDocNome] = useState('')
   const [docDataEmissao, setDocDataEmissao] = useState('')
@@ -85,7 +123,6 @@ export default function EmpresaPage() {
     if (!user) return
     load()
     loadDocs()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
   async function load() {
@@ -118,17 +155,31 @@ export default function EmpresaPage() {
 
   async function loadDocs() {
     setDocsLoading(true)
+    setDocsErroCarregar(null)
     try {
       const data = await api.get<CompanyDocument[]>('/api/company-documents')
       setDocs(data)
     } catch (err) {
-      setDocsError(err instanceof ApiRequestError ? err.message : 'Erro ao carregar documentos')
+      setDocsErroCarregar(err instanceof ApiRequestError ? err.message : 'Erro ao carregar documentos')
     } finally {
       setDocsLoading(false)
     }
   }
 
-  if (!user || !company) return loading ? <p className="text-sm text-slate-500">Carregando...</p> : null
+  if (!user || !company) {
+    if (loading) return <Carregando linhas={6} />
+    if (user && error)
+      return (
+        <ErrorState
+          message={error}
+          onRetry={() => {
+            setError(null)
+            load()
+          }}
+        />
+      )
+    return null
+  }
 
   const souOwner = company.users.find((m) => m.id === user.id)?.companyRole === 'OWNER'
 
@@ -137,7 +188,6 @@ export default function EmpresaPage() {
     return d.length > 5 ? d.slice(0, 5) + '-' + d.slice(5) : d
   }
 
-  // Ao completar os 8 dígitos do CEP, busca rua, bairro, cidade e UF; sobra só o número.
   async function aoDigitarCep(valor: string) {
     const formatado = formatarCep(valor)
     setCep(formatado)
@@ -151,7 +201,6 @@ export default function EmpresaPage() {
       setCidade(r.cidade)
       setUf(r.uf)
       if (r.complemento) setComplemento(r.complemento)
-      // A base de entregas costuma ser a própria cidade da empresa: sugere se ainda estiver vazia.
       if (!baseMunicipio.trim() && !baseUf.trim()) {
         setBaseMunicipio(r.cidade)
         setBaseUf(r.uf)
@@ -280,271 +329,273 @@ export default function EmpresaPage() {
   }
 
   async function removerDocumento(docId: string) {
-    if (!confirm('Remover este documento?')) return
+    if (!(await confirmar({ titulo: 'Remover este documento?', mensagem: 'Ele deixa de ser cruzado com o checklist das licitações.', confirmarRotulo: 'Remover', perigo: true }))) return
     await api.delete(`/api/company-documents/${docId}`)
     await loadDocs()
   }
 
+  const travado = !souOwner || documentoTravado
+  const dicaDoCep = buscandoCep ? (
+    'Buscando endereço…'
+  ) : cepMsg ? (
+    <span className={cepMsg.tipo === 'erro' ? 'text-warn' : undefined}>{cepMsg.texto}</span>
+  ) : (
+    'Preenche o endereço sozinho.'
+  )
+
   return (
-    <div className="flex flex-col gap-6">
-      <h1 className="text-xl font-semibold">Empresa</h1>
+    <>
+      <PageHeader title="Empresa" description="Dados cadastrais, documentos de habilitação e usuários com acesso." />
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      {info && <p className="text-sm text-emerald-700">{info}</p>}
+      {error && <Notice tone="danger">{error}</Notice>}
+      {info && <Notice tone="ok">{info}</Notice>}
 
-      <section className="rounded border border-slate-200 bg-white p-4">
-        <h2 className="mb-3 text-sm font-medium text-slate-700">Dados da empresa</h2>
-        <form onSubmit={salvarEmpresa} className="grid gap-3 sm:grid-cols-2">
-          <input
-            placeholder="Nome"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            disabled={!souOwner}
-            className={inputClass}
-          />
-          <select
-            value={tipo}
-            onChange={(e) => setTipo(e.target.value as CompanyType)}
-            disabled={!souOwner || documentoTravado}
-            title={documentoTravado ? 'Para alterar o tipo de conta, fale com o suporte.' : undefined}
-            className={inputClass}
-          >
-            <option value="PESSOA_FISICA">Pessoa física</option>
-            <option value="PESSOA_JURIDICA">Pessoa jurídica</option>
-          </select>
-          <input
-            placeholder={tipo === 'PESSOA_JURIDICA' ? 'CNPJ (opcional)' : 'CPF (opcional)'}
-            value={documento}
-            onChange={(e) => setDocumento(e.target.value)}
-            disabled={!souOwner || documentoTravado}
-            title={documentoTravado ? 'Para alterar o CPF/CNPJ, fale com o suporte.' : undefined}
-            className={inputClass}
-          />
-          <input
-            type="email"
-            placeholder="E-mail da empresa (opcional)"
-            value={companyEmail}
-            onChange={(e) => setCompanyEmail(e.target.value)}
-            disabled={!souOwner}
-            className={inputClass}
-          />
-          <input
-            placeholder="Telefone (opcional)"
-            value={telefone}
-            onChange={(e) => setTelefone(e.target.value)}
-            disabled={!souOwner}
-            className={inputClass}
-          />
-          <input
-            placeholder="Responsável (opcional)"
-            value={responsavel}
-            onChange={(e) => setResponsavel(e.target.value)}
-            disabled={!souOwner}
-            className={inputClass}
-          />
-          <div>
-            <input
-              placeholder="CEP (preenche o endereço sozinho)"
-              inputMode="numeric"
-              value={cep}
-              onChange={(e) => aoDigitarCep(e.target.value)}
-              disabled={!souOwner}
-              className={`${inputClass} w-full`}
-            />
-            {buscandoCep && <p className="mt-1 text-xs text-slate-500">Buscando endereço…</p>}
-            {cepMsg && <p className={`mt-1 text-xs ${cepMsg.tipo === 'ok' ? 'text-emerald-700' : 'text-amber-700'}`}>{cepMsg.texto}</p>}
-          </div>
-          <div className="flex gap-2 sm:col-span-2">
-            <input
-              placeholder="Base de entregas: cidade (usada no custo de deslocamento)"
-              value={baseMunicipio}
-              onChange={(e) => setBaseMunicipio(e.target.value)}
-              disabled={!souOwner}
-              className={`${inputClass} flex-1`}
-            />
-            <input
-              placeholder="UF"
-              maxLength={2}
-              value={baseUf}
-              onChange={(e) => setBaseUf(e.target.value.toUpperCase())}
-              disabled={!souOwner}
-              className={`${inputClass} w-20`}
-            />
-          </div>
-          <div className="grid gap-3 sm:col-span-2 sm:grid-cols-6">
-            <input placeholder="Rua / avenida" value={endereco} onChange={(e) => setEndereco(e.target.value)} disabled={!souOwner} className={`${inputClass} sm:col-span-4`} />
-            <input ref={numeroRef} placeholder="Número" value={numero} onChange={(e) => setNumero(e.target.value)} disabled={!souOwner} className={`${inputClass} sm:col-span-2`} />
-            <input placeholder="Complemento (sala, bloco…)" value={complemento} onChange={(e) => setComplemento(e.target.value)} disabled={!souOwner} className={`${inputClass} sm:col-span-3`} />
-            <input placeholder="Bairro" value={bairro} onChange={(e) => setBairro(e.target.value)} disabled={!souOwner} className={`${inputClass} sm:col-span-3`} />
-            <input placeholder="Cidade" value={cidade} onChange={(e) => setCidade(e.target.value)} disabled={!souOwner} className={`${inputClass} sm:col-span-4`} />
-            <input placeholder="UF" maxLength={2} value={uf} onChange={(e) => setUf(e.target.value.toUpperCase())} disabled={!souOwner} className={`${inputClass} sm:col-span-2`} />
-          </div>
+      <Panel title="Dados da empresa" description={souOwner ? undefined : 'Só o dono da empresa altera estes dados.'}>
+        <form onSubmit={salvarEmpresa} className="flex flex-col gap-6">
+          <Secao titulo="Identificação">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field label="Nome">
+                <Input value={name} onChange={(e) => setName(e.target.value)} disabled={!souOwner} />
+              </Field>
+              <Field label="Tipo de conta" hint={documentoTravado ? 'Para alterar o tipo de conta, fale com o suporte.' : undefined}>
+                <Select value={tipo} onChange={(e) => setTipo(e.target.value as CompanyType)} disabled={travado}>
+                  <option value="PESSOA_FISICA">Pessoa física</option>
+                  <option value="PESSOA_JURIDICA">Pessoa jurídica</option>
+                </Select>
+              </Field>
+              <Field
+                label={tipo === 'PESSOA_JURIDICA' ? 'CNPJ' : 'CPF'}
+                hint={documentoTravado ? 'Para alterar o CPF/CNPJ, fale com o suporte.' : 'Opcional.'}
+              >
+                <Input className="font-mono" value={documento} onChange={(e) => setDocumento(e.target.value)} disabled={travado} />
+              </Field>
+              <Field label="E-mail da empresa" hint="Opcional.">
+                <Input type="email" value={companyEmail} onChange={(e) => setCompanyEmail(e.target.value)} disabled={!souOwner} />
+              </Field>
+              <Field label="Telefone" hint="Opcional.">
+                <Input type="tel" className="font-mono" value={telefone} onChange={(e) => setTelefone(e.target.value)} disabled={!souOwner} />
+              </Field>
+              <Field label="Responsável" hint="Opcional.">
+                <Input value={responsavel} onChange={(e) => setResponsavel(e.target.value)} disabled={!souOwner} />
+              </Field>
+            </div>
+          </Secao>
+
+          <Secao titulo="Endereço">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-6">
+              <Field label="CEP" hint={<span aria-live="polite">{dicaDoCep}</span>} className="sm:col-span-2">
+                <Input inputMode="numeric" className="font-mono" value={cep} onChange={(e) => aoDigitarCep(e.target.value)} disabled={!souOwner} />
+              </Field>
+              <div className="hidden sm:col-span-4 sm:block" />
+              <Field label="Rua / avenida" className="sm:col-span-4">
+                <Input value={endereco} onChange={(e) => setEndereco(e.target.value)} disabled={!souOwner} />
+              </Field>
+              <Field label="Número" className="sm:col-span-2">
+                <Input ref={numeroRef} className="font-mono" value={numero} onChange={(e) => setNumero(e.target.value)} disabled={!souOwner} />
+              </Field>
+              <Field label="Complemento" className="sm:col-span-3">
+                <Input placeholder="Sala, bloco…" value={complemento} onChange={(e) => setComplemento(e.target.value)} disabled={!souOwner} />
+              </Field>
+              <Field label="Bairro" className="sm:col-span-3">
+                <Input value={bairro} onChange={(e) => setBairro(e.target.value)} disabled={!souOwner} />
+              </Field>
+              <Field label="Cidade" className="sm:col-span-4">
+                <Input value={cidade} onChange={(e) => setCidade(e.target.value)} disabled={!souOwner} />
+              </Field>
+              <Field label="UF" className="sm:col-span-2">
+                <Input maxLength={2} className="font-mono uppercase" value={uf} onChange={(e) => setUf(e.target.value.toUpperCase())} disabled={!souOwner} />
+              </Field>
+            </div>
+          </Secao>
+
+          <Secao titulo="Base de entregas">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-6">
+              <Field label="Cidade" hint="Usada no custo de deslocamento." className="sm:col-span-4">
+                <Input value={baseMunicipio} onChange={(e) => setBaseMunicipio(e.target.value)} disabled={!souOwner} />
+              </Field>
+              <Field label="UF" className="sm:col-span-2">
+                <Input maxLength={2} className="font-mono uppercase" value={baseUf} onChange={(e) => setBaseUf(e.target.value.toUpperCase())} disabled={!souOwner} />
+              </Field>
+            </div>
+          </Secao>
+
           {souOwner && (
-            <button
-              type="submit"
-              disabled={savingCompany}
-              className="rounded bg-indigo-700 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-800 disabled:opacity-50 sm:col-span-2"
-            >
-              {savingCompany ? 'Salvando...' : 'Salvar'}
-            </button>
+            <div className="flex flex-wrap gap-2 border-t border-line-soft pt-4">
+              <Button type="submit" variant="primary" icon={Save} loading={savingCompany}>
+                {savingCompany ? 'Salvando…' : 'Salvar'}
+              </Button>
+            </div>
           )}
         </form>
-      </section>
+      </Panel>
 
-      <section className="rounded border border-slate-200 bg-white p-4">
-        <h2 className="mb-1 text-sm font-medium text-slate-700">Documentos de habilitação e constituição</h2>
-        <p className="mb-4 text-xs text-slate-500">
-          Cadastre uma vez os documentos que a empresa já possui — eles são cruzados automaticamente com o
-          checklist de cada licitação, e avisamos quando algum estiver perto de vencer.
-        </p>
+      <Panel
+        title="Documentos de habilitação e constituição"
+        description="Cadastre uma vez os documentos que a empresa já possui — eles são cruzados automaticamente com o checklist de cada licitação, e avisamos quando algum estiver perto de vencer."
+      >
+        <div className="flex flex-col gap-6">
+          {docsLoading ? (
+            <Carregando />
+          ) : docsErroCarregar ? (
+            <ErrorState message={docsErroCarregar} onRetry={loadDocs} />
+          ) : docs.length === 0 ? (
+            <EmptyState title="Nenhum documento cadastrado ainda" description="Cadastre abaixo as certidões e documentos que a empresa já tem." />
+          ) : (
+            <TableWrap minWidth={640}>
+              <Table>
+                <THead>
+                  <tr>
+                    <Th>Documento</Th>
+                    <Th align="right">Emissão</Th>
+                    <Th align="right">Validade</Th>
+                    <Th>Situação</Th>
+                    <Th>
+                      <span className="sr-only">Ações</span>
+                    </Th>
+                  </tr>
+                </THead>
+                <tbody>
+                  {docs.map((doc) => {
+                    const status = validadeStatus(doc.dataValidade)
+                    return (
+                      <Tr key={doc.id}>
+                        <Td>
+                          <p className="font-medium text-ink">{doc.nome}</p>
+                          <p className="text-xs text-muted">{documentTypeLabel(doc.tipo) ?? 'Avulso'}</p>
+                          {doc.observacao && <p className="mt-0.5 text-xs text-faint">{doc.observacao}</p>}
+                        </Td>
+                        <Td numeric muted>
+                          {formatData(doc.dataEmissao)}
+                        </Td>
+                        <Td numeric>{formatData(doc.dataValidade)}</Td>
+                        <Td>
+                          <StatusTag tone={STATUS_TOM[status]}>{STATUS_LABEL[status]}</StatusTag>
+                        </Td>
+                        <Td className="w-px text-right">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            icon={Trash2}
+                            aria-label={`Remover ${doc.nome}`}
+                            onClick={() => removerDocumento(doc.id)}
+                          />
+                        </Td>
+                      </Tr>
+                    )
+                  })}
+                </tbody>
+              </Table>
+            </TableWrap>
+          )}
 
-        <form onSubmit={criarDocumento} className="mb-4 grid gap-3 sm:grid-cols-2">
-          <select
-            value={docTipo}
-            onChange={(e) => onSelectDocTipo(e.target.value)}
-            className={`${inputClass} sm:col-span-2`}
-          >
-            <option value="">Documento avulso (fora da lista padrão)</option>
-            {DOCUMENT_TYPE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.section} — {opt.label}
-              </option>
-            ))}
-          </select>
-          <input
-            required
-            placeholder="Nome do documento"
-            value={docNome}
-            onChange={(e) => setDocNome(e.target.value)}
-            className={`${inputClass} sm:col-span-2`}
-          />
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">Data de emissão</label>
-            <input
-              type="date"
-              value={docDataEmissao}
-              onChange={(e) => setDocDataEmissao(e.target.value)}
-              className={`${inputClass} w-full`}
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">Data de validade (vazio = não vence)</label>
-            <input
-              type="date"
-              value={docDataValidade}
-              onChange={(e) => setDocDataValidade(e.target.value)}
-              className={`${inputClass} w-full`}
-            />
-          </div>
-          <input
-            placeholder="Observação (opcional)"
-            value={docObservacao}
-            onChange={(e) => setDocObservacao(e.target.value)}
-            className={`${inputClass} sm:col-span-2`}
-          />
-
-          {docsError && <p className="text-sm text-red-600 sm:col-span-2">{docsError}</p>}
-          <button
-            type="submit"
-            disabled={creatingDoc}
-            className="rounded bg-indigo-700 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-800 disabled:opacity-50 sm:col-span-2"
-          >
-            {creatingDoc ? 'Salvando...' : 'Cadastrar documento'}
-          </button>
-        </form>
-
-        {docsLoading ? (
-          <p className="text-sm text-slate-500">Carregando...</p>
-        ) : docs.length === 0 ? (
-          <p className="text-sm text-slate-500">Nenhum documento cadastrado ainda.</p>
-        ) : (
-          <ul className="flex flex-col gap-2">
-            {docs.map((doc) => {
-              const status = validadeStatus(doc.dataValidade)
-              return (
-                <li key={doc.id} className="flex items-start justify-between gap-4 rounded border border-slate-200 p-3">
-                  <div>
-                    <p className="text-sm font-medium">{doc.nome}</p>
-                    <p className="text-xs text-slate-500">
-                      {documentTypeLabel(doc.tipo) ?? 'Avulso'} · Emissão: {formatData(doc.dataEmissao)} · Validade:{' '}
-                      {formatData(doc.dataValidade)}
-                    </p>
-                    {doc.observacao && <p className="mt-1 text-xs text-slate-400">{doc.observacao}</p>}
-                  </div>
-                  <div className="flex shrink-0 flex-col items-end gap-2">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_CLASS[status]}`}>
-                      {STATUS_LABEL[status]}
-                    </span>
-                    <button onClick={() => removerDocumento(doc.id)} className="text-xs text-red-600 hover:underline">
-                      Remover
-                    </button>
-                  </div>
-                </li>
-              )
-            })}
-          </ul>
-        )}
-      </section>
-
-      <section className="rounded border border-slate-200 bg-white p-4">
-        <h2 className="mb-3 text-sm font-medium text-slate-700">Usuários da empresa</h2>
-        <ul className="flex flex-col gap-2">
-          {company.users.map((m) => (
-            <li key={m.id} className="flex flex-wrap items-center justify-between gap-3 rounded border border-slate-100 p-3">
-              <div>
-                <p className="text-sm font-medium">
-                  {m.email} {m.companyRole === 'OWNER' && <span className="text-xs text-indigo-700">(dono)</span>}
-                  {!m.active && <span className="ml-1 text-xs text-red-600">(desativado)</span>}
-                </p>
-                <p className="text-xs text-slate-500">{m.name ?? 'sem nome'}</p>
-              </div>
-              {souOwner && (
-                <div className="flex gap-3 text-sm">
-                  <button onClick={() => alternarPapel(m)} className="text-indigo-700 hover:underline">
-                    {m.companyRole === 'OWNER' ? 'tornar membro' : 'tornar dono'}
-                  </button>
-                  <button onClick={() => alternarAtivo(m)} className="text-slate-600 hover:underline">
-                    {m.active ? 'desativar' : 'ativar'}
-                  </button>
-                </div>
-              )}
-            </li>
-          ))}
-        </ul>
-
-        {souOwner && (
-          <form onSubmit={convidarMembro} className="mt-4 grid gap-3 border-t border-slate-100 pt-4 sm:grid-cols-2">
-            <h3 className="text-sm font-medium text-slate-700 sm:col-span-2">Cadastrar usuário</h3>
-            <input
-              type="email"
-              required
-              placeholder="E-mail"
-              value={memberEmail}
-              onChange={(e) => setMemberEmail(e.target.value)}
-              className={inputClass}
-            />
-            <input
-              placeholder="Nome (opcional)"
-              value={memberName}
-              onChange={(e) => setMemberName(e.target.value)}
-              className={inputClass}
-            />
-            <input
-              placeholder="Senha (opcional — se vazio, gera uma)"
-              value={memberPassword}
-              onChange={(e) => setMemberPassword(e.target.value)}
-              className={inputClass}
-            />
-            <button
-              type="submit"
-              disabled={creatingMember}
-              className="rounded bg-indigo-700 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-800 disabled:opacity-50 sm:col-span-2"
-            >
-              {creatingMember ? 'Criando...' : 'Cadastrar'}
-            </button>
+          <form onSubmit={criarDocumento} className="flex flex-col gap-4 border-t border-line-soft pt-4">
+            <h3 className="text-sm font-semibold text-ink">Cadastrar documento</h3>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field label="Tipo de documento" className="sm:col-span-2">
+                <Select value={docTipo} onChange={(e) => onSelectDocTipo(e.target.value)}>
+                  <option value="">Documento avulso (fora da lista padrão)</option>
+                  {SECOES_DE_DOCUMENTO.map((g) => (
+                    <optgroup key={g.secao} label={g.secao}>
+                      {g.opcoes.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </Select>
+              </Field>
+              <Field label="Nome do documento" required className="sm:col-span-2">
+                <Input value={docNome} onChange={(e) => setDocNome(e.target.value)} />
+              </Field>
+              <Field label="Data de emissão">
+                <Input type="date" className="font-mono" value={docDataEmissao} onChange={(e) => setDocDataEmissao(e.target.value)} />
+              </Field>
+              <Field label="Data de validade" hint="Vazio = não vence.">
+                <Input type="date" className="font-mono" value={docDataValidade} onChange={(e) => setDocDataValidade(e.target.value)} />
+              </Field>
+              <Field label="Observação" hint="Opcional." className="sm:col-span-2">
+                <Input value={docObservacao} onChange={(e) => setDocObservacao(e.target.value)} />
+              </Field>
+            </div>
+            <FormError>{docsError}</FormError>
+            <div className="flex flex-wrap gap-2">
+              <Button type="submit" variant="primary" icon={FilePlus} loading={creatingDoc}>
+                {creatingDoc ? 'Salvando…' : 'Cadastrar documento'}
+              </Button>
+            </div>
           </form>
-        )}
-      </section>
-    </div>
+        </div>
+      </Panel>
+
+      <Panel title="Usuários da empresa">
+        <div className="flex flex-col gap-6">
+          <TableWrap minWidth={souOwner ? 640 : 420}>
+            <Table>
+              <THead>
+                <tr>
+                  <Th>Usuário</Th>
+                  <Th>Papel</Th>
+                  <Th>Acesso</Th>
+                  {souOwner && (
+                    <Th>
+                      <span className="sr-only">Ações</span>
+                    </Th>
+                  )}
+                </tr>
+              </THead>
+              <tbody>
+                {company.users.map((m) => (
+                  <Tr key={m.id}>
+                    <Td>
+                      <p className="font-medium text-ink">{m.email}</p>
+                      <p className="text-xs text-muted">{m.name ?? 'sem nome'}</p>
+                    </Td>
+                    <Td className="text-ink-2">{m.companyRole === 'OWNER' ? 'Dono' : 'Membro'}</Td>
+                    <Td>{m.active ? <StatusTag>Ativo</StatusTag> : <StatusTag tone="danger">Desativado</StatusTag>}</Td>
+                    {souOwner && (
+                      <Td className="text-right">
+                        <div className="flex justify-end gap-1.5">
+                          <Button size="sm" variant="ghost" icon={UserRoundCog} onClick={() => alternarPapel(m)}>
+                            {m.companyRole === 'OWNER' ? 'Tornar membro' : 'Tornar dono'}
+                          </Button>
+                          <Button size="sm" variant="ghost" icon={m.active ? Pause : Play} onClick={() => alternarAtivo(m)}>
+                            {m.active ? 'Desativar' : 'Ativar'}
+                          </Button>
+                        </div>
+                      </Td>
+                    )}
+                  </Tr>
+                ))}
+              </tbody>
+            </Table>
+          </TableWrap>
+
+          {souOwner && (
+            <form onSubmit={convidarMembro} className="flex flex-col gap-4 border-t border-line-soft pt-4">
+              <h3 className="text-sm font-semibold text-ink">Cadastrar usuário</h3>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <Field label="E-mail" required>
+                  <Input type="email" autoComplete="off" value={memberEmail} onChange={(e) => setMemberEmail(e.target.value)} />
+                </Field>
+                <Field label="Nome" hint="Opcional.">
+                  <Input autoComplete="off" value={memberName} onChange={(e) => setMemberName(e.target.value)} />
+                </Field>
+                <Field label="Senha" hint="Opcional — se vazio, gera uma.">
+                  <Input autoComplete="new-password" value={memberPassword} onChange={(e) => setMemberPassword(e.target.value)} />
+                </Field>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button type="submit" variant="primary" icon={UserPlus} loading={creatingMember}>
+                  {creatingMember ? 'Criando…' : 'Cadastrar'}
+                </Button>
+              </div>
+            </form>
+          )}
+        </div>
+      </Panel>
+
+      {dialogo}
+    </>
   )
 }

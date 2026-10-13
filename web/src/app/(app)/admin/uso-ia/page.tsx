@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import AdminShell from '@/components/AdminShell'
 import { api, ApiRequestError } from '@/lib/api'
 import type { UsoIaResposta } from '@/lib/adminTypes'
+import { Carregando, ErrorState, Metric, MetricRow, StatusTag, Table, TableWrap, Td, THead, Th, Tr } from '@/components/ui'
 
 const nf = new Intl.NumberFormat('pt-BR')
 const usd = (v: number) => (v ? `US$ ${v.toFixed(2)}` : '—')
@@ -12,148 +13,211 @@ export default function AdminUsoIaPage() {
   return <AdminShell titulo="Consumo de IA">{() => <Conteudo />}</AdminShell>
 }
 
+function Secao({ titulo, descricao, children }: { titulo: string; descricao?: ReactNode; children: ReactNode }) {
+  return (
+    <section className="flex min-w-0 flex-col gap-2.5">
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <h2 className="text-sm font-semibold text-ink">{titulo}</h2>
+        {descricao && <p className="max-w-prose text-xs text-muted">{descricao}</p>}
+      </div>
+      {children}
+    </section>
+  )
+}
+
+function Vazio({ children }: { children: ReactNode }) {
+  return <p className="rounded border border-dashed border-line-strong bg-surface px-4 py-3 text-sm text-muted">{children}</p>
+}
+
+function CabecalhoDeConsumo() {
+  return (
+    <>
+      <Th align="right">Chamadas</Th>
+      <Th align="right">Tokens in</Th>
+      <Th align="right">Tokens out</Th>
+      <Th align="right">Custo est.</Th>
+    </>
+  )
+}
+
+function CelulasDeConsumo({ chamadas, tokensEntrada, tokensSaida, custoEstimadoUsd }: { chamadas: number; tokensEntrada: number; tokensSaida: number; custoEstimadoUsd: number }) {
+  return (
+    <>
+      <Td numeric>{nf.format(chamadas)}</Td>
+      <Td numeric>{nf.format(tokensEntrada)}</Td>
+      <Td numeric>{nf.format(tokensSaida)}</Td>
+      <Td numeric>{usd(custoEstimadoUsd)}</Td>
+    </>
+  )
+}
+
 function Conteudo() {
   const [d, setD] = useState<UsoIaResposta | null>(null)
   const [erro, setErro] = useState<string | null>(null)
 
-  useEffect(() => {
+  const carregar = useCallback(() => {
     api
       .get<UsoIaResposta>('/api/admin/ai-usage')
       .then(setD)
       .catch((e) => setErro(e instanceof ApiRequestError ? e.message : 'Erro ao carregar'))
   }, [])
 
-  if (erro) return <p className="text-sm text-red-600">{erro}</p>
-  if (!d) return <p className="text-sm text-slate-500">Carregando...</p>
+  useEffect(() => {
+    carregar()
+  }, [carregar])
 
-  const secao = 'rounded border border-slate-200 bg-white p-4'
-  const th = 'px-2 py-1 text-xs uppercase text-slate-500'
+  if (erro)
+    return (
+      <ErrorState
+        message={erro}
+        onRetry={() => {
+          setErro(null)
+          carregar()
+        }}
+      />
+    )
+  if (!d) return <Carregando linhas={6} />
 
   return (
-    <div className="flex flex-col gap-4">
-      <p className="text-sm text-slate-600">
-        Período: desde {new Date(d.periodo.de).toLocaleDateString('pt-BR')} (mês corrente). {d.total.chamadas} chamadas ·{' '}
-        {nf.format(d.total.tokensEntrada)} tokens de entrada · {nf.format(d.total.tokensSaida)} de saída · custo estimado{' '}
-        {usd(d.total.custoEstimadoUsd)}
-      </p>
+    <div className="flex flex-col gap-6">
+      <Secao
+        titulo="Mês corrente"
+        descricao={
+          <>
+            Desde <span className="font-mono">{new Date(d.periodo.de).toLocaleDateString('pt-BR')}</span>.
+          </>
+        }
+      >
+        <MetricRow>
+          <Metric label="Chamadas" value={nf.format(d.total.chamadas)} />
+          <Metric label="Tokens de entrada" value={nf.format(d.total.tokensEntrada)} />
+          <Metric label="Tokens de saída" value={nf.format(d.total.tokensSaida)} />
+          <Metric label="Custo estimado" value={usd(d.total.custoEstimadoUsd)} />
+        </MetricRow>
+      </Secao>
 
-      <section className={secao}>
-        <h2 className="mb-2 text-sm font-medium">Por empresa (quem pediu a análise)</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr>
-                <th className={th}>Empresa</th>
-                <th className={th}>Plano</th>
-                <th className={`${th} text-right`}>Chamadas</th>
-                <th className={`${th} text-right`}>Tokens in</th>
-                <th className={`${th} text-right`}>Tokens out</th>
-                <th className={`${th} text-right`}>Custo est.</th>
-              </tr>
-            </thead>
-            <tbody>
-              {d.porEmpresa.map((e) => (
-                <tr key={e.companyId ?? 'sem'} className="border-t border-slate-100">
-                  <td className="px-2 py-1.5">{e.empresa}</td>
-                  <td className="px-2 py-1.5">{e.planCode ?? '—'}</td>
-                  <td className="px-2 py-1.5 text-right">{e.chamadas}</td>
-                  <td className="px-2 py-1.5 text-right">{nf.format(e.tokensEntrada)}</td>
-                  <td className="px-2 py-1.5 text-right">{nf.format(e.tokensSaida)}</td>
-                  <td className="px-2 py-1.5 text-right">{usd(e.custoEstimadoUsd)}</td>
-                </tr>
-              ))}
-              {d.porEmpresa.length === 0 && (
+      <Secao titulo="Por empresa" descricao="Quem pediu a análise.">
+        {d.porEmpresa.length === 0 ? (
+          <Vazio>Nenhuma chamada de IA neste período.</Vazio>
+        ) : (
+          <TableWrap minWidth={720}>
+            <Table>
+              <THead>
                 <tr>
-                  <td colSpan={6} className="px-2 py-4 text-center text-slate-500">
-                    Nenhuma chamada de IA neste período.
-                  </td>
+                  <Th>Empresa</Th>
+                  <Th>Plano</Th>
+                  <CabecalhoDeConsumo />
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
+              </THead>
+              <tbody>
+                {d.porEmpresa.map((e) => (
+                  <Tr key={e.companyId ?? 'sem'}>
+                    <Td>{e.empresa}</Td>
+                    <Td>{e.planCode ? <StatusTag mono>{e.planCode}</StatusTag> : <span className="text-faint">—</span>}</Td>
+                    <CelulasDeConsumo {...e} />
+                  </Tr>
+                ))}
+              </tbody>
+            </Table>
+          </TableWrap>
+        )}
+      </Secao>
 
-      <section className={secao}>
-        <h2 className="mb-1 text-sm font-medium">Por etapa e modelo</h2>
-        <p className="mb-2 text-xs text-slate-500">
-          Cada análise tem duas etapas: o analista lê o edital e o revisor o confere. A revisão é custo da plataforma: não conta na cota do cliente.
-        </p>
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr>
-              <th className={th}>Etapa</th>
-              <th className={th}>Modelo</th>
-              <th className={`${th} text-right`}>Chamadas</th>
-              <th className={`${th} text-right`}>Tokens in</th>
-              <th className={`${th} text-right`}>Tokens out</th>
-              <th className={`${th} text-right`}>Custo est.</th>
-            </tr>
-          </thead>
-          <tbody>
-            {d.porEtapa.map((e) => (
-              <tr key={`${e.etapa}-${e.provider}-${e.model}`} className="border-t border-slate-100">
-                <td className="px-2 py-1.5">{e.etapa === 'revisao' ? 'Revisão' : 'Análise'}</td>
-                <td className="px-2 py-1.5">
-                  {e.provider} / {e.model}
-                </td>
-                <td className="px-2 py-1.5 text-right">{e.chamadas}</td>
-                <td className="px-2 py-1.5 text-right">{nf.format(e.tokensEntrada)}</td>
-                <td className="px-2 py-1.5 text-right">{nf.format(e.tokensSaida)}</td>
-                <td className="px-2 py-1.5 text-right">{usd(e.custoEstimadoUsd)}</td>
-              </tr>
-            ))}
-            {d.porEtapa.length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-2 py-4 text-center text-slate-500">
-                  Nenhuma chamada neste período.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </section>
+      <Secao
+        titulo="Por etapa e modelo"
+        descricao="Cada análise tem duas etapas: o analista lê o edital e o revisor o confere. A revisão é custo da plataforma: não conta na cota do cliente."
+      >
+        {d.porEtapa.length === 0 ? (
+          <Vazio>Nenhuma chamada neste período.</Vazio>
+        ) : (
+          <TableWrap minWidth={720}>
+            <Table>
+              <THead>
+                <tr>
+                  <Th>Etapa</Th>
+                  <Th>Modelo</Th>
+                  <CabecalhoDeConsumo />
+                </tr>
+              </THead>
+              <tbody>
+                {d.porEtapa.map((e) => (
+                  <Tr key={`${e.etapa}-${e.provider}-${e.model}`}>
+                    <Td>{e.etapa === 'revisao' ? 'Revisão' : 'Análise'}</Td>
+                    <Td className="font-mono text-xs text-ink-2">
+                      {e.provider} / {e.model}
+                    </Td>
+                    <CelulasDeConsumo {...e} />
+                  </Tr>
+                ))}
+              </tbody>
+            </Table>
+          </TableWrap>
+        )}
+      </Secao>
 
-      <section className={secao}>
-        <h2 className="mb-2 text-sm font-medium">Por mês</h2>
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr>
-              <th className={th}>Mês</th>
-              <th className={`${th} text-right`}>Chamadas</th>
-              <th className={`${th} text-right`}>Tokens in</th>
-              <th className={`${th} text-right`}>Tokens out</th>
-              <th className={`${th} text-right`}>Custo est.</th>
-            </tr>
-          </thead>
-          <tbody>
-            {d.porMes.map((m) => (
-              <tr key={m.mes} className="border-t border-slate-100">
-                <td className="px-2 py-1.5">{m.mes}</td>
-                <td className="px-2 py-1.5 text-right">{m.chamadas}</td>
-                <td className="px-2 py-1.5 text-right">{nf.format(m.tokensEntrada)}</td>
-                <td className="px-2 py-1.5 text-right">{nf.format(m.tokensSaida)}</td>
-                <td className="px-2 py-1.5 text-right">{usd(m.custoEstimadoUsd)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
+      <Secao titulo="Por mês">
+        {d.porMes.length === 0 ? (
+          <Vazio>Nenhum mês com consumo registrado.</Vazio>
+        ) : (
+          <TableWrap minWidth={560}>
+            <Table>
+              <THead>
+                <tr>
+                  <Th>Mês</Th>
+                  <CabecalhoDeConsumo />
+                </tr>
+              </THead>
+              <tbody>
+                {d.porMes.map((m) => (
+                  <Tr key={m.mes}>
+                    <Td className="font-mono">{m.mes}</Td>
+                    <CelulasDeConsumo {...m} />
+                  </Tr>
+                ))}
+              </tbody>
+            </Table>
+          </TableWrap>
+        )}
+      </Secao>
 
-      <section className={secao}>
-        <h2 className="mb-2 text-sm font-medium">Últimas chamadas</h2>
-        <ul className="flex flex-col gap-1 text-xs text-slate-600">
-          {d.recentes.map((r) => (
-            <li key={r.id} className="border-t border-slate-100 py-1">
-              {new Date(r.createdAt).toLocaleString('pt-BR')} · {r.provider}/{r.model} · {nf.format(r.inputTokens)} in /{' '}
-              {nf.format(r.outputTokens)} out ·{' '}
-              <span className={r.status === 'OK' ? 'text-emerald-700' : 'text-red-700'}>{r.status}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
+      <Secao titulo="Últimas chamadas">
+        {d.recentes.length === 0 ? (
+          <Vazio>Nenhuma chamada recente.</Vazio>
+        ) : (
+          <TableWrap minWidth={720}>
+            <Table>
+              <THead>
+                <tr>
+                  <Th>Quando</Th>
+                  <Th>Modelo</Th>
+                  <Th align="right">Tokens in</Th>
+                  <Th align="right">Tokens out</Th>
+                  <Th align="right">Status</Th>
+                </tr>
+              </THead>
+              <tbody>
+                {d.recentes.map((r) => (
+                  <Tr key={r.id}>
+                    <Td className="whitespace-nowrap font-mono text-xs text-muted">{new Date(r.createdAt).toLocaleString('pt-BR')}</Td>
+                    <Td className="font-mono text-xs text-ink-2">
+                      {r.provider}/{r.model}
+                    </Td>
+                    <Td numeric>{nf.format(r.inputTokens)}</Td>
+                    <Td numeric>{nf.format(r.outputTokens)}</Td>
+                    <Td className="text-right">
+                      <StatusTag mono tone={r.status === 'OK' ? 'neutral' : 'danger'}>
+                        {r.status}
+                      </StatusTag>
+                    </Td>
+                  </Tr>
+                ))}
+              </tbody>
+            </Table>
+          </TableWrap>
+        )}
+      </Secao>
 
-      <p className="text-xs text-slate-500">{d.aviso}</p>
+      <p className="max-w-prose text-xs text-muted">{d.aviso}</p>
     </div>
   )
 }

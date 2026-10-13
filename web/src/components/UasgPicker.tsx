@@ -1,26 +1,32 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState, type KeyboardEvent } from 'react'
+import { X } from 'lucide-react'
 import { api } from '@/lib/api'
 import { UasgResult } from '@/lib/types'
+import { Input, cx } from '@/components/ui'
 
-// Busca + seleção de UASGs (unidades compradoras) pra filtrar item monitorado.
-// O código UASG só existe no sistema legado (ComprasNet) — licitações do PNCP
-// não têm esse código, então esse filtro não as restringe (ver matcherService.ts).
-// Por isso, ao escolher uma UASG, também sugerimos o nome do órgão pro campo
-// de Órgãos (que funciona nas duas fontes) via onPickOrgao.
 export default function UasgPicker({
   selected,
   onChange,
   onPickOrgao,
+  id,
+  'aria-describedby': descritoPor,
 }: {
   selected: UasgResult[]
   onChange: (next: UasgResult[]) => void
   onPickOrgao?: (nomeOrgao: string) => void
+  id?: string
+  'aria-describedby'?: string
 }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<UasgResult[]>([])
   const [searching, setSearching] = useState(false)
+  const [ativo, setAtivo] = useState(-1)
+  const automatico = useId()
+  const baseId = id ?? automatico
+  const listaId = `${baseId}-lista`
+  const aberto = query.trim().length >= 2
 
   useEffect(() => {
     if (query.trim().length < 2) {
@@ -38,6 +44,10 @@ export default function UasgPicker({
     return () => clearTimeout(timeout)
   }, [query])
 
+  useEffect(() => {
+    setAtivo(-1)
+  }, [results])
+
   function adicionar(u: UasgResult) {
     if (!selected.some((s) => s.codigoUasg === u.codigoUasg)) {
       onChange([...selected, u])
@@ -51,55 +61,96 @@ export default function UasgPicker({
     onChange(selected.filter((s) => s.codigoUasg !== codigoUasg))
   }
 
+  function aoTeclar(e: KeyboardEvent<HTMLInputElement>) {
+    if (!aberto) return
+    if (e.key === 'ArrowDown' && results.length > 0) {
+      e.preventDefault()
+      setAtivo((i) => Math.min(results.length - 1, i + 1))
+    } else if (e.key === 'ArrowUp' && results.length > 0) {
+      e.preventDefault()
+      setAtivo((i) => Math.max(0, i - 1))
+    } else if (e.key === 'Enter' && ativo >= 0 && results[ativo]) {
+      e.preventDefault()
+      adicionar(results[ativo])
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      setQuery('')
+      setResults([])
+    }
+  }
+
+  const listaVisivel = aberto && !searching && results.length > 0
+
   return (
-    <div>
+    <div className="flex flex-col gap-2">
       <div className="relative">
-        <input
+        <Input
+          id={id}
+          role="combobox"
+          aria-autocomplete="list"
+          aria-expanded={listaVisivel}
+          aria-controls={listaId}
+          aria-activedescendant={listaVisivel && ativo >= 0 ? `${listaId}-${ativo}` : undefined}
+          aria-describedby={descritoPor}
+          aria-label={id ? undefined : 'Buscar UASG por nome, órgão ou código'}
+          autoComplete="off"
           placeholder="Buscar UASG por nome, órgão ou código (opcional — só afeta licitações do ComprasNet)"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+          onKeyDown={aoTeclar}
         />
-        {query.trim().length >= 2 && (
-          <div className="absolute z-10 mt-1 max-h-64 w-full overflow-y-auto rounded border border-slate-300 bg-white shadow-lg">
+        {aberto && (
+          <div className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded border border-line bg-surface">
             {searching ? (
-              <p className="px-3 py-2 text-sm text-slate-500">Buscando...</p>
+              <p role="status" className="px-3 py-2 text-sm text-muted">
+                Buscando…
+              </p>
             ) : results.length === 0 ? (
-              <p className="px-3 py-2 text-sm text-slate-500">Nenhuma UASG encontrada.</p>
+              <p role="status" className="px-3 py-2 text-sm text-muted">
+                Nenhuma UASG encontrada.
+              </p>
             ) : (
-              results.map((u) => (
-                <button
-                  key={u.codigoUasg}
-                  type="button"
-                  onClick={() => adicionar(u)}
-                  className="block w-full border-b border-slate-100 px-3 py-2 text-left text-sm last:border-0 hover:bg-slate-50"
-                >
-                  <span className="font-medium text-slate-800">{u.nomeUasg}</span>{' '}
-                  <span className="text-xs text-slate-400">({u.codigoUasg})</span>
-                  <p className="text-xs text-slate-500">
-                    {u.nomeOrgao ?? 'Órgão n/d'} — {u.municipioNome ?? 'n/d'}/{u.siglaUf ?? 'n/d'}
-                  </p>
-                </button>
-              ))
+              <ul id={listaId} role="listbox" aria-label="Resultados de UASG">
+                {results.map((u, i) => (
+                  <li
+                    key={u.codigoUasg}
+                    id={`${listaId}-${i}`}
+                    role="option"
+                    aria-selected={i === ativo}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onMouseEnter={() => setAtivo(i)}
+                    onClick={() => adicionar(u)}
+                    className={cx('cursor-pointer border-b border-line-soft px-3 py-2 text-sm last:border-0', i === ativo && 'bg-accent-soft')}
+                  >
+                    <span className="font-medium text-ink">{u.nomeUasg}</span> <span className="font-mono text-xs text-muted">{u.codigoUasg}</span>
+                    <span className="block text-xs text-muted">
+                      {u.nomeOrgao ?? 'Órgão n/d'} — {u.municipioNome ?? 'n/d'}/{u.siglaUf ?? 'n/d'}
+                    </span>
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
         )}
       </div>
 
       {selected.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1.5">
+        <ul className="flex flex-wrap gap-1.5" aria-label="UASGs escolhidas">
           {selected.map((u) => (
-            <span
-              key={u.codigoUasg}
-              className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-2.5 py-1 text-xs text-indigo-800"
-            >
-              {u.nomeUasg} ({u.codigoUasg})
-              <button type="button" onClick={() => remover(u.codigoUasg)} className="text-indigo-400 hover:text-indigo-700">
-                ×
+            <li key={u.codigoUasg} className="inline-flex max-w-full items-center gap-1 rounded-sm border border-line-strong bg-surface py-px pl-1.5 pr-0.5 text-xs text-ink-2">
+              <span className="truncate">{u.nomeUasg}</span>
+              <span className="font-mono text-2xs text-muted">{u.codigoUasg}</span>
+              <button
+                type="button"
+                onClick={() => remover(u.codigoUasg)}
+                aria-label={`Remover UASG ${u.nomeUasg} (${u.codigoUasg})`}
+                className="inline-flex size-5 shrink-0 items-center justify-center rounded-sm text-muted hover:bg-line-soft hover:text-danger"
+              >
+                <X size={12} aria-hidden />
               </button>
-            </span>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
     </div>
   )

@@ -1,18 +1,22 @@
 'use client'
 
-import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { Suspense, useState } from 'react'
-import PublicShell from '@/components/PublicShell'
+import { PublicCard } from '@/components/PublicShell'
+import { Button, Carregando, Field, FormError, Input, LinkButton, TextLink } from '@/components/ui'
 import { api, ApiRequestError } from '@/lib/api'
 
 export default function RedefinirSenhaPage() {
   return (
-    <PublicShell estreito>
-      <Suspense fallback={<p className="text-sm text-slate-500">Carregando...</p>}>
-        <Formulario />
-      </Suspense>
-    </PublicShell>
+    <Suspense
+      fallback={
+        <PublicCard title="Nova senha">
+          <Carregando linhas={2} />
+        </PublicCard>
+      }
+    >
+      <Formulario />
+    </Suspense>
   )
 }
 
@@ -48,52 +52,43 @@ function Formulario() {
 
   if (!token) {
     return (
-      <>
-        <h1 className="mb-2 text-2xl font-semibold">Link incompleto</h1>
-        <p className="text-sm text-slate-600">
-          Abra o link do e-mail ou{' '}
-          <Link href="/esqueci-senha" className="text-indigo-700 hover:underline">
-            peça um novo
-          </Link>
-          .
+      <PublicCard title="Link incompleto">
+        <p className="text-sm text-ink-2">
+          Abra o link do e-mail ou <TextLink href="/esqueci-senha">peça um novo</TextLink>.
         </p>
-      </>
+      </PublicCard>
     )
   }
 
   if (pronto) {
     return (
-      <>
-        <h1 className="mb-2 text-2xl font-semibold">Senha alterada</h1>
-        <p className="text-sm text-slate-600">Todas as sessões abertas foram encerradas. Entre com a nova senha.</p>
-        <Link href="/login" className="mt-4 inline-block rounded bg-indigo-700 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-800">
+      <PublicCard title="Senha alterada" description="Todas as sessões abertas foram encerradas. Entre com a nova senha.">
+        <LinkButton href="/login" variant="primary" className="w-full">
           Entrar
-        </Link>
-      </>
+        </LinkButton>
+      </PublicCard>
     )
   }
 
   return (
-    <>
-      <h1 className="mb-1 text-2xl font-semibold">Nova senha</h1>
-      <p className="mb-5 text-sm text-slate-500">Escolha uma senha com pelo menos 10 caracteres.</p>
-      <form onSubmit={enviar} className="flex flex-col gap-3">
-        <input required type="password" placeholder="Nova senha" value={senha} onChange={(e) => setSenha(e.target.value)} className="rounded border border-slate-300 px-3 py-2 text-sm" maxLength={72} autoComplete="new-password" />
-        <input required type="password" placeholder="Confirmar nova senha" value={confirmar} onChange={(e) => setConfirmar(e.target.value)} className="rounded border border-slate-300 px-3 py-2 text-sm" maxLength={72} autoComplete="new-password" />
+    <PublicCard title="Nova senha" description="Escolha uma senha com pelo menos 10 caracteres.">
+      <form onSubmit={enviar} className="flex flex-col gap-4">
+        <Field label="Nova senha" required>
+          <Input type="password" value={senha} onChange={(e) => setSenha(e.target.value)} maxLength={72} autoComplete="new-password" />
+        </Field>
+        <Field label="Confirmar nova senha" required>
+          <Input type="password" value={confirmar} onChange={(e) => setConfirmar(e.target.value)} maxLength={72} autoComplete="new-password" />
+        </Field>
         {erro && (
-          <p className="text-sm text-red-600">
+          <FormError>
             {erro}{' '}
-            {erro.startsWith('Link') && (
-              <Link href="/esqueci-senha" className="underline">
-                Pedir novo link
-              </Link>
-            )}
-          </p>
+            {erro.startsWith('Link') && <TextLink href="/esqueci-senha">Pedir novo link</TextLink>}
+          </FormError>
         )}
-        <button type="submit" disabled={enviando} className="rounded bg-indigo-700 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-800 disabled:opacity-50">
-          {enviando ? 'Salvando...' : 'Salvar nova senha'}
-        </button>
+        <Button type="submit" variant="primary" loading={enviando} className="w-full">
+          {enviando ? 'Salvando…' : 'Salvar nova senha'}
+        </Button>
       </form>
-    </>
+    </PublicCard>
   )
 }

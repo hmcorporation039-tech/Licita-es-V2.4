@@ -1,20 +1,24 @@
 'use client'
 
 import { useSearchParams } from 'next/navigation'
-import { Suspense, useCallback, useEffect, useState } from 'react'
+import { Fragment, Suspense, useCallback, useEffect, useState } from 'react'
+import { ChevronDown, ChevronUp, Download } from 'lucide-react'
 import AdminShell from '@/components/AdminShell'
 import { api, ApiRequestError } from '@/lib/api'
 import { getSessionToken } from '@/lib/session'
 import { ROTULO_ACAO } from '@/lib/adminTypes'
 import type { EventoAuditoria } from '@/lib/adminTypes'
+import { Button, Carregando, EmptyState, ErrorState, Field, Input, Notice, Select, StatusTag, Table, TableWrap, Td, THead, Th, Tr } from '@/components/ui'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3333'
+
+const ACOES_DE_RISCO = new Set(['LOGIN_FALHA', 'COTA_EXCEDIDA'])
 
 export default function AdminAuditoriaPage() {
   return (
     <AdminShell titulo="Trilha de auditoria">
       {() => (
-        <Suspense fallback={<p className="text-sm text-slate-500">Carregando...</p>}>
+        <Suspense fallback={<Carregando linhas={6} />}>
           <Conteudo />
         </Suspense>
       )}
@@ -34,6 +38,7 @@ function Conteudo() {
   const [carregando, setCarregando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [aberto, setAberto] = useState<string | null>(null)
+  const [iniciou, setIniciou] = useState(false)
 
   const filtroQuery = useCallback(() => {
     const p = new URLSearchParams()
@@ -66,13 +71,15 @@ function Conteudo() {
   )
 
   useEffect(() => {
-    const t = setTimeout(() => carregar(), 300)
+    const t = setTimeout(() => {
+      setIniciou(true)
+      carregar()
+    }, 300)
     return () => clearTimeout(t)
   }, [carregar])
 
   async function exportar() {
     try {
-      // O token vai no cabeçalho (não na URL): por isso baixamos como arquivo em vez de abrir um link.
       const res = await fetch(`${API_URL}/api/admin/audit/export?${filtroQuery()}`, {
         headers: { Authorization: `Bearer ${getSessionToken() ?? ''}` },
       })
@@ -88,103 +95,132 @@ function Conteudo() {
     }
   }
 
-  const campo = 'rounded border border-slate-300 px-2 py-1.5 text-sm'
+  const semEventos = eventos.length === 0
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-end gap-3">
-        <label className="flex flex-col text-xs text-slate-600">
-          Ação
-          <select value={acao} onChange={(e) => setAcao(e.target.value)} className={campo}>
+    <div className="flex flex-col gap-4">
+      <form
+        role="search"
+        aria-label="Filtros da auditoria"
+        onSubmit={(e) => e.preventDefault()}
+        className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1.2fr)_minmax(0,1.4fr)_minmax(0,0.8fr)_minmax(0,0.8fr)]"
+      >
+        <Field label="Ação">
+          <Select value={acao} onChange={(e) => setAcao(e.target.value)}>
             <option value="">Todas</option>
             {Object.entries(ROTULO_ACAO).map(([k, v]) => (
               <option key={k} value={k}>
                 {v}
               </option>
             ))}
-          </select>
-        </label>
-        <label className="flex flex-col text-xs text-slate-600">
-          Quem (e-mail)
-          <input value={ator} onChange={(e) => setAtor(e.target.value)} className={campo} />
-        </label>
-        <label className="flex flex-col text-xs text-slate-600">
-          ID da empresa
-          <input value={empresa} onChange={(e) => setEmpresa(e.target.value)} className={`${campo} w-72`} />
-        </label>
-        <label className="flex flex-col text-xs text-slate-600">
-          De
-          <input type="date" value={de} onChange={(e) => setDe(e.target.value)} className={campo} />
-        </label>
-        <label className="flex flex-col text-xs text-slate-600">
-          Até
-          <input type="date" value={ate} onChange={(e) => setAte(e.target.value)} className={campo} />
-        </label>
-        <button onClick={exportar} className="rounded border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50">
+          </Select>
+        </Field>
+        <Field label="Quem (e-mail)">
+          <Input type="search" value={ator} onChange={(e) => setAtor(e.target.value)} className="font-mono" />
+        </Field>
+        <Field label="ID da empresa">
+          <Input type="search" value={empresa} onChange={(e) => setEmpresa(e.target.value)} spellCheck={false} className="font-mono" />
+        </Field>
+        <Field label="De">
+          <Input type="date" value={de} onChange={(e) => setDe(e.target.value)} className="font-mono" />
+        </Field>
+        <Field label="Até">
+          <Input type="date" value={ate} onChange={(e) => setAte(e.target.value)} className="font-mono" />
+        </Field>
+      </form>
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted" aria-live="polite">
+          {semEventos ? (carregando || !iniciou ? 'Buscando eventos…' : 'Nenhum evento carregado') : (
+            <>
+              <span className="font-mono text-ink-2">{eventos.length}</span> evento(s) carregado(s){proximo ? ', há mais' : ''}
+            </>
+          )}
+        </p>
+        <Button size="sm" icon={Download} onClick={exportar}>
           Exportar CSV
-        </button>
+        </Button>
       </div>
 
-      {erro && <p className="text-sm text-red-600">{erro}</p>}
+      {erro && semEventos && !carregando && <ErrorState message={erro} onRetry={() => carregar()} />}
+      {erro && !semEventos && <Notice tone="danger">{erro}</Notice>}
 
-      <div className="overflow-x-auto rounded border border-slate-200 bg-white">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-            <tr>
-              <th className="px-3 py-2">Quando</th>
-              <th className="px-3 py-2">Quem</th>
-              <th className="px-3 py-2">O quê</th>
-              <th className="px-3 py-2">Detalhes</th>
-              <th className="px-3 py-2">IP</th>
-            </tr>
-          </thead>
-          <tbody>
-            {eventos.map((ev) => (
-              <tr key={ev.id} className="border-t border-slate-100 align-top">
-                <td className="whitespace-nowrap px-3 py-2 text-slate-500">{new Date(ev.createdAt).toLocaleString('pt-BR')}</td>
-                <td className="px-3 py-2">{ev.actorEmail ?? <span className="text-slate-400">—</span>}</td>
-                <td className="px-3 py-2">
-                  <span className={ev.action === 'LOGIN_FALHA' || ev.action === 'COTA_EXCEDIDA' ? 'text-red-700' : ''}>
-                    {ROTULO_ACAO[ev.action] ?? ev.action}
-                  </span>
-                  {ev.entityType && <div className="text-xs text-slate-400">{ev.entityType}</div>}
-                </td>
-                <td className="px-3 py-2">
-                  {ev.metadata ? (
-                    <button onClick={() => setAberto(aberto === ev.id ? null : ev.id)} className="text-xs text-indigo-700 hover:underline">
-                      {aberto === ev.id ? 'ocultar' : 'ver'}
-                    </button>
-                  ) : (
-                    <span className="text-slate-400">—</span>
-                  )}
-                  {aberto === ev.id && (
-                    <pre className="mt-1 max-w-md overflow-x-auto whitespace-pre-wrap rounded bg-slate-50 p-2 text-xs">
-                      {JSON.stringify(ev.metadata, null, 2)}
-                    </pre>
-                  )}
-                </td>
-                <td className="px-3 py-2 text-xs text-slate-500">{ev.ip ?? '—'}</td>
-              </tr>
-            ))}
-            {!carregando && eventos.length === 0 && (
+      {semEventos && (carregando || !iniciou) && <Carregando linhas={6} />}
+
+      {semEventos && iniciou && !carregando && !erro && (
+        <EmptyState title="Nenhum evento com esses filtros." description="Amplie o período ou limpe algum filtro para ver mais eventos." />
+      )}
+
+      {!semEventos && (
+        <TableWrap minWidth={940}>
+          <Table>
+            <THead>
               <tr>
-                <td colSpan={5} className="px-3 py-6 text-center text-slate-500">
-                  Nenhum evento com esses filtros.
-                </td>
+                <Th>Quando</Th>
+                <Th>Quem</Th>
+                <Th>O quê</Th>
+                <Th>Entidade</Th>
+                <Th>Detalhes</Th>
+                <Th>IP</Th>
               </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            </THead>
+            <tbody>
+              {eventos.map((ev) => {
+                const expandido = aberto === ev.id
+                const detalheId = `auditoria-detalhe-${ev.id}`
+                const rotulo = ROTULO_ACAO[ev.action]
+                return (
+                  <Fragment key={ev.id}>
+                    <Tr selected={expandido} className="align-top">
+                      <Td className="whitespace-nowrap py-2 font-mono text-xs text-muted">{new Date(ev.createdAt).toLocaleString('pt-BR')}</Td>
+                      <Td className="py-2 font-mono text-xs">{ev.actorEmail ?? <span className="text-faint">—</span>}</Td>
+                      <Td className="py-2">
+                        <div className="flex flex-col items-start gap-1">
+                          <span className={ACOES_DE_RISCO.has(ev.action) ? 'font-medium text-danger' : 'text-ink'}>{rotulo ?? ev.action}</span>
+                          {rotulo && <StatusTag mono>{ev.action}</StatusTag>}
+                        </div>
+                      </Td>
+                      <Td className="py-2">{ev.entityType ? <StatusTag mono>{ev.entityType}</StatusTag> : <span className="text-faint">—</span>}</Td>
+                      <Td className="py-2">
+                        {ev.metadata ? (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            iconRight={expandido ? ChevronUp : ChevronDown}
+                            aria-expanded={expandido}
+                            aria-controls={expandido ? detalheId : undefined}
+                            onClick={() => setAberto(expandido ? null : ev.id)}
+                            className="-ml-2.5"
+                          >
+                            {expandido ? 'Ocultar' : 'Ver'}
+                          </Button>
+                        ) : (
+                          <span className="text-faint">—</span>
+                        )}
+                      </Td>
+                      <Td className="py-2 font-mono text-xs text-muted">{ev.ip ?? '—'}</Td>
+                    </Tr>
+                    {expandido && (
+                      <Tr selected>
+                        <Td colSpan={6} className="pt-0">
+                          <pre id={detalheId} className="max-h-80 overflow-auto whitespace-pre-wrap break-all rounded border border-line-soft bg-surface p-3 font-mono text-xs text-ink-2">
+                            {JSON.stringify(ev.metadata, null, 2)}
+                          </pre>
+                        </Td>
+                      </Tr>
+                    )}
+                  </Fragment>
+                )
+              })}
+            </tbody>
+          </Table>
+        </TableWrap>
+      )}
 
       {proximo && (
-        <button
-          onClick={() => carregar(proximo)}
-          disabled={carregando}
-          className="self-start rounded border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50 disabled:opacity-50"
-        >
-          {carregando ? 'Carregando...' : 'Carregar mais'}
-        </button>
+        <Button onClick={() => carregar(proximo)} loading={carregando} className="self-start">
+          {carregando ? 'Carregando…' : 'Carregar mais'}
+        </Button>
       )}
     </div>
   )

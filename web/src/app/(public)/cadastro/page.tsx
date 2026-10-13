@@ -1,11 +1,16 @@
 'use client'
 
-import Link from 'next/link'
 import { useCallback, useState } from 'react'
 import Captcha, { captchaAtivo } from '@/components/Captcha'
 import ConfirmarCodigo from '@/components/ConfirmarCodigo'
-import PublicShell from '@/components/PublicShell'
+import { PublicCard } from '@/components/PublicShell'
+import { Button, Checkbox, cx, Field, FormError, Input, Notice, TextLink } from '@/components/ui'
 import { api, ApiRequestError } from '@/lib/api'
+
+const OPCOES_DE_TIPO = [
+  { valor: 'PESSOA_JURIDICA', rotulo: 'Empresa (CNPJ)' },
+  { valor: 'PESSOA_FISICA', rotulo: 'Pessoa física (CPF)' },
+] as const
 
 export default function CadastroPage() {
   const [tipo, setTipo] = useState<'PESSOA_FISICA' | 'PESSOA_JURIDICA'>('PESSOA_JURIDICA')
@@ -17,7 +22,7 @@ export default function CadastroPage() {
   const [senha, setSenha] = useState('')
   const [confirmar, setConfirmar] = useState('')
   const [aceite, setAceite] = useState(false)
-  const [isca, setIsca] = useState('') // campo invisível: só robôs preenchem
+  const [isca, setIsca] = useState('')
   const [erro, setErro] = useState<string | null>(null)
   const [conflito, setConflito] = useState<'EMAIL_JA_CADASTRADO' | 'DOCUMENTO_JA_CADASTRADO' | 'DOCUMENTO_PENDENTE' | null>(null)
   const [enviando, setEnviando] = useState(false)
@@ -63,58 +68,67 @@ export default function CadastroPage() {
     }
   }
 
-  const campo = 'rounded border border-slate-300 px-3 py-2 text-sm'
-
-  // Etapa 2: o código enviado ao e-mail. Aparece sempre (a resposta do cadastro é a mesma
-  // exista ou não a conta, para não revelar quem já é cliente).
   if (mensagem) {
-    return (
-      <PublicShell estreito>
-        <ConfirmarCodigo email={email} senha={senha} />
-      </PublicShell>
-    )
+    return <ConfirmarCodigo email={email} senha={senha} />
   }
 
+  const rotuloDoDocumento = tipo === 'PESSOA_JURIDICA' ? 'CNPJ' : 'CPF'
+
   return (
-    <PublicShell estreito>
-      <h1 className="mb-1 text-2xl font-semibold">Criar conta</h1>
-      <p className="mb-5 text-sm text-slate-500">
-        Teste gratuito, sem cartão. Um teste por CPF ou CNPJ. Já tem conta?{' '}
-        <Link href="/login" className="text-indigo-700 hover:underline">
-          Entrar
-        </Link>
-        .
-      </p>
+    <PublicCard
+      title="Criar conta"
+      description={
+        <>
+          Teste gratuito, sem cartão. Um teste por CPF ou CNPJ. Já tem conta? <TextLink href="/login">Entrar</TextLink>.
+        </>
+      }
+    >
+      <form onSubmit={enviar} className="flex flex-col gap-4">
+        <fieldset className="flex flex-col gap-1.5">
+          <legend className="mb-1.5 text-xs font-medium text-muted">Tipo de cadastro</legend>
+          <div className="grid grid-cols-2 gap-px overflow-hidden rounded border border-line-strong bg-line-strong">
+            {OPCOES_DE_TIPO.map((opcao) => {
+              const marcado = tipo === opcao.valor
+              return (
+                <label
+                  key={opcao.valor}
+                  className={cx(
+                    'flex h-10 cursor-pointer items-center justify-center gap-2 px-2 text-center text-sm transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:-outline-offset-2 has-[:focus-visible]:outline-accent',
+                    marcado ? 'bg-accent-soft font-semibold text-accent' : 'bg-surface text-ink-2 hover:bg-sunken',
+                  )}
+                >
+                  <input type="radio" name="tipo" className="sr-only" checked={marcado} onChange={() => setTipo(opcao.valor)} />
+                  {opcao.rotulo}
+                </label>
+              )
+            })}
+          </div>
+        </fieldset>
 
-      <form onSubmit={enviar} className="flex flex-col gap-3">
-        <div className="flex gap-4 text-sm">
-          <label className="flex items-center gap-1.5">
-            <input type="radio" checked={tipo === 'PESSOA_JURIDICA'} onChange={() => setTipo('PESSOA_JURIDICA')} /> Empresa (CNPJ)
-          </label>
-          <label className="flex items-center gap-1.5">
-            <input type="radio" checked={tipo === 'PESSOA_FISICA'} onChange={() => setTipo('PESSOA_FISICA')} /> Pessoa física (CPF)
-          </label>
-        </div>
-
-        <input required placeholder="Seu nome" value={nome} onChange={(e) => setNome(e.target.value)} className={campo} maxLength={120} />
+        <Field label="Seu nome" required>
+          <Input autoComplete="name" value={nome} onChange={(e) => setNome(e.target.value)} maxLength={120} />
+        </Field>
         {tipo === 'PESSOA_JURIDICA' && (
-          <input placeholder="Nome da empresa" value={empresaNome} onChange={(e) => setEmpresaNome(e.target.value)} className={campo} maxLength={160} />
+          <Field label="Nome da empresa" hint="Opcional">
+            <Input autoComplete="organization" value={empresaNome} onChange={(e) => setEmpresaNome(e.target.value)} maxLength={160} />
+          </Field>
         )}
-        <input
-          required
-          inputMode="numeric"
-          placeholder={tipo === 'PESSOA_JURIDICA' ? 'CNPJ' : 'CPF'}
-          value={documento}
-          onChange={(e) => setDocumento(e.target.value)}
-          className={campo}
-          maxLength={18}
-        />
-        <input required type="email" placeholder="E-mail" value={email} onChange={(e) => setEmail(e.target.value)} className={campo} maxLength={254} />
-        <input placeholder="Telefone (opcional)" value={telefone} onChange={(e) => setTelefone(e.target.value)} className={campo} maxLength={30} />
-        <input required type="password" placeholder="Senha (mínimo 10 caracteres)" value={senha} onChange={(e) => setSenha(e.target.value)} className={campo} maxLength={72} autoComplete="new-password" />
-        <input required type="password" placeholder="Confirmar senha" value={confirmar} onChange={(e) => setConfirmar(e.target.value)} className={campo} maxLength={72} autoComplete="new-password" />
+        <Field label={rotuloDoDocumento} required>
+          <Input inputMode="numeric" className="font-mono" value={documento} onChange={(e) => setDocumento(e.target.value)} maxLength={18} />
+        </Field>
+        <Field label="E-mail" required>
+          <Input type="email" autoComplete="email" placeholder="voce@empresa.com.br" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={254} />
+        </Field>
+        <Field label="Telefone" hint="Opcional">
+          <Input type="tel" autoComplete="tel" value={telefone} onChange={(e) => setTelefone(e.target.value)} maxLength={30} />
+        </Field>
+        <Field label="Senha" hint="Mínimo de 10 caracteres" required>
+          <Input type="password" value={senha} onChange={(e) => setSenha(e.target.value)} maxLength={72} autoComplete="new-password" />
+        </Field>
+        <Field label="Confirmar senha" required>
+          <Input type="password" value={confirmar} onChange={(e) => setConfirmar(e.target.value)} maxLength={72} autoComplete="new-password" />
+        </Field>
 
-        {/* Isca anti-robô: fora da tela e fora da ordem de tabulação. */}
         <div aria-hidden="true" style={{ position: 'absolute', left: '-9999px', height: 0, overflow: 'hidden' }}>
           <label>
             Não preencha
@@ -122,68 +136,67 @@ export default function CadastroPage() {
           </label>
         </div>
 
-        <label className="flex items-start gap-2 text-sm text-slate-600">
-          <input type="checkbox" checked={aceite} onChange={(e) => setAceite(e.target.checked)} className="mt-1" />
-          <span>
-            Li e aceito os{' '}
-            <Link href="/termos" target="_blank" className="text-indigo-700 hover:underline">
-              Termos de Uso
-            </Link>{' '}
-            e a{' '}
-            <Link href="/privacidade" target="_blank" className="text-indigo-700 hover:underline">
-              Política de Privacidade
-            </Link>
-            .
-          </span>
-        </label>
+        <Checkbox
+          checked={aceite}
+          onChange={(e) => setAceite(e.target.checked)}
+          label={
+            <>
+              Li e aceito os{' '}
+              <TextLink href="/termos" target="_blank">
+                Termos de Uso
+              </TextLink>{' '}
+              e a{' '}
+              <TextLink href="/privacidade" target="_blank">
+                Política de Privacidade
+              </TextLink>
+              .
+            </>
+          }
+        />
 
         <Captcha onToken={aoReceberCaptcha} />
+
         {conflito && (
-          <div role="alert" className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-            {conflito === 'EMAIL_JA_CADASTRADO' && <p className="font-medium">Este e-mail já está cadastrado.</p>}
-            {conflito === 'DOCUMENTO_JA_CADASTRADO' && <p className="font-medium">Esta empresa já tem cadastro para este {tipo === 'PESSOA_JURIDICA' ? 'CNPJ' : 'CPF'}.</p>}
-            {conflito === 'DOCUMENTO_PENDENTE' && <p className="font-medium">Já existe um cadastro aguardando confirmação para este {tipo === 'PESSOA_JURIDICA' ? 'CNPJ' : 'CPF'}.</p>}
+          <Notice
+            tone={conflito === 'DOCUMENTO_PENDENTE' ? 'warn' : 'danger'}
+            title={
+              conflito === 'EMAIL_JA_CADASTRADO'
+                ? 'Este e-mail já está cadastrado.'
+                : conflito === 'DOCUMENTO_JA_CADASTRADO'
+                  ? `Esta empresa já tem cadastro para este ${rotuloDoDocumento}.`
+                  : `Já existe um cadastro aguardando confirmação para este ${rotuloDoDocumento}.`
+            }
+          >
             <p className="mt-1">Para acessar, siga uma destas opções:</p>
-            <ul className="mt-1 list-disc pl-5">
+            <ul className="mt-1.5 flex list-disc flex-col gap-1 pl-5 marker:text-faint">
               {conflito === 'DOCUMENTO_PENDENTE' ? (
                 <li>
-                  <Link href="/verificar-email" className="font-medium underline">
-                    Digitar o código de confirmação
-                  </Link>{' '}
-                  (enviado ao e-mail usado nesse cadastro)
+                  <TextLink href="/verificar-email">Digitar o código de confirmação</TextLink> (enviado ao e-mail usado nesse cadastro)
                 </li>
               ) : (
                 <>
                   <li>
-                    <Link href="/login" className="font-medium underline">
-                      Entrar na sua conta
-                    </Link>
+                    <TextLink href="/login">Entrar na sua conta</TextLink>
                   </li>
                   <li>
-                    <Link href="/esqueci-senha" className="font-medium underline">
-                      Recuperar o acesso (esqueci minha senha)
-                    </Link>
+                    <TextLink href="/esqueci-senha">Recuperar o acesso (esqueci minha senha)</TextLink>
                   </li>
                 </>
               )}
               {conflito === 'DOCUMENTO_JA_CADASTRADO' && <li>Se você é de outra equipe da mesma empresa, peça ao responsável pela conta para convidar você (Empresa → Membros).</li>}
             </ul>
-            <p className="mt-2 text-xs">
+            <p className="mt-2 text-xs text-muted">
               {conflito === 'EMAIL_JA_CADASTRADO'
                 ? 'Enviamos também um aviso para esse e-mail. Se for outro endereço, corrija-o acima.'
                 : 'Por segurança, mostramos só parte do e-mail do cadastro; o responsável pela conta recebeu um aviso.'}
             </p>
-          </div>
+          </Notice>
         )}
-        {erro && <p className="text-sm text-red-600">{erro}</p>}
-        <button
-          type="submit"
-          disabled={enviando || !aceite || (captchaAtivo && !captcha)}
-          className="rounded bg-indigo-700 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-800 disabled:opacity-50"
-        >
-          {enviando ? 'Criando...' : 'Criar conta e começar o teste'}
-        </button>
+        <FormError>{erro}</FormError>
+        <Button type="submit" variant="primary" loading={enviando} disabled={!aceite || (captchaAtivo && !captcha)} className="w-full">
+          {enviando ? 'Criando…' : 'Criar conta e começar o teste'}
+        </Button>
       </form>
-    </PublicShell>
+    </PublicCard>
   )
 }

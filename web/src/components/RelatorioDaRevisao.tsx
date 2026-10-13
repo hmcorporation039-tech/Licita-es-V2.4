@@ -1,7 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import { ChevronDown, ChevronUp } from 'lucide-react'
 import type { RevisaoDaAnalise } from '@/lib/adminTypes'
+import { Notice, StatusTag, type Tom } from '@/components/ui'
 
 const ROTULO_CAMPO: Record<string, string> = {
   resumo: 'Resumo',
@@ -27,79 +29,97 @@ const ROTULO_CAMPO: Record<string, string> = {
 
 const quando = (iso: string) => new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
 
+const TOM_DO_VEREDITO: Record<'aprovada' | 'corrigida' | 'reprovada', Tom> = {
+  aprovada: 'ok',
+  corrigida: 'accent',
+  reprovada: 'warn',
+}
 
-const COR_DO_VEREDITO = {
-  aprovada: 'border-emerald-200 bg-emerald-50 text-emerald-900',
-  corrigida: 'border-sky-200 bg-sky-50 text-sky-900',
-  reprovada: 'border-amber-300 bg-amber-50 text-amber-900',
-} as const
-
-// Mostra COMO a análise foi feita (analista e revisor) e o que o revisor mudou.
 export default function RelatorioDaRevisao({ revisao }: { revisao: RevisaoDaAnalise | null }) {
   const [aberto, setAberto] = useState(false)
   if (!revisao) return null
 
   if (revisao.status === 'EM_ANDAMENTO') {
     return (
-      <div className="mb-4 rounded-md border border-blue-300 bg-blue-50 p-3 text-xs text-blue-900">
-        ⏳ <strong>Análise preliminar</strong> — a revisão automática está em andamento e pode levar alguns minutos.
-        Você já pode consultar o resultado abaixo; ele será atualizado automaticamente quando a revisão terminar.
-      </div>
+      <Notice tone="info" title="Análise preliminar">
+        A revisão automática está em andamento e pode levar alguns minutos. Você já pode consultar o resultado abaixo; ele será atualizado
+        automaticamente quando a revisão terminar.
+      </Notice>
     )
   }
 
   if (revisao.status === 'NAO_EXECUTADA') {
     return (
-      <p className="rounded border border-slate-200 bg-slate-50 p-2 text-xs text-slate-600">
-        Análise <strong>sem revisão</strong>{revisao.em ? ' (' + quando(revisao.em) + ')' : ''}.
-        {revisao.motivo ? ` ${revisao.motivo}` : ''}
+      <p className="rounded border border-line bg-sunken px-3 py-2 text-xs text-ink-2">
+        Análise <strong className="font-semibold">sem revisão</strong>
+        {revisao.em ? (
+          <>
+            {' ('}
+            <span className="font-mono">{quando(revisao.em)}</span>
+            {')'}
+          </>
+        ) : null}
+        .{revisao.motivo ? ` ${revisao.motivo}` : ''}
       </p>
     )
   }
 
   if (revisao.status === 'FALHOU') {
     return (
-      <p className="rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900">
-        ⚠ Esta análise <strong>não foi revisada</strong>: {revisao.motivo ?? 'a revisão falhou.'} Trate os dados com mais cautela e confira o edital.
-        {revisao.em && <span className="mt-1 block text-[11px] text-amber-800">Revisão tentada em {quando(revisao.em)}.</span>}
-        {revisao.detalheTecnico && <span className="mt-1 block font-mono text-[11px] text-amber-800">Detalhe técnico (admin): {revisao.detalheTecnico}</span>}
-      </p>
+      <Notice tone="warn" title="Esta análise não foi revisada">
+        <p>
+          {revisao.motivo ?? 'A revisão falhou.'} Trate os dados com mais cautela e confira o edital.
+        </p>
+        {revisao.em && (
+          <p className="mt-1 text-xs text-muted">
+            Revisão tentada em <span className="font-mono">{quando(revisao.em)}</span>.
+          </p>
+        )}
+        {revisao.detalheTecnico && <p className="mt-1 font-mono text-2xs text-muted">Detalhe técnico (admin): {revisao.detalheTecnico}</p>}
+      </Notice>
     )
   }
 
   const v = revisao.veredito ?? 'corrigida'
   return (
-    <div className={`rounded border p-3 text-sm ${COR_DO_VEREDITO[v]}`}>
-      <p className="font-medium">
-        Análise revisada
-        {' · '}
-        {v === 'aprovada' ? 'revisão aprovada, sem mudanças relevantes' : v === 'reprovada' ? 'o revisor refez a maior parte' : `${revisao.totalDeAlteracoes} correção(ões) do revisor`}
-      </p>
-      {revisao.resumo && <p className="mt-1">{revisao.resumo}</p>}
+    <div className="flex flex-col gap-2 rounded border border-line bg-surface px-3.5 py-3 text-sm">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-semibold text-ink">Análise revisada</span>
+        <StatusTag tone={TOM_DO_VEREDITO[v]}>
+          {v === 'aprovada' ? 'revisão aprovada, sem mudanças relevantes' : v === 'reprovada' ? 'o revisor refez a maior parte' : `${revisao.totalDeAlteracoes} correção(ões) do revisor`}
+        </StatusTag>
+      </div>
+      {revisao.resumo && <p className="text-ink-2">{revisao.resumo}</p>}
       {revisao.alteracoes.length > 0 && (
         <>
-          <button onClick={() => setAberto(!aberto)} className="mt-2 text-xs underline" aria-expanded={aberto}>
+          <button
+            type="button"
+            onClick={() => setAberto(!aberto)}
+            aria-expanded={aberto}
+            className="inline-flex items-center gap-1 self-start text-xs font-medium text-accent hover:underline"
+          >
+            {aberto ? <ChevronUp size={14} aria-hidden /> : <ChevronDown size={14} aria-hidden />}
             {aberto ? 'Ocultar' : 'Ver'} o que foi corrigido
           </button>
           {aberto && (
-            <ul className="mt-2 flex flex-col gap-2 text-xs">
+            <ul className="flex flex-col divide-y divide-line-soft rounded border border-line-soft bg-sunken text-xs">
               {revisao.alteracoes.map((a, i) => (
-                <li key={i} className="rounded bg-white/70 p-2 text-slate-800">
-                  <p className="font-medium">
+                <li key={i} className="flex flex-col gap-0.5 px-3 py-2 text-ink-2">
+                  <p className="font-medium text-ink">
                     {ROTULO_CAMPO[a.campo] ?? a.campo} · {a.tipo}
                   </p>
-                  {a.antes && <p className="text-slate-500 line-through">{a.antes}</p>}
+                  {a.antes && <p className="text-muted line-through">{a.antes}</p>}
                   {a.depois && <p>{a.depois}</p>}
-                  {a.motivo && <p className="mt-0.5 text-slate-600">Motivo: {a.motivo}</p>}
+                  {a.motivo && <p className="text-muted">Motivo: {a.motivo}</p>}
                 </li>
               ))}
             </ul>
           )}
         </>
       )}
-      <p className="mt-2 text-[11px] opacity-70">
-        A dupla conferência reduz erros, mas não os elimina: o sistema também confere por código se cada exigência aparece no edital.
-        Confirme os pontos importantes no documento original.
+      <p className="text-2xs text-muted">
+        A dupla conferência reduz erros, mas não os elimina: o sistema também confere por código se cada exigência aparece no edital. Confirme os pontos
+        importantes no documento original.
       </p>
     </div>
   )

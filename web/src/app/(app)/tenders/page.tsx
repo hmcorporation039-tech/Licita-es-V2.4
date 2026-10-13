@@ -2,20 +2,56 @@
 
 import { Fragment, useEffect, useState } from 'react'
 import Link from 'next/link'
+import { ChevronLeft, ChevronRight, SlidersHorizontal, X } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
-import { api } from '@/lib/api'
+import { api, ApiRequestError } from '@/lib/api'
 import { Paginated, Tender } from '@/lib/types'
 import { MODALIDADE_OPTIONS } from '@/lib/modalidades'
 import { SITUACAO_OPTIONS } from '@/lib/situacoes'
+import {
+  Button,
+  Carregando,
+  Checkbox,
+  EmptyState,
+  ErrorState,
+  Field,
+  Input,
+  LinkButton,
+  PageHeader,
+  Panel,
+  Prazo,
+  Select,
+  StatusTag,
+  Table,
+  TableWrap,
+  Td,
+  Th,
+  THead,
+  Tr,
+} from '@/components/ui'
+
+type TenderComEncerramento = Tender & { encerramentoAt?: string | null }
+
+const FONTES_COM_ABERTURA_NO_INICIO_DAS_PROPOSTAS = new Set(['PNCP', 'COMPRASNET'])
+
+function fimDasPropostas(t: TenderComEncerramento): string | null {
+  if (t.encerramentoAt) return t.encerramentoAt
+  if (FONTES_COM_ABERTURA_NO_INICIO_DAS_PROPOSTAS.has(t.fonte)) return null
+  return t.aberturaAt
+}
 
 function formatValor(v: string | null) {
   if (!v) return '—'
   return Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-function formatData(v: string | null) {
-  if (!v) return '—'
-  return new Date(v).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+function rotuloDaFonte(fonte: string) {
+  return fonte.replace(/_/g, ' ')
+}
+
+function local(t: Tender) {
+  if (t.municipio) return `${t.municipio}/${t.uf ?? ''}`
+  return t.uf ?? 'UF n/d'
 }
 
 const CLASSIFICACAO_LABEL: Record<string, string> = {
@@ -24,46 +60,48 @@ const CLASSIFICACAO_LABEL: Record<string, string> = {
   media: 'Relevância média',
 }
 
-const CLASSIFICACAO_CLASS: Record<string, string> = {
-  exata: 'bg-emerald-100 text-emerald-800',
-  alta: 'bg-indigo-100 text-indigo-800',
-  media: 'bg-amber-100 text-amber-800',
-}
-
-function TenderRow({ t, somenteRelacionadas }: { t: Tender; somenteRelacionadas: boolean }) {
+function TenderRow({ t, somenteRelacionadas }: { t: TenderComEncerramento; somenteRelacionadas: boolean }) {
+  const objeto = t.objetoResumido ?? t.objeto
   return (
-    <tr className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
-      <td className="px-3 py-2">
-        <Link href={`/tenders/${t.id}`} className="font-medium text-indigo-700 hover:underline">
-          {t.orgao ?? 'Órgão n/d'}
-        </Link>
-        <p className="mt-0.5 max-w-md truncate text-xs text-slate-500" title={t.objetoResumido ?? t.objeto}>
-          {t.objetoResumido ?? t.objeto}
-        </p>
-      </td>
-      <td className="px-3 py-2 text-slate-600">{t.numeroControle ?? '—'}</td>
-      <td className="px-3 py-2 text-slate-600">
-        {MODALIDADE_OPTIONS.find((o) => o.value === t.modalidade)?.label ?? t.modalidade}
-      </td>
-      <td className="px-3 py-2 text-slate-600">{t.municipio ? `${t.municipio}/${t.uf ?? ''}` : t.uf ?? 'n/d'}</td>
-      <td className="px-3 py-2 text-slate-600">
-        {SITUACAO_OPTIONS.find((o) => o.value === t.situacao)?.label ?? t.situacao}
-      </td>
-      <td className="px-3 py-2 text-slate-600">{formatData(t.publicadoAt)}</td>
-      <td className="px-3 py-2 text-slate-600">{formatValor(t.valorEstimado)}</td>
+    <Tr interactive>
+      <Td className="whitespace-nowrap">
+        <Prazo data={fimDasPropostas(t)} />
+      </Td>
+      <Td className="w-full max-w-0">
+        <div className="flex min-w-0 flex-col">
+          <Link href={`/tenders/${t.id}`} className="truncate text-sm font-medium text-ink hover:text-accent hover:underline" title={objeto}>
+            {objeto}
+          </Link>
+          <span className="truncate text-xs text-muted">
+            {t.orgao ?? 'Órgão n/d'} · {local(t)}
+          </span>
+        </div>
+      </Td>
+      <Td className="whitespace-nowrap text-ink-2">{MODALIDADE_OPTIONS.find((o) => o.value === t.modalidade)?.label ?? t.modalidade}</Td>
+      <Td>
+        <StatusTag mono>{rotuloDaFonte(t.fonte)}</StatusTag>
+      </Td>
+      <Td numeric className={t.valorEstimado ? 'text-ink' : 'text-faint'}>
+        {formatValor(t.valorEstimado)}
+      </Td>
+      <Td className="max-w-[13rem]">
+        <span className="block truncate font-mono text-xs text-muted" title={t.numeroControle ?? undefined}>
+          {t.numeroControle ?? '—'}
+        </span>
+      </Td>
+      <Td>
+        <StatusTag dot>{SITUACAO_OPTIONS.find((o) => o.value === t.situacao)?.label ?? t.situacao}</StatusTag>
+      </Td>
       {somenteRelacionadas && (
-        <td className="px-3 py-2">
+        <Td>
           {t.match && (
-            <span
-              className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${CLASSIFICACAO_CLASS[t.match.classificacao]}`}
-              title={t.match.itensRelacionados.join(', ')}
-            >
-              {CLASSIFICACAO_LABEL[t.match.classificacao]} · nota {Math.round(t.match.score * 100)}
-            </span>
+            <StatusTag title={t.match.itensRelacionados.join(', ')}>
+              {CLASSIFICACAO_LABEL[t.match.classificacao]} · nota <span className="font-mono">{Math.round(t.match.score * 100)}</span>
+            </StatusTag>
           )}
-        </td>
+        </Td>
       )}
-    </tr>
+    </Tr>
   )
 }
 
@@ -71,9 +109,9 @@ export default function TendersPage() {
   const user = useRequireSession()
   const [data, setData] = useState<Paginated<Tender> | null>(null)
   const [loading, setLoading] = useState(true)
+  const [erro, setErro] = useState<string | null>(null)
+  const [tentativa, setTentativa] = useState(0)
 
-  // Filtros — no estilo da barra de busca da BLL (Promotor, Nº Edital,
-  // Modalidade, Situação, Cidade, Estado, datas de publicação)
   const [orgao, setOrgao] = useState('')
   const [numero, setNumero] = useState('')
   const [modalidade, setModalidade] = useState('')
@@ -83,9 +121,6 @@ export default function TendersPage() {
   const [publicacaoFim, setPublicacaoFim] = useState('')
   const [q, setQ] = useState('')
   const [somenteRelacionadas, setSomenteRelacionadas] = useState(true)
-  // Organiza o resultado por Estado e depois por Órgão/Prefeitura, em vez
-  // do feed cronológico — é o modo padrão porque foi o pedido original;
-  // pageSize maior aqui pra grupos não ficarem cortados a cada 20 linhas.
   const [agrupar, setAgrupar] = useState(true)
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [page, setPage] = useState(1)
@@ -93,6 +128,7 @@ export default function TendersPage() {
   useEffect(() => {
     if (!user) return
     setLoading(true)
+    setErro(null)
     const timeout = setTimeout(() => {
       const qs = new URLSearchParams({ page: String(page), pageSize: agrupar ? '100' : '20' })
       if (orgao) qs.set('orgao', orgao)
@@ -108,13 +144,12 @@ export default function TendersPage() {
       api
         .get<Paginated<Tender>>(`/api/tenders?${qs.toString()}`)
         .then(setData)
+        .catch((e) => setErro(e instanceof ApiRequestError ? e.message : 'Não foi possível carregar as licitações.'))
         .finally(() => setLoading(false))
     }, 300)
     return () => clearTimeout(timeout)
-  }, [user, orgao, numero, modalidade, municipio, uf, publicacaoInicio, publicacaoFim, q, somenteRelacionadas, agrupar, page])
+  }, [user, orgao, numero, modalidade, municipio, uf, publicacaoInicio, publicacaoFim, q, somenteRelacionadas, agrupar, page, tentativa])
 
-  // Agrupa a lista já ordenada (uf → órgão) vinda do backend em UF > Órgão >
-  // licitações, pra render em seções em vez de uma tabela só.
   const grupos = (() => {
     if (!agrupar || !data) return null
     const porUf = new Map<string, Map<string, Tender[]>>()
@@ -147,47 +182,51 @@ export default function TendersPage() {
 
   if (!user) return null
 
-  const inputClass = 'w-full rounded border border-slate-300 px-2 py-1.5 text-sm'
-  const labelClass = 'mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500'
+  const colunas = somenteRelacionadas ? 8 : 7
 
   return (
-    <div>
-      <h1 className="mb-4 text-xl font-semibold">Licitações</h1>
+    <>
+      <PageHeader
+        title="Licitações"
+        description={
+          data ? (
+            <>
+              <span className="font-mono">{data.total.toLocaleString('pt-BR')}</span> {data.total === 1 ? 'licitação encontrada' : 'licitações encontradas'}
+            </>
+          ) : (
+            'Buscando licitações'
+          )
+        }
+      />
 
-      <div className="mb-4 rounded border border-slate-200 bg-white p-4">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div>
-            <label className={labelClass}>Órgão</label>
-            <input
+      <Panel bodyClassName="flex flex-col gap-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Field label="Órgão" className="lg:col-span-2">
+            <Input
               placeholder="Ex: Prefeitura de Uberlândia"
               value={orgao}
               onChange={(e) => {
                 setPage(1)
                 setOrgao(e.target.value)
               }}
-              className={inputClass}
             />
-          </div>
-          <div>
-            <label className={labelClass}>Nº edital / processo</label>
-            <input
+          </Field>
+          <Field label="Nº edital / processo">
+            <Input
               value={numero}
               onChange={(e) => {
                 setPage(1)
                 setNumero(e.target.value)
               }}
-              className={inputClass}
             />
-          </div>
-          <div>
-            <label className={labelClass}>Modalidade</label>
-            <select
+          </Field>
+          <Field label="Modalidade">
+            <Select
               value={modalidade}
               onChange={(e) => {
                 setPage(1)
                 setModalidade(e.target.value)
               }}
-              className={inputClass}
             >
               <option value="">Todas</option>
               {MODALIDADE_OPTIONS.map((opt) => (
@@ -195,163 +234,169 @@ export default function TendersPage() {
                   {opt.label}
                 </option>
               ))}
-            </select>
-          </div>
+            </Select>
+          </Field>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setAdvancedOpen((v) => !v)}
-          className="mt-3 text-xs font-medium text-indigo-700 hover:underline"
-        >
-          {advancedOpen ? 'Ocultar busca avançada' : 'Busca avançada'}
-        </button>
-
         {advancedOpen && (
-          <div className="mt-3 grid gap-3 border-t border-slate-100 pt-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div>
-              <label className={labelClass}>Cidade</label>
-              <input
+          <div id="busca-avancada" className="grid grid-cols-1 gap-3 border-t border-line-soft pt-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Field label="Cidade">
+              <Input
                 value={municipio}
                 onChange={(e) => {
                   setPage(1)
                   setMunicipio(e.target.value)
                 }}
-                className={inputClass}
               />
-            </div>
-            <div>
-              <label className={labelClass}>UF</label>
-              <input
+            </Field>
+            <Field label="UF">
+              <Input
                 maxLength={2}
                 value={uf}
                 onChange={(e) => {
                   setPage(1)
                   setUf(e.target.value.toUpperCase())
                 }}
-                className={inputClass}
               />
-            </div>
-            <div>
-              <label className={labelClass}>Publicação — início</label>
-              <input
+            </Field>
+            <Field label="Publicação — início">
+              <Input
                 type="date"
                 value={publicacaoInicio}
                 onChange={(e) => {
                   setPage(1)
                   setPublicacaoInicio(e.target.value)
                 }}
-                className={inputClass}
               />
-            </div>
-            <div>
-              <label className={labelClass}>Publicação — fim</label>
-              <input
+            </Field>
+            <Field label="Publicação — fim">
+              <Input
                 type="date"
                 value={publicacaoFim}
                 onChange={(e) => {
                   setPage(1)
                   setPublicacaoFim(e.target.value)
                 }}
-                className={inputClass}
               />
-            </div>
-            <div className="sm:col-span-2 lg:col-span-4">
-              <label className={labelClass}>Buscar no objeto</label>
-              <input
+            </Field>
+            <Field label="Buscar no objeto" className="sm:col-span-2 lg:col-span-4">
+              <Input
                 value={q}
                 onChange={(e) => {
                   setPage(1)
                   setQ(e.target.value)
                 }}
-                className={inputClass}
               />
-            </div>
+            </Field>
           </div>
         )}
 
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
-          <div className="flex flex-wrap items-center gap-4">
-            <label className="flex items-center gap-2 text-sm text-slate-600">
-              <input
-                type="checkbox"
-                checked={somenteRelacionadas}
-                onChange={(e) => {
-                  setPage(1)
-                  setSomenteRelacionadas(e.target.checked)
-                }}
-              />
-              Só relacionadas aos meus itens monitorados
-            </label>
-            <label className="flex items-center gap-2 text-sm text-slate-600">
-              <input
-                type="checkbox"
-                checked={agrupar}
-                onChange={(e) => {
-                  setPage(1)
-                  setAgrupar(e.target.checked)
-                }}
-              />
-              Agrupar por Estado e Órgão
-            </label>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line-soft pt-4">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+            <Checkbox
+              label="Só relacionadas aos meus itens monitorados"
+              checked={somenteRelacionadas}
+              onChange={(e) => {
+                setPage(1)
+                setSomenteRelacionadas(e.target.checked)
+              }}
+            />
+            <Checkbox
+              label="Agrupar por Estado e Órgão"
+              checked={agrupar}
+              onChange={(e) => {
+                setPage(1)
+                setAgrupar(e.target.checked)
+              }}
+            />
           </div>
-          <div className="flex items-center gap-3">
-            {data && <span className="text-sm text-slate-500">{data.total} licitação(ões) encontrada(s)</span>}
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="rounded border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={SlidersHorizontal}
+              onClick={() => setAdvancedOpen((v) => !v)}
+              aria-expanded={advancedOpen}
+              aria-controls="busca-avancada"
             >
-              Limpar todas as pesquisas
-            </button>
+              {advancedOpen ? 'Ocultar busca avançada' : 'Busca avançada'}
+            </Button>
+            <Button variant="secondary" size="sm" icon={X} onClick={clearFilters}>
+              Limpar filtros
+            </Button>
           </div>
         </div>
-      </div>
+      </Panel>
 
       {loading ? (
-        <p className="text-sm text-slate-500">Carregando...</p>
+        <Carregando linhas={6} texto="Carregando licitações…" />
+      ) : erro ? (
+        <ErrorState message={erro} onRetry={() => setTentativa((n) => n + 1)} />
       ) : data?.items.length === 0 ? (
-        <p className="text-sm text-slate-500">
-          {somenteRelacionadas
-            ? 'Nenhuma licitação relacionada aos seus itens monitorados até agora. Cadastre itens em "Itens monitorados" ou desmarque o filtro acima para ver o feed completo.'
-            : 'Nenhuma licitação encontrada com esses filtros.'}
-        </p>
+        somenteRelacionadas ? (
+          <EmptyState
+            title="Nenhuma licitação relacionada aos seus itens monitorados até agora."
+            description='Cadastre itens em "Itens monitorados" ou desmarque o filtro acima para ver o feed completo.'
+            action={
+              <div className="flex flex-wrap gap-2">
+                <LinkButton href="/items" variant="primary" size="sm">
+                  Cadastrar itens monitorados
+                </LinkButton>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setPage(1)
+                    setSomenteRelacionadas(false)
+                  }}
+                >
+                  Ver o feed completo
+                </Button>
+              </div>
+            }
+          />
+        ) : (
+          <EmptyState
+            title="Nenhuma licitação encontrada com esses filtros."
+            action={
+              <Button size="sm" icon={X} onClick={clearFilters}>
+                Limpar filtros
+              </Button>
+            }
+          />
+        )
       ) : (
         <>
-          <div className="overflow-x-auto rounded border border-slate-200 bg-white">
-            <table className="w-full min-w-[900px] text-left text-sm">
-              <thead>
-                <tr className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-                  <th className="px-3 py-2 font-medium">Órgão</th>
-                  <th className="px-3 py-2 font-medium">Número</th>
-                  <th className="px-3 py-2 font-medium">Modalidade</th>
-                  <th className="px-3 py-2 font-medium">Cidade/UF</th>
-                  <th className="px-3 py-2 font-medium">Situação</th>
-                  <th className="px-3 py-2 font-medium">Publicação</th>
-                  <th className="px-3 py-2 font-medium">Valor estimado</th>
-                  {somenteRelacionadas && <th className="px-3 py-2 font-medium">Relevância</th>}
+          <TableWrap minWidth={somenteRelacionadas ? 1280 : 1080}>
+            <Table>
+              <THead>
+                <tr>
+                  <Th>Encerra</Th>
+                  <Th>Objeto e órgão</Th>
+                  <Th>Modalidade</Th>
+                  <Th>Fonte</Th>
+                  <Th align="right">Valor estimado</Th>
+                  <Th>Nº do processo</Th>
+                  <Th>Situação</Th>
+                  {somenteRelacionadas && <Th>Relevância</Th>}
                 </tr>
-              </thead>
+              </THead>
               <tbody>
                 {grupos
                   ? grupos.map((g) => (
                       <Fragment key={`uf-${g.uf}`}>
-                        <tr className="bg-slate-100">
-                          <td
-                            colSpan={somenteRelacionadas ? 8 : 7}
-                            className="px-3 py-1.5 text-sm font-semibold text-slate-700"
-                          >
-                            {g.uf} <span className="font-normal text-slate-500">— {g.total} licitação(ões)</span>
+                        <tr className="border-b border-line bg-sunken">
+                          <td colSpan={colunas} className="px-4 py-2 text-sm font-semibold text-ink">
+                            {g.uf}{' '}
+                            <span className="font-normal text-muted">
+                              · <span className="font-mono">{g.total}</span> {g.total === 1 ? 'licitação' : 'licitações'}
+                            </span>
                           </td>
                         </tr>
                         {g.orgaos.map((og) => (
                           <Fragment key={`orgao-${g.uf}-${og.orgao}`}>
-                            <tr className="bg-slate-50">
-                              <td
-                                colSpan={somenteRelacionadas ? 8 : 7}
-                                className="px-3 py-1 pl-6 text-xs font-medium uppercase tracking-wide text-slate-500"
-                              >
-                                {og.orgao} <span className="normal-case text-slate-400">({og.tenders.length})</span>
+                            <tr className="border-b border-line-soft">
+                              <td colSpan={colunas} className="py-1.5 pl-6 pr-4 text-xs font-medium text-muted">
+                                {og.orgao} <span className="font-mono text-faint">({og.tenders.length})</span>
                               </td>
                             </tr>
                             {og.tenders.map((t) => (
@@ -361,36 +406,28 @@ export default function TendersPage() {
                         ))}
                       </Fragment>
                     ))
-                  : data?.items.map((t) => (
-                      <TenderRow key={t.id} t={t} somenteRelacionadas={somenteRelacionadas} />
-                    ))}
+                  : data?.items.map((t) => <TenderRow key={t.id} t={t} somenteRelacionadas={somenteRelacionadas} />)}
               </tbody>
-            </table>
-          </div>
+            </Table>
+          </TableWrap>
 
           {data && data.totalPages > 1 && (
-            <div className="mt-4 flex items-center gap-3 text-sm">
-              <button
-                disabled={page <= 1}
-                onClick={() => setPage((p) => p - 1)}
-                className="rounded border border-slate-300 px-3 py-1 disabled:opacity-40"
-              >
-                Anterior
-              </button>
+            <nav aria-label="Paginação" className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted">
               <span>
-                Página {data.page} de {data.totalPages}
+                Página <span className="font-mono text-ink">{data.page}</span> de <span className="font-mono">{data.totalPages}</span>
               </span>
-              <button
-                disabled={page >= data.totalPages}
-                onClick={() => setPage((p) => p + 1)}
-                className="rounded border border-slate-300 px-3 py-1 disabled:opacity-40"
-              >
-                Próxima
-              </button>
-            </div>
+              <div className="flex gap-2">
+                <Button size="sm" icon={ChevronLeft} disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+                  Anterior
+                </Button>
+                <Button size="sm" iconRight={ChevronRight} disabled={page >= data.totalPages} onClick={() => setPage((p) => p + 1)}>
+                  Próxima
+                </Button>
+              </div>
+            </nav>
           )}
         </>
       )}
-    </div>
+    </>
   )
 }

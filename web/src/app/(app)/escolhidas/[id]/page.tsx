@@ -1,16 +1,38 @@
 'use client'
 
-import { use, useCallback, useEffect, useRef, useState } from 'react'
-import Link from 'next/link'
+import { use, useCallback, useEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react'
+import { ArrowRight, FileDown, Plus, RefreshCw, Save, Search, Trash2 } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
 import { api, ApiRequestError, baixarArquivo } from '@/lib/api'
 import { DadosDoEstudo, EstudoResposta, PesquisaDePrecosResposta, ResultadoDoEstudo } from '@/lib/estudoTypes'
+import {
+  Button,
+  Carregando,
+  Checkbox,
+  DescriptionList,
+  Field,
+  Input,
+  Metric,
+  MetricRow,
+  Notice,
+  PageHeader,
+  Panel,
+  Select,
+  StatusTag,
+  Table,
+  TableWrap,
+  Td,
+  TextLink,
+  Th,
+  THead,
+  Tr,
+  cx,
+} from '@/components/ui'
 
 const brl = (n: number | null | undefined) =>
   n === null || n === undefined ? '—' : n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const dataBr = (iso: string | null) => (iso ? iso.split('-').reverse().join('/') : '—')
 
-// Interpreta o que a pessoa digitou ("1.500,50", "1500,5", "0,5", "500"). Vazio ou inválido = null.
 function lerNumero(texto: string): number | null {
   let t = texto.replace(/[^0-9.,]/g, '')
   if (t === '') return null
@@ -20,23 +42,22 @@ function lerNumero(texto: string): number | null {
   return Number.isFinite(n) ? Math.max(0, n) : null
 }
 
-// Campo numérico: vazio = null. Com `moeda`, mostra "R$ 1.500,00" quando não está sendo editado;
-// ao clicar, mostra só o número (selecionado) para digitar por cima, sem o "0" sobrando na frente.
+type AtributosDoCampo = Pick<ComponentProps<'input'>, 'id' | 'aria-describedby' | 'aria-invalid' | 'aria-label' | 'required'>
+
 function Numero({
   valor,
   aoMudar,
   passo = '0.01',
   moeda = false,
-  className = '',
   placeholder,
+  ...atributos
 }: {
   valor: number | null
   aoMudar: (v: number | null) => void
   passo?: string
   moeda?: boolean
-  className?: string
   placeholder?: string
-}) {
+} & AtributosDoCampo) {
   const [editando, setEditando] = useState<string | null>(null)
   const inteiro = passo === '1'
   const formatado =
@@ -46,7 +67,8 @@ function Numero({
         ? valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
         : valor.toLocaleString('pt-BR', { maximumFractionDigits: inteiro ? 0 : 4 })
   return (
-    <input
+    <Input
+      {...atributos}
       type="text"
       inputMode={inteiro ? 'numeric' : 'decimal'}
       placeholder={placeholder ?? (moeda ? 'R$ 0,00' : '0')}
@@ -61,12 +83,20 @@ function Numero({
         aoMudar(lerNumero(e.target.value))
       }}
       onBlur={() => setEditando(null)}
-      className={`rounded border border-slate-300 px-2 py-1 text-sm ${className}`}
+      className="font-mono"
     />
   )
 }
 
-const campo = 'mb-0.5 block text-xs text-slate-600'
+function Valor({ children, forte = false }: { children: ReactNode; forte?: boolean }) {
+  return <span className={cx('font-mono', forte ? 'font-semibold text-ink' : 'text-ink-2')}>{children}</span>
+}
+
+const SITUACAO_DO_PRAZO = {
+  ok: { rotulo: 'Cabe no prazo', tom: 'neutral' },
+  apertado: { rotulo: 'Prazo apertado', tom: 'warn' },
+  inviavel: { rotulo: 'Prazo inviável', tom: 'danger' },
+} as const
 
 export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -96,7 +126,6 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
       .catch((e) => setErro(e instanceof ApiRequestError ? e.message : 'Erro ao carregar o estudo'))
   }, [user, id])
 
-  // Recalcula no servidor enquanto o usuário digita (sem gravar).
   useEffect(() => {
     if (!dados || !sujo) return
     const minha = ++versaoCalculo.current
@@ -137,7 +166,6 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
   }
 
   async function baixarPdf() {
-    // O PDF usa o que está salvo: salva antes para sair igual ao que está na tela.
     if (sujo && !(await salvar())) return
     try {
       await baixarArquivo(`/api/estudos/${id}/pdf`, `dossie-da-licitacao-${id.slice(0, 8)}.pdf`)
@@ -178,359 +206,483 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
     for (const it of estudo.itens.filter((i) => i.codigoCatalogo)) await pesquisarItem(it.id)
   }
 
+  const voltar = { href: '/escolhidas', label: 'Licitações escolhidas' }
+
   if (!user) return null
   if (erro && !estudo) {
     return (
-      <div>
-        <Link href="/escolhidas" className="text-sm text-indigo-700 hover:underline">
-          ← Voltar às licitações escolhidas
-        </Link>
-        <p className="mt-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800">{erro}</p>
-      </div>
+      <>
+        <PageHeader back={voltar} title="Estudo de custos e viabilidade" />
+        <Notice tone="danger">{erro}</Notice>
+      </>
     )
   }
-  if (!estudo || !dados || !resultado) return <p className="text-sm text-slate-500">Carregando...</p>
+  if (!estudo || !dados || !resultado) {
+    return (
+      <>
+        <PageHeader back={voltar} title="Estudo de custos e viabilidade" />
+        <Carregando linhas={6} texto="Carregando o estudo…" />
+      </>
+    )
+  }
 
   const t = estudo.tender
   const linhaPorItem = new Map(resultado.itens.map((l) => [l.id, l]))
   const temCatalogo = estudo.itens.some((i) => i.codigoCatalogo)
-  const corLucro = resultado.lucro >= 0 ? 'text-emerald-700' : 'text-amber-700'
-  // Custo não é prejuízo: o alerta vermelho só aparece quando o custo total passa do valor estimado pelo órgão.
   const custosAcimaDoEstimado = t.valorEstimado !== null && t.valorEstimado !== undefined && t.valorEstimado > 0 && resultado.custoTotal > t.valorEstimado
+  const destino = [t.municipio, t.uf].filter(Boolean).join('/') || 'local n/d'
+  const dataDaSessao = t.encerramentoAt ?? t.aberturaAt
+  const situacao = resultado.prazo.situacao ? SITUACAO_DO_PRAZO[resultado.prazo.situacao] : null
 
   return (
-    <div className="pb-24">
-      <Link href="/escolhidas" className="text-sm text-indigo-700 hover:underline">
-        ← Licitações escolhidas
-      </Link>
-      <h1 className="mt-2 text-xl font-semibold">Estudo de custos e viabilidade</h1>
-      <p className="mt-1 text-sm text-slate-700">{t.objeto.slice(0, 300)}</p>
-      <p className="text-sm text-slate-500">
-        {t.orgao ?? 'órgão n/d'} · {[t.municipio, t.uf].filter(Boolean).join('/') || 'local n/d'} · estimado pelo órgão: {brl(t.valorEstimado)}
-        {t.encerramentoAt || t.aberturaAt ? ` · sessão: ${new Date((t.encerramentoAt ?? t.aberturaAt)!).toLocaleDateString('pt-BR')}` : ''}
-      </p>
+    <>
+      <PageHeader
+        back={voltar}
+        title="Estudo de custos e viabilidade"
+        description={
+          <div className="flex flex-col gap-1">
+            <p className="max-w-4xl text-ink-2">{t.objeto.slice(0, 300)}</p>
+            <p className="flex flex-wrap gap-x-2 gap-y-0.5">
+              <span>{t.orgao ?? 'órgão n/d'}</span>
+              <span aria-hidden>·</span>
+              <span>{destino}</span>
+              <span aria-hidden>·</span>
+              <span>
+                estimado pelo órgão: <Valor>{brl(t.valorEstimado)}</Valor>
+              </span>
+              {dataDaSessao && (
+                <>
+                  <span aria-hidden>·</span>
+                  <span>
+                    sessão: <Valor>{new Date(dataDaSessao).toLocaleDateString('pt-BR')}</Valor>
+                  </span>
+                </>
+              )}
+            </p>
+          </div>
+        }
+      />
 
       {!estudo.base.definida && (
-        <p className="mt-3 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-          A base de entregas da empresa não está cadastrada, então a distância não pode ser estimada. Cadastre a cidade em{' '}
-          <Link href="/empresa" className="underline">
-            Empresa
-          </Link>{' '}
-          ou informe os quilômetros à mão abaixo.
-        </p>
+        <Notice tone="warn">
+          A base de entregas da empresa não está cadastrada, então a distância não pode ser estimada. Cadastre a cidade em <TextLink href="/empresa">Empresa</TextLink> ou
+          informe os quilômetros à mão abaixo.
+        </Notice>
       )}
-      {erro && <p className="mt-3 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800">{erro}</p>}
-      {aviso && <p className="mt-3 rounded border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{aviso}</p>}
+      {erro && <Notice tone="danger">{erro}</Notice>}
+      {aviso && <Notice tone="info">{aviso}</Notice>}
 
-      {/* ---------------- Itens ---------------- */}
-      <section className="mt-5 rounded border border-slate-200 bg-white p-4">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <h2 className="text-base font-medium text-slate-900">1. Itens, preços de mercado e seus valores</h2>
+      <Panel
+        title="1. Itens, preços de mercado e seus valores"
+        description="O preço de mercado é o que órgãos públicos efetivamente pagaram (Compras.gov.br), por código CATMAT/CATSER, sem valores absurdos. O seu custo e o seu preço de venda são seus."
+      >
+        <div className="flex flex-col gap-4">
           {temCatalogo && (
-            <div className="flex flex-wrap items-end gap-2 text-sm">
-              <div>
-                <label className={campo}>Pesquisar preços em</label>
-                <select value={escopoUf} onChange={(e) => setEscopoUf(e.target.value as 'BR' | 'UF')} className="rounded border border-slate-300 px-2 py-1 text-sm">
+            <div className="flex flex-wrap items-end gap-3">
+              <Field label="Pesquisar preços em" className="w-full sm:w-44">
+                <Select value={escopoUf} onChange={(e) => setEscopoUf(e.target.value as 'BR' | 'UF')}>
                   <option value="BR">Brasil todo</option>
                   {t.uf && <option value="UF">Só {t.uf}</option>}
-                </select>
-              </div>
-              <div>
-                <label className={campo}>Período</label>
-                <select value={meses} onChange={(e) => setMeses(Number(e.target.value))} className="rounded border border-slate-300 px-2 py-1 text-sm">
+                </Select>
+              </Field>
+              <Field label="Período" className="w-full sm:w-36">
+                <Select value={meses} onChange={(e) => setMeses(Number(e.target.value))}>
                   {[6, 12, 24, 36].map((m) => (
                     <option key={m} value={m}>
                       {m} meses
                     </option>
                   ))}
-                </select>
-              </div>
-              <button onClick={pesquisarTodos} disabled={pesquisando !== null} className="rounded bg-indigo-600 px-3 py-1.5 text-sm text-white disabled:opacity-50">
+                </Select>
+              </Field>
+              <Button icon={Search} onClick={pesquisarTodos} disabled={pesquisando !== null} loading={pesquisando !== null}>
                 {pesquisando ? 'Pesquisando…' : 'Pesquisar todos os itens'}
-              </button>
+              </Button>
             </div>
           )}
-        </div>
-        <p className="mt-1 text-xs text-slate-500">
-          O preço de mercado é o que órgãos públicos efetivamente pagaram (Compras.gov.br), por código CATMAT/CATSER, sem valores absurdos. O seu custo e o seu preço de venda são seus.
-        </p>
 
-        <div className="mt-3 overflow-x-auto">
-          <table className="w-full min-w-[860px] text-left text-sm">
-            <thead className="text-xs text-slate-600">
-              <tr>
-                <th className="py-2 pr-2">Item</th>
-                <th className="px-2 py-2">Qtd.</th>
-                <th className="px-2 py-2">Estimado (órgão)</th>
-                <th className="px-2 py-2">Mercado (pago)</th>
-                <th className="px-2 py-2">Seu custo un.</th>
-                <th className="px-2 py-2">Seu preço un.</th>
-                <th className="px-2 py-2">Mínimo un.</th>
-              </tr>
-            </thead>
-            <tbody>
-              {estudo.itens.map((it) => {
-                const e = dados.itens[it.id] ?? { custoUnit: null, precoVendaUnit: null }
-                const m = dados.mercado[it.id]
-                const l = linhaPorItem.get(it.id)
-                const amostra = amostras[it.id]
-                return (
-                  <tr key={it.id} className="border-t border-slate-100 align-top">
-                    <td className="max-w-[260px] py-2 pr-2">
-                      <span className="text-slate-900">
-                        {it.numero ? `${it.numero}. ` : ''}
-                        {it.descricao.slice(0, 160)}
-                      </span>
-                      {it.codigoCatalogo && <span className="block text-xs text-slate-500">{it.tipoCatalogo === 'SERVICO' ? 'CATSER' : 'CATMAT'} {it.codigoCatalogo}</span>}
-                    </td>
-                    <td className="whitespace-nowrap px-2 py-2">
-                      {it.quantidade.toLocaleString('pt-BR')} {it.unidade ?? ''}
-                    </td>
-                    <td className="whitespace-nowrap px-2 py-2">{brl(it.valorEstimadoUnit)}</td>
-                    <td className="px-2 py-2 text-xs">
-                      {m ? (
-                        <div>
-                          <div className="text-sm font-medium text-slate-900">{brl(m.mediana)}</div>
-                          <div className="text-slate-500">
-                            {brl(m.minimo)} a {brl(m.maximo)}
-                          </div>
-                          <div className="text-slate-500">
-                            {m.amostras} compra(s), {m.uf ?? 'Brasil'}, {m.meses} meses
-                          </div>
-                          {amostra && amostra.recentes[0] && (
-                            <div className="text-slate-400">
-                              última: {brl(amostra.recentes[0].precoUnitario)} ({amostra.recentes[0].uf ?? '—'})
-                            </div>
-                          )}
-                          <button onClick={() => alterar((d) => ({ ...d, itens: { ...d.itens, [it.id]: { custoUnit: e.custoUnit, precoVendaUnit: m.mediana } } }))} className="mt-1 text-indigo-700 hover:underline">
-                            usar como meu preço
-                          </button>
-                        </div>
-                      ) : it.codigoCatalogo ? (
-                        <button onClick={() => pesquisarItem(it.id)} disabled={pesquisando !== null} className="rounded border border-indigo-300 px-2 py-1 text-indigo-700 hover:bg-indigo-50 disabled:opacity-50">
-                          {pesquisando === it.id ? 'Pesquisando…' : 'Pesquisar preço'}
-                        </button>
-                      ) : (
-                        <span className="text-slate-400">sem código de catálogo</span>
-                      )}
-                      {m && it.codigoCatalogo && (
-                        <button onClick={() => pesquisarItem(it.id)} disabled={pesquisando !== null} className="ml-2 text-xs text-slate-500 hover:underline">
-                          atualizar
-                        </button>
-                      )}
-                    </td>
-                    <td className="px-2 py-2">
-                      <Numero moeda valor={e.custoUnit} aoMudar={(v) => alterar((d) => ({ ...d, itens: { ...d.itens, [it.id]: { custoUnit: v, precoVendaUnit: e.precoVendaUnit } } }))} className="w-28" />
-                    </td>
-                    <td className="px-2 py-2">
-                      <Numero moeda valor={e.precoVendaUnit} aoMudar={(v) => alterar((d) => ({ ...d, itens: { ...d.itens, [it.id]: { custoUnit: e.custoUnit, precoVendaUnit: v } } }))} className="w-28" />
-                    </td>
-                    <td className="whitespace-nowrap px-2 py-2 text-slate-700">{brl(l?.precoMinimoUnit ?? null)}</td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      {/* ---------------- Deslocamento ---------------- */}
-      <section className="mt-4 rounded border border-slate-200 bg-white p-4">
-        <h2 className="text-base font-medium text-slate-900">2. Deslocamento até o local da entrega</h2>
-        <p className="mt-1 text-sm text-slate-600">
-          Base: <strong>{estudo.base.municipio ? `${estudo.base.municipio}/${estudo.base.uf}` : 'não cadastrada'}</strong> → {[t.municipio, t.uf].filter(Boolean).join('/') || 'local n/d'}
-          {estudo.distanciaLinhaRetaKm !== null && (
-            <>
-              {' '}
-              · {estudo.distanciaLinhaRetaKm} km em linha reta (≈ {resultado.deslocamento.origem === 'estimado' ? resultado.deslocamento.kmIda : Math.round(estudo.distanciaLinhaRetaKm * 1.3)} km por estrada)
-            </>
-          )}
-        </p>
-        <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-5">
-          <div>
-            <label className={campo}>Km de ida (se souber)</label>
-            <Numero valor={dados.deslocamento.kmIdaInformado} aoMudar={(v) => alterar((d) => ({ ...d, deslocamento: { ...d.deslocamento, kmIdaInformado: v } }))} passo="1" className="w-full" placeholder="automático" />
-          </div>
-          <div>
-            <label className={campo}>Viagens</label>
-            <Numero valor={dados.deslocamento.viagens} aoMudar={(v) => alterar((d) => ({ ...d, deslocamento: { ...d.deslocamento, viagens: Math.round(v ?? 0) } }))} passo="1" className="w-full" />
-          </div>
-          <div>
-            <label className={campo}>R$ por km</label>
-            <Numero moeda valor={dados.deslocamento.valorPorKm} aoMudar={(v) => alterar((d) => ({ ...d, deslocamento: { ...d.deslocamento, valorPorKm: v ?? 0 } }))} className="w-full" />
-          </div>
-          <div>
-            <label className={campo}>Pedágio por viagem</label>
-            <Numero moeda valor={dados.deslocamento.pedagioPorViagem} aoMudar={(v) => alterar((d) => ({ ...d, deslocamento: { ...d.deslocamento, pedagioPorViagem: v ?? 0 } }))} className="w-full" />
-          </div>
-          <div>
-            <label className={campo}>Hospedagem/diárias por viagem</label>
-            <Numero moeda valor={dados.deslocamento.hospedagemPorViagem} aoMudar={(v) => alterar((d) => ({ ...d, deslocamento: { ...d.deslocamento, hospedagemPorViagem: v ?? 0 } }))} className="w-full" />
-          </div>
-        </div>
-        <p className="mt-2 text-sm text-slate-700">
-          {resultado.deslocamento.kmIda !== null ? `Ida e volta: ${resultado.deslocamento.kmIdaEVolta} km · ` : ''}custo por viagem {brl(resultado.deslocamento.custoPorViagem)} · total {brl(resultado.custoDeslocamento)}
-        </p>
-      </section>
-
-      {/* ---------------- Impostos e outros ---------------- */}
-      <section className="mt-4 rounded border border-slate-200 bg-white p-4">
-        <h2 className="text-base font-medium text-slate-900">3. Impostos, margem e outros custos</h2>
-        <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
-          <div>
-            <label className={campo}>Impostos sobre a venda (%)</label>
-            <Numero valor={dados.impostosPct} aoMudar={(v) => alterar((d) => ({ ...d, impostosPct: Math.min(100, v ?? 0) }))} className="w-full" />
-          </div>
-          <div>
-            <label className={campo}>Margem de lucro desejada (%)</label>
-            <Numero valor={dados.margemDesejadaPct} aoMudar={(v) => alterar((d) => ({ ...d, margemDesejadaPct: Math.min(100, v ?? 0) }))} className="w-full" />
-          </div>
-        </div>
-        <div className="mt-3">
-          <label className={campo}>Outros custos (frete, instalação, mão de obra, garantia exigida, etc.)</label>
-          {dados.outrosCustos.map((o, i) => (
-            <div key={i} className="mb-2 flex gap-2">
-              <input
-                value={o.descricao}
-                onChange={(e) => alterar((d) => ({ ...d, outrosCustos: d.outrosCustos.map((x, j) => (j === i ? { ...x, descricao: e.target.value } : x)) }))}
-                placeholder="Descrição"
-                className="flex-1 rounded border border-slate-300 px-2 py-1 text-sm"
-              />
-              <Numero moeda valor={o.valor} aoMudar={(v) => alterar((d) => ({ ...d, outrosCustos: d.outrosCustos.map((x, j) => (j === i ? { ...x, valor: v ?? 0 } : x)) }))} className="w-32" />
-              <button onClick={() => alterar((d) => ({ ...d, outrosCustos: d.outrosCustos.filter((_, j) => j !== i) }))} className="text-sm text-red-600 hover:underline">
-                remover
-              </button>
-            </div>
-          ))}
-          {dados.outrosCustos.length < 40 && (
-            <button onClick={() => alterar((d) => ({ ...d, outrosCustos: [...d.outrosCustos, { descricao: '', valor: 0 }] }))} className="text-sm text-indigo-700 hover:underline">
-              + adicionar custo
-            </button>
-          )}
-        </div>
-      </section>
-
-      {/* ---------------- Prazo ---------------- */}
-      <section className="mt-4 rounded border border-slate-200 bg-white p-4">
-        <h2 className="text-base font-medium text-slate-900">4. Prazo de entrega ou execução</h2>
-        {estudo.prazoDoEdital && <p className="mt-1 text-sm text-slate-600">O edital diz: “{estudo.prazoDoEdital}”. Confira e ajuste abaixo.</p>}
-        <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
-          <div>
-            <label className={campo}>Prazo do edital (dias)</label>
-            <Numero valor={dados.prazo.exigidoDias} aoMudar={(v) => alterar((d) => ({ ...d, prazo: { ...d.prazo, exigidoDias: v === null ? null : Math.round(v) } }))} passo="1" className="w-full" />
-          </div>
-          <div className="flex items-end pb-1">
-            <label className="flex items-center gap-1 text-sm text-slate-700">
-              <input type="checkbox" checked={dados.prazo.exigidoEmDiasUteis} onChange={(e) => alterar((d) => ({ ...d, prazo: { ...d.prazo, exigidoEmDiasUteis: e.target.checked } }))} /> dias úteis
-            </label>
-          </div>
-          <div>
-            <label className={campo}>Seu prazo de preparo (dias)</label>
-            <Numero valor={dados.prazo.preparoDias} aoMudar={(v) => alterar((d) => ({ ...d, prazo: { ...d.prazo, preparoDias: Math.round(v ?? 0) } }))} passo="1" className="w-full" />
-          </div>
-          <div>
-            <label className={campo}>Assinatura prevista</label>
-            <input
-              type="date"
-              value={dados.prazo.assinatura ?? ''}
-              onChange={(e) => alterar((d) => ({ ...d, prazo: { ...d.prazo, assinatura: e.target.value || null } }))}
-              className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
-            />
-          </div>
-        </div>
-        <p className="mt-2 text-sm text-slate-700">
-          Você precisa de {resultado.prazo.diasNecessarios} dia(s) ({dados.prazo.preparoDias} de preparo + {resultado.prazo.diasDeTransporte} de transporte).{' '}
-          {resultado.prazo.situacao && (
-            <span className={resultado.prazo.situacao === 'ok' ? 'font-medium text-emerald-700' : resultado.prazo.situacao === 'apertado' ? 'font-medium text-amber-700' : 'font-medium text-red-700'}>
-              {resultado.prazo.situacao === 'ok' ? 'Cabe no prazo' : resultado.prazo.situacao === 'apertado' ? 'Prazo apertado' : 'Prazo inviável'} (folga de {resultado.prazo.folgaDias} dia(s)).
-            </span>
-          )}
-          {resultado.prazo.dataEntregaPrevista && ` Entrega prevista: ${dataBr(resultado.prazo.dataEntregaPrevista)}${resultado.prazo.dataLimite ? ` · limite: ${dataBr(resultado.prazo.dataLimite)}` : ''}.`}
-        </p>
-      </section>
-
-      {/* ---------------- Resultado ---------------- */}
-      <section className="mt-4 rounded border border-slate-300 bg-slate-50 p-4">
-        <h2 className="text-base font-medium text-slate-900">Resultado</h2>
-        <div className="mt-2 grid gap-1 text-sm md:grid-cols-2">
-          <p>Receita: <strong>{brl(resultado.receita)}</strong></p>
-          <p>Custo dos itens: {brl(resultado.custoItens)}</p>
-          <p>Deslocamento: {brl(resultado.custoDeslocamento)}</p>
-          <p>Outros custos: {brl(resultado.custoOutros)}</p>
-          <p>Impostos: {brl(resultado.impostos)}</p>
-          <p>Custo total: <strong>{brl(resultado.custoTotal)}</strong></p>
-        </div>
-        <p className="mt-3 text-2xl font-semibold text-slate-900">Total dos custos: {brl(resultado.custoTotal)}</p>
-        {custosAcimaDoEstimado && (
-          <p role="alert" className="mt-2 rounded border border-red-300 bg-red-50 p-2 text-sm font-medium text-red-800">
-            Alerta: o total dos custos ({brl(resultado.custoTotal)}) é maior que o valor estimado pelo órgão ({brl(t.valorEstimado)}). Concorrer nesse valor daria prejuízo.
-          </p>
-        )}
-        {resultado.receita > 0 ? (
-          <p className={`mt-2 text-lg font-semibold ${corLucro}`}>
-            {resultado.lucro >= 0 ? 'Lucro estimado' : 'Resultado com os seus preços'}: {brl(resultado.lucro)}
-            {resultado.margemPct !== null && <span className="ml-2 text-base font-normal">(margem {resultado.margemPct.toLocaleString('pt-BR')}%)</span>}
-          </p>
-        ) : (
-          <p className="mt-2 text-sm text-slate-600">Informe os preços de venda dos itens para ver o lucro estimado.</p>
-        )}
-        <p className="mt-1 text-sm text-slate-700">
-          Preço mínimo para a margem de {dados.margemDesejadaPct}%: <strong>{resultado.receitaMinima === null ? '—' : brl(resultado.receitaMinima)}</strong>
-        </p>
-
-        {resultado.cenarios.length > 0 && (
-          <div className="mt-3 overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="text-xs text-slate-600">
+          <TableWrap minWidth={940}>
+            <Table>
+              <THead>
                 <tr>
-                  <th className="py-1">Se você der o lance…</th>
-                  <th className="py-1">Valor</th>
-                  <th className="py-1">Resultado</th>
-                  <th className="py-1">Margem</th>
+                  <Th>Item</Th>
+                  <Th align="right">Qtd.</Th>
+                  <Th align="right">Estimado (órgão)</Th>
+                  <Th>Mercado (pago)</Th>
+                  <Th>Seu custo un.</Th>
+                  <Th>Seu preço un.</Th>
+                  <Th align="right">Mínimo un.</Th>
                 </tr>
-              </thead>
+              </THead>
               <tbody>
-                {resultado.cenarios.map((c) => (
-                  <tr key={c.nome} className="border-t border-slate-200">
-                    <td className="py-1 pr-2">{c.nome}</td>
-                    <td className="py-1 pr-2">{brl(c.receita)}</td>
-                    <td className={`py-1 pr-2 font-medium ${c.lucro >= 0 ? 'text-emerald-700' : 'text-amber-700'}`}>{brl(c.lucro)}</td>
-                    <td className="py-1">{c.margemPct === null ? '—' : `${c.margemPct.toLocaleString('pt-BR')}%`}</td>
-                  </tr>
-                ))}
+                {estudo.itens.map((it) => {
+                  const e = dados.itens[it.id] ?? { custoUnit: null, precoVendaUnit: null }
+                  const m = dados.mercado[it.id]
+                  const l = linhaPorItem.get(it.id)
+                  const amostra = amostras[it.id]
+                  const nomeDoItem = it.numero ? `item ${it.numero}` : it.descricao.slice(0, 40)
+                  return (
+                    <Tr key={it.id}>
+                      <Td className="max-w-[260px]">
+                        <span className="text-ink">
+                          {it.numero ? <span className="font-mono text-muted">{it.numero}. </span> : ''}
+                          {it.descricao.slice(0, 160)}
+                        </span>
+                        {it.codigoCatalogo && (
+                          <span className="mt-0.5 block font-mono text-2xs text-muted">
+                            {it.tipoCatalogo === 'SERVICO' ? 'CATSER' : 'CATMAT'} {it.codigoCatalogo}
+                          </span>
+                        )}
+                      </Td>
+                      <Td numeric>
+                        {it.quantidade.toLocaleString('pt-BR')} <span className="text-muted">{it.unidade ?? ''}</span>
+                      </Td>
+                      <Td numeric>{brl(it.valorEstimadoUnit)}</Td>
+                      <Td className="min-w-[200px] text-xs">
+                        {m ? (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="font-mono text-sm font-medium text-ink">{brl(m.mediana)}</span>
+                            <span className="font-mono text-muted">
+                              {brl(m.minimo)} a {brl(m.maximo)}
+                            </span>
+                            <span className="text-muted">
+                              <span className="font-mono">{m.amostras}</span> compra(s), {m.uf ?? 'Brasil'}, <span className="font-mono">{m.meses}</span> meses
+                            </span>
+                            {amostra && amostra.recentes[0] && (
+                              <span className="text-faint">
+                                última: <span className="font-mono">{brl(amostra.recentes[0].precoUnitario)}</span> ({amostra.recentes[0].uf ?? '—'})
+                              </span>
+                            )}
+                            <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                              <button
+                                type="button"
+                                onClick={() => alterar((d) => ({ ...d, itens: { ...d.itens, [it.id]: { custoUnit: e.custoUnit, precoVendaUnit: m.mediana } } }))}
+                                className="font-medium text-accent hover:underline"
+                              >
+                                usar como meu preço
+                              </button>
+                              {it.codigoCatalogo && (
+                                <button
+                                  type="button"
+                                  onClick={() => pesquisarItem(it.id)}
+                                  disabled={pesquisando !== null}
+                                  className="inline-flex items-center gap-1 text-muted hover:text-ink disabled:opacity-50"
+                                >
+                                  <RefreshCw size={12} aria-hidden className={pesquisando === it.id ? 'animate-spin' : undefined} />
+                                  atualizar
+                                </button>
+                              )}
+                            </span>
+                          </div>
+                        ) : it.codigoCatalogo ? (
+                          <Button size="sm" icon={Search} onClick={() => pesquisarItem(it.id)} disabled={pesquisando !== null} loading={pesquisando === it.id}>
+                            {pesquisando === it.id ? 'Pesquisando…' : 'Pesquisar preço'}
+                          </Button>
+                        ) : (
+                          <span className="text-faint">sem código de catálogo</span>
+                        )}
+                      </Td>
+                      <Td>
+                        <div className="w-36">
+                          <Numero
+                            moeda
+                            aria-label={`Seu custo unitário, ${nomeDoItem}`}
+                            valor={e.custoUnit}
+                            aoMudar={(v) => alterar((d) => ({ ...d, itens: { ...d.itens, [it.id]: { custoUnit: v, precoVendaUnit: e.precoVendaUnit } } }))}
+                          />
+                        </div>
+                      </Td>
+                      <Td>
+                        <div className="w-36">
+                          <Numero
+                            moeda
+                            aria-label={`Seu preço unitário, ${nomeDoItem}`}
+                            valor={e.precoVendaUnit}
+                            aoMudar={(v) => alterar((d) => ({ ...d, itens: { ...d.itens, [it.id]: { custoUnit: e.custoUnit, precoVendaUnit: v } } }))}
+                          />
+                        </div>
+                      </Td>
+                      <Td numeric className="text-ink-2">
+                        {brl(l?.precoMinimoUnit ?? null)}
+                      </Td>
+                    </Tr>
+                  )
+                })}
               </tbody>
-            </table>
+            </Table>
+          </TableWrap>
+        </div>
+      </Panel>
+
+      <Panel
+        title="2. Deslocamento até o local da entrega"
+        description={
+          <span className="inline-flex flex-wrap items-center gap-x-1.5">
+            Base: <strong className="font-semibold text-ink-2">{estudo.base.municipio ? `${estudo.base.municipio}/${estudo.base.uf}` : 'não cadastrada'}</strong>
+            <ArrowRight size={12} aria-label="até" />
+            {destino}
+            {estudo.distanciaLinhaRetaKm !== null && (
+              <>
+                {' '}
+                · <span className="font-mono">{estudo.distanciaLinhaRetaKm} km</span> em linha reta (≈{' '}
+                <span className="font-mono">
+                  {resultado.deslocamento.origem === 'estimado' ? resultado.deslocamento.kmIda : Math.round(estudo.distanciaLinhaRetaKm * 1.3)} km
+                </span>{' '}
+                por estrada)
+              </>
+            )}
+          </span>
+        }
+      >
+        <div className="flex flex-col gap-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <Field label="Km de ida (se souber)">
+              <Numero valor={dados.deslocamento.kmIdaInformado} aoMudar={(v) => alterar((d) => ({ ...d, deslocamento: { ...d.deslocamento, kmIdaInformado: v } }))} passo="1" placeholder="automático" />
+            </Field>
+            <Field label="Viagens">
+              <Numero valor={dados.deslocamento.viagens} aoMudar={(v) => alterar((d) => ({ ...d, deslocamento: { ...d.deslocamento, viagens: Math.round(v ?? 0) } }))} passo="1" />
+            </Field>
+            <Field label="R$ por km">
+              <Numero moeda valor={dados.deslocamento.valorPorKm} aoMudar={(v) => alterar((d) => ({ ...d, deslocamento: { ...d.deslocamento, valorPorKm: v ?? 0 } }))} />
+            </Field>
+            <Field label="Pedágio por viagem">
+              <Numero moeda valor={dados.deslocamento.pedagioPorViagem} aoMudar={(v) => alterar((d) => ({ ...d, deslocamento: { ...d.deslocamento, pedagioPorViagem: v ?? 0 } }))} />
+            </Field>
+            <Field label="Hospedagem/diárias por viagem">
+              <Numero moeda valor={dados.deslocamento.hospedagemPorViagem} aoMudar={(v) => alterar((d) => ({ ...d, deslocamento: { ...d.deslocamento, hospedagemPorViagem: v ?? 0 } }))} />
+            </Field>
           </div>
-        )}
-
-        {resultado.avisos.length > 0 && (
-          <ul className="mt-3 list-disc pl-5 text-sm text-amber-800">
-            {resultado.avisos.map((a) => (
-              <li key={a}>{a}</li>
-            ))}
-          </ul>
-        )}
-        <p className="mt-3 text-xs text-slate-500">
-          Apoio à decisão: distância estimada em linha reta com correção; preços de mercado são os de compras anteriores de órgãos públicos; custos, impostos e prazos são os que você informou.
-        </p>
-      </section>
-
-      {/* ---------------- Ações ---------------- */}
-      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-slate-200 bg-white/95 px-4 py-3">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-slate-600">
-            {sujo ? 'Alterações não salvas.' : estudo.salvoEm ? `Salvo em ${new Date(estudo.salvoEm).toLocaleString('pt-BR')}.` : 'Estudo ainda não salvo.'}
+          <p className="border-t border-line-soft pt-3 text-sm text-ink-2">
+            {resultado.deslocamento.kmIda !== null && (
+              <>
+                Ida e volta: <Valor>{resultado.deslocamento.kmIdaEVolta} km</Valor> ·{' '}
+              </>
+            )}
+            custo por viagem <Valor>{brl(resultado.deslocamento.custoPorViagem)}</Valor> · total <Valor forte>{brl(resultado.custoDeslocamento)}</Valor>
           </p>
-          <div className="flex gap-2">
-            <button onClick={salvar} disabled={salvando || !sujo} className="rounded bg-indigo-600 px-4 py-2 text-sm text-white disabled:opacity-50">
+        </div>
+      </Panel>
+
+      <Panel title="3. Impostos, margem e outros custos">
+        <div className="flex flex-col gap-5">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Field label="Impostos sobre a venda (%)">
+              <Numero valor={dados.impostosPct} aoMudar={(v) => alterar((d) => ({ ...d, impostosPct: Math.min(100, v ?? 0) }))} />
+            </Field>
+            <Field label="Margem de lucro desejada (%)">
+              <Numero valor={dados.margemDesejadaPct} aoMudar={(v) => alterar((d) => ({ ...d, margemDesejadaPct: Math.min(100, v ?? 0) }))} />
+            </Field>
+          </div>
+          <fieldset className="flex min-w-0 flex-col gap-2">
+            <legend className="mb-1.5 text-xs font-medium text-muted">Outros custos (frete, instalação, mão de obra, garantia exigida, etc.)</legend>
+            {dados.outrosCustos.map((o, i) => (
+              <div key={i} className="flex min-w-0 items-center gap-2">
+                <div className="min-w-0 flex-1">
+                  <Input
+                    aria-label={`Descrição do custo ${i + 1}`}
+                    value={o.descricao}
+                    onChange={(e) => alterar((d) => ({ ...d, outrosCustos: d.outrosCustos.map((x, j) => (j === i ? { ...x, descricao: e.target.value } : x)) }))}
+                    placeholder="Descrição"
+                  />
+                </div>
+                <div className="w-32 shrink-0 sm:w-40">
+                  <Numero
+                    moeda
+                    aria-label={`Valor do custo ${i + 1}`}
+                    valor={o.valor}
+                    aoMudar={(v) => alterar((d) => ({ ...d, outrosCustos: d.outrosCustos.map((x, j) => (j === i ? { ...x, valor: v ?? 0 } : x)) }))}
+                  />
+                </div>
+                <Button
+                  variant="ghost"
+                  icon={Trash2}
+                  aria-label={`Remover custo ${i + 1}`}
+                  onClick={() => alterar((d) => ({ ...d, outrosCustos: d.outrosCustos.filter((_, j) => j !== i) }))}
+                />
+              </div>
+            ))}
+            {dados.outrosCustos.length < 40 && (
+              <div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon={Plus}
+                  onClick={() => alterar((d) => ({ ...d, outrosCustos: [...d.outrosCustos, { descricao: '', valor: 0 }] }))}
+                >
+                  Adicionar custo
+                </Button>
+              </div>
+            )}
+          </fieldset>
+        </div>
+      </Panel>
+
+      <Panel
+        title="4. Prazo de entrega ou execução"
+        description={estudo.prazoDoEdital ? `O edital diz: “${estudo.prazoDoEdital}”. Confira e ajuste abaixo.` : undefined}
+      >
+        <div className="flex flex-col gap-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="flex flex-col gap-2">
+              <Field label="Prazo do edital (dias)">
+                <Numero
+                  valor={dados.prazo.exigidoDias}
+                  aoMudar={(v) => alterar((d) => ({ ...d, prazo: { ...d.prazo, exigidoDias: v === null ? null : Math.round(v) } }))}
+                  passo="1"
+                />
+              </Field>
+              <Checkbox
+                label="Dias úteis"
+                checked={dados.prazo.exigidoEmDiasUteis}
+                onChange={(e) => alterar((d) => ({ ...d, prazo: { ...d.prazo, exigidoEmDiasUteis: e.target.checked } }))}
+              />
+            </div>
+            <Field label="Seu prazo de preparo (dias)">
+              <Numero valor={dados.prazo.preparoDias} aoMudar={(v) => alterar((d) => ({ ...d, prazo: { ...d.prazo, preparoDias: Math.round(v ?? 0) } }))} passo="1" />
+            </Field>
+            <Field label="Assinatura prevista">
+              <Input
+                type="date"
+                value={dados.prazo.assinatura ?? ''}
+                onChange={(e) => alterar((d) => ({ ...d, prazo: { ...d.prazo, assinatura: e.target.value || null } }))}
+                className="font-mono"
+              />
+            </Field>
+          </div>
+          <div className="flex flex-col gap-1.5 border-t border-line-soft pt-3 text-sm text-ink-2">
+            <p>
+              Você precisa de <Valor forte>{resultado.prazo.diasNecessarios}</Valor> dia(s) (<Valor>{dados.prazo.preparoDias}</Valor> de preparo +{' '}
+              <Valor>{resultado.prazo.diasDeTransporte}</Valor> de transporte).
+            </p>
+            {situacao && (
+              <p className="flex flex-wrap items-center gap-2">
+                <StatusTag tone={situacao.tom} dot>
+                  {situacao.rotulo}
+                </StatusTag>
+                <span>
+                  folga de <Valor>{resultado.prazo.folgaDias}</Valor> dia(s).
+                </span>
+              </p>
+            )}
+            {resultado.prazo.dataEntregaPrevista && (
+              <p>
+                Entrega prevista: <Valor>{dataBr(resultado.prazo.dataEntregaPrevista)}</Valor>
+                {resultado.prazo.dataLimite && (
+                  <>
+                    {' '}
+                    · limite: <Valor>{dataBr(resultado.prazo.dataLimite)}</Valor>
+                  </>
+                )}
+                .
+              </p>
+            )}
+          </div>
+        </div>
+      </Panel>
+
+      <Panel title="Resultado">
+        <div className="flex flex-col gap-4">
+          <MetricRow>
+            <Metric label="Total dos custos" value={brl(resultado.custoTotal)} tone={custosAcimaDoEstimado ? 'danger' : 'default'} className="col-span-2 sm:col-span-1" />
+            <Metric
+              label={resultado.receita > 0 ? (resultado.lucro >= 0 ? 'Lucro estimado' : 'Resultado com os seus preços') : 'Lucro estimado'}
+              value={resultado.receita > 0 ? brl(resultado.lucro) : '—'}
+              tone={resultado.receita > 0 && resultado.lucro < 0 ? 'warn' : 'default'}
+              detail={
+                resultado.receita > 0
+                  ? resultado.margemPct !== null
+                    ? `margem ${resultado.margemPct.toLocaleString('pt-BR')}%`
+                    : undefined
+                  : 'Informe os preços de venda dos itens para ver o lucro estimado.'
+              }
+            />
+            <Metric
+              label={`Preço mínimo para a margem de ${dados.margemDesejadaPct}%`}
+              value={resultado.receitaMinima === null ? '—' : brl(resultado.receitaMinima)}
+            />
+          </MetricRow>
+
+          {custosAcimaDoEstimado && (
+            <Notice tone="danger" title="Custo acima do valor estimado pelo órgão">
+              O total dos custos ({brl(resultado.custoTotal)}) é maior que o valor estimado pelo órgão ({brl(t.valorEstimado)}). Concorrer nesse valor daria prejuízo.
+            </Notice>
+          )}
+
+          <DescriptionList
+            columns={3}
+            items={[
+              { label: 'Receita', value: brl(resultado.receita), mono: true },
+              { label: 'Custo dos itens', value: brl(resultado.custoItens), mono: true },
+              { label: 'Deslocamento', value: brl(resultado.custoDeslocamento), mono: true },
+              { label: 'Outros custos', value: brl(resultado.custoOutros), mono: true },
+              { label: 'Impostos', value: brl(resultado.impostos), mono: true },
+              { label: 'Custo total', value: <span className="font-semibold">{brl(resultado.custoTotal)}</span>, mono: true },
+            ]}
+          />
+
+          {resultado.cenarios.length > 0 && (
+            <TableWrap minWidth={520}>
+              <Table>
+                <THead>
+                  <tr>
+                    <Th>Se você der o lance…</Th>
+                    <Th align="right">Valor</Th>
+                    <Th align="right">Resultado</Th>
+                    <Th align="right">Margem</Th>
+                  </tr>
+                </THead>
+                <tbody>
+                  {resultado.cenarios.map((c) => (
+                    <Tr key={c.nome}>
+                      <Td>{c.nome}</Td>
+                      <Td numeric>{brl(c.receita)}</Td>
+                      <Td numeric className={cx('font-medium', c.lucro < 0 && 'text-warn')}>
+                        {brl(c.lucro)}
+                      </Td>
+                      <Td numeric>{c.margemPct === null ? '—' : `${c.margemPct.toLocaleString('pt-BR')}%`}</Td>
+                    </Tr>
+                  ))}
+                </tbody>
+              </Table>
+            </TableWrap>
+          )}
+
+          {resultado.avisos.length > 0 && (
+            <Notice tone="warn">
+              <ul className="flex list-disc flex-col gap-1 pl-4">
+                {resultado.avisos.map((a) => (
+                  <li key={a}>{a}</li>
+                ))}
+              </ul>
+            </Notice>
+          )}
+
+          <p className="text-xs text-faint">
+            Apoio à decisão: distância estimada em linha reta com correção; preços de mercado são os de compras anteriores de órgãos públicos; custos, impostos e prazos são os que você informou.
+          </p>
+        </div>
+      </Panel>
+
+      <div className="sticky bottom-0 z-10 -mx-4 -mb-6 border-t border-line bg-surface px-4 py-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:-mb-7 lg:px-8">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className={cx('text-sm', erro ? 'font-medium text-danger' : sujo ? 'font-medium text-warn' : 'text-muted')}>
+            {erro
+              ? erro
+              : sujo
+                ? 'Alterações não salvas.'
+                : estudo.salvoEm
+                  ? <>Salvo em <span className="font-mono">{new Date(estudo.salvoEm).toLocaleString('pt-BR')}</span>.</>
+                  : 'Estudo ainda não salvo.'}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="primary" icon={Save} onClick={salvar} disabled={!sujo} loading={salvando}>
               {salvando ? 'Salvando…' : 'Salvar estudo'}
-            </button>
-            <button onClick={baixarPdf} disabled={salvando} className="rounded border border-indigo-600 px-4 py-2 text-sm text-indigo-700 hover:bg-indigo-50 disabled:opacity-50">
+            </Button>
+            <Button icon={FileDown} onClick={baixarPdf} disabled={salvando}>
               Baixar dossiê em PDF — vou concorrer
-            </button>
+            </Button>
           </div>
         </div>
       </div>
-    </div>
+    </>
   )
 }

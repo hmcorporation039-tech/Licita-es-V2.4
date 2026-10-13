@@ -53,7 +53,3 @@ export function PublicFrame({ children }: { children: React.ReactNode }) {
     </div>
   )
 }
-
-export default function PublicShell({ children, estreito = false }: { children: React.ReactNode; estreito?: boolean }) {
-  return <div className={estreito ? 'mx-auto w-full max-w-md px-4 py-10' : 'mx-auto w-full max-w-5xl px-4 py-10'}>{children}</div>
-}

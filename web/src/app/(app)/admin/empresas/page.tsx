@@ -1,10 +1,11 @@
 'use client'
 
-import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import AdminShell from '@/components/AdminShell'
 import { api, ApiRequestError } from '@/lib/api'
 import type { EmpresaResumo } from '@/lib/adminTypes'
+import { Button, Carregando, EmptyState, ErrorState, Field, Input, StatusTag, Table, TableWrap, Td, TextLink, THead, Th, Tr } from '@/components/ui'
 
 interface Lista {
   total: number
@@ -12,6 +13,8 @@ interface Lista {
   limit: number
   empresas: EmpresaResumo[]
 }
+
+const nf = new Intl.NumberFormat('pt-BR')
 
 export default function AdminEmpresasPage() {
   return <AdminShell titulo="Empresas">{() => <Conteudo />}</AdminShell>
@@ -42,74 +45,99 @@ function Conteudo() {
   const paginas = dados ? Math.max(1, Math.ceil(dados.total / dados.limit)) : 1
 
   return (
-    <div className="flex flex-col gap-3">
-      <input
-        value={q}
-        onChange={(e) => {
-          setQ(e.target.value)
-          setPage(1)
-        }}
-        placeholder="Buscar por nome, CNPJ ou e-mail"
-        className="w-full max-w-md rounded border border-slate-300 px-3 py-2 text-sm"
-      />
-      {erro && <p className="text-sm text-red-600">{erro}</p>}
-      <div className="overflow-x-auto rounded border border-slate-200 bg-white">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-            <tr>
-              <th className="px-3 py-2">Empresa</th>
-              <th className="px-3 py-2">Plano</th>
-              <th className="px-3 py-2 text-right">Usuários</th>
-              <th className="px-3 py-2 text-right">Itens</th>
-              <th className="px-3 py-2 text-right">Docs</th>
-              <th className="px-3 py-2 text-right">IA/mês</th>
-              <th className="px-3 py-2">Criada em</th>
-            </tr>
-          </thead>
-          <tbody>
-            {dados?.empresas.map((e) => (
-              <tr key={e.id} className="border-t border-slate-100 hover:bg-slate-50">
-                <td className="px-3 py-2">
-                  <Link href={`/admin/empresas/${e.id}`} className="font-medium text-indigo-700 hover:underline">
-                    {e.nome}
-                  </Link>
-                  <div className="text-xs text-slate-500">{e.cnpj ?? e.cpf ?? (e.tipo === 'PESSOA_FISICA' ? 'pessoa física' : '—')}</div>
-                </td>
-                <td className="px-3 py-2">
-                  {e.planCode}
-                  {e.quotaOverrides && <span className="ml-1 rounded bg-amber-100 px-1 text-xs text-amber-800">ajustado</span>}
-                </td>
-                <td className="px-3 py-2 text-right">{e.usuarios}</td>
-                <td className="px-3 py-2 text-right">{e.itensMonitorados}</td>
-                <td className="px-3 py-2 text-right">{e.documentos}</td>
-                <td className="px-3 py-2 text-right">{e.analisesIaNoMes}</td>
-                <td className="px-3 py-2 text-slate-500">{new Date(e.criadaEm).toLocaleDateString('pt-BR')}</td>
-              </tr>
-            ))}
-            {dados && dados.empresas.length === 0 && (
+    <div className="flex flex-col gap-4">
+      <Field label="Buscar empresa" className="w-full max-w-md">
+        <Input
+          type="search"
+          value={q}
+          onChange={(e) => {
+            setQ(e.target.value)
+            setPage(1)
+          }}
+          placeholder="Nome, CNPJ ou e-mail"
+        />
+      </Field>
+
+      {erro && <ErrorState message={erro} onRetry={carregar} />}
+
+      {!dados && !erro && <Carregando linhas={6} />}
+
+      {dados && dados.empresas.length === 0 && (
+        <EmptyState
+          title="Nenhuma empresa encontrada."
+          description={q.trim() ? 'Nenhum nome, CNPJ ou e-mail corresponde à busca. Tente outro termo.' : 'Ainda não há empresas cadastradas na plataforma.'}
+        />
+      )}
+
+      {dados && dados.empresas.length > 0 && (
+        <TableWrap minWidth={820}>
+          <Table>
+            <THead>
               <tr>
-                <td colSpan={7} className="px-3 py-6 text-center text-slate-500">
-                  Nenhuma empresa encontrada.
-                </td>
+                <Th>Empresa</Th>
+                <Th>Plano</Th>
+                <Th align="right">Usuários</Th>
+                <Th align="right">Itens</Th>
+                <Th align="right">Docs</Th>
+                <Th align="right">IA/mês</Th>
+                <Th align="right">Criada em</Th>
               </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-      <div className="flex items-center justify-between text-sm text-slate-600">
-        <span>{dados ? `${dados.total} empresa(s)` : ''}</span>
-        <div className="flex items-center gap-2">
-          <button disabled={page <= 1} onClick={() => setPage(page - 1)} className="rounded border px-2 py-1 disabled:opacity-40">
-            Anterior
-          </button>
+            </THead>
+            <tbody>
+              {dados.empresas.map((e) => (
+                <Tr key={e.id} interactive>
+                  <Td>
+                    <div className="flex min-w-0 flex-col gap-0.5">
+                      <TextLink href={`/admin/empresas/${e.id}`}>
+                        {e.nome}
+                      </TextLink>
+                      <span className="font-mono text-xs text-muted">
+                        {e.cnpj ?? e.cpf ?? (e.tipo === 'PESSOA_FISICA' ? 'pessoa física' : '—')}
+                      </span>
+                    </div>
+                  </Td>
+                  <Td>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <StatusTag mono>{e.planCode}</StatusTag>
+                      {e.quotaOverrides && (
+                        <StatusTag tone="accent" title="Limites combinados só com esta empresa">
+                          ajustado
+                        </StatusTag>
+                      )}
+                    </div>
+                  </Td>
+                  <Td numeric>{nf.format(e.usuarios)}</Td>
+                  <Td numeric>{nf.format(e.itensMonitorados)}</Td>
+                  <Td numeric>{nf.format(e.documentos)}</Td>
+                  <Td numeric>{nf.format(e.analisesIaNoMes)}</Td>
+                  <Td numeric muted>
+                    {new Date(e.criadaEm).toLocaleDateString('pt-BR')}
+                  </Td>
+                </Tr>
+              ))}
+            </tbody>
+          </Table>
+        </TableWrap>
+      )}
+
+      {dados && (
+        <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted">
           <span>
-            {page} / {paginas}
+            <span className="font-mono text-ink-2">{nf.format(dados.total)}</span> empresa(s)
           </span>
-          <button disabled={page >= paginas} onClick={() => setPage(page + 1)} className="rounded border px-2 py-1 disabled:opacity-40">
-            Próxima
-          </button>
+          <nav aria-label="Paginação" className="flex items-center gap-2">
+            <Button size="sm" icon={ChevronLeft} disabled={page <= 1} onClick={() => setPage(page - 1)}>
+              Anterior
+            </Button>
+            <span className="font-mono text-ink-2" aria-live="polite">
+              {page} / {paginas}
+            </span>
+            <Button size="sm" iconRight={ChevronRight} disabled={page >= paginas} onClick={() => setPage(page + 1)}>
+              Próxima
+            </Button>
+          </nav>
         </div>
-      </div>
+      )}
     </div>
   )
 }

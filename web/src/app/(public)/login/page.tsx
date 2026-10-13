@@ -1,12 +1,15 @@
 'use client'
 
-import Link from 'next/link'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import PublicShell from '@/components/PublicShell'
+import { PublicCard } from '@/components/PublicShell'
+import { Button, Field, FormError, Input, Notice, TextLink } from '@/components/ui'
 import { api, ApiRequestError } from '@/lib/api'
 import { setSession } from '@/lib/session'
 import { User } from '@/lib/types'
+
+const BOTAO_COMO_LINK =
+  'self-start text-sm font-medium text-accent underline decoration-accent-line underline-offset-[3px] hover:decoration-accent'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -46,55 +49,40 @@ export default function LoginPage() {
   }
 
   return (
-    <PublicShell estreito>
-      <h1 className="mb-1 text-2xl font-semibold">Entrar</h1>
-      <p className="mb-6 text-sm text-slate-500">
-        Não tem conta?{' '}
-        <Link href="/cadastro" className="text-indigo-700 hover:underline">
-          Crie uma e teste grátis
-        </Link>
-        .
-      </p>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-        <input
-          type="email"
-          required
-          placeholder="voce@empresa.com.br"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="rounded border border-slate-300 px-3 py-2 text-sm"
-        />
-        <input
-          type="password"
-          required
-          placeholder="Senha"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="rounded border border-slate-300 px-3 py-2 text-sm"
-        />
-        {error && <p className="text-sm text-red-600">{error}</p>}
+    <PublicCard
+      title="Entrar"
+      description={
+        <>
+          Não tem conta? <TextLink href="/cadastro">Crie uma e teste grátis</TextLink>.
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <Field label="E-mail" required>
+          <Input type="email" autoComplete="email" placeholder="voce@empresa.com.br" value={email} onChange={(e) => setEmail(e.target.value)} />
+        </Field>
+        <Field label="Senha" required>
+          <Input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+        </Field>
+        <FormError>{error}</FormError>
         {naoConfirmado && (
-          <>
-            <Link href={`/verificar-email?email=${encodeURIComponent(email)}`} className="self-start text-sm text-indigo-700 hover:underline">
+          <div className="flex flex-col gap-2">
+            <TextLink href={`/verificar-email?email=${encodeURIComponent(email)}`} className="self-start text-sm">
               Digitar o código de confirmação
-            </Link>
-            <button type="button" onClick={reenviar} className="self-start text-sm text-indigo-700 hover:underline">
+            </TextLink>
+            <button type="button" onClick={reenviar} className={BOTAO_COMO_LINK}>
               Reenviar código
             </button>
-          </>
+          </div>
         )}
-        {info && <p className="text-sm text-emerald-700">{info}</p>}
-        <button
-          type="submit"
-          disabled={loading}
-          className="rounded bg-indigo-700 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-800 disabled:opacity-50"
-        >
-          {loading ? 'Entrando...' : 'Entrar'}
-        </button>
-        <Link href="/esqueci-senha" className="text-sm text-slate-500 hover:underline">
+        {info && <Notice tone="ok">{info}</Notice>}
+        <Button type="submit" variant="primary" loading={loading} className="w-full">
+          {loading ? 'Entrando…' : 'Entrar'}
+        </Button>
+        <TextLink href="/esqueci-senha" className="self-start text-sm">
           Esqueci minha senha
-        </Link>
+        </TextLink>
       </form>
-    </PublicShell>
+    </PublicCard>
   )
 }

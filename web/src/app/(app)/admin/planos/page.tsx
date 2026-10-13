@@ -1,9 +1,11 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { Plus, Save } from 'lucide-react'
 import AdminShell from '@/components/AdminShell'
 import { api, ApiRequestError } from '@/lib/api'
 import type { Limites, PlanoComercial } from '@/lib/adminTypes'
+import { Button, Carregando, Checkbox, EmptyState, ErrorState, Field, Input, Notice, Panel, StatusTag } from '@/components/ui'
 
 const CAMPOS: { chave: keyof Limites; rotulo: string }[] = [
   { chave: 'itensMonitorados', rotulo: 'Itens monitorados' },
@@ -26,12 +28,14 @@ function lerLimite(texto: string): number | null {
 
 function Conteudo() {
   const [planos, setPlanos] = useState<PlanoComercial[]>([])
+  const [carregado, setCarregado] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
 
   const carregar = useCallback(async () => {
     try {
       setPlanos(await api.get<PlanoComercial[]>('/api/admin/plans'))
+      setCarregado(true)
     } catch (e) {
       setErro(e instanceof ApiRequestError ? e.message : 'Erro ao carregar')
     }
@@ -41,20 +45,52 @@ function Conteudo() {
     carregar()
   }, [carregar])
 
+  if (!carregado && erro)
+    return (
+      <ErrorState
+        message={erro}
+        onRetry={() => {
+          setErro(null)
+          carregar()
+        }}
+      />
+    )
+  if (!carregado) return <Carregando linhas={6} />
+
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-slate-600">
-        Os limites abaixo são pontos de partida: ajuste conforme o custo real de IA (veja &quot;Consumo de IA&quot;) e o que você quiser
-        oferecer. A cobrança ainda não está ligada, então não há preço nesta tela.
+      <p className="max-w-prose text-sm text-muted">
+        Os limites abaixo são pontos de partida: ajuste conforme o custo real de IA (veja &quot;Consumo de IA&quot;) e o que você quiser oferecer.
+        A cobrança ainda não está ligada, então não há preço nesta tela.
       </p>
-      {msg && <p className="text-sm text-emerald-700">{msg}</p>}
-      {erro && <p className="text-sm text-red-600">{erro}</p>}
-      <div className="grid gap-3 md:grid-cols-2">
-        {planos.map((p) => (
-          <CartaoPlano key={p.code} plano={p} onSalvo={() => { setMsg(`Plano ${p.name} salvo.`); setErro(null); carregar() }} onErro={setErro} />
-        ))}
-      </div>
-      <NovoPlano onCriado={() => { setMsg('Plano criado.'); setErro(null); carregar() }} onErro={setErro} />
+      {msg && <Notice tone="ok">{msg}</Notice>}
+      {erro && <Notice tone="danger">{erro}</Notice>}
+      {planos.length === 0 ? (
+        <EmptyState title="Nenhum plano cadastrado." description="Crie o primeiro plano no formulário abaixo." />
+      ) : (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {planos.map((p) => (
+            <CartaoPlano
+              key={p.code}
+              plano={p}
+              onSalvo={() => {
+                setMsg(`Plano ${p.name} salvo.`)
+                setErro(null)
+                carregar()
+              }}
+              onErro={setErro}
+            />
+          ))}
+        </div>
+      )}
+      <NovoPlano
+        onCriado={() => {
+          setMsg('Plano criado.')
+          setErro(null)
+          carregar()
+        }}
+        onErro={setErro}
+      />
     </div>
   )
 }
@@ -77,32 +113,49 @@ function CartaoPlano({ plano, onSalvo, onErro }: { plano: PlanoComercial; onSalv
   }
 
   return (
-    <div className="rounded border border-slate-200 bg-white p-4">
-      <div className="mb-2 flex items-center justify-between">
-        <span className="font-mono text-xs text-slate-500">{plano.code}</span>
-        <span className="text-xs text-slate-500">{plano.empresas} empresa(s)</span>
-      </div>
-      <input value={nome} onChange={(e) => setNome(e.target.value)} className="mb-3 w-full rounded border border-slate-300 px-2 py-1.5 text-sm font-medium" />
-      <div className="flex flex-col gap-2">
-        {CAMPOS.map((c) => (
-          <label key={c.chave} className="flex items-center justify-between gap-3 text-sm text-slate-600">
-            {c.rotulo}
-            <input
-              value={limites[c.chave]}
-              onChange={(e) => setLimites({ ...limites, [c.chave]: e.target.value })}
-              className="w-28 rounded border border-slate-300 px-2 py-1 text-right text-sm"
-            />
-          </label>
-        ))}
-      </div>
-      <label className="mt-3 flex items-center gap-2 text-sm text-slate-600">
-        <input type="checkbox" checked={ativo} onChange={(e) => setAtivo(e.target.checked)} />
-        Plano ativo
-      </label>
-      <button onClick={salvar} className="mt-3 rounded bg-indigo-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-800">
-        Salvar
-      </button>
-    </div>
+    <Panel
+      title={<span className="font-mono">{plano.code}</span>}
+      actions={
+        <>
+          {!plano.active && <StatusTag>inativo</StatusTag>}
+          <span className="text-xs text-muted">
+            <span className="font-mono text-ink-2">{plano.empresas}</span> empresa(s)
+          </span>
+        </>
+      }
+    >
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          salvar()
+        }}
+        className="flex flex-col gap-4"
+      >
+        <Field label="Nome do plano">
+          <Input value={nome} onChange={(e) => setNome(e.target.value)} />
+        </Field>
+        <fieldset className="flex min-w-0 flex-col gap-2">
+          <legend className="mb-2 text-xs font-medium text-muted">Limites (número inteiro ou &quot;ilimitado&quot;)</legend>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {CAMPOS.map((c) => (
+              <Field key={c.chave} label={c.rotulo}>
+                <Input
+                  value={limites[c.chave]}
+                  onChange={(e) => setLimites({ ...limites, [c.chave]: e.target.value })}
+                  className="text-right font-mono"
+                />
+              </Field>
+            ))}
+          </div>
+        </fieldset>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Checkbox label="Plano ativo" checked={ativo} onChange={(e) => setAtivo(e.target.checked)} />
+          <Button type="submit" variant="primary" size="sm" icon={Save}>
+            Salvar
+          </Button>
+        </div>
+      </form>
+    </Panel>
   )
 }
 
@@ -127,16 +180,21 @@ function NovoPlano({ onCriado, onErro }: { onCriado: () => void; onErro: (m: str
   }
 
   return (
-    <form onSubmit={criar} className="flex flex-wrap items-end gap-3 rounded border border-dashed border-slate-300 p-4">
-      <label className="flex flex-col text-xs text-slate-600">
-        Código (MAIÚSCULAS)
-        <input required value={code} onChange={(e) => setCode(e.target.value)} placeholder="ESPECIAL" className="mt-1 rounded border border-slate-300 px-2 py-1.5 text-sm" />
-      </label>
-      <label className="flex flex-col text-xs text-slate-600">
-        Nome
-        <input required value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Especial" className="mt-1 rounded border border-slate-300 px-2 py-1.5 text-sm" />
-      </label>
-      <button className="rounded border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50">Criar plano (limites iniciais baixos)</button>
-    </form>
+    <Panel
+      title="Novo plano"
+      description="Começa com limites baixos (3 itens monitorados, 1 usuário, 3 análises de IA por mês); ajuste depois no cartão do plano."
+    >
+      <form onSubmit={criar} className="grid grid-cols-1 items-start gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+        <Field label="Código" hint="Em maiúsculas, sem espaços." required>
+          <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder="ESPECIAL" spellCheck={false} className="font-mono uppercase" />
+        </Field>
+        <Field label="Nome" required>
+          <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Especial" />
+        </Field>
+        <Button type="submit" icon={Plus} className="sm:mt-[22px]">
+          Criar plano
+        </Button>
+      </form>
+    </Panel>
   )
 }
