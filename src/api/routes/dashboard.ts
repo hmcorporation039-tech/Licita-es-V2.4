@@ -35,7 +35,7 @@ dashboardRouter.get(
       prisma.tenderParticipationPlan.findMany({
         where: { companyId, status: { in: ['AVALIANDO', 'VOU_PARTICIPAR'] } },
         include: {
-          tender: { select: { id: true, objeto: true, objetoResumido: true, publicadoAt: true, encerramentoAt: true, aberturaAt: true } },
+          tender: { select: { id: true, fonte: true, objeto: true, objetoResumido: true, publicadoAt: true, encerramentoAt: true, aberturaAt: true } },
         },
       }),
     ])

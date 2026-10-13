@@ -65,7 +65,7 @@ rodar('Painel do Fiscal', () => {
     const t = await prisma.tender.create({
       data: {
         fonte: 'PNCP', fonteId: `fiscal-${chave}-${sufixo}`, modalidade: 'PREGAO_ELETRONICO', objeto: `Objeto ${chave}`, rawJson: {},
-        aberturaAt: emDias(20), valorEstimado: 1_000_000, ...extra,
+        encerramentoAt: emDias(20), valorEstimado: 1_000_000, ...extra,
         ...(resultado ? { analysis: { create: { status: 'DONE', resultado } } } : {}),
       },
     })
@@ -119,7 +119,7 @@ rodar('Painel do Fiscal', () => {
       garantiaProposta: 'Garantia de proposta no valor de R$ 30.000,00.',
       garantiaContratual: '', patrimonioLiquidoMinimo: '', visitaTecnica: '',
     })
-    await criarTender('semSessao', { aberturaAt: null })
+    await criarTender('semSessao', { encerramentoAt: null })
   }, 60_000)
 
   afterAll(async () => {

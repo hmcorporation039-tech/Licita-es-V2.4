@@ -27,6 +27,7 @@ import { TENDER_PUBLICO, semRawJson } from '../../lib/tenderPublico'
 import { MAX_ANALISES_POR_HORA, pedidosDeAnaliseNaUltimaHora } from '../../services/quotaService'
 import { desfazerReserva, reservarAnalise } from '../../services/reservaDeAnalise'
 import { falhouHaPouco } from '../../lib/esperaDeReanalise'
+import { dataDaSessao } from '../../lib/dataDaSessao'
 
 export const tendersRouter = Router()
 
@@ -353,11 +354,11 @@ tendersRouter.get(
   asyncHandler(async (req, res) => {
     const tender = await prisma.tender.findUnique({
       where: { id: req.params.id },
-      select: { aberturaAt: true, analysis: { select: { status: true, resultado: true } } },
+      select: { fonte: true, aberturaAt: true, encerramentoAt: true, analysis: { select: { status: true, resultado: true } } },
     })
     if (!tender) throw new ApiError(404, 'Licitação não encontrada')
 
-    let sessao: Date | null = tender.aberturaAt
+    let sessao: Date | null = dataDaSessao(tender)
     let origem: 'abertura' | 'analise-ia' = 'abertura'
     if (!sessao && tender.analysis?.status === 'DONE' && tender.analysis.resultado) {
       sessao = lerDataTexto((tender.analysis.resultado as unknown as { dataSessao?: string }).dataSessao)
@@ -482,14 +483,14 @@ tendersRouter.get(
   asyncHandler(async (req, res) => {
     const tender = await prisma.tender.findUnique({
       where: { id: req.params.id },
-      select: { aberturaAt: true, valorEstimado: true, analysis: { select: { status: true, resultado: true } } },
+      select: { fonte: true, aberturaAt: true, encerramentoAt: true, valorEstimado: true, analysis: { select: { status: true, resultado: true } } },
     })
     if (!tender) throw new ApiError(404, 'Licitação não encontrada')
 
     const analisada = tender.analysis?.status === 'DONE' && tender.analysis.resultado != null
     const analise = analisada ? (tender.analysis!.resultado as unknown as Partial<EditalAnalysisResult>) : null
 
-    const sessao = tender.aberturaAt ?? (analise ? lerDataTexto(analise.dataSessao) : null)
+    const sessao = dataDaSessao(tender) ?? (analise ? lerDataTexto(analise.dataSessao) : null)
 
     const docs = await prisma.companyDocument.findMany({
       where: { companyId: req.companyId! },
@@ -555,7 +556,7 @@ async function auditarMudancaDeStatus(req: Request, tenderId: string, de: string
 async function buildPlanResponse(tenderId: string, status: string, state: PlanState) {
   const tender = await prisma.tender.findUnique({
     where: { id: tenderId },
-    select: { publicadoAt: true, encerramentoAt: true, aberturaAt: true },
+    select: { fonte: true, publicadoAt: true, encerramentoAt: true, aberturaAt: true },
   })
   const analysis = await prisma.tenderAnalysis.findUnique({ where: { tenderId } })
   const analysisPrazos =
@@ -563,7 +564,7 @@ async function buildPlanResponse(tenderId: string, status: string, state: PlanSt
       ? (analysis.resultado as unknown as { prazoImpugnacao: string; prazoEsclarecimento: string })
       : null
 
-  const auto = buildAutoMilestones(tender ?? { publicadoAt: null, encerramentoAt: null, aberturaAt: null }, analysisPrazos).map(
+  const auto = buildAutoMilestones(tender ?? { fonte: '', publicadoAt: null, encerramentoAt: null, aberturaAt: null }, analysisPrazos).map(
     (m) => ({ ...m, done: m.done || state.doneIds.includes(m.id) })
   )
 

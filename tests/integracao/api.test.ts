@@ -100,7 +100,7 @@ rodar('API com banco real', () => {
         modalidade: 'PREGAO_ELETRONICO',
         objeto: 'Objeto de teste de integração',
         rawJson: {},
-        aberturaAt: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000),
+        encerramentoAt: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000),
       },
     })
     tenderId = tender.id
