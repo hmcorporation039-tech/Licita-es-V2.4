@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Download, KeyRound, Trash2 } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
 import { api, ApiRequestError } from '@/lib/api'
@@ -95,6 +95,15 @@ function SeusDados() {
   const [abrirExclusao, setAbrirExclusao] = useState(false)
   const [mensagem, setMensagem] = useState<string | null>(null)
   const [erro, setErro] = useState<string | null>(null)
+  const painelDeExclusao = useRef<HTMLFormElement>(null)
+
+  useEffect(() => {
+    if (!abrirExclusao) return
+    const painel = painelDeExclusao.current
+    if (!painel) return
+    painel.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    painel.querySelector<HTMLElement>('input, textarea')?.focus({ preventScroll: true })
+  }, [abrirExclusao])
 
   async function baixar() {
     setBaixando(true)
@@ -149,7 +158,7 @@ function SeusDados() {
         </div>
 
         {abrirExclusao && (
-          <form onSubmit={pedirExclusao} className="flex flex-col gap-4 rounded border border-danger-line p-4">
+          <form ref={painelDeExclusao} onSubmit={pedirExclusao} className="flex flex-col gap-4 rounded border border-danger-line p-4">
             <p className="text-sm text-ink-2">
               A exclusão apaga a empresa, todos os usuários e os dados cadastrados, e não pode ser desfeita. Só o dono da empresa pode pedir.
             </p>

@@ -1,5 +1,6 @@
 'use client'
 
+import { formatarData } from '@/lib/datas'
 import { use, useCallback, useEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react'
 import { ArrowRight, FileDown, Plus, RefreshCw, Save, Search, Trash2 } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
@@ -31,7 +32,24 @@ import {
 
 const brl = (n: number | null | undefined) =>
   n === null || n === undefined ? '—' : n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-const dataBr = (iso: string | null) => (iso ? iso.split('-').reverse().join('/') : '—')
+const dataBr = (iso: string | null) => formatarData(iso)
+
+function ComSeparadores({ partes }: { partes: ReactNode[] }) {
+  return (
+    <>
+      {partes.map((parte, i) => (
+        <span key={i}>
+          {parte}
+          {i < partes.length - 1 && (
+            <span aria-hidden className="ml-2 text-faint">
+              ·
+            </span>
+          )}
+        </span>
+      ))}
+    </>
+  )
+}
 
 function lerNumero(texto: string): number | null {
   let t = texto.replace(/[^0-9.,]/g, '')
@@ -230,7 +248,8 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
   const linhaPorItem = new Map(resultado.itens.map((l) => [l.id, l]))
   const temCatalogo = estudo.itens.some((i) => i.codigoCatalogo)
   const custosAcimaDoEstimado = t.valorEstimado !== null && t.valorEstimado !== undefined && t.valorEstimado > 0 && resultado.custoTotal > t.valorEstimado
-  const destino = [t.municipio, t.uf].filter(Boolean).join('/') || 'local n/d'
+  const local = [t.municipio, t.uf].filter(Boolean).join('/')
+  const destino = local || 'local n/d'
   const dataDaSessao = t.encerramentoAt ?? t.aberturaAt
   const situacao = resultado.prazo.situacao ? SITUACAO_DO_PRAZO[resultado.prazo.situacao] : null
 
@@ -243,21 +262,20 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
           <div className="flex flex-col gap-1">
             <p className="max-w-4xl text-ink-2">{t.objeto.slice(0, 300)}</p>
             <p className="flex flex-wrap gap-x-2 gap-y-0.5">
-              <span>{t.orgao ?? 'órgão n/d'}</span>
-              <span aria-hidden>·</span>
-              <span>{destino}</span>
-              <span aria-hidden>·</span>
-              <span>
-                estimado pelo órgão: <Valor>{brl(t.valorEstimado)}</Valor>
-              </span>
-              {dataDaSessao && (
-                <>
-                  <span aria-hidden>·</span>
-                  <span>
-                    sessão: <Valor>{new Date(dataDaSessao).toLocaleDateString('pt-BR')}</Valor>
-                  </span>
-                </>
-              )}
+              <ComSeparadores
+                partes={[
+                  t.orgao,
+                  local,
+                  <>
+                    estimado pelo órgão: <Valor>{brl(t.valorEstimado)}</Valor>
+                  </>,
+                  dataDaSessao && (
+                    <>
+                      sessão: <Valor>{formatarData(dataDaSessao)}</Valor>
+                    </>
+                  ),
+                ].filter(Boolean)}
+              />
             </p>
           </div>
         }
@@ -662,23 +680,35 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
         </div>
       </Panel>
 
-      <div className="sticky bottom-0 z-10 -mx-4 -mb-6 border-t border-line bg-surface px-4 py-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:-mb-7 lg:px-8">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className={cx('text-sm', erro ? 'font-medium text-danger' : sujo ? 'font-medium text-warn' : 'text-muted')}>
-            {erro
-              ? erro
-              : sujo
-                ? 'Alterações não salvas.'
-                : estudo.salvoEm
-                  ? <>Salvo em <span className="font-mono">{new Date(estudo.salvoEm).toLocaleString('pt-BR')}</span>.</>
-                  : 'Estudo ainda não salvo.'}
+      <div className="sticky bottom-0 z-10 -mx-4 -mb-6 border-t border-line bg-surface px-4 py-2 sm:-mx-6 sm:px-6 lg:-mx-8 lg:-mb-7 lg:px-8">
+        {erro && (
+          <p role="alert" className="mb-1.5 truncate text-xs font-medium text-danger" title={erro}>
+            {erro}
           </p>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="primary" icon={Save} onClick={salvar} disabled={!sujo} loading={salvando}>
-              {salvando ? 'Salvando…' : 'Salvar estudo'}
+        )}
+        <div className="flex items-center justify-between gap-2">
+          <p className="flex min-w-0 items-baseline gap-x-2 text-sm">
+            <span className="shrink-0 text-xs text-muted">Total</span>
+            <span className={cx('truncate font-mono font-semibold', custosAcimaDoEstimado ? 'text-danger' : 'text-ink')}>{brl(resultado.custoTotal)}</span>
+            <span className={cx('hidden truncate text-xs sm:inline', sujo ? 'font-medium text-warn' : 'text-muted')}>
+              {sujo ? (
+                'Alterações não salvas'
+              ) : estudo.salvoEm ? (
+                <>
+                  Salvo em <span className="font-mono">{formatarData(estudo.salvoEm, { comHora: true })}</span>
+                </>
+              ) : (
+                'Estudo ainda não salvo'
+              )}
+            </span>
+          </p>
+          <div className="flex shrink-0 gap-2">
+            <Button variant="primary" size="sm" icon={Save} onClick={salvar} disabled={!sujo} loading={salvando} aria-label={sujo ? 'Salvar estudo (alterações não salvas)' : 'Salvar estudo'}>
+              Salvar
             </Button>
-            <Button icon={FileDown} onClick={baixarPdf} disabled={salvando}>
-              Baixar dossiê em PDF — vou concorrer
+            <Button size="sm" icon={FileDown} onClick={baixarPdf} disabled={salvando} aria-label="Baixar dossiê em PDF — vou concorrer">
+              <span className="sm:hidden">PDF</span>
+              <span className="hidden sm:inline">Baixar dossiê em PDF — vou concorrer</span>
             </Button>
           </div>
         </div>

@@ -13,6 +13,10 @@ function formatValor(v: string | null) {
   return Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
+function rotuloDaFonte(fonte: string) {
+  return fonte.replace(/_/g, ' ')
+}
+
 export default function EscolhidasPage() {
   const user = useRequireSession()
   const [plans, setPlans] = useState<ParticipationPlanListItem[]>([])
@@ -99,7 +103,7 @@ export default function EscolhidasPage() {
                     <p className="mt-0.5 truncate text-xs text-muted">{p.tender.orgao ?? 'órgão n/d'}</p>
                   </Td>
                   <Td>
-                    <StatusTag mono>{p.tender.fonte}</StatusTag>
+                    <StatusTag mono>{rotuloDaFonte(p.tender.fonte)}</StatusTag>
                   </Td>
                   <Td className="font-mono">{p.tender.uf ?? 'n/d'}</Td>
                   <Td numeric>{formatValor(p.tender.valorEstimado)}</Td>

@@ -19,8 +19,8 @@ export function PublicProse({ children }: { children: React.ReactNode }) {
 
 export function PublicFrame({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen flex-col">
-      <header className="border-b border-line bg-surface">
+    <div className="flex min-h-dvh w-full flex-col">
+      <header className="shrink-0 border-b border-line bg-surface">
         <div className="mx-auto flex h-14 w-full max-w-[1200px] items-center justify-between px-4 sm:px-6">
           <Link href="/" className="flex items-center gap-2.5 text-sm font-semibold tracking-[-0.005em] text-ink">
             <span aria-hidden className="size-3.5 rounded-sm bg-accent" />
@@ -36,8 +36,8 @@ export function PublicFrame({ children }: { children: React.ReactNode }) {
           </nav>
         </div>
       </header>
-      <main className="flex flex-1 flex-col">{children}</main>
-      <footer className="border-t border-line bg-surface">
+      <main className="flex min-w-0 flex-1 flex-col">{children}</main>
+      <footer className="mt-auto shrink-0 border-t border-line bg-surface">
         <div className="mx-auto flex w-full max-w-[1200px] flex-wrap items-center justify-between gap-3 px-4 py-5 text-xs text-muted sm:px-6">
           <span>© Monitor de Licitações · H&amp;M Engenharia e Tecnologia</span>
           <nav aria-label="Documentos legais" className="flex gap-4">

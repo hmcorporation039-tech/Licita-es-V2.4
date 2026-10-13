@@ -1,10 +1,12 @@
 'use client'
 
-import { Fragment, useEffect, useState } from 'react'
+import { formatarData } from '@/lib/datas'
+import { Fragment, useEffect, useState, type ComponentProps } from 'react'
 import { useRouter } from 'next/navigation'
-import { CalendarPlus, KeyRound, MailCheck, Power, UserPlus } from 'lucide-react'
+import { CalendarPlus, Check, Copy, Eye, EyeOff, KeyRound, MailCheck, Power, UserPlus } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
 import { api, ApiRequestError } from '@/lib/api'
+import { getSessionUser } from '@/lib/session'
 import { AdminUser } from '@/lib/types'
 import type { PlanoComercial } from '@/lib/adminTypes'
 import { AdminCabecalho } from '@/components/AdminShell'
@@ -27,12 +29,8 @@ import {
   THead,
   Th,
   Tr,
+  cx,
 } from '@/components/ui'
-
-function formatData(v: string | null) {
-  if (!v) return 'sem prazo'
-  return new Date(v).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
-}
 
 function isExpired(v: string | null) {
   return v != null && new Date(v).getTime() < Date.now()
@@ -40,6 +38,59 @@ function isExpired(v: string | null) {
 
 const SENHA_MIN = 10
 const SENHA_MAX = 72
+
+type MensagemDeSenha = { id: string; tipo: 'erro' | 'ok'; texto: string; senhaGerada?: string }
+
+function SenhaComAlternancia({ className, ...rest }: Omit<ComponentProps<'input'>, 'type'>) {
+  const [visivel, setVisivel] = useState(false)
+  return (
+    <div className="relative">
+      <Input {...rest} type={visivel ? 'text' : 'password'} autoComplete="new-password" spellCheck={false} className={cx('pr-10 font-mono', className)} />
+      <button
+        type="button"
+        onClick={() => setVisivel((v) => !v)}
+        aria-label={visivel ? 'Ocultar senha' : 'Mostrar senha'}
+        aria-pressed={visivel}
+        className="absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded text-muted hover:text-ink"
+      >
+        {visivel ? <EyeOff size={16} aria-hidden /> : <Eye size={16} aria-hidden />}
+      </button>
+    </div>
+  )
+}
+
+function SenhaGerada({ titulo, email, senha }: { titulo: string; email: string; senha: string }) {
+  const [copia, setCopia] = useState<'nada' | 'ok' | 'falhou'>('nada')
+
+  async function copiar() {
+    try {
+      await navigator.clipboard.writeText(senha)
+      setCopia('ok')
+    } catch {
+      setCopia('falhou')
+    }
+  }
+
+  return (
+    <Notice
+      tone="ok"
+      title={`${titulo} ${email}`}
+      action={
+        <Button size="sm" variant="secondary" icon={copia === 'ok' ? Check : Copy} onClick={copiar}>
+          {copia === 'ok' ? 'Copiada' : 'Copiar'}
+        </Button>
+      }
+    >
+      <div className="flex flex-col gap-1">
+        <code className="break-all font-mono text-sm text-ink">{senha}</code>
+        <span className="text-xs">
+          {copia === 'falhou' && 'Não deu para copiar automaticamente: selecione a senha e copie. '}
+          Repasse com segurança: ela não fica salva em nenhum outro lugar.
+        </span>
+      </div>
+    </Notice>
+  )
+}
 
 function Situacao({ u }: { u: AdminUser }) {
   if (!u.active) return <StatusTag tone="danger">Desativado</StatusTag>
@@ -53,6 +104,7 @@ export default function AdminUsuariosPage() {
   const [users, setUsers] = useState<AdminUser[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [meuId, setMeuId] = useState<string | null>(null)
 
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
@@ -62,12 +114,12 @@ export default function AdminUsuariosPage() {
   const [planos, setPlanos] = useState<PlanoComercial[]>([])
   const [planCode, setPlanCode] = useState('TESTE')
   const [creating, setCreating] = useState(false)
-  const [generatedInfo, setGeneratedInfo] = useState<string | null>(null)
+  const [senhaCriada, setSenhaCriada] = useState<{ email: string; senha: string } | null>(null)
 
   const [passwordEditId, setPasswordEditId] = useState<string | null>(null)
   const [passwordValue, setPasswordValue] = useState('')
   const [passwordSaving, setPasswordSaving] = useState(false)
-  const [senhaMsg, setSenhaMsg] = useState<{ id: string; tipo: 'erro' | 'ok'; texto: string } | null>(null)
+  const [senhaMsg, setSenhaMsg] = useState<MensagemDeSenha | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -75,6 +127,7 @@ export default function AdminUsuariosPage() {
       router.replace('/dashboard')
       return
     }
+    setMeuId(getSessionUser()?.id ?? user.id)
     load()
   }, [user])
 
@@ -97,7 +150,7 @@ export default function AdminUsuariosPage() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
-    setGeneratedInfo(null)
+    setSenhaCriada(null)
     setCreating(true)
     try {
       const result = await api.post<{ generatedPassword?: string; email: string }>('/api/admin/users', {
@@ -108,9 +161,7 @@ export default function AdminUsuariosPage() {
         diasValidade: diasValidade ? Number(diasValidade) : null,
         planCode,
       })
-      if (result.generatedPassword) {
-        setGeneratedInfo(`Senha gerada para ${result.email}: ${result.generatedPassword} (repasse com segurança — não fica salva em nenhum outro lugar)`)
-      }
+      if (result.generatedPassword) setSenhaCriada({ email: result.email, senha: result.generatedPassword })
       setEmail('')
       setName('')
       setPassword('')
@@ -141,7 +192,6 @@ export default function AdminUsuariosPage() {
 
   async function resetPassword(u: AdminUser) {
     setError(null)
-    setGeneratedInfo(null)
     setSenhaMsg(null)
     if (passwordValue && passwordValue.length < SENHA_MIN) {
       setSenhaMsg({ id: u.id, tipo: 'erro', texto: `A senha precisa ter pelo menos ${SENHA_MIN} caracteres (você digitou ${passwordValue.length}).` })
@@ -156,11 +206,12 @@ export default function AdminUsuariosPage() {
       const result = await api.post<{ generatedPassword?: string }>(`/api/admin/users/${u.id}/reset-password`, {
         password: passwordValue || undefined,
       })
-      const aviso = result.generatedPassword
-        ? `Nova senha gerada para ${u.email}: ${result.generatedPassword} (repasse com segurança — não fica salva em nenhum outro lugar)`
-        : `Senha de ${u.email} atualizada. As sessões abertas dessa conta foram encerradas.`
-      setGeneratedInfo(aviso)
-      setSenhaMsg({ id: u.id, tipo: 'ok', texto: aviso })
+      setSenhaMsg({
+        id: u.id,
+        tipo: 'ok',
+        texto: `Senha de ${u.email} atualizada. As sessões abertas dessa conta foram encerradas.`,
+        senhaGerada: result.generatedPassword,
+      })
       setPasswordEditId(null)
       setPasswordValue('')
       await load()
@@ -182,13 +233,13 @@ export default function AdminUsuariosPage() {
       <Panel title="Criar usuário" description="A empresa do usuário é criada junto, no plano escolhido.">
         <form onSubmit={handleCreate} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="E-mail" required>
-            <Input type="email" autoComplete="off" value={email} onChange={(e) => setEmail(e.target.value)} className="font-mono" />
+            <Input type="email" autoComplete="off" value={email} onChange={(e) => setEmail(e.target.value)} />
           </Field>
           <Field label="Nome" hint="Opcional.">
             <Input autoComplete="off" value={name} onChange={(e) => setName(e.target.value)} />
           </Field>
           <Field label="Senha" hint="Opcional. Se ficar vazia, o sistema gera uma.">
-            <Input autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} className="font-mono" />
+            <SenhaComAlternancia value={password} onChange={(e) => setPassword(e.target.value)} />
           </Field>
           <Field label="Dias de acesso" hint="Vazio = sem prazo.">
             <Input type="number" min={1} inputMode="numeric" value={diasValidade} onChange={(e) => setDiasValidade(e.target.value)} className="font-mono" />
@@ -207,10 +258,10 @@ export default function AdminUsuariosPage() {
           </div>
 
           {!falhouAoCarregar && <FormError className="sm:col-span-2">{error}</FormError>}
-          {generatedInfo && generatedInfo !== senhaMsg?.texto && (
-            <Notice tone="ok" className="sm:col-span-2">
-              <span className="break-all">{generatedInfo}</span>
-            </Notice>
+          {senhaCriada && (
+            <div className="sm:col-span-2">
+              <SenhaGerada titulo="Senha gerada para" email={senhaCriada.email} senha={senhaCriada.senha} />
+            </div>
           )}
 
           <div className="sm:col-span-2">
@@ -256,14 +307,17 @@ export default function AdminUsuariosPage() {
                   const editando = passwordEditId === u.id
                   const msgDaLinha = senhaMsg?.id === u.id ? senhaMsg : null
                   const formId = `senha-${u.id}`
+                  const souEu = meuId !== null && u.id === meuId
+                  const semPrazo = u.accessExpiresAt === null
                   return (
                     <Fragment key={u.id}>
                       <Tr selected={editando}>
                         <Td>
                           <div className="flex min-w-0 flex-col gap-0.5">
                             <span className="flex flex-wrap items-center gap-1.5">
-                              <span className="font-mono text-xs text-ink">{u.email}</span>
-                              {u.isAdmin && <StatusTag mono>admin</StatusTag>}
+                              <span className="text-sm text-ink">{u.email}</span>
+                              {u.isAdmin && <StatusTag>Admin</StatusTag>}
+                              {souEu && <StatusTag tone="accent">Você</StatusTag>}
                             </span>
                             <span className="text-xs text-muted">{u.name ?? 'sem nome'}</span>
                           </div>
@@ -279,7 +333,7 @@ export default function AdminUsuariosPage() {
                           </div>
                         </Td>
                         <Td numeric muted>
-                          {formatData(u.accessExpiresAt)}
+                          {semPrazo ? <span className="font-sans">sem prazo</span> : formatarData(u.accessExpiresAt)}
                         </Td>
                         <Td>
                           <div className="flex flex-wrap justify-end gap-1">
@@ -291,12 +345,20 @@ export default function AdminUsuariosPage() {
                             <Button size="sm" variant="ghost" icon={CalendarPlus} onClick={() => extend(u, 30)}>
                               +30 dias
                             </Button>
-                            <Button size="sm" variant="ghost" onClick={() => extend(u, null)}>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              disabled={semPrazo}
+                              title={semPrazo ? 'Este usuário já está sem prazo' : undefined}
+                              onClick={() => extend(u, null)}
+                            >
                               Remover prazo
                             </Button>
-                            <Button size="sm" variant="ghost" icon={Power} onClick={() => toggleActive(u)}>
-                              {u.active ? 'Desativar' : 'Ativar'}
-                            </Button>
+                            {!souEu && (
+                              <Button size="sm" variant="ghost" icon={Power} onClick={() => toggleActive(u)}>
+                                {u.active ? 'Desativar' : 'Ativar'}
+                              </Button>
+                            )}
                             <Button
                               size="sm"
                               variant={editando ? 'secondary' : 'ghost'}
@@ -329,15 +391,7 @@ export default function AdminUsuariosPage() {
                                 error={msgDaLinha?.tipo === 'erro' ? <span role="alert">{msgDaLinha.texto}</span> : undefined}
                                 className="w-full max-w-md"
                               >
-                                <Input
-                                  type="text"
-                                  autoComplete="off"
-                                  spellCheck={false}
-                                  value={passwordValue}
-                                  onChange={(e) => setPasswordValue(e.target.value)}
-                                  className="font-mono"
-                                  autoFocus
-                                />
+                                <SenhaComAlternancia value={passwordValue} onChange={(e) => setPasswordValue(e.target.value)} autoFocus />
                               </Field>
                               <div className="flex gap-2 pt-[22px]">
                                 <Button variant="primary" loading={passwordSaving} onClick={() => resetPassword(u)}>
@@ -355,9 +409,13 @@ export default function AdminUsuariosPage() {
                       {!editando && msgDaLinha && (
                         <Tr>
                           <Td colSpan={5}>
-                            <Notice tone={msgDaLinha.tipo === 'erro' ? 'danger' : 'ok'}>
-                              <span className="break-all">{msgDaLinha.texto}</span>
-                            </Notice>
+                            {msgDaLinha.senhaGerada ? (
+                              <SenhaGerada titulo="Nova senha gerada para" email={u.email} senha={msgDaLinha.senhaGerada} />
+                            ) : (
+                              <Notice tone={msgDaLinha.tipo === 'erro' ? 'danger' : 'ok'}>
+                                <span className="break-all">{msgDaLinha.texto}</span>
+                              </Notice>
+                            )}
                           </Td>
                         </Tr>
                       )}

@@ -1,10 +1,11 @@
 'use client'
 
-import { use, useEffect, useState, type ReactNode } from 'react'
-import { ExternalLink, Loader2, Plus, RotateCcw, Trash2 } from 'lucide-react'
+import { formatarData } from '@/lib/datas'
+import { use, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { AlertCircle, Calculator, Check, CheckCircle2, ChevronDown, ChevronUp, ExternalLink, Loader2, Plus, RotateCcw, Trash2 } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
-import { avisarMudancaDeUso, useUsoDoPlano } from '@/hooks/useUsoDoPlano'
-import MedidorDeAnalises from '@/components/MedidorDeAnalises'
+import { avisarMudancaDeUso, useUsoDoPlano, type MedidaDeAnalises } from '@/hooks/useUsoDoPlano'
+import MedidorDeAnalises, { textoDoRestante } from '@/components/MedidorDeAnalises'
 import { api, ApiRequestError } from '@/lib/api'
 import {
   ChecklistItem,
@@ -103,8 +104,7 @@ function formatValor(v: string | null) {
 }
 
 function formatData(v: string | null) {
-  if (!v) return '—'
-  return new Date(v).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  return formatarData(v, { comHora: true })
 }
 
 function formatQuantidade(q: string | null) {
@@ -135,6 +135,75 @@ function Mono({ children }: { children: ReactNode }) {
   return <span className="font-mono">{children}</span>
 }
 
+type EstadoDoSalvamento = 'ocioso' | 'salvando' | 'salvo' | 'erro'
+
+const TEMPO_DO_AVISO_DE_SALVO_MS = 2000
+
+function useSalvamento() {
+  const [estado, setEstado] = useState<EstadoDoSalvamento>('ocioso')
+  const [erro, setErro] = useState<string | null>(null)
+  const ultimaChamada = useRef(0)
+  const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(
+    () => () => {
+      if (temporizador.current) clearTimeout(temporizador.current)
+    },
+    []
+  )
+
+  const salvar = useCallback(async (acao: () => Promise<void>) => {
+    const chamada = ++ultimaChamada.current
+    if (temporizador.current) clearTimeout(temporizador.current)
+    setEstado('salvando')
+    setErro(null)
+    try {
+      await acao()
+      if (chamada !== ultimaChamada.current) return
+      setEstado('salvo')
+      temporizador.current = setTimeout(() => setEstado('ocioso'), TEMPO_DO_AVISO_DE_SALVO_MS)
+    } catch (err) {
+      if (chamada !== ultimaChamada.current) return
+      setEstado('erro')
+      setErro(err instanceof ApiRequestError ? err.message : 'Verifique a conexão e tente de novo.')
+    }
+  }, [])
+
+  return { estado, erro, salvar }
+}
+
+function AvisoDeSalvamento({ estado, erro }: { estado: EstadoDoSalvamento; erro: string | null }) {
+  return (
+    <span role="status" className="inline-flex min-h-4 items-center">
+      {estado === 'salvando' && (
+        <span className="inline-flex items-center gap-1 text-xs text-muted">
+          <Loader2 size={12} className="animate-spin" aria-hidden />
+          Salvando…
+        </span>
+      )}
+      {estado === 'salvo' && (
+        <span className="inline-flex items-center gap-1 text-xs text-muted">
+          <Check size={12} strokeWidth={2.25} aria-hidden />
+          Salvo
+        </span>
+      )}
+      {estado === 'erro' && (
+        <span className="inline-flex items-center gap-1 text-xs font-medium text-danger">
+          <AlertCircle size={12} strokeWidth={2.25} aria-hidden />
+          Não foi possível salvar. {erro}
+        </span>
+      )}
+    </span>
+  )
+}
+
+function motivoDoBloqueio(medida: MedidaDeAnalises): string {
+  const motivo = textoDoRestante(medida).replace(/^./, (c) => c.toUpperCase())
+  if (medida.limite === 0) return `${motivo}. Fale com o administrador para ampliar o plano.`
+  const renova = medida.renovaEm ? ` A contagem volta a zero em ${formatarData(medida.renovaEm)}.` : ''
+  return `${motivo}.${renova} Para continuar antes disso, fale com o administrador para ampliar o plano.`
+}
+
 export default function TenderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const user = useRequireSession()
@@ -146,7 +215,10 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
   const [loading, setLoading] = useState(true)
   const [erroAoCarregar, setErroAoCarregar] = useState<string | null>(null)
   const [tentativa, setTentativa] = useState(0)
-  const [saving, setSaving] = useState(false)
+  const checklistSalvo = useSalvamento()
+  const planoSalvo = useSalvamento()
+  const [escolhendo, setEscolhendo] = useState(false)
+  const [objetoAberto, setObjetoAberto] = useState(false)
   const [newItemLabel, setNewItemLabel] = useState('')
   const [activeTab, setActiveTab] = useAbaNaUrl<TabId>(ABAS, 'informacoes')
 
@@ -155,7 +227,6 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
   const [ownedDocTypes, setOwnedDocTypes] = useState<Set<string>>(new Set())
   const [plan, setPlan] = useState<ParticipationPlan | null>(null)
   const [prazos, setPrazos] = useState<PrazosDaSessao | null>(null)
-  const [planSaving, setPlanSaving] = useState(false)
   const [newMilestoneLabel, setNewMilestoneLabel] = useState('')
   const [newMilestoneDate, setNewMilestoneDate] = useState('')
 
@@ -264,14 +335,11 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
     persist(next)
   }
 
-  async function persist(nextItems: ChecklistItem[]) {
+  function persist(nextItems: ChecklistItem[]) {
     if (!user) return
-    setSaving(true)
-    try {
+    void checklistSalvo.salvar(async () => {
       await api.put(`/api/tenders/${id}/checklist`, { items: nextItems })
-    } finally {
-      setSaving(false)
-    }
+    })
   }
 
   function toggleItem(itemId: string) {
@@ -304,17 +372,30 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
     persist(next)
   }
 
-  async function persistPlan(nextStatus: ParticipationStatus, nextMilestones: PlanMilestone[]) {
+  function persistPlan(nextStatus: ParticipationStatus, nextMilestones: PlanMilestone[]) {
     if (!user) return
-    setPlanSaving(true)
-    try {
+    void planoSalvo.salvar(async () => {
       const result = await api.put<ParticipationPlan>(`/api/tenders/${id}/plano`, {
         status: nextStatus,
         milestones: nextMilestones,
       })
       setPlan(result)
+    })
+  }
+
+  async function escolherLicitacao() {
+    if (!user) return
+    setEscolhendo(true)
+    try {
+      const result = await api.patch<ParticipationPlan>(`/api/tenders/${id}/plano/status`, { status: 'VOU_PARTICIPAR' })
+      setPlan(result)
+    } catch (err) {
+      void avisar({
+        titulo: 'Não foi possível escolher a licitação',
+        mensagem: err instanceof ApiRequestError ? err.message : 'Verifique a conexão e tente de novo.',
+      })
     } finally {
-      setPlanSaving(false)
+      setEscolhendo(false)
     }
   }
 
@@ -387,6 +468,8 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
   const local = tender.municipio ? `${tender.municipio}/${tender.uf ?? ''}` : tender.uf
   const cnpj = cnpjDoProcesso(tender.numeroControle)
   const linkEdital = safeHttpUrl(tender.linkEdital)
+  const escolhida = plan?.status === 'VOU_PARTICIPAR'
+  const analiseBloqueada = medida?.esgotado === true
 
   const abas: Aba<TabId>[] = [
     { id: 'informacoes', label: 'Informações' },
@@ -451,12 +534,26 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
           </>
         }
         actions={
-          linkEdital && (
-            <a href={linkEdital} target="_blank" rel="noopener noreferrer" className={buttonClasses('secondary', 'md')}>
-              Ver edital original
-              <ExternalLink size={16} aria-hidden />
-            </a>
-          )
+          <>
+            {linkEdital && (
+              <a href={linkEdital} target="_blank" rel="noopener noreferrer" className={buttonClasses('secondary', 'md')}>
+                Ver edital original
+                <ExternalLink size={16} aria-hidden />
+              </a>
+            )}
+            {escolhida ? (
+              <>
+                <StatusTag tone="accent">Escolhida</StatusTag>
+                <LinkButton href={`/escolhidas/${id}`} variant="secondary" icon={Calculator}>
+                  Estudo de custos
+                </LinkButton>
+              </>
+            ) : (
+              <Button variant="primary" icon={CheckCircle2} loading={escolhendo} onClick={escolherLicitacao}>
+                Escolher esta licitação
+              </Button>
+            )}
+          </>
         }
       />
 
@@ -500,10 +597,19 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
               )}
 
               <Panel>
-                <details className="text-sm">
-                  <summary className="cursor-pointer font-medium text-ink-2 hover:text-ink">Objeto completo</summary>
-                  <p className="mt-3 whitespace-pre-wrap text-base leading-relaxed text-ink-2">{tender.objeto}</p>
-                </details>
+                <button
+                  type="button"
+                  onClick={() => setObjetoAberto((v) => !v)}
+                  aria-expanded={objetoAberto}
+                  aria-controls="objeto-completo"
+                  className="inline-flex items-center gap-1.5 rounded text-sm font-medium text-ink-2 hover:text-ink"
+                >
+                  {objetoAberto ? <ChevronUp size={16} aria-hidden /> : <ChevronDown size={16} aria-hidden />}
+                  Objeto completo
+                </button>
+                <p id="objeto-completo" hidden={!objetoAberto} className="mt-3 whitespace-pre-wrap text-base leading-relaxed text-ink-2">
+                  {tender.objeto}
+                </p>
               </Panel>
             </div>
           )}
@@ -588,11 +694,18 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
                     até 30 segundos.
                   </p>
                   <MedidorDeAnalises className="w-full max-w-sm" />
+                  {analiseBloqueada && medida && (
+                    <div id="motivo-analise-bloqueada" className="w-full max-w-prose">
+                      <Notice tone="warn" title="Análise indisponível no momento">
+                        {motivoDoBloqueio(medida)}
+                      </Notice>
+                    </div>
+                  )}
                   <Button
                     variant="primary"
                     onClick={() => runAnalysis(false)}
-                    disabled={medida?.esgotado === true}
-                    title={medida?.esgotado ? 'Você atingiu o limite de análises do plano neste mês.' : undefined}
+                    disabled={analiseBloqueada}
+                    aria-describedby={analiseBloqueada ? 'motivo-analise-bloqueada' : undefined}
                   >
                     Analisar edital{medida && medida.restantes !== null && !medida.esgotado ? ` (usa 1 de ${medida.restantes})` : ''}
                   </Button>
@@ -715,12 +828,15 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
                     Baseado no guia de habilitação da Lei 14.133/2021. Personalize adicionando os documentos específicos exigidos neste edital.
                   </p>
                 </div>
-                <span role="status" className="text-sm text-muted">
-                  <Mono>
-                    {done}/{total}
-                  </Mono>{' '}
-                  documentos{saving && ' · salvando…'}
-                </span>
+                <div className="flex flex-col items-end gap-0.5">
+                  <span className="text-sm text-muted">
+                    <Mono>
+                      {done}/{total}
+                    </Mono>{' '}
+                    documentos
+                  </span>
+                  <AvisoDeSalvamento estado={checklistSalvo.estado} erro={checklistSalvo.erro} />
+                </div>
               </div>
 
               {groupBySection(items).map(([section, sectionItems]) => (
@@ -769,7 +885,7 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
           )}
 
           {activeTab === 'plano' && (
-            <Panel title="Plano de participação" actions={planSaving && <span className="text-xs text-muted">salvando…</span>}>
+            <Panel title="Plano de participação" actions={<AvisoDeSalvamento estado={planoSalvo.estado} erro={planoSalvo.erro} />}>
               {!plan ? (
                 <Carregando />
               ) : (

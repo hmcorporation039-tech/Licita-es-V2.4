@@ -1,5 +1,5 @@
 import { ExternalLink, TriangleAlert } from 'lucide-react'
-import { PageHeader, TextLink } from '@/components/ui'
+import { PageHeader, TextLink, cx } from '@/components/ui'
 
 const PLATAFORMAS = [
   {
@@ -60,10 +60,11 @@ const PLATAFORMAS = [
   },
 ]
 
-const DISPENSA_PASSOS = [
+const DISPENSA_PASSOS: { titulo: string; texto: string; link?: string }[] = [
   {
     titulo: 'Acessar o portal do Comprasnet',
-    texto: 'cnetmobile.estaleiro.serpro.gov.br/comprasnet-web/public/compras',
+    texto: 'Área pública de compras do Comprasnet, sem login:',
+    link: 'https://cnetmobile.estaleiro.serpro.gov.br/comprasnet-web/public/compras',
   },
   {
     titulo: 'Definir os parâmetros de pesquisa',
@@ -108,6 +109,24 @@ const ERROS_COMUNS = [
       'Empresas ME/EPP têm prioridade em empate ficto (até 5% acima da melhor proposta) e, em muitos casos, exclusividade até R$ 80 mil — confirme o enquadramento antes da estratégia.',
   },
 ]
+
+function LinkExterno({ href, rotulo, className }: { href: string; rotulo: string; className?: string }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={cx(
+        'inline-flex max-w-full items-center gap-1 self-start break-words font-mono text-accent underline decoration-accent-line underline-offset-[3px] hover:decoration-accent',
+        className,
+      )}
+    >
+      <span className="min-w-0 break-words">{rotulo}</span>
+      <ExternalLink size={12} className="shrink-0" aria-hidden />
+      <span className="sr-only"> (abre em nova aba)</span>
+    </a>
+  )
+}
 
 export default function GuiaPage() {
   return (
@@ -155,7 +174,8 @@ export default function GuiaPage() {
                     <span className="sr-only">{i + 1}. </span>
                     {p.titulo}
                   </p>
-                  <p className={i === 0 ? 'break-all font-mono text-sm' : undefined}>{p.texto}</p>
+                  <p>{p.texto}</p>
+                  {p.link && <LinkExterno href={p.link} rotulo={new URL(p.link).hostname} className="text-sm" />}
                 </div>
               </li>
             ))}
@@ -175,16 +195,7 @@ export default function GuiaPage() {
               <li key={p.nome} className="flex flex-col gap-2 px-4 py-4">
                 <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
                   <h3 className="font-semibold text-ink">{p.nome}</h3>
-                  <a
-                    href={p.site}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex shrink-0 items-center gap-1 self-start break-all font-mono text-xs text-accent underline decoration-accent-line underline-offset-[3px] hover:decoration-accent"
-                  >
-                    {p.site.replace('https://', '')}
-                    <ExternalLink size={12} aria-hidden />
-                    <span className="sr-only"> (abre em nova aba)</span>
-                  </a>
+                  <LinkExterno href={p.site} rotulo={p.site.replace('https://', '')} className="shrink-0 text-xs" />
                 </div>
                 <dl className="flex flex-col gap-1.5 text-sm">
                   <div className="flex flex-col gap-0.5 sm:flex-row sm:gap-3">

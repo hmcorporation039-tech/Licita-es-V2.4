@@ -1,8 +1,9 @@
 'use client'
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
-import AdminShell from '@/components/AdminShell'
+import AdminShell, { RotuloDoPlano, useNomesDosPlanos } from '@/components/AdminShell'
 import { api, ApiRequestError } from '@/lib/api'
+import { formatarData } from '@/lib/datas'
 import type { UsoIaResposta } from '@/lib/adminTypes'
 import { Carregando, ErrorState, Metric, MetricRow, StatusTag, Table, TableWrap, Td, THead, Th, Tr } from '@/components/ui'
 
@@ -54,6 +55,7 @@ function CelulasDeConsumo({ chamadas, tokensEntrada, tokensSaida, custoEstimadoU
 function Conteudo() {
   const [d, setD] = useState<UsoIaResposta | null>(null)
   const [erro, setErro] = useState<string | null>(null)
+  const nomesDosPlanos = useNomesDosPlanos()
 
   const carregar = useCallback(() => {
     api
@@ -84,7 +86,7 @@ function Conteudo() {
         titulo="Mês corrente"
         descricao={
           <>
-            Desde <span className="font-mono">{new Date(d.periodo.de).toLocaleDateString('pt-BR')}</span>.
+            Desde <span className="font-mono">{formatarData(d.periodo.de)}</span>.
           </>
         }
       >
@@ -113,7 +115,7 @@ function Conteudo() {
                 {d.porEmpresa.map((e) => (
                   <Tr key={e.companyId ?? 'sem'}>
                     <Td>{e.empresa}</Td>
-                    <Td>{e.planCode ? <StatusTag mono>{e.planCode}</StatusTag> : <span className="text-faint">—</span>}</Td>
+                    <Td>{e.planCode ? <RotuloDoPlano codigo={e.planCode} nome={nomesDosPlanos[e.planCode]} /> : <span className="text-faint">—</span>}</Td>
                     <CelulasDeConsumo {...e} />
                   </Tr>
                 ))}
@@ -198,7 +200,7 @@ function Conteudo() {
               <tbody>
                 {d.recentes.map((r) => (
                   <Tr key={r.id}>
-                    <Td className="whitespace-nowrap font-mono text-xs text-muted">{new Date(r.createdAt).toLocaleString('pt-BR')}</Td>
+                    <Td className="whitespace-nowrap font-mono text-xs text-muted">{formatarData(r.createdAt, { comHora: true })}</Td>
                     <Td className="font-mono text-xs text-ink-2">
                       {r.provider}/{r.model}
                     </Td>

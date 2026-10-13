@@ -41,8 +41,6 @@ function Conteudo() {
 
   const totalDeAnalises = Object.values(ov.analises).reduce((a, b) => a + b, 0)
   const analises = Object.entries(ov.analises)
-    .map(([s, n]) => `${nf.format(n)} ${s}`)
-    .join(' · ')
 
   return (
     <div className="flex flex-col gap-6">
@@ -55,14 +53,22 @@ function Conteudo() {
           <Metric
             label="Usuários"
             value={nf.format(ov.usuarios)}
-            detail={<span className="font-mono">{nf.format(ov.usuariosAtivos)} ativos</span>}
+            detail={
+              <>
+                <span className="font-mono">{nf.format(ov.usuariosAtivos)}</span> ativos
+              </>
+            }
             href="/admin/usuarios"
           />
           <Metric label="Licitações coletadas" value={nf.format(ov.licitacoes)} />
           <Metric
             label="Itens monitorados"
             value={nf.format(ov.itensMonitorados)}
-            detail={<span className="font-mono">{nf.format(ov.documentosNoCofre)} documentos no cofre</span>}
+            detail={
+              <>
+                <span className="font-mono">{nf.format(ov.documentosNoCofre)}</span> documentos no cofre
+              </>
+            }
           />
         </MetricRow>
       </section>
@@ -76,17 +82,32 @@ function Conteudo() {
             label="Chamadas de IA no mês"
             value={nf.format(ov.iaNoMes.chamadas)}
             detail={
-              <span className="font-mono">
-                {nf.format(ov.iaNoMes.tokensEntrada)} in · {nf.format(ov.iaNoMes.tokensSaida)} out
-                {ov.iaNoMes.custoEstimadoUsd ? ` · ~US$ ${ov.iaNoMes.custoEstimadoUsd.toFixed(2)}` : ''}
-              </span>
+              <>
+                <span className="font-mono">{nf.format(ov.iaNoMes.tokensEntrada)}</span> tokens de entrada ·{' '}
+                <span className="font-mono">{nf.format(ov.iaNoMes.tokensSaida)}</span> de saída
+                {ov.iaNoMes.custoEstimadoUsd ? (
+                  <>
+                    {' '}
+                    · <span className="font-mono">~US$ {ov.iaNoMes.custoEstimadoUsd.toFixed(2)}</span>
+                  </>
+                ) : null}
+              </>
             }
             href="/admin/uso-ia"
           />
           <Metric
             label="Análises de edital"
             value={nf.format(totalDeAnalises)}
-            detail={analises ? <span className="font-mono">{analises}</span> : 'nenhuma ainda'}
+            detail={
+              analises.length > 0
+                ? analises.map(([situacao, n], i) => (
+                    <span key={situacao}>
+                      {i > 0 && ' · '}
+                      <span className="font-mono">{nf.format(n)}</span> {situacao.replace(/_/g, ' ').toLowerCase()}
+                    </span>
+                  ))
+                : 'nenhuma ainda'
+            }
           />
           <Metric label="Auditoria (24 h)" value={nf.format(ov.eventosDeAuditoriaUltimas24h)} detail="eventos registrados" href="/admin/auditoria" />
         </MetricRow>

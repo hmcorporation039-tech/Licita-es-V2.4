@@ -94,7 +94,7 @@ export default function UasgPicker({
           aria-describedby={descritoPor}
           aria-label={id ? undefined : 'Buscar UASG por nome, órgão ou código'}
           autoComplete="off"
-          placeholder="Buscar UASG por nome, órgão ou código (opcional — só afeta licitações do ComprasNet)"
+          placeholder="Nome, órgão ou código"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={aoTeclar}

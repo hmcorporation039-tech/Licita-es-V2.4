@@ -21,7 +21,7 @@ interface PlanosResposta {
   planos: PlanoPublico[]
 }
 
-const limite = (v: number | null) => (v === null ? 'Ilimitado' : String(v))
+const limite = (v: number | null) => (v === null ? <span className="font-sans">Ilimitado</span> : String(v))
 const brl = (centavos: number) => (centavos / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
 const HORA = 60 * 60 * 1000
@@ -124,10 +124,10 @@ function PreviaDaLista() {
         <Table className="table-fixed">
           <THead>
             <tr>
-              <Th className="w-[118px]">Prazo</Th>
+              <Th className="w-[136px]">Prazo</Th>
               <Th>Objeto</Th>
-              <Th className="hidden w-[108px] sm:table-cell">Fonte</Th>
-              <Th align="right" className="hidden w-[136px] sm:table-cell">
+              <Th className="hidden w-[124px] sm:table-cell">Fonte</Th>
+              <Th align="right" className="hidden w-[152px] sm:table-cell">
                 Valor estimado
               </Th>
             </tr>
@@ -154,7 +154,7 @@ function PreviaDaLista() {
                   </p>
                 </Td>
                 <Td className="hidden sm:table-cell">
-                  <StatusTag mono>{e.fonte}</StatusTag>
+                  <StatusTag title={e.fonte}>{e.fonte}</StatusTag>
                 </Td>
                 <Td numeric className="hidden sm:table-cell">
                   {e.valor}
@@ -250,7 +250,7 @@ export default function Home() {
           <ul className="flex flex-wrap gap-2">
             {FONTES.map((f) => (
               <li key={f}>
-                <StatusTag mono>{f}</StatusTag>
+                <StatusTag>{f}</StatusTag>
               </li>
             ))}
           </ul>
@@ -287,7 +287,7 @@ export default function Home() {
                         {p.descricao && <p className="text-xs text-muted">{p.descricao}</p>}
                       </Td>
                       <Td numeric>
-                        {p.codigo === 'TESTE' ? 'Grátis' : p.precoMensalCentavos ? `${brl(p.precoMensalCentavos)}/mês` : <span className="font-sans text-muted">Em breve</span>}
+                        {p.codigo === 'TESTE' ? <span className="font-sans">Grátis</span> : p.precoMensalCentavos ? `${brl(p.precoMensalCentavos)}/mês` : <span className="font-sans text-muted">Em breve</span>}
                       </Td>
                       <Td numeric>{limite(p.limites.itensMonitorados)}</Td>
                       <Td numeric>{limite(p.limites.usuarios)}</Td>

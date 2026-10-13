@@ -1,5 +1,6 @@
 'use client'
 
+import { formatarData } from '@/lib/datas'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { FilePlus, Pause, Play, Save, Trash2, UserPlus, UserRoundCog } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
@@ -61,8 +62,24 @@ const SECOES_DE_DOCUMENTO = DOCUMENT_TYPE_OPTIONS.reduce<{ secao: string; opcoes
 }, [])
 
 function formatData(v: string | null) {
-  if (!v) return '—'
-  return new Date(v).toLocaleDateString('pt-BR')
+  return formatarData(v)
+}
+
+function formatarTelefone(valor: string): string {
+  const d = valor.replace(/\D/g, '').slice(0, 11)
+  if (d.length === 0) return ''
+  if (d.length <= 2) return `(${d}`
+  const ddd = d.slice(0, 2)
+  const resto = d.slice(2)
+  if (resto.length <= 4) return `(${ddd}) ${resto}`
+  const meio = resto.length === 9 ? 5 : 4
+  return `(${ddd}) ${resto.slice(0, meio)}-${resto.slice(meio)}`
+}
+
+function telefoneParaExibir(valor: string | null): string {
+  if (!valor) return ''
+  const digitos = valor.replace(/\D/g, '').length
+  return digitos === 10 || digitos === 11 ? formatarTelefone(valor) : valor
 }
 
 function Secao({ titulo, children }: { titulo: string; children: ReactNode }) {
@@ -135,7 +152,7 @@ export default function EmpresaPage() {
       setDocumento(data.tipo === 'PESSOA_JURIDICA' ? (data.cnpj ?? '') : (data.cpf ?? ''))
       setDocumentoTravado(!!(data.cnpj || data.cpf))
       setCompanyEmail(data.email ?? '')
-      setTelefone(data.telefone ?? '')
+      setTelefone(telefoneParaExibir(data.telefone))
       setResponsavel(data.responsavel ?? '')
       setEndereco(data.endereco ?? '')
       setCep(data.cep ?? '')
@@ -195,12 +212,11 @@ export default function EmpresaPage() {
     if (formatado.replace(/\D/g, '').length !== 8) return
     setBuscandoCep(true)
     try {
-      const r = await api.get<{ logradouro: string; complemento: string; bairro: string; cidade: string; uf: string }>(`/api/company/cep/${formatado.replace(/\D/g, '')}`)
+      const r = await api.get<{ logradouro: string; bairro: string; cidade: string; uf: string }>(`/api/company/cep/${formatado.replace(/\D/g, '')}`)
       setEndereco(r.logradouro)
       setBairro(r.bairro)
       setCidade(r.cidade)
       setUf(r.uf)
-      if (r.complemento) setComplemento(r.complemento)
       if (!baseMunicipio.trim() && !baseUf.trim()) {
         setBaseMunicipio(r.cidade)
         setBaseUf(r.uf)
@@ -348,7 +364,7 @@ export default function EmpresaPage() {
       <PageHeader title="Empresa" description="Dados cadastrais, documentos de habilitação e usuários com acesso." />
 
       {error && <Notice tone="danger">{error}</Notice>}
-      {info && <Notice tone="ok">{info}</Notice>}
+      {info && <Notice tone="info">{info}</Notice>}
 
       <Panel title="Dados da empresa" description={souOwner ? undefined : 'Só o dono da empresa altera estes dados.'}>
         <form onSubmit={salvarEmpresa} className="flex flex-col gap-6">
@@ -373,7 +389,16 @@ export default function EmpresaPage() {
                 <Input type="email" value={companyEmail} onChange={(e) => setCompanyEmail(e.target.value)} disabled={!souOwner} />
               </Field>
               <Field label="Telefone" hint="Opcional.">
-                <Input type="tel" className="font-mono" value={telefone} onChange={(e) => setTelefone(e.target.value)} disabled={!souOwner} />
+                <Input
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel-national"
+                  placeholder="(00) 00000-0000"
+                  className="font-mono"
+                  value={telefone}
+                  onChange={(e) => setTelefone(formatarTelefone(e.target.value))}
+                  disabled={!souOwner}
+                />
               </Field>
               <Field label="Responsável" hint="Opcional.">
                 <Input value={responsavel} onChange={(e) => setResponsavel(e.target.value)} disabled={!souOwner} />
@@ -441,51 +466,74 @@ export default function EmpresaPage() {
           ) : docs.length === 0 ? (
             <EmptyState title="Nenhum documento cadastrado ainda" description="Cadastre abaixo as certidões e documentos que a empresa já tem." />
           ) : (
-            <TableWrap minWidth={640}>
-              <Table>
-                <THead>
-                  <tr>
-                    <Th>Documento</Th>
-                    <Th align="right">Emissão</Th>
-                    <Th align="right">Validade</Th>
-                    <Th>Situação</Th>
-                    <Th>
-                      <span className="sr-only">Ações</span>
-                    </Th>
-                  </tr>
-                </THead>
-                <tbody>
-                  {docs.map((doc) => {
-                    const status = validadeStatus(doc.dataValidade)
-                    return (
-                      <Tr key={doc.id}>
-                        <Td>
-                          <p className="font-medium text-ink">{doc.nome}</p>
-                          <p className="text-xs text-muted">{documentTypeLabel(doc.tipo) ?? 'Avulso'}</p>
-                          {doc.observacao && <p className="mt-0.5 text-xs text-faint">{doc.observacao}</p>}
-                        </Td>
-                        <Td numeric muted>
-                          {formatData(doc.dataEmissao)}
-                        </Td>
-                        <Td numeric>{formatData(doc.dataValidade)}</Td>
-                        <Td>
+            <>
+              <ul className="flex flex-col divide-y divide-line-soft rounded border border-line sm:hidden">
+                {docs.map((doc) => {
+                  const status = validadeStatus(doc.dataValidade)
+                  return (
+                    <li key={doc.id} className="flex items-start gap-3 px-3 py-3">
+                      <div className="flex min-w-0 flex-1 flex-col gap-1">
+                        <p className="break-words text-sm font-medium text-ink">{doc.nome}</p>
+                        <p className="text-xs text-muted">{documentTypeLabel(doc.tipo) ?? 'Avulso'}</p>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <span className="text-xs text-muted">
+                            Validade <span className="font-mono text-ink-2">{formatData(doc.dataValidade)}</span>
+                          </span>
                           <StatusTag tone={STATUS_TOM[status]}>{STATUS_LABEL[status]}</StatusTag>
-                        </Td>
-                        <Td className="w-px text-right">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            icon={Trash2}
-                            aria-label={`Remover ${doc.nome}`}
-                            onClick={() => removerDocumento(doc.id)}
-                          />
-                        </Td>
-                      </Tr>
-                    )
-                  })}
-                </tbody>
-              </Table>
-            </TableWrap>
+                        </div>
+                        {doc.observacao && <p className="text-xs text-faint">{doc.observacao}</p>}
+                      </div>
+                      <Button size="sm" variant="ghost" icon={Trash2} aria-label={`Remover ${doc.nome}`} onClick={() => removerDocumento(doc.id)} />
+                    </li>
+                  )
+                })}
+              </ul>
+              <TableWrap minWidth={640} className="hidden sm:block">
+                <Table>
+                  <THead>
+                    <tr>
+                      <Th>Documento</Th>
+                      <Th align="right">Emissão</Th>
+                      <Th align="right">Validade</Th>
+                      <Th>Situação</Th>
+                      <Th>
+                        <span className="sr-only">Ações</span>
+                      </Th>
+                    </tr>
+                  </THead>
+                  <tbody>
+                    {docs.map((doc) => {
+                      const status = validadeStatus(doc.dataValidade)
+                      return (
+                        <Tr key={doc.id}>
+                          <Td>
+                            <p className="font-medium text-ink">{doc.nome}</p>
+                            <p className="text-xs text-muted">{documentTypeLabel(doc.tipo) ?? 'Avulso'}</p>
+                            {doc.observacao && <p className="mt-0.5 text-xs text-faint">{doc.observacao}</p>}
+                          </Td>
+                          <Td numeric muted>
+                            {formatData(doc.dataEmissao)}
+                          </Td>
+                          <Td numeric>{formatData(doc.dataValidade)}</Td>
+                          <Td>
+                            <StatusTag tone={STATUS_TOM[status]}>{STATUS_LABEL[status]}</StatusTag>
+                          </Td>
+                          <Td className="w-px text-right">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              icon={Trash2}
+                              aria-label={`Remover ${doc.nome}`}
+                              onClick={() => removerDocumento(doc.id)}
+                            />
+                          </Td>
+                        </Tr>
+                      )
+                    })}
+                  </tbody>
+                </Table>
+              </TableWrap>
+            </>
           )}
 
           <form onSubmit={criarDocumento} className="flex flex-col gap-4 border-t border-line-soft pt-4">
@@ -545,28 +593,36 @@ export default function EmpresaPage() {
                 </tr>
               </THead>
               <tbody>
-                {company.users.map((m) => (
-                  <Tr key={m.id}>
-                    <Td>
-                      <p className="font-medium text-ink">{m.email}</p>
-                      <p className="text-xs text-muted">{m.name ?? 'sem nome'}</p>
-                    </Td>
-                    <Td className="text-ink-2">{m.companyRole === 'OWNER' ? 'Dono' : 'Membro'}</Td>
-                    <Td>{m.active ? <StatusTag>Ativo</StatusTag> : <StatusTag tone="danger">Desativado</StatusTag>}</Td>
-                    {souOwner && (
-                      <Td className="text-right">
-                        <div className="flex justify-end gap-1.5">
-                          <Button size="sm" variant="ghost" icon={UserRoundCog} onClick={() => alternarPapel(m)}>
-                            {m.companyRole === 'OWNER' ? 'Tornar membro' : 'Tornar dono'}
-                          </Button>
-                          <Button size="sm" variant="ghost" icon={m.active ? Pause : Play} onClick={() => alternarAtivo(m)}>
-                            {m.active ? 'Desativar' : 'Ativar'}
-                          </Button>
-                        </div>
+                {company.users.map((m) => {
+                  const souEu = m.id === user.id
+                  return (
+                    <Tr key={m.id}>
+                      <Td>
+                        <p className="flex flex-wrap items-center gap-2 font-medium text-ink">
+                          <span className="min-w-0 break-all">{m.email}</span>
+                          {souEu && <StatusTag tone="accent">Você</StatusTag>}
+                        </p>
+                        <p className="text-xs text-muted">{m.name ?? 'sem nome'}</p>
                       </Td>
-                    )}
-                  </Tr>
-                ))}
+                      <Td className="text-ink-2">{m.companyRole === 'OWNER' ? 'Dono' : 'Membro'}</Td>
+                      <Td>{m.active ? <StatusTag>Ativo</StatusTag> : <StatusTag tone="danger">Desativado</StatusTag>}</Td>
+                      {souOwner && (
+                        <Td className="text-right">
+                          {!souEu && (
+                            <div className="flex justify-end gap-1.5">
+                              <Button size="sm" variant="ghost" icon={UserRoundCog} onClick={() => alternarPapel(m)}>
+                                {m.companyRole === 'OWNER' ? 'Tornar membro' : 'Tornar dono'}
+                              </Button>
+                              <Button size="sm" variant="ghost" icon={m.active ? Pause : Play} onClick={() => alternarAtivo(m)}>
+                                {m.active ? 'Desativar' : 'Ativar'}
+                              </Button>
+                            </div>
+                          )}
+                        </Td>
+                      )}
+                    </Tr>
+                  )
+                })}
               </tbody>
             </Table>
           </TableWrap>

@@ -1,12 +1,13 @@
 'use client'
 
+import { formatarData } from '@/lib/datas'
 import Link from 'next/link'
 import { use, useCallback, useEffect, useState, type ReactNode } from 'react'
 import { ArrowLeft, ArrowRight, ShieldCheck } from 'lucide-react'
-import AdminShell from '@/components/AdminShell'
+import AdminShell, { RotuloDoPlano } from '@/components/AdminShell'
 import { api, ApiRequestError } from '@/lib/api'
 import { ROTULO_ACAO } from '@/lib/adminTypes'
-import type { DetalheEmpresa, Limites, PlanoComercial } from '@/lib/adminTypes'
+import type { DetalheEmpresa, Limites, PlanoComercial, RecursoDoPlano } from '@/lib/adminTypes'
 import {
   Button,
   Carregando,
@@ -28,11 +29,31 @@ import {
   THead,
   Th,
   Tr,
+  cx,
 } from '@/components/ui'
 
-const data = (v: string | null) => (v ? new Date(v).toLocaleDateString('pt-BR') : '—')
-const dataHora = (v: string) => new Date(v).toLocaleString('pt-BR')
+const data = (v: string | null) => formatarData(v)
+const dataHora = (v: string) => formatarData(v, { comHora: true })
 const nf = new Intl.NumberFormat('pt-BR')
+const ehNumero = (v: string | undefined) => /^\d+$/.test((v ?? '').trim())
+
+function situacaoDaCota(r: RecursoDoPlano): 'excedido' | 'atingido' | null {
+  if (r.limite === null) return null
+  if (r.usado > r.limite) return 'excedido'
+  if (r.usado === r.limite) return 'atingido'
+  return null
+}
+
+function DetalheDaCota({ r }: { r: RecursoDoPlano }) {
+  if (r.limite === null) return <>sem limite</>
+  const situacao = situacaoDaCota(r)
+  return (
+    <>
+      de <span className="font-mono">{nf.format(r.limite)}</span>
+      {situacao && ` · ${situacao}`}
+    </>
+  )
+}
 
 export default function AdminEmpresaDetalhePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -148,7 +169,10 @@ function Conteudo({ id }: { id: string }) {
           Empresas
         </Link>
         <div className="flex flex-col gap-1">
-          <h2 className="text-xl font-semibold text-ink">{e.name}</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-xl font-semibold text-ink">{e.name}</h2>
+            <RotuloDoPlano codigo={d.cotas.plano.codigo} nome={d.cotas.plano.nome} />
+          </div>
           <p className="inline-flex items-center gap-1.5 text-xs text-muted">
             <ShieldCheck size={14} aria-hidden />
             Esta consulta foi registrada na trilha de auditoria.
@@ -160,9 +184,9 @@ function Conteudo({ id }: { id: string }) {
         <DescriptionList
           columns={4}
           items={[
-            { label: 'Documento', value: e.cnpj ?? e.cpf ?? 'sem documento', mono: true },
-            { label: 'E-mail', value: e.email ?? 'sem e-mail', mono: Boolean(e.email) },
-            { label: 'Telefone', value: e.telefone, mono: true },
+            { label: 'Documento', value: e.cnpj ?? e.cpf ?? 'sem documento', mono: Boolean(e.cnpj ?? e.cpf) },
+            { label: 'E-mail', value: e.email ?? 'sem e-mail' },
+            { label: 'Telefone', value: e.telefone, mono: Boolean(e.telefone) },
             { label: 'Responsável', value: e.responsavel },
             { label: 'Criada em', value: data(e.createdAt), mono: true },
           ]}
@@ -194,7 +218,7 @@ function Conteudo({ id }: { id: string }) {
                   value={ajustes[c.chave] ?? ''}
                   onChange={(ev) => setAjustes({ ...ajustes, [c.chave]: ev.target.value })}
                   placeholder="vale o plano"
-                  className="font-mono"
+                  className={cx(ehNumero(ajustes[c.chave]) && 'font-mono')}
                 />
               </Field>
             ))}
@@ -207,15 +231,18 @@ function Conteudo({ id }: { id: string }) {
           {erro && <Notice tone="danger">{erro}</Notice>}
 
           <MetricRow>
-            {d.cotas.recursos.map((r) => (
-              <Metric
-                key={r.recurso}
-                label={<span className="capitalize">{r.rotulo}</span>}
-                value={nf.format(r.usado)}
-                detail={r.limite === null ? 'sem limite' : <span className="font-mono">de {nf.format(r.limite)}{r.excedido ? ' · excedido' : ''}</span>}
-                tone={r.excedido ? 'danger' : 'default'}
-              />
-            ))}
+            {d.cotas.recursos.map((r) => {
+              const situacao = situacaoDaCota(r)
+              return (
+                <Metric
+                  key={r.recurso}
+                  label={<span className="capitalize">{r.rotulo}</span>}
+                  value={nf.format(r.usado)}
+                  detail={<DetalheDaCota r={r} />}
+                  tone={situacao === 'excedido' ? 'danger' : situacao === 'atingido' ? 'warn' : 'default'}
+                />
+              )
+            })}
           </MetricRow>
 
           <p className="text-xs text-muted">
@@ -251,8 +278,8 @@ function Conteudo({ id }: { id: string }) {
                   <Tr key={u.id}>
                     <Td>
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="font-mono text-xs text-ink">{u.email}</span>
-                        {u.isAdmin && <StatusTag mono>admin</StatusTag>}
+                        <span className="text-sm text-ink">{u.email}</span>
+                        {u.isAdmin && <StatusTag>Admin</StatusTag>}
                       </div>
                     </Td>
                     <Td>{u.companyRole === 'OWNER' ? 'Dono' : 'Membro'}</Td>
@@ -266,7 +293,7 @@ function Conteudo({ id }: { id: string }) {
                       )}
                     </Td>
                     <Td numeric muted>
-                      {u.accessExpiresAt ? data(u.accessExpiresAt) : 'sem prazo'}
+                      {u.accessExpiresAt ? data(u.accessExpiresAt) : <span className="font-sans">sem prazo</span>}
                     </Td>
                   </Tr>
                 ))}
@@ -305,7 +332,7 @@ function Conteudo({ id }: { id: string }) {
                     <Td muted className="text-xs">
                       {[...i.keywords, ...i.catmatCodes.map((c) => `CATMAT ${c}`), ...i.catserCodes.map((c) => `CATSER ${c}`)].slice(0, 6).join(', ')}
                     </Td>
-                    <Td className="font-mono text-xs">{i.ufs.length ? i.ufs.join('/') : 'nacional'}</Td>
+                    <Td className={cx('text-xs', i.ufs.length > 0 && 'font-mono')}>{i.ufs.length ? i.ufs.join('/') : 'nacional'}</Td>
                     <Td>
                       <StatusTag>{i.active ? 'ativo' : 'inativo'}</StatusTag>
                     </Td>
@@ -412,7 +439,7 @@ function Conteudo({ id }: { id: string }) {
                   <Tr key={ev.id}>
                     <Td className="whitespace-nowrap font-mono text-xs text-muted">{dataHora(ev.createdAt)}</Td>
                     <Td>{ROTULO_ACAO[ev.action] ?? ev.action}</Td>
-                    <Td className="font-mono text-xs text-muted">{ev.actorEmail ?? 'sistema'}</Td>
+                    <Td className="text-xs text-muted">{ev.actorEmail ?? 'sistema'}</Td>
                   </Tr>
                 ))}
               </tbody>

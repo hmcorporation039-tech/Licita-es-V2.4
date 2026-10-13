@@ -6,6 +6,7 @@ import { ChevronDown, ChevronUp, Download } from 'lucide-react'
 import AdminShell from '@/components/AdminShell'
 import { api, ApiRequestError } from '@/lib/api'
 import { getSessionToken } from '@/lib/session'
+import { formatarData } from '@/lib/datas'
 import { ROTULO_ACAO } from '@/lib/adminTypes'
 import type { EventoAuditoria } from '@/lib/adminTypes'
 import { Button, Carregando, EmptyState, ErrorState, Field, Input, Notice, Select, StatusTag, Table, TableWrap, Td, THead, Th, Tr } from '@/components/ui'
@@ -116,7 +117,7 @@ function Conteudo() {
           </Select>
         </Field>
         <Field label="Quem (e-mail)">
-          <Input type="search" value={ator} onChange={(e) => setAtor(e.target.value)} className="font-mono" />
+          <Input type="search" value={ator} onChange={(e) => setAtor(e.target.value)} />
         </Field>
         <Field label="ID da empresa">
           <Input type="search" value={empresa} onChange={(e) => setEmpresa(e.target.value)} spellCheck={false} className="font-mono" />
@@ -172,8 +173,8 @@ function Conteudo() {
                 return (
                   <Fragment key={ev.id}>
                     <Tr selected={expandido} className="align-top">
-                      <Td className="whitespace-nowrap py-2 font-mono text-xs text-muted">{new Date(ev.createdAt).toLocaleString('pt-BR')}</Td>
-                      <Td className="py-2 font-mono text-xs">{ev.actorEmail ?? <span className="text-faint">—</span>}</Td>
+                      <Td className="whitespace-nowrap py-2 font-mono text-xs text-muted">{formatarData(ev.createdAt, { comHora: true })}</Td>
+                      <Td className="py-2 text-xs">{ev.actorEmail ?? <span className="text-faint">—</span>}</Td>
                       <Td className="py-2">
                         <div className="flex flex-col items-start gap-1">
                           <span className={ACOES_DE_RISCO.has(ev.action) ? 'font-medium text-danger' : 'text-ink'}>{rotulo ?? ev.action}</span>

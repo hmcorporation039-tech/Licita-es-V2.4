@@ -36,8 +36,13 @@ const mapData = brazil as BrazilMapData
 
 const COR: Record<Urgencia, string> = {
   urgente: 'var(--color-danger)',
-  andamento: 'var(--color-indigo-600)',
+  andamento: 'var(--color-warn)',
   selecionada: 'var(--color-indigo-300)',
+}
+const TEXTO_DO_PRAZO: Record<Urgencia, string> = {
+  urgente: 'font-medium text-danger',
+  andamento: 'font-medium text-warn',
+  selecionada: 'text-faint',
 }
 const COR_VAZIO = 'var(--color-line-soft)'
 const COR_BORDA = 'var(--color-line-strong)'
@@ -81,7 +86,7 @@ export default function BrazilMap({ estados }: { estados: EstadoMapa[] }) {
             const uf = loc.id.toUpperCase()
             const estado = porUf.get(uf)
             const cor = estado ? COR[estado.urgenciaPrioritaria] : COR_VAZIO
-            const pisca = !!estado && estado.urgenciaPrioritaria !== 'andamento'
+            const pisca = estado?.urgenciaPrioritaria === 'urgente'
             const selecionado = uf === ufSelecionada
             const descricao = `${loc.name}${estado ? ` — ${estado.tenders.length} licitação(ões) escolhida(s)` : ' — nenhuma licitação escolhida'}`
             return (
@@ -164,7 +169,7 @@ export default function BrazilMap({ estados }: { estados: EstadoMapa[] }) {
                       <p className="truncate text-xs text-muted" title={t.objeto}>
                         {t.objeto}
                       </p>
-                      <p className={cx('text-xs', t.urgencia === 'urgente' ? 'font-medium text-danger' : 'text-faint')}>{LABEL_PRAZO(t.diasRestantes)}</p>
+                      <p className={cx('text-xs', TEXTO_DO_PRAZO[t.urgencia])}>{LABEL_PRAZO(t.diasRestantes)}</p>
                     </li>
                   ))}
                 </ul>

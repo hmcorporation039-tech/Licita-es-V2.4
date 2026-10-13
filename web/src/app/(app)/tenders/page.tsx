@@ -54,6 +54,13 @@ function local(t: Tender) {
   return t.uf ?? 'UF n/d'
 }
 
+type Ordem = 'prazo' | 'recentes'
+
+const ORDEM_OPTIONS: { value: Ordem; label: string }[] = [
+  { value: 'prazo', label: 'Prazo mais próximo' },
+  { value: 'recentes', label: 'Publicação mais recente' },
+]
+
 const CLASSIFICACAO_LABEL: Record<string, string> = {
   exata: 'Correspondência exata (código)',
   alta: 'Alta relevância',
@@ -69,7 +76,7 @@ function TenderRow({ t, somenteRelacionadas }: { t: TenderComEncerramento; somen
       </Td>
       <Td className="w-full max-w-0">
         <div className="flex min-w-0 flex-col">
-          <Link href={`/tenders/${t.id}`} className="truncate text-sm font-medium text-ink hover:text-accent hover:underline" title={objeto}>
+          <Link href={`/tenders/${t.id}`} className="line-clamp-2 break-words text-sm font-medium text-ink hover:text-accent hover:underline" title={objeto}>
             {objeto}
           </Link>
           <span className="truncate text-xs text-muted">
@@ -121,7 +128,9 @@ export default function TendersPage() {
   const [publicacaoFim, setPublicacaoFim] = useState('')
   const [q, setQ] = useState('')
   const [somenteRelacionadas, setSomenteRelacionadas] = useState(true)
-  const [agrupar, setAgrupar] = useState(true)
+  const [agrupar, setAgrupar] = useState(false)
+  const [ordem, setOrdem] = useState<Ordem>('prazo')
+  const [versaoDosFiltros, setVersaoDosFiltros] = useState(0)
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [page, setPage] = useState(1)
 
@@ -130,7 +139,7 @@ export default function TendersPage() {
     setLoading(true)
     setErro(null)
     const timeout = setTimeout(() => {
-      const qs = new URLSearchParams({ page: String(page), pageSize: agrupar ? '100' : '20' })
+      const qs = new URLSearchParams({ page: String(page), pageSize: agrupar ? '100' : '20', ordem })
       if (orgao) qs.set('orgao', orgao)
       if (numero) qs.set('numero', numero)
       if (modalidade) qs.set('modalidade', modalidade)
@@ -148,7 +157,7 @@ export default function TendersPage() {
         .finally(() => setLoading(false))
     }, 300)
     return () => clearTimeout(timeout)
-  }, [user, orgao, numero, modalidade, municipio, uf, publicacaoInicio, publicacaoFim, q, somenteRelacionadas, agrupar, page, tentativa])
+  }, [user, orgao, numero, modalidade, municipio, uf, publicacaoInicio, publicacaoFim, q, somenteRelacionadas, agrupar, ordem, page, tentativa])
 
   const grupos = (() => {
     if (!agrupar || !data) return null
@@ -178,6 +187,7 @@ export default function TendersPage() {
     setPublicacaoInicio('')
     setPublicacaoFim('')
     setQ('')
+    setVersaoDosFiltros((v) => v + 1)
   }
 
   if (!user) return null
@@ -200,7 +210,7 @@ export default function TendersPage() {
       />
 
       <Panel bodyClassName="flex flex-col gap-4">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <Field label="Órgão" className="lg:col-span-2">
             <Input
               placeholder="Ex: Prefeitura de Uberlândia"
@@ -236,10 +246,25 @@ export default function TendersPage() {
               ))}
             </Select>
           </Field>
+          <Field label="Ordenar por">
+            <Select
+              value={ordem}
+              onChange={(e) => {
+                setPage(1)
+                setOrdem(e.target.value as Ordem)
+              }}
+            >
+              {ORDEM_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
         </div>
 
         {advancedOpen && (
-          <div id="busca-avancada" className="grid grid-cols-1 gap-3 border-t border-line-soft pt-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div key={versaoDosFiltros} id="busca-avancada" className="grid grid-cols-1 gap-3 border-t border-line-soft pt-4 sm:grid-cols-2 lg:grid-cols-4">
             <Field label="Cidade">
               <Input
                 value={municipio}

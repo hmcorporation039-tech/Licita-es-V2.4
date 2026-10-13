@@ -85,7 +85,7 @@ export default function CatalogPicker({
         aria-describedby={descritoPor}
         aria-label={id ? undefined : `Buscar ${rotulo} por descrição`}
         autoComplete="off"
-        placeholder={`Buscar ${rotulo} por descrição (ex: cimento, limpeza)`}
+        placeholder={tipo === 'material' ? 'Descrição do material' : 'Descrição do serviço'}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onKeyDown={aoTeclar}

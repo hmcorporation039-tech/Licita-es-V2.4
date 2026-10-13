@@ -46,6 +46,42 @@ function ModalidadeCheckboxes({ selected, onChange }: { selected: string[]; onCh
 
 type Par<T> = readonly [T, Dispatch<SetStateAction<T>>]
 
+type ErrosDosCampos = Record<string, string>
+
+const CAMPOS_COM_ERRO_PROPRIO = ['name', 'keywords', 'catmatCodes', 'catserCodes', 'ufs', 'valorMax', 'orgaos', 'uasgCodes', 'modalidades', 'raioKm', 'origemMunicipio', 'origemUf']
+
+const MIN_TAM_PALAVRA_CHAVE = 2
+
+function separarLista(texto: string): string[] {
+  return texto.split(',').map((t) => t.trim()).filter(Boolean)
+}
+
+function validarAntesDeEnviar(keywords: string): ErrosDosCampos {
+  const curtas = separarLista(keywords).filter((k) => k.length < MIN_TAM_PALAVRA_CHAVE)
+  if (curtas.length === 0) return {}
+  const lista = curtas.map((k) => `"${k}"`).join(', ')
+  return { keywords: `Cada palavra-chave precisa ter ao menos ${MIN_TAM_PALAVRA_CHAVE} caracteres (revise ${lista}).` }
+}
+
+function distribuirErro(err: unknown, padrao: string): { campos: ErrosDosCampos; geral: string | null } {
+  if (!(err instanceof ApiRequestError)) return { campos: {}, geral: padrao }
+  const campos: ErrosDosCampos = {}
+  let sobrouCampoSemLugar = false
+  for (const [campo, mensagem] of Object.entries(err.campos)) {
+    if (CAMPOS_COM_ERRO_PROPRIO.includes(campo)) campos[campo] = mensagem
+    else sobrouCampoSemLugar = true
+  }
+  if (Object.keys(campos).length === 0 && /cidade de refer[eê]ncia/i.test(err.message)) campos.origemMunicipio = err.message
+  const geral = Object.keys(campos).length === 0 || sobrouCampoSemLugar ? err.message : null
+  return { campos, geral }
+}
+
+function semCampo(erros: ErrosDosCampos, campo: string): ErrosDosCampos {
+  const resto = { ...erros }
+  delete resto[campo]
+  return resto
+}
+
 interface CamposDoItem {
   name: Par<string>
   keywords: Par<string>
@@ -73,10 +109,14 @@ function Grupo({ legenda, dica, children }: { legenda: string; dica?: string; ch
 
 function FormularioDoItem({
   campos,
+  erros,
+  onLimparErro,
   nomeObrigatorio,
   onPickOrgao,
 }: {
   campos: CamposDoItem
+  erros: ErrosDosCampos
+  onLimparErro: (campo: string) => void
   nomeObrigatorio?: boolean
   onPickOrgao: (nomeOrgao: string) => void
 }) {
@@ -93,49 +133,57 @@ function FormularioDoItem({
   const [origemMunicipio, setOrigemMunicipio] = campos.origemMunicipio
   const [origemUf, setOrigemUf] = campos.origemUf
 
+  function aoMudar(campo: string, setter: (valor: string) => void, transformar: (valor: string) => string = (v) => v) {
+    return (e: React.ChangeEvent<HTMLInputElement>) => {
+      setter(transformar(e.target.value))
+      if (erros[campo]) onLimparErro(campo)
+    }
+  }
+
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-      <Field label="Nome do item" required={nomeObrigatorio} className="sm:col-span-2">
-        <Input placeholder="Ex: Notebooks para o escritório" value={name} onChange={(e) => setName(e.target.value)} />
+      <Field label="Nome do item" hint="Ex.: Notebooks para o escritório." error={erros.name} required={nomeObrigatorio} className="sm:col-span-2">
+        <Input placeholder="Nome do item" value={name} onChange={aoMudar('name', setName)} />
       </Field>
-      <Field label="Palavras-chave" hint="Separadas por vírgula." className="sm:col-span-2">
-        <Input placeholder="Ex: notebook, computador portátil" value={keywords} onChange={(e) => setKeywords(e.target.value)} />
+      <Field label="Palavras-chave" hint="Separadas por vírgula, com ao menos 2 letras cada. Ex.: notebook, computador portátil." error={erros.keywords} className="sm:col-span-2">
+        <Input placeholder="notebook, computador" value={keywords} onChange={aoMudar('keywords', setKeywords)} />
       </Field>
 
       <div className="flex min-w-0 flex-col gap-2">
-        <Field label="Buscar no catálogo CATMAT">
+        <Field label="Buscar no catálogo CATMAT" hint="Digite parte da descrição (ex.: cimento) e escolha na lista.">
           <CatalogPicker tipo="material" onAdd={(c) => setCatmatCodes((v) => anexarCodigo(v, c))} />
         </Field>
-        <Field label="Códigos CATMAT" hint="Opcional. Match exato, mais preciso que palavra-chave.">
-          <Input className="font-mono" placeholder="Ex: 150500, 461733" value={catmatCodes} onChange={(e) => setCatmatCodes(e.target.value)} />
+        <Field label="Códigos CATMAT" hint="Opcional. Match exato, mais preciso que palavra-chave. Ex.: 150500, 461733." error={erros.catmatCodes}>
+          <Input className="font-mono" placeholder="150500, 461733" value={catmatCodes} onChange={aoMudar('catmatCodes', setCatmatCodes)} />
         </Field>
       </div>
       <div className="flex min-w-0 flex-col gap-2">
-        <Field label="Buscar no catálogo CATSER">
+        <Field label="Buscar no catálogo CATSER" hint="Digite parte da descrição (ex.: limpeza) e escolha na lista.">
           <CatalogPicker tipo="servico" onAdd={(c) => setCatserCodes((v) => anexarCodigo(v, c))} />
         </Field>
-        <Field label="Códigos CATSER" hint="Opcional. Para serviços.">
-          <Input className="font-mono" placeholder="Ex: 5380, 24830" value={catserCodes} onChange={(e) => setCatserCodes(e.target.value)} />
+        <Field label="Códigos CATSER" hint="Opcional. Para serviços. Ex.: 5380, 24830." error={erros.catserCodes}>
+          <Input className="font-mono" placeholder="5380, 24830" value={catserCodes} onChange={aoMudar('catserCodes', setCatserCodes)} />
         </Field>
       </div>
 
-      <Field label="UFs" hint="Siglas de 2 letras separadas por vírgula. Vazio = nacional.">
-        <Input placeholder="Ex: DF, SP" value={ufs} onChange={(e) => setUfs(e.target.value)} />
+      <Field label="UFs" hint="Siglas de 2 letras separadas por vírgula. Vazio = nacional." error={erros.ufs}>
+        <Input placeholder="DF, SP" value={ufs} onChange={aoMudar('ufs', setUfs)} />
       </Field>
-      <Field label="Valor máximo (R$)" hint="Opcional.">
-        <Input type="number" inputMode="decimal" className="font-mono" value={valorMax} onChange={(e) => setValorMax(e.target.value)} />
-      </Field>
-
-      <Field label="Órgãos" hint="Opcional. Separados por vírgula." className="sm:col-span-2">
-        <Input placeholder="Ex: PREFEITURA DE UBERLÂNDIA, UNIVERSIDADE FEDERAL" value={orgaos} onChange={(e) => setOrgaos(e.target.value)} />
+      <Field label="Valor máximo (R$)" hint="Opcional." error={erros.valorMax}>
+        <Input type="number" inputMode="decimal" className="font-mono" value={valorMax} onChange={aoMudar('valorMax', setValorMax)} />
       </Field>
 
-      <Field label="UASGs" hint="Opcional. Só afeta licitações do ComprasNet; ao escolher, o órgão é sugerido no campo acima." className="sm:col-span-2">
+      <Field label="Órgãos" hint="Opcional. Separados por vírgula. Ex.: Prefeitura de Uberlândia, Universidade Federal." error={erros.orgaos} className="sm:col-span-2">
+        <Input placeholder="Prefeitura de…" value={orgaos} onChange={aoMudar('orgaos', setOrgaos)} />
+      </Field>
+
+      <Field label="UASGs" hint="Opcional. Só afeta licitações do ComprasNet; ao escolher, o órgão é sugerido no campo acima." error={erros.uasgCodes} className="sm:col-span-2">
         <UasgPicker selected={uasg} onChange={setUasg} onPickOrgao={onPickOrgao} />
       </Field>
 
       <Grupo legenda="Modalidades" dica="Opcional. Vazio = todas.">
         <ModalidadeCheckboxes selected={modalidades} onChange={setModalidades} />
+        {erros.modalidades && <p className="text-xs font-medium text-danger">{erros.modalidades}</p>}
       </Grupo>
 
       <Grupo
@@ -143,14 +191,14 @@ function FormularioDoItem({
         dica="Opcional, útil para serviço presencial. Se preenchido, tem prioridade sobre a lista de UFs."
       >
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-[8rem_minmax(0,1fr)_6rem]">
-          <Field label="Raio (km)">
-            <Input type="number" min={1} inputMode="numeric" className="font-mono" placeholder="100" value={raioKm} onChange={(e) => setRaioKm(e.target.value)} />
+          <Field label="Raio (km)" error={erros.raioKm}>
+            <Input type="number" min={1} inputMode="numeric" className="font-mono" placeholder="100" value={raioKm} onChange={aoMudar('raioKm', setRaioKm)} />
           </Field>
-          <Field label="Cidade de referência">
-            <Input placeholder="Ex: Juazeiro" value={origemMunicipio} onChange={(e) => setOrigemMunicipio(e.target.value)} />
+          <Field label="Cidade de referência" hint="Ex.: Juazeiro." error={erros.origemMunicipio}>
+            <Input placeholder="Cidade" value={origemMunicipio} onChange={aoMudar('origemMunicipio', setOrigemMunicipio)} />
           </Field>
-          <Field label="UF">
-            <Input placeholder="BA" maxLength={2} className="font-mono uppercase" value={origemUf} onChange={(e) => setOrigemUf(e.target.value.toUpperCase())} />
+          <Field label="UF" error={erros.origemUf}>
+            <Input placeholder="BA" maxLength={2} className="font-mono uppercase" value={origemUf} onChange={aoMudar('origemUf', setOrigemUf, (v) => v.toUpperCase())} />
           </Field>
         </div>
       </Grupo>
@@ -189,6 +237,7 @@ export default function ItemsPage() {
   const [origemMunicipio, setOrigemMunicipio] = useState('')
   const [origemUf, setOrigemUf] = useState('')
   const [creating, setCreating] = useState(false)
+  const [errosNovos, setErrosNovos] = useState<ErrosDosCampos>({})
 
   function sugerirOrgao(nomeOrgao: string, atual: string, setter: (v: string) => void) {
     const existentes = atual.split(',').map((o) => o.trim().toLowerCase()).filter(Boolean)
@@ -211,6 +260,7 @@ export default function ItemsPage() {
   const [editOrigemUf, setEditOrigemUf] = useState('')
   const [editSaving, setEditSaving] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
+  const [errosEditados, setErrosEditados] = useState<ErrosDosCampos>({})
 
   async function loadItems() {
     setLoading(true)
@@ -233,11 +283,14 @@ export default function ItemsPage() {
     e.preventDefault()
     if (!user) return
     setError(null)
+    const errosLocais = validarAntesDeEnviar(keywords)
+    setErrosNovos(errosLocais)
+    if (Object.keys(errosLocais).length > 0) return
     setCreating(true)
     try {
       await api.post('/api/monitored-items', {
         name,
-        keywords: keywords.split(',').map((k) => k.trim()).filter(Boolean),
+        keywords: separarLista(keywords),
         catmatCodes: catmatCodes.split(',').map((c) => c.trim()).filter(Boolean),
         catserCodes: catserCodes.split(',').map((c) => c.trim()).filter(Boolean),
         modalidades,
@@ -263,7 +316,9 @@ export default function ItemsPage() {
       setOrigemUf('')
       await loadItems()
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.message : 'Erro ao criar item')
+      const { campos, geral } = distribuirErro(err, 'Erro ao criar item')
+      setErrosNovos(campos)
+      setError(geral)
     } finally {
       setCreating(false)
     }
@@ -272,6 +327,7 @@ export default function ItemsPage() {
   function startEdit(item: MonitoredItem) {
     setEditingId(item.id)
     setEditError(null)
+    setErrosEditados({})
     setEditName(item.name)
     setEditKeywords(item.keywords.join(', '))
     setEditCatmatCodes(item.catmatCodes.join(', '))
@@ -295,16 +351,20 @@ export default function ItemsPage() {
   function cancelEdit() {
     setEditingId(null)
     setEditError(null)
+    setErrosEditados({})
   }
 
   async function handleSaveEdit(itemId: string) {
     if (!user) return
     setEditError(null)
+    const errosLocais = validarAntesDeEnviar(editKeywords)
+    setErrosEditados(errosLocais)
+    if (Object.keys(errosLocais).length > 0) return
     setEditSaving(true)
     try {
       await api.patch(`/api/monitored-items/${itemId}`, {
         name: editName,
-        keywords: editKeywords.split(',').map((k) => k.trim()).filter(Boolean),
+        keywords: separarLista(editKeywords),
         catmatCodes: editCatmatCodes.split(',').map((c) => c.trim()).filter(Boolean),
         catserCodes: editCatserCodes.split(',').map((c) => c.trim()).filter(Boolean),
         modalidades: editModalidades,
@@ -319,7 +379,9 @@ export default function ItemsPage() {
       setEditingId(null)
       await loadItems()
     } catch (err) {
-      setEditError(err instanceof ApiRequestError ? err.message : 'Erro ao salvar alterações')
+      const { campos, geral } = distribuirErro(err, 'Erro ao salvar alterações')
+      setErrosEditados(campos)
+      setEditError(geral)
     } finally {
       setEditSaving(false)
     }
@@ -400,7 +462,11 @@ export default function ItemsPage() {
 
       <Panel title="Cadastrar item" description="Descreva o que você vende; as licitações que casarem aparecem em Meus matches.">
         <form onSubmit={handleCreate} className="flex flex-col gap-4">
-          <FormularioDoItem campos={camposNovos} nomeObrigatorio onPickOrgao={(nomeOrgao) => sugerirOrgao(nomeOrgao, orgaos, setOrgaos)} />
+          <FormularioDoItem
+            campos={camposNovos}
+            erros={errosNovos}
+            onLimparErro={(campo) => setErrosNovos((atual) => semCampo(atual, campo))}
+            nomeObrigatorio onPickOrgao={(nomeOrgao) => sugerirOrgao(nomeOrgao, orgaos, setOrgaos)} />
           <FormError>{error}</FormError>
           <div className="flex flex-wrap gap-2">
             <Button type="submit" variant="primary" icon={Plus} loading={creating}>
@@ -423,7 +489,11 @@ export default function ItemsPage() {
               editingId === item.id ? (
                 <li key={item.id} className="flex flex-col gap-4 border-l-2 border-accent bg-sunken px-4 py-4">
                   <p className="text-sm font-semibold text-ink">Editando: {item.name}</p>
-                  <FormularioDoItem campos={camposEditados} onPickOrgao={(nomeOrgao) => sugerirOrgao(nomeOrgao, editOrgaos, setEditOrgaos)} />
+                  <FormularioDoItem
+                    campos={camposEditados}
+                    erros={errosEditados}
+                    onLimparErro={(campo) => setErrosEditados((atual) => semCampo(atual, campo))}
+                    onPickOrgao={(nomeOrgao) => sugerirOrgao(nomeOrgao, editOrgaos, setEditOrgaos)} />
                   <FormError>{editError}</FormError>
                   <div className="flex flex-wrap gap-2">
                     <Button variant="primary" icon={Save} loading={editSaving} onClick={() => handleSaveEdit(item.id)}>

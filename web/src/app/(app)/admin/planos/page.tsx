@@ -5,7 +5,7 @@ import { Plus, Save } from 'lucide-react'
 import AdminShell from '@/components/AdminShell'
 import { api, ApiRequestError } from '@/lib/api'
 import type { Limites, PlanoComercial } from '@/lib/adminTypes'
-import { Button, Carregando, Checkbox, EmptyState, ErrorState, Field, Input, Notice, Panel, StatusTag } from '@/components/ui'
+import { Button, Carregando, Checkbox, EmptyState, ErrorState, Field, Input, Notice, Panel, StatusTag, cx } from '@/components/ui'
 
 const CAMPOS: { chave: keyof Limites; rotulo: string }[] = [
   { chave: 'itensMonitorados', rotulo: 'Itens monitorados' },
@@ -114,7 +114,12 @@ function CartaoPlano({ plano, onSalvo, onErro }: { plano: PlanoComercial; onSalv
 
   return (
     <Panel
-      title={<span className="font-mono">{plano.code}</span>}
+      title={
+        <span className="inline-flex flex-wrap items-baseline gap-2">
+          {plano.name}
+          <span className="font-mono text-2xs font-normal text-faint">{plano.code}</span>
+        </span>
+      }
       actions={
         <>
           {!plano.active && <StatusTag>inativo</StatusTag>}
@@ -142,7 +147,7 @@ function CartaoPlano({ plano, onSalvo, onErro }: { plano: PlanoComercial; onSalv
                 <Input
                   value={limites[c.chave]}
                   onChange={(e) => setLimites({ ...limites, [c.chave]: e.target.value })}
-                  className="text-right font-mono"
+                  className={cx('text-right', /^\d+$/.test(limites[c.chave].trim()) && 'font-mono')}
                 />
               </Field>
             ))}

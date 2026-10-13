@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useId, useState, type KeyboardEvent } from 'react'
-import { FileSearch, Lightbulb, ListPlus, Search } from 'lucide-react'
+import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
+import { Building2, FileSearch, Lightbulb, ListPlus, Search } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
 import { api, ApiRequestError } from '@/lib/api'
 import {
@@ -14,6 +14,7 @@ import {
   Field,
   FormError,
   Input,
+  LinkButton,
   Metric,
   MetricRow,
   Notice,
@@ -77,6 +78,102 @@ const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', curren
 const data = (d: string | null) => (d ? d.split('-').reverse().join('/') : '—')
 const fimDoDia = (d: string | null) => (d ? `${d}T23:59:59-03:00` : null)
 
+const AVISO_DE_DEMORA_MS = 8_000
+const LIMITE_DA_CONSULTA_MS = 90_000
+const MENSAGEM_DE_DEMORA = 'A consulta ao PNCP pode levar até 1 minuto…'
+
+class ConsultaDemorada extends Error {}
+
+function formatarCnpj(valor: string): string {
+  const d = valor.replace(/\D/g, '').slice(0, 14)
+  if (d.length <= 2) return d
+  if (d.length <= 5) return `${d.slice(0, 2)}.${d.slice(2)}`
+  if (d.length <= 8) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5)}`
+  if (d.length <= 12) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8)}`
+  return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`
+}
+
+function pareceCnpj(valor: string): boolean {
+  return /\d/.test(valor) && /^[\d.\-/\s]+$/.test(valor)
+}
+
+function comLimiteDeTempo<T>(promessa: Promise<T>, ms: number): Promise<T> {
+  let temporizador: ReturnType<typeof setTimeout> | undefined
+  const limite = new Promise<never>((_, rejeitar) => {
+    temporizador = setTimeout(() => rejeitar(new ConsultaDemorada()), ms)
+  })
+  return Promise.race([promessa, limite]).finally(() => clearTimeout(temporizador))
+}
+
+function useAvisoDeDemora(ativo: boolean): boolean {
+  const [demorando, setDemorando] = useState(false)
+  useEffect(() => {
+    if (!ativo) return
+    const temporizador = setTimeout(() => setDemorando(true), AVISO_DE_DEMORA_MS)
+    return () => {
+      clearTimeout(temporizador)
+      setDemorando(false)
+    }
+  }, [ativo])
+  return demorando
+}
+
+function useConsultaAoPncp<T>(mensagemPadrao: string) {
+  const [dados, setDados] = useState<T | null>(null)
+  const [carregando, setCarregando] = useState(false)
+  const [falha, setFalha] = useState<unknown>(null)
+  const sequencia = useRef(0)
+  const demorando = useAvisoDeDemora(carregando)
+
+  useEffect(() => {
+    const atual = sequencia
+    return () => {
+      atual.current += 1
+    }
+  }, [])
+
+  const executar = useCallback(async (buscar: () => Promise<T>): Promise<T | null> => {
+    const minha = ++sequencia.current
+    setCarregando(true)
+    setFalha(null)
+    setDados(null)
+    try {
+      const resultado = await comLimiteDeTempo(buscar(), LIMITE_DA_CONSULTA_MS)
+      if (minha === sequencia.current) setDados(resultado)
+      return resultado
+    } catch (e) {
+      if (minha === sequencia.current) setFalha(e)
+      return null
+    } finally {
+      if (minha === sequencia.current) setCarregando(false)
+    }
+  }, [])
+
+  const erro =
+    falha === null
+      ? null
+      : falha instanceof ConsultaDemorada
+        ? 'O PNCP não respondeu em 90 segundos. Tente de novo em instantes.'
+        : falha instanceof ApiRequestError
+          ? falha.message
+          : mensagemPadrao
+
+  return { dados, carregando, demorando, falha, erro, executar }
+}
+
+function ConsultandoPncp({ linhas, demorando }: { linhas: number; demorando: boolean }) {
+  return (
+    <div className="flex flex-col gap-3">
+      {demorando && (
+        <p role="status" className="text-sm text-muted">
+          {MENSAGEM_DE_DEMORA}
+        </p>
+      )}
+      <Carregando linhas={linhas} texto="Consultando o PNCP…" />
+    </div>
+  )
+}
+
 type AbaDoRadar = 'vencendo' | 'concorrente' | 'perfil'
 const ABAS: Aba<AbaDoRadar>[] = [
   { id: 'vencendo', label: 'Contratos vencendo' },
@@ -112,52 +209,67 @@ function ContratosVencendo() {
   const [orgao, setOrgao] = useState<{ cnpj: string; nome: string } | null>(null)
   const [dias, setDias] = useState(120)
   const [todos, setTodos] = useState(false)
-  const [resp, setResp] = useState<RespostaVencendo | null>(null)
-  const [carregando, setCarregando] = useState(false)
-  const [erro, setErro] = useState<string | null>(null)
+  const { dados: resp, carregando, demorando, erro, executar } = useConsultaAoPncp<RespostaVencendo>('Erro ao consultar')
+  const [semResultado, setSemResultado] = useState(false)
   const [ativo, setAtivo] = useState(-1)
+  const ultimaBusca = useRef(0)
   const campoId = useId()
   const listaId = `${campoId}-orgaos`
+  const dicaId = `${campoId}-dica`
 
   useEffect(() => {
     setAtivo(-1)
   }, [opcoes])
 
-  async function procurarOrgao(q: string) {
-    setBusca(q)
-    const digitos = q.replace(/\D/g, '')
-    if (digitos.length === 14) {
-      setOrgao({ cnpj: digitos, nome: `CNPJ ${digitos}` })
+  async function procurarOrgao(texto: string) {
+    const minha = ++ultimaBusca.current
+    setSemResultado(false)
+    if (pareceCnpj(texto)) {
+      const formatado = formatarCnpj(texto)
+      setBusca(formatado)
       setOpcoes([])
+      if (formatado.replace(/\D/g, '').length === 14) setOrgao({ cnpj: formatado.replace(/\D/g, ''), nome: formatado })
       return
     }
-    if (q.trim().length < 3) return setOpcoes([])
+    setBusca(texto)
+    if (texto.trim().length < 3) return setOpcoes([])
     try {
-      const r = await api.get<UasgBusca[]>(`/api/uasg/search?q=${encodeURIComponent(q.trim())}`)
-      setOpcoes(r.filter((o) => o.cnpjOrgao))
+      const r = await api.get<UasgBusca[]>(`/api/uasg/search?q=${encodeURIComponent(texto.trim())}`)
+      if (minha !== ultimaBusca.current) return
+      const comCnpj = r.filter((o) => o.cnpjOrgao)
+      setOpcoes(comCnpj)
+      setSemResultado(comCnpj.length === 0)
     } catch {
-      setOpcoes([])
+      if (minha === ultimaBusca.current) setOpcoes([])
     }
   }
 
   function escolherOrgao(o: UasgBusca) {
+    ultimaBusca.current += 1
     setOrgao({ cnpj: o.cnpjOrgao!, nome: `${o.nomeOrgao ?? o.nomeUasg}${o.siglaUf ? ' — ' + o.siglaUf : ''}` })
     setOpcoes([])
+    setSemResultado(false)
   }
 
-  async function consultar() {
+  function consultar() {
     if (!orgao) return
-    setCarregando(true)
-    setErro(null)
-    setResp(null)
-    try {
-      setResp(await api.get<RespostaVencendo>(`/api/radar/contratos-vencendo?cnpjOrgao=${orgao.cnpj}&dias=${dias}&todos=${todos ? 1 : 0}`))
-    } catch (e) {
-      setErro(e instanceof ApiRequestError ? e.message : 'Erro ao consultar')
-    } finally {
-      setCarregando(false)
-    }
+    const { cnpj } = orgao
+    void executar(() => api.get<RespostaVencendo>(`/api/radar/contratos-vencendo?cnpjOrgao=${cnpj}&dias=${dias}&todos=${todos ? 1 : 0}`))
   }
+
+  const textoSemSelecao = !orgao && busca.trim().length > 0
+  const digitosDigitados = busca.replace(/\D/g, '').length
+  const dicaDoOrgao = !textoSemSelecao ? (
+    'Digite parte do nome e escolha o órgão na lista, ou informe o CNPJ (14 dígitos).'
+  ) : (
+    <span className="text-warn">
+      {pareceCnpj(busca)
+        ? `CNPJ incompleto: ${digitosDigitados} de 14 dígitos.`
+        : semResultado
+          ? 'Nenhum órgão encontrado com esse nome. Tente outra parte do nome ou informe o CNPJ (14 dígitos).'
+          : 'Escolha o órgão na lista para consultar, ou informe o CNPJ (14 dígitos).'}
+    </span>
+  )
 
   const listaAberta = opcoes.length > 0 && !orgao
 
@@ -182,10 +294,11 @@ function ContratosVencendo() {
     <>
       <Panel>
         <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end">
-          <Field label="Órgão (nome ou CNPJ)" id={campoId} className="sm:min-w-[18rem] sm:flex-1">
+          <Field label="Órgão (nome ou CNPJ)" id={campoId} hint={<span aria-live="polite">{dicaDoOrgao}</span>} className="sm:min-w-[18rem] sm:flex-1">
             <div id={`${campoId}-caixa`} className="relative">
               <Input
                 id={campoId}
+                aria-describedby={dicaId}
                 role="combobox"
                 aria-autocomplete="list"
                 aria-expanded={listaAberta}
@@ -198,7 +311,7 @@ function ContratosVencendo() {
                   void procurarOrgao(e.target.value)
                 }}
                 onKeyDown={aoTeclar}
-                placeholder="Ex.: Prefeitura de Goiânia ou 01.612.092/0001-23"
+                placeholder="Nome do órgão ou CNPJ"
               />
               {listaAberta && (
                 <ul id={listaId} role="listbox" aria-label="Órgãos encontrados" className="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded border border-line bg-surface text-sm">
@@ -237,7 +350,7 @@ function ContratosVencendo() {
         </div>
       </Panel>
 
-      {carregando && <Carregando linhas={5} texto="Consultando o PNCP…" />}
+      {carregando && <ConsultandoPncp linhas={5} demorando={demorando} />}
       {erro && <ErrorState message={erro} onRetry={consultar} />}
       {resp && (
         <section className="flex flex-col gap-3" aria-label="Contratos vencendo">
@@ -303,21 +416,11 @@ function ContratosVencendo() {
 
 function DossieConcorrente() {
   const [cnpj, setCnpj] = useState('')
-  const [d, setD] = useState<Dossie | null>(null)
-  const [carregando, setCarregando] = useState(false)
-  const [erro, setErro] = useState<string | null>(null)
+  const { dados: d, carregando, demorando, erro, executar } = useConsultaAoPncp<Dossie>('Erro ao consultar')
 
-  async function consultar() {
-    setCarregando(true)
-    setErro(null)
-    setD(null)
-    try {
-      setD(await api.get<Dossie>(`/api/radar/concorrente/${cnpj.replace(/\D/g, '')}`))
-    } catch (e) {
-      setErro(e instanceof ApiRequestError ? e.message : 'Erro ao consultar')
-    } finally {
-      setCarregando(false)
-    }
+  function consultar() {
+    const digitos = cnpj.replace(/\D/g, '')
+    void executar(() => api.get<Dossie>(`/api/radar/concorrente/${digitos}`))
   }
 
   return (
@@ -325,7 +428,7 @@ function DossieConcorrente() {
       <Panel>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
           <Field label="CNPJ do concorrente" className="sm:w-64">
-            <Input inputMode="numeric" className="font-mono" value={cnpj} onChange={(e) => setCnpj(e.target.value)} placeholder="00.000.000/0000-00" />
+            <Input inputMode="numeric" className="font-mono" value={cnpj} onChange={(e) => setCnpj(formatarCnpj(e.target.value))} placeholder="00.000.000/0000-00" />
           </Field>
           <Button variant="primary" icon={FileSearch} loading={carregando} disabled={cnpj.replace(/\D/g, '').length !== 14} onClick={consultar}>
             {carregando ? 'Consultando o PNCP…' : 'Gerar dossiê'}
@@ -333,7 +436,7 @@ function DossieConcorrente() {
         </div>
       </Panel>
 
-      {carregando && <Carregando linhas={5} texto="Consultando o PNCP…" />}
+      {carregando && <ConsultandoPncp linhas={5} demorando={demorando} />}
       {erro && <ErrorState message={erro} onRetry={consultar} />}
       {d && d.totalDeContratos === 0 && <EmptyState title="Nenhum contrato público encontrado no PNCP com esse CNPJ como fornecedor." />}
       {d && d.totalDeContratos > 0 && (
@@ -447,35 +550,28 @@ interface Perfil {
 }
 
 function Perfilador() {
-  const [p, setP] = useState<Perfil | null>(null)
-  const [carregando, setCarregando] = useState(false)
-  const [erro, setErro] = useState<string | null>(null)
+  const { dados: p, carregando, demorando, falha, erro, executar } = useConsultaAoPncp<Perfil>('Erro ao consultar')
   const [termos, setTermos] = useState<string[]>([])
   const [criado, setCriado] = useState(false)
+  const [erroAoCriar, setErroAoCriar] = useState<string | null>(null)
+
+  const faltaCnpjDaEmpresa = falha instanceof ApiRequestError && falha.status === 400 && /cnpj/i.test(falha.message)
 
   async function gerar() {
-    setCarregando(true)
-    setErro(null)
-    setP(null)
     setCriado(false)
-    try {
-      const r = await api.get<Perfil>('/api/radar/perfil')
-      setP(r)
-      setTermos(r.palavrasChave.slice(0, 5).map((k) => k.termo))
-    } catch (e) {
-      setErro(e instanceof ApiRequestError ? e.message : 'Erro ao consultar')
-    } finally {
-      setCarregando(false)
-    }
+    setErroAoCriar(null)
+    const r = await executar(() => api.get<Perfil>('/api/radar/perfil'))
+    if (r) setTermos(r.palavrasChave.slice(0, 5).map((k) => k.termo))
   }
 
   async function criarItem() {
     if (!p || termos.length === 0) return
+    setErroAoCriar(null)
     try {
       await api.post('/api/monitored-items', { name: 'Sugerido pelo Perfilador: ' + termos.slice(0, 3).join(', '), keywords: termos, ufs: p.ufs.slice(0, 5) })
       setCriado(true)
     } catch (e) {
-      setErro(e instanceof ApiRequestError ? e.message : 'Erro ao criar o item')
+      setErroAoCriar(e instanceof ApiRequestError ? e.message : 'Erro ao criar o item')
     }
   }
 
@@ -492,8 +588,20 @@ function Perfilador() {
         </div>
       </Panel>
 
-      {carregando && <Carregando linhas={4} texto="Consultando o PNCP…" />}
-      {erro && !p && <ErrorState message={erro} onRetry={gerar} />}
+      {carregando && <ConsultandoPncp linhas={4} demorando={demorando} />}
+      {faltaCnpjDaEmpresa ? (
+        <EmptyState
+          title="Cadastre o CNPJ da empresa para usar o Perfilador"
+          description="As sugestões vêm dos contratos públicos em que o CNPJ da sua empresa aparece como fornecedor."
+          action={
+            <LinkButton href="/empresa" variant="primary" icon={Building2}>
+              Cadastrar CNPJ da empresa
+            </LinkButton>
+          }
+        />
+      ) : (
+        erro && <ErrorState message={erro} onRetry={gerar} />
+      )}
       {p && p.totalDeContratos === 0 && (
         <EmptyState title="Não encontramos contratos públicos no PNCP com o CNPJ da sua empresa como fornecedor; não há histórico para sugerir." />
       )}
@@ -547,7 +655,7 @@ function Perfilador() {
                   Criar item com essas sugestões
                 </Button>
               )}
-              {erro && <FormError>{erro}</FormError>}
+              <FormError>{erroAoCriar}</FormError>
             </div>
           </div>
         </Panel>

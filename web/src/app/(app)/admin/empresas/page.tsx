@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import AdminShell from '@/components/AdminShell'
+import AdminShell, { RotuloDoPlano, useNomesDosPlanos } from '@/components/AdminShell'
+import { formatarData } from '@/lib/datas'
 import { api, ApiRequestError } from '@/lib/api'
 import type { EmpresaResumo } from '@/lib/adminTypes'
 import { Button, Carregando, EmptyState, ErrorState, Field, Input, StatusTag, Table, TableWrap, Td, TextLink, THead, Th, Tr } from '@/components/ui'
@@ -25,6 +26,7 @@ function Conteudo() {
   const [page, setPage] = useState(1)
   const [dados, setDados] = useState<Lista | null>(null)
   const [erro, setErro] = useState<string | null>(null)
+  const nomesDosPlanos = useNomesDosPlanos()
 
   const carregar = useCallback(async () => {
     try {
@@ -91,14 +93,16 @@ function Conteudo() {
                       <TextLink href={`/admin/empresas/${e.id}`}>
                         {e.nome}
                       </TextLink>
-                      <span className="font-mono text-xs text-muted">
-                        {e.cnpj ?? e.cpf ?? (e.tipo === 'PESSOA_FISICA' ? 'pessoa física' : '—')}
-                      </span>
+                      {e.cnpj || e.cpf ? (
+                        <span className="font-mono text-xs text-muted">{e.cnpj ?? e.cpf}</span>
+                      ) : (
+                        <span className="text-xs text-muted">{e.tipo === 'PESSOA_FISICA' ? 'pessoa física' : '—'}</span>
+                      )}
                     </div>
                   </Td>
                   <Td>
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <StatusTag mono>{e.planCode}</StatusTag>
+                      <RotuloDoPlano codigo={e.planCode} nome={nomesDosPlanos[e.planCode]} />
                       {e.quotaOverrides && (
                         <StatusTag tone="accent" title="Limites combinados só com esta empresa">
                           ajustado
@@ -111,7 +115,7 @@ function Conteudo() {
                   <Td numeric>{nf.format(e.documentos)}</Td>
                   <Td numeric>{nf.format(e.analisesIaNoMes)}</Td>
                   <Td numeric muted>
-                    {new Date(e.criadaEm).toLocaleDateString('pt-BR')}
+                    {formatarData(e.criadaEm)}
                   </Td>
                 </Tr>
               ))}
