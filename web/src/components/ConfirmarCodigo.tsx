@@ -1,12 +1,9 @@
 'use client'
 
-// Etapa "digite o código": confirma o e-mail do cadastro com o código de 6 dígitos enviado.
-// Com `senha` (logo após o cadastro), a conta entra sozinha depois de confirmada;
-// sem ela (quem voltou depois), mostra o caminho para a tela de entrada.
-
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { PublicCard } from '@/components/PublicShell'
+import { Button, Field, FormError, Input, LinkButton, Notice } from '@/components/ui'
 import { api, ApiRequestError } from '@/lib/api'
 import { setSession, SessionUser } from '@/lib/session'
 
@@ -41,9 +38,7 @@ export default function ConfirmarCodigo({ email, senha }: { email: string; senha
           setSession(token, user)
           router.push('/dashboard')
           return
-        } catch {
-          /* confirmado, mas o login automático falhou: o usuário entra pela tela de entrada */
-        }
+        } catch {}
       }
     } catch (err) {
       setErro(err instanceof ApiRequestError ? err.message : 'Não foi possível confirmar o código')
@@ -68,48 +63,61 @@ export default function ConfirmarCodigo({ email, senha }: { email: string; senha
 
   if (confirmado) {
     return (
-      <>
-        <h1 className="mb-2 text-2xl font-semibold">Acesso confirmado</h1>
-        <p className="text-sm text-slate-600">Seu e-mail foi confirmado e o período de teste começou.</p>
-        <Link href="/login" className="mt-4 inline-block rounded bg-indigo-700 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-800">
+      <PublicCard title="Acesso confirmado" description="Seu e-mail foi confirmado e o período de teste começou.">
+        <LinkButton href="/login" variant="primary" className="w-full">
           Entrar
-        </Link>
-      </>
+        </LinkButton>
+      </PublicCard>
     )
   }
 
   return (
-    <form onSubmit={confirmar} className="flex flex-col gap-3">
-      <h1 className="text-2xl font-semibold">Digite o código</h1>
-      <p className="text-sm text-slate-600">
-        Enviamos um código de 6 dígitos para <strong>{email}</strong>. Digite-o abaixo para confirmar o seu acesso. Ele vale por 15 minutos.
-      </p>
-      <input
-        required
-        autoFocus
-        inputMode="numeric"
-        autoComplete="one-time-code"
-        pattern="\d{6}"
-        maxLength={6}
-        placeholder="000000"
-        value={codigo}
-        onChange={(e) => setCodigo(e.target.value.replace(/\D/g, '').slice(0, 6))}
-        className="rounded border border-slate-300 px-3 py-3 text-center text-2xl tracking-[0.5em]"
-        aria-label="Código de confirmação"
-      />
-      {erro && <p className="text-sm text-red-600">{erro}</p>}
-      {info && <p className="text-sm text-emerald-700">{info}</p>}
-      <button
-        type="submit"
-        disabled={enviando || codigo.length !== 6}
-        className="rounded bg-indigo-700 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-800 disabled:opacity-50"
-      >
-        {enviando ? 'Confirmando...' : 'Confirmar acesso'}
-      </button>
-      <button type="button" onClick={reenviar} disabled={espera > 0} className="self-start text-sm text-indigo-700 hover:underline disabled:text-slate-400 disabled:no-underline">
-        {espera > 0 ? `Reenviar código (${espera}s)` : 'Reenviar código'}
-      </button>
-      <p className="text-xs text-slate-500">Não chegou? Veja a caixa de spam. Se digitou o e-mail errado, faça o cadastro de novo.</p>
-    </form>
+    <PublicCard
+      title="Digite o código"
+      description={
+        <>
+          Enviamos um código de 6 dígitos para <strong className="font-medium text-ink">{email}</strong>. Digite-o abaixo para confirmar o seu
+          acesso. Ele vale por 15 minutos.
+        </>
+      }
+    >
+      <form onSubmit={confirmar} className="flex flex-col gap-4">
+        <Field label="Código de confirmação" required>
+          <Input
+            autoFocus
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            pattern="\d{6}"
+            maxLength={6}
+            placeholder="000000"
+            value={codigo}
+            onChange={(e) => setCodigo(e.target.value.replace(/\D/g, '').slice(0, 6))}
+            className="h-14! text-center font-mono text-2xl! tracking-[0.5em] indent-[0.5em]"
+          />
+        </Field>
+        <FormError>{erro}</FormError>
+        {info && <Notice tone="ok">{info}</Notice>}
+        <Button type="submit" variant="primary" loading={enviando} disabled={codigo.length !== 6} className="w-full">
+          {enviando ? 'Confirmando…' : 'Confirmar acesso'}
+        </Button>
+        <div className="flex flex-col items-start gap-1.5 border-t border-line-soft pt-4">
+          <button
+            type="button"
+            onClick={reenviar}
+            disabled={espera > 0}
+            className="text-sm font-medium text-accent underline decoration-accent-line underline-offset-[3px] hover:decoration-accent disabled:cursor-not-allowed disabled:text-faint disabled:no-underline"
+          >
+            {espera > 0 ? (
+              <>
+                Reenviar código <span className="font-mono">({espera}s)</span>
+              </>
+            ) : (
+              'Reenviar código'
+            )}
+          </button>
+          <p className="text-xs text-muted">Não chegou? Veja a caixa de spam. Se digitou o e-mail errado, faça o cadastro de novo.</p>
+        </div>
+      </form>
+    </PublicCard>
   )
 }

@@ -40,10 +40,20 @@ export const MODALIDADE_VALUES = [
 const MAX_ITENS_LISTA = 200
 const MAX_EMAILS_POR_REMATCH = 20
 const MAX_TAM_TERMO = 120
+const MIN_TAM_PALAVRA_CHAVE = 2
 
 const createSchema = z.object({
   name: z.string().min(1).max(200),
-  keywords: z.array(z.string().min(1).max(MAX_TAM_TERMO)).max(MAX_ITENS_LISTA).default([]),
+  keywords: z
+    .array(
+      z
+        .string()
+        .trim()
+        .min(MIN_TAM_PALAVRA_CHAVE, `Cada palavra-chave precisa ter ao menos ${MIN_TAM_PALAVRA_CHAVE} caracteres`)
+        .max(MAX_TAM_TERMO)
+    )
+    .max(MAX_ITENS_LISTA)
+    .default([]),
   catmatCodes: z.array(z.string().max(MAX_TAM_TERMO)).max(MAX_ITENS_LISTA).default([]),
   catserCodes: z.array(z.string().max(MAX_TAM_TERMO)).max(MAX_ITENS_LISTA).default([]),
   ufs: z.array(z.string().length(2)).max(27).default([]),
@@ -61,7 +71,7 @@ const createSchema = z.object({
   origemUf: z.string().length(2).nullable().optional(),
 })
 
-const updateSchema = createSchema.partial()
+const updateSchema = createSchema.partial().extend({ active: z.boolean().optional() })
 
 // Resolve nome+UF de cidade em lat/lng usando a base do IBGE
 function geocodeOrigem(municipio: string, uf: string): { lat: number; lng: number } {

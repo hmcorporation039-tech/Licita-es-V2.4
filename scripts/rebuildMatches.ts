@@ -8,13 +8,14 @@
 
 import { prisma } from '../src/services/tenderService'
 import { findMatchingTendersForItem } from '../src/services/matcherService'
+import { confirmarAlvoRemoto } from './lib/alvoDoBanco'
 
 async function main() {
-  const deleted = await prisma.tenderMatch.deleteMany({})
-  console.log(`Removidos ${deleted.count} match(es) antigo(s).`)
+  await confirmarAlvoRemoto('recalcular os tender_matches de todos os itens ativos (remove os que não batem mais)')
 
   const items = await prisma.monitoredItem.findMany({ where: { active: true } })
-  let totalCreated = 0
+  let totalCriados = 0
+  let totalRemovidos = 0
 
   for (const item of items) {
     const candidates = await findMatchingTendersForItem(
@@ -32,31 +33,36 @@ async function main() {
         origemLat: item.origemLat,
         origemLng: item.origemLng,
       },
-      3650 // cobre todo o histórico coletado até hoje
+      3650
     )
+    const tenderIdsValidos = candidates.map((c) => c.tenderId)
 
-    if (candidates.length === 0) {
-      console.log(`Item "${item.name}" (${item.id}): 0 match(es).`)
-      continue
-    }
-
-    await prisma.tenderMatch.createMany({
-      data: candidates.map((c) => ({
-        tenderId: c.tenderId,
-        monitoredItemId: item.id,
-        companyId: item.companyId,
-        userId: item.userId,
-        score: c.score,
-        matchedKeywords: c.matchedKeywords,
-      })),
-      skipDuplicates: true,
+    const { criados, removidos } = await prisma.$transaction(async (tx) => {
+      const removidos = await tx.tenderMatch.deleteMany({
+        where: { monitoredItemId: item.id, tenderId: { notIn: tenderIdsValidos } },
+      })
+      const criados = await tx.tenderMatch.createMany({
+        data: candidates.map((c) => ({
+          tenderId: c.tenderId,
+          monitoredItemId: item.id,
+          companyId: item.companyId,
+          userId: item.userId,
+          score: c.score,
+          matchedKeywords: c.matchedKeywords,
+        })),
+        skipDuplicates: true,
+      })
+      return { criados: criados.count, removidos: removidos.count }
     })
 
-    totalCreated += candidates.length
-    console.log(`Item "${item.name}" (${item.id}): ${candidates.length} match(es).`)
+    totalCriados += criados
+    totalRemovidos += removidos
+    console.log(`Item "${item.name}" (${item.id}): ${candidates.length} match(es) válido(s), ${criados} novo(s), ${removidos} removido(s).`)
   }
 
-  console.log(`Concluído: ${totalCreated} match(es) recriado(s) para ${items.length} item(ns) ativo(s).`)
+  console.log(
+    `Concluído: ${items.length} item(ns) ativo(s), ${totalCriados} match(es) novo(s), ${totalRemovidos} removido(s). O estado de "lido" dos que continuam foi preservado.`
+  )
   await prisma.$disconnect()
 }
 

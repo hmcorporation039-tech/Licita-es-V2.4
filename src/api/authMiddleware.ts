@@ -10,6 +10,7 @@ import { Request, Response, NextFunction } from 'express'
 import { prisma } from '../services/tenderService'
 import { verifySessionToken } from '../services/authService'
 import { ApiError } from './asyncHandler'
+import { empresaTemDonoComAcesso } from '../lib/acessoDaEmpresa'
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -32,13 +33,28 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
     const payload = verifySessionToken(token)
     if (!payload) throw new ApiError(401, 'Sessão inválida ou expirada — faça login novamente')
 
-    const user = await prisma.user.findUnique({ where: { id: payload.userId } })
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      include: {
+        company: {
+          select: {
+            users: {
+              where: { companyRole: 'OWNER' },
+              select: { active: true, disabledByAdmin: true, accessExpiresAt: true },
+            },
+          },
+        },
+      },
+    })
     if (!user || !user.active) throw new ApiError(401, 'Sessão inválida ou expirada — faça login novamente')
     if (user.tokenVersion !== payload.tokenVersion) {
       throw new ApiError(401, 'Sessão encerrada — faça login novamente')
     }
     if (user.accessExpiresAt && user.accessExpiresAt.getTime() < Date.now()) {
       throw new ApiError(403, 'O acesso desta conta expirou — fale com o administrador')
+    }
+    if (!user.isAdmin && user.companyRole !== 'OWNER' && !empresaTemDonoComAcesso(user.company?.users ?? [])) {
+      throw new ApiError(403, 'O acesso da sua empresa está suspenso — fale com o administrador')
     }
 
     req.userId = user.id

@@ -8,6 +8,8 @@
 // o estado mais atual (ex: análise rodada depois do plano já existir).
 // ============================================================
 
+import { aberturaEhInicioDasPropostas } from './dataDaSessao'
+
 export interface PlanMilestone {
   id: string
   label: string
@@ -18,6 +20,7 @@ export interface PlanMilestone {
 }
 
 interface TenderDates {
+  fonte: string
   publicadoAt: Date | null
   encerramentoAt: Date | null
   aberturaAt: Date | null
@@ -75,7 +78,7 @@ export function buildAutoMilestones(tender: TenderDates, analysis: AnalysisPrazo
   if (tender.aberturaAt) {
     milestones.push({
       id: 'abertura-disputa',
-      label: 'Abertura da sessão / disputa',
+      label: aberturaEhInicioDasPropostas(tender.fonte) ? 'Início do recebimento de propostas' : 'Abertura da sessão / disputa',
       date: tender.aberturaAt.toISOString(),
       detalhe: null,
       done: false,

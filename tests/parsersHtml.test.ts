@@ -8,7 +8,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { parseNovacapListagem } from '../src/services/novacapParser'
 import { parseFiegListagem, extrairTotalPaginas } from '../src/services/fiegParser'
-import { parseSescGoListagem } from '../src/services/sescGoParser'
+import { desambiguarFonteIdsRepetidos, parseSescGoListagem } from '../src/services/sescGoParser'
 
 describe('parseNovacapListagem', () => {
   // O parser descarta licitações com sessão já passada; a do exemplo é de 02/10/2026.
@@ -173,5 +173,30 @@ describe('parseSescGoListagem', () => {
   it('exclui licitação com situação encerrada', () => {
     const encerrada = html.replace('Disponível', 'Encerrada')
     expect(parseSescGoListagem(encerrada)).toHaveLength(0)
+  })
+})
+
+describe('desambiguarFonteIdsRepetidos (SESC GO)', () => {
+  const base = {
+    fonte: 'SESC_GO' as const,
+    modalidade: 'PREGAO_ELETRONICO' as const,
+    uf: 'GO',
+    rawJson: {},
+  }
+  const telefonia = { ...base, fonteId: 'SESCGO-0065-2025', objeto: 'Aquisição de aparelhos de telefonia', linkEdital: 'https://www3.sescgo.com.br/licitacao/download/48630' }
+  const camarim = { ...base, fonteId: 'SESCGO-0065-2025', objeto: 'Abastecimento de camarim', linkEdital: 'https://www3.sescgo.com.br/licitacao/download/48449' }
+  const outra = { ...base, fonteId: 'SESCGO-0001-2026', objeto: 'Outra', linkEdital: 'https://www3.sescgo.com.br/licitacao/download/1' }
+
+  it('mantém as duas licitações que repetem o nº de processo, com ids distintos e estáveis', () => {
+    const ida = desambiguarFonteIdsRepetidos([telefonia, camarim, outra])
+    const volta = desambiguarFonteIdsRepetidos([camarim, outra, telefonia])
+    expect(ida).toHaveLength(3)
+    expect(ida.find((t) => t.objeto.includes('camarim'))!.fonteId).toBe('SESCGO-0065-2025')
+    expect(ida.find((t) => t.objeto.includes('telefonia'))!.fonteId).toBe('SESCGO-0065-2025-48630')
+    expect(new Set(ida.map((t) => `${t.fonteId}|${t.objeto}`))).toEqual(new Set(volta.map((t) => `${t.fonteId}|${t.objeto}`)))
+  })
+
+  it('não mexe em processo sem repetição', () => {
+    expect(desambiguarFonteIdsRepetidos([outra])[0].fonteId).toBe('SESCGO-0001-2026')
   })
 })

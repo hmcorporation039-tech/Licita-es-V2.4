@@ -15,6 +15,7 @@ import { existsSync, readFileSync } from 'fs'
 import { join } from 'path'
 import { PrismaClient } from '@prisma/client'
 import { TABELAS } from './tabelas'
+import { confirmarAlvoRemoto } from './lib/alvoDoBanco'
 
 const prisma = new PrismaClient()
 const LOTE = 500
@@ -33,6 +34,8 @@ async function main() {
   const alvo = (process.env.DATABASE_URL ?? '').replace(/\/\/[^@]*@/, '//***:***@')
   console.log(`Backup:  ${origem}`)
   console.log(`Destino: ${alvo}\n`)
+
+  if (process.argv.includes('--forcar')) await confirmarAlvoRemoto('importar o backup POR CIMA de um banco que já tem dados')
 
   // Se o destino já tiver dados, avisa em vez de misturar em silêncio.
   const usuariosNoDestino = await prisma.user.count()

@@ -47,7 +47,10 @@ export const notificadorQueue = new Queue('notificador', defaultQueueOptions)
 
 // Fila de análise de edital por IA — a análise leva minutos e não pode
 // rodar dentro da requisição HTTP (ver routes/tenders.ts).
-export const analiseQueue = new Queue('analise', defaultQueueOptions)
+export const analiseQueue = new Queue('analise', {
+  ...defaultQueueOptions,
+  defaultJobOptions: { ...defaultQueueOptions.defaultJobOptions, attempts: 1 },
+})
 
 interface ColetorScheduler {
   queue: Queue

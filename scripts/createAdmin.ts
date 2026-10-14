@@ -13,11 +13,14 @@ import { SENHA_MIN } from '../src/api/passwordPolicy'
 import { prisma } from '../src/services/tenderService'
 
 async function main() {
-  const [emailArg, passwordArg, name] = process.argv.slice(2)
+  const args = process.argv.slice(2).filter((a) => !a.startsWith('--'))
+  const senhaPorAmbiente = process.env.ADMIN_PASSWORD
+  const [emailArg, ...resto] = args
+  const password = senhaPorAmbiente ?? resto[0]
+  const name = senhaPorAmbiente ? resto[0] : resto[1]
   const email = emailArg ? normalizeEmail(emailArg) : undefined
-  const password = process.env.ADMIN_PASSWORD ?? passwordArg
   if (!email || !password) {
-    console.error('Uso: ADMIN_PASSWORD=<senha> npx ts-node scripts/createAdmin.ts <email> [nome]')
+    console.error('Uso: ADMIN_PASSWORD=<senha> npx ts-node scripts/createAdmin.ts <email> [nome]  (ou: createAdmin.ts <email> <senha> [nome])')
     process.exit(1)
   }
   if (password.length < SENHA_MIN) {
@@ -29,10 +32,10 @@ async function main() {
 
   const user = await prisma.user.upsert({
     where: { email },
-    update: { passwordHash, isAdmin: true, active: true, accessExpiresAt: null, disabledByAdmin: false },
+    update: { passwordHash, isAdmin: true, active: true, accessExpiresAt: null, disabledByAdmin: false, emailVerifiedAt: new Date(), tokenVersion: { increment: 1 } },
     // Toda conta precisa de uma Company (ver schema.prisma) — o primeiro
     // admin ganha uma individual, criada junto na mesma escrita.
-    create: { email, name, passwordHash, isAdmin: true, company: { create: { name: name ?? email } } },
+    create: { email, name, passwordHash, isAdmin: true, emailVerifiedAt: new Date(), company: { create: { name: name ?? email } } },
   })
 
   console.log(`Admin pronto: ${user.email} (id ${user.id})`)

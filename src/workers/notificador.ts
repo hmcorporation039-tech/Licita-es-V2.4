@@ -10,6 +10,7 @@ import { redisConnection } from '../queues'
 import { prisma } from '../services/tenderService'
 import { sendMatchEmail, sendTenderChangedEmail } from '../services/emailService'
 import { NotificadorAlteracaoPayload, NotificadorJobPayload, NotificadorMatchPayload } from '../types'
+import { inicioDoDiaUtc, limites } from '../lib/limites'
 
 async function jaNotificado(caminho: string[], valor: string): Promise<boolean> {
   const existente = await prisma.notification.findFirst({
@@ -28,7 +29,21 @@ async function processarMatch(payload: NotificadorMatchPayload): Promise<void> {
     where: { id: tenderMatchId },
     include: { tender: true, monitoredItem: true, user: true },
   })
-  if (!match) return
+  if (!match || !match.user.active) return
+
+  const emailsHojeDaEmpresa = await prisma.notification.count({
+    where: {
+      type: 'EMAIL',
+      sentAt: { gte: inicioDoDiaUtc() },
+      user: { companyId: match.companyId },
+    },
+  })
+  if (emailsHojeDaEmpresa >= limites.maxEmailsDiaPorEmpresa) {
+    console.log(
+      `[Notificador Worker] Teto diário de ${limites.maxEmailsDiaPorEmpresa} e-mail(s) de match atingido pela empresa ${match.companyId} — match ${tenderMatchId} fica só na plataforma.`
+    )
+    return
+  }
 
   await sendMatchEmail({
     to: match.user.email,

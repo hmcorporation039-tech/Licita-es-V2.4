@@ -158,6 +158,9 @@ adminRouter.patch(
     const body = updateUserSchema.parse(req.body)
     const existing = await prisma.user.findUnique({ where: { id: req.params.id } })
     if (!existing) throw new ApiError(404, 'Usuário não encontrado')
+    if (existing.id === req.userId && (body.isAdmin === false || body.active === false)) {
+      throw new ApiError(400, 'Você não pode tirar o próprio acesso de administrador nem desativar a própria conta')
+    }
 
     const data: {
       active?: boolean
@@ -182,6 +185,12 @@ adminRouter.patch(
     if (body.emailConfirmado && !existing.emailVerifiedAt) data.emailVerifiedAt = new Date()
 
     const updated = await prisma.user.update({ where: { id: req.params.id }, data })
+    if (data.accessExpiresAt !== undefined && updated.companyRole === 'OWNER') {
+      await prisma.user.updateMany({
+        where: { companyId: updated.companyId, companyRole: 'MEMBER' },
+        data: { accessExpiresAt: data.accessExpiresAt },
+      })
+    }
     if (body.emailConfirmado && !existing.emailVerifiedAt) {
       await registrarAuditoria(req, {
         action: 'ADMIN_EMAIL_CONFIRMADO',

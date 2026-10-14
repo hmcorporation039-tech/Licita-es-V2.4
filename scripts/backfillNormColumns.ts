@@ -7,10 +7,12 @@
 
 import { prisma } from '../src/services/tenderService'
 import { normalize } from '../src/lib/geoService'
+import { confirmarAlvoRemoto } from './lib/alvoDoBanco'
 
 const BATCH_SIZE = 500
 
 async function main() {
+  await confirmarAlvoRemoto('preencher as colunas normalizadas (*_norm) das licitações')
   const total = await prisma.tender.count({ where: { objetoNorm: null } })
   console.log(`${total} licitação(ões) sem as colunas normalizadas.`)
 

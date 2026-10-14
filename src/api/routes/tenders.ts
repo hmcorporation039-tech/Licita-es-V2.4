@@ -25,6 +25,9 @@ import { analiseParaResposta } from '../../lib/analiseParaResposta'
 import { whereLicitacaoAberta } from '../../lib/licitacaoAberta'
 import { TENDER_PUBLICO, semRawJson } from '../../lib/tenderPublico'
 import { MAX_ANALISES_POR_HORA, pedidosDeAnaliseNaUltimaHora } from '../../services/quotaService'
+import { desfazerReserva, reservarAnalise } from '../../services/reservaDeAnalise'
+import { falhouHaPouco } from '../../lib/esperaDeReanalise'
+import { dataDaSessao } from '../../lib/dataDaSessao'
 
 export const tendersRouter = Router()
 
@@ -57,6 +60,7 @@ const querySchema = z.object({
     .enum(['true', 'false'])
     .optional()
     .transform((v) => v === 'true'),
+  ordem: z.enum(['prazo', 'recentes']).default('prazo'),
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().positive().max(100).default(20),
 })
@@ -76,6 +80,7 @@ tendersRouter.get(
       q,
       somenteRelacionadas,
       agrupar,
+      ordem,
       page,
       pageSize,
     } = querySchema.parse(req.query)
@@ -111,9 +116,13 @@ tendersRouter.get(
     const [rows, total] = await Promise.all([
       prisma.tender.findMany({
         where,
-        orderBy: agrupar
-          ? [{ uf: 'asc' }, { orgao: 'asc' }, { publicadoAt: 'desc' }]
-          : { publicadoAt: 'desc' },
+        orderBy: [
+          ...(agrupar ? [{ uf: 'asc' as const }, { orgao: 'asc' as const }] : []),
+          ...(ordem === 'prazo'
+            ? [{ encerramentoAt: { sort: 'asc' as const, nulls: 'last' as const } }, { aberturaAt: { sort: 'asc' as const, nulls: 'last' as const } }]
+            : []),
+          { publicadoAt: 'desc' as const },
+        ],
         skip: (page - 1) * pageSize,
         take: pageSize,
         select: companyId
@@ -299,6 +308,12 @@ tendersRouter.post(
       }
     }
 
+    if (!force && existing && falhouHaPouco(existing, req.isAdmin === true)) {
+      throw new ApiError(429, 'A última análise deste edital não deu certo há pouco. Tente de novo mais tarde.', {
+        code: 'ANALISE_FALHOU_HA_POUCO',
+      })
+    }
+
     // Só chega aqui quem vai de fato gastar IA (análise pronta ou em andamento
     // já voltou acima, de graça — a análise é compartilhada entre as empresas).
     await exigirCotaDaRequisicao(req, 'analisesIaMes')
@@ -306,20 +321,11 @@ tendersRouter.post(
       throw new ApiError(429, 'Muitas análises pedidas na última hora. Aguarde um pouco antes de pedir outra.', { code: 'ANALISES_POR_HORA' })
     }
 
-    const pendente = await prisma.tenderAnalysis.upsert({
-      where: { tenderId: req.params.id },
-      update: { status: 'PENDING', errorMsg: null },
-      create: { tenderId: req.params.id, status: 'PENDING' },
-    })
-
-    const enfileirou = await enfileirarSemTravar(
-      analiseQueue,
-      'analisar-edital',
-      { tenderId: req.params.id, companyId: req.companyId!, userId: req.userId! },
-      'Análise'
-    )
-    if (!enfileirou) {
-      throw new ApiError(503, 'A fila de análise está indisponível no momento — tente de novo em alguns minutos')
+    const reservada = await reservarAnalise(req.params.id, force)
+    if (!reservada) {
+      const emAndamento = await prisma.tenderAnalysis.findUnique({ where: { tenderId: req.params.id } })
+      res.status(202).json(emAndamento ? analiseParaResposta(emAndamento, req.isAdmin === true) : null)
+      return
     }
 
     await registrarAuditoria(req, {
@@ -329,7 +335,19 @@ tendersRouter.post(
       metadata: { forcada: force },
     })
 
-    res.status(202).json(analiseParaResposta(pendente, req.isAdmin === true))
+    const enfileirou = await enfileirarSemTravar(
+      analiseQueue,
+      'analisar-edital',
+      { tenderId: req.params.id, companyId: req.companyId!, userId: req.userId! },
+      'Análise',
+      { deduplication: { id: `analise-${req.params.id}` } }
+    )
+    if (!enfileirou) {
+      await desfazerReserva(req.params.id, existing)
+      throw new ApiError(503, 'A fila de análise está indisponível no momento — tente de novo em alguns minutos')
+    }
+
+    res.status(202).json(analiseParaResposta(reservada, req.isAdmin === true))
   })
 )
 
@@ -342,11 +360,11 @@ tendersRouter.get(
   asyncHandler(async (req, res) => {
     const tender = await prisma.tender.findUnique({
       where: { id: req.params.id },
-      select: { aberturaAt: true, analysis: { select: { status: true, resultado: true } } },
+      select: { fonte: true, aberturaAt: true, encerramentoAt: true, analysis: { select: { status: true, resultado: true } } },
     })
     if (!tender) throw new ApiError(404, 'Licitação não encontrada')
 
-    let sessao: Date | null = tender.aberturaAt
+    let sessao: Date | null = dataDaSessao(tender)
     let origem: 'abertura' | 'analise-ia' = 'abertura'
     if (!sessao && tender.analysis?.status === 'DONE' && tender.analysis.resultado) {
       sessao = lerDataTexto((tender.analysis.resultado as unknown as { dataSessao?: string }).dataSessao)
@@ -471,14 +489,14 @@ tendersRouter.get(
   asyncHandler(async (req, res) => {
     const tender = await prisma.tender.findUnique({
       where: { id: req.params.id },
-      select: { aberturaAt: true, valorEstimado: true, analysis: { select: { status: true, resultado: true } } },
+      select: { fonte: true, aberturaAt: true, encerramentoAt: true, valorEstimado: true, analysis: { select: { status: true, resultado: true } } },
     })
     if (!tender) throw new ApiError(404, 'Licitação não encontrada')
 
     const analisada = tender.analysis?.status === 'DONE' && tender.analysis.resultado != null
     const analise = analisada ? (tender.analysis!.resultado as unknown as Partial<EditalAnalysisResult>) : null
 
-    const sessao = tender.aberturaAt ?? (analise ? lerDataTexto(analise.dataSessao) : null)
+    const sessao = dataDaSessao(tender) ?? (analise ? lerDataTexto(analise.dataSessao) : null)
 
     const docs = await prisma.companyDocument.findMany({
       where: { companyId: req.companyId! },
@@ -544,7 +562,7 @@ async function auditarMudancaDeStatus(req: Request, tenderId: string, de: string
 async function buildPlanResponse(tenderId: string, status: string, state: PlanState) {
   const tender = await prisma.tender.findUnique({
     where: { id: tenderId },
-    select: { publicadoAt: true, encerramentoAt: true, aberturaAt: true },
+    select: { fonte: true, publicadoAt: true, encerramentoAt: true, aberturaAt: true },
   })
   const analysis = await prisma.tenderAnalysis.findUnique({ where: { tenderId } })
   const analysisPrazos =
@@ -552,7 +570,7 @@ async function buildPlanResponse(tenderId: string, status: string, state: PlanSt
       ? (analysis.resultado as unknown as { prazoImpugnacao: string; prazoEsclarecimento: string })
       : null
 
-  const auto = buildAutoMilestones(tender ?? { publicadoAt: null, encerramentoAt: null, aberturaAt: null }, analysisPrazos).map(
+  const auto = buildAutoMilestones(tender ?? { fonte: '', publicadoAt: null, encerramentoAt: null, aberturaAt: null }, analysisPrazos).map(
     (m) => ({ ...m, done: m.done || state.doneIds.includes(m.id) })
   )
 

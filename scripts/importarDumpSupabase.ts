@@ -31,6 +31,7 @@ import { pipeline } from 'stream/promises'
 import { Client } from 'pg'
 import { from as copyFrom } from 'pg-copy-streams'
 import { TABELAS_SQL } from './tabelas'
+import { confirmarAlvoRemoto } from './lib/alvoDoBanco'
 
 interface BlocoCopy {
   tabela: string
@@ -83,6 +84,8 @@ async function main() {
 
   console.log(`Dump:    ${caminho}`)
   console.log(`Destino: ${process.env.DATABASE_URL.replace(/\/\/[^@]*@/, '//***:***@')}\n`)
+
+  if (process.argv.includes('--forcar')) await confirmarAlvoRemoto('importar o dump POR CIMA de um banco que já tem dados')
 
   console.log('Lendo o dump...')
   const blocos = await lerBlocos(caminho)

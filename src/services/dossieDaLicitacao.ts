@@ -11,6 +11,7 @@ import { AlertaLegal, calcularAlertasLegais, lerValoresEmReais } from '../lib/al
 import { lerDataTexto } from '../lib/diasUteis'
 import { chaveDaExigencia, ExigenciaVerificada } from '../lib/matrizExigencias'
 import type { EditalAnalysisResult, EditalAnalysisRisco } from './llm/types'
+import { dataDaSessao } from '../lib/dataDaSessao'
 
 export interface ExigenciaDoDossie {
   texto: string
@@ -38,12 +39,12 @@ const texto = (v: unknown): string => (typeof v === 'string' ? v.trim() : '')
 export async function carregarDossie(companyId: string, tenderId: string): Promise<DossieDaLicitacao> {
   const tender = await prisma.tender.findUnique({
     where: { id: tenderId },
-    select: { aberturaAt: true, valorEstimado: true, analysis: { select: { status: true, resultado: true } } },
+    select: { fonte: true, aberturaAt: true, encerramentoAt: true, valorEstimado: true, analysis: { select: { status: true, resultado: true } } },
   })
   const analisada = tender?.analysis?.status === 'DONE' && tender.analysis.resultado != null
   const a = analisada ? (tender!.analysis!.resultado as unknown as Partial<EditalAnalysisResult>) : null
 
-  const sessao = tender?.aberturaAt ?? (a ? lerDataTexto(a.dataSessao) : null)
+  const sessao = (tender ? dataDaSessao(tender) : null) ?? (a ? lerDataTexto(a.dataSessao) : null)
   const docs = await prisma.companyDocument.findMany({ where: { companyId }, select: { id: true, nome: true, tipo: true, dataValidade: true } })
   const habilitacao = avaliarHabilitacao({
     checklist: buildChecklistTemplate(),

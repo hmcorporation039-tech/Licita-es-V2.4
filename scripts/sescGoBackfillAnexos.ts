@@ -21,8 +21,10 @@
 import { prisma } from '../src/services/tenderService'
 import { sescGoClient } from '../src/lib/httpClient'
 import { parseSescGoListagem } from '../src/services/sescGoParser'
+import { confirmarAlvoRemoto } from './lib/alvoDoBanco'
 
 async function main() {
+  await confirmarAlvoRemoto('regravar os anexos das licitações do SESC GO')
   console.log('Buscando listagem da SESC GO...')
   const response = await sescGoClient.get('/licitacoes')
   const tenders = parseSescGoListagem(response.data)

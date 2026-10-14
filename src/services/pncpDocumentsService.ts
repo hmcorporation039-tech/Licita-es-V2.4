@@ -8,6 +8,7 @@
 import axios from 'axios'
 import { ordenarPorPrioridade } from '../lib/documentPriority'
 import { agenteDownloadSeguro, assertUrlDownloadPermitida } from '../lib/urlGuard'
+import { assertIdentificadorCompraPncp } from '../lib/pncpIdentificador'
 
 // Teto de tamanho do anexo baixado. Um host malicioso (ou um redirect para um
 // arquivo enorme) poderia estourar a memória do worker se a resposta fosse
@@ -28,10 +29,7 @@ export async function listPNCPDocuments(
   anoCompra: number | string,
   sequencialCompra: number | string
 ): Promise<PNCPDocumentInfo[]> {
-  // Os três pedaços entram no caminho da URL: só dígitos, para nada vindo de dado externo alterar o destino.
-  if (!/^[0-9]{14}$/.test(String(cnpj)) || !/^[0-9]{4}$/.test(String(anoCompra)) || !/^[0-9]{1,9}$/.test(String(sequencialCompra))) {
-    throw new Error('Identificador de contratação do PNCP inválido')
-  }
+  assertIdentificadorCompraPncp(String(cnpj), anoCompra, sequencialCompra)
   const url = `https://pncp.gov.br/api/pncp/v1/orgaos/${cnpj}/compras/${anoCompra}/${sequencialCompra}/arquivos`
   const response = await axios.get(url, { timeout: 20_000 })
   return Array.isArray(response.data) ? response.data : []

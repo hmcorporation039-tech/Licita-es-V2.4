@@ -30,7 +30,7 @@ import { globalLimiter, radarLimiter } from './rateLimit'
 import { alertarFalha, instalarAlertasDoProcesso } from '../services/alertaOperacional'
 import { JWT_SECRET_MIN, jwtSecretFraco } from '../services/authService'
 import { iniciarImportacaoAutomatica } from '../services/catalogoBootstrap'
-import { verificarProntidao } from '../services/prontidao'
+import { Prontidao, verificarProntidao } from '../services/prontidao'
 
 const app = express()
 
@@ -72,8 +72,14 @@ app.get('/api/health', (_req, res) => res.json({ ok: true }))
 // Readiness: o banco responde E tem todas as migrations do código. Usar como
 // Healthcheck Path no Railway — impede que uma versão incompatível com o banco
 // entre no ar (ver services/prontidao.ts). Fica antes do rate limit de propósito.
+const CACHE_PRONTIDAO_MS = 5_000
+let prontidaoEmCache: { valor: Prontidao; expiraEm: number } | null = null
+
 app.get('/api/health/ready', async (_req, res) => {
-  const p = await verificarProntidao()
+  if (!prontidaoEmCache || prontidaoEmCache.expiraEm < Date.now()) {
+    prontidaoEmCache = { valor: await verificarProntidao(), expiraEm: Date.now() + CACHE_PRONTIDAO_MS }
+  }
+  const p = prontidaoEmCache.valor
   res.status(p.ok ? 200 : 503).json(p)
 })
 
@@ -116,6 +122,10 @@ const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
   // está chamando a API.
   if (err instanceof SyntaxError && (err as { type?: string }).type === 'entity.parse.failed') {
     res.status(400).json({ error: 'Corpo da requisição não é um JSON válido' })
+    return
+  }
+  if ((err as { type?: string }).type === 'entity.too.large') {
+    res.status(413).json({ error: 'Corpo da requisição grande demais' })
     return
   }
   console.error('[API] Erro não tratado:', err)
