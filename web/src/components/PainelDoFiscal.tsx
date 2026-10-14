@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useState, type ReactNode } from 'react'
-import { Circle, CornerDownRight, TriangleAlert } from 'lucide-react'
-import { api, ApiRequestError } from '@/lib/api'
+import { Circle, CornerDownRight, Paperclip, TriangleAlert } from 'lucide-react'
+import { abrirArquivo, api, ApiRequestError } from '@/lib/api'
 import type { PainelDoFiscal as Painel, RequisitoDeHabilitacao, StatusHabilitacao } from '@/lib/adminTypes'
 import { Carregando, ErrorState, Notice, Panel, StatusTag, TextLink, cx, toneText, type Tom } from '@/components/ui'
 
@@ -160,6 +160,16 @@ export default function PainelDoFiscal({ tenderId }: { tenderId: string }) {
                     </p>
                   )}
                   {r.citadoNoEdital.length > 0 && r.origem !== 'extra' && <p className="text-xs text-faint">Edital: {r.citadoNoEdital.join(' · ')}</p>}
+                  {r.documento?.temArquivo && (
+                    <button
+                      type="button"
+                      onClick={() => abrirArquivo(`/api/company-documents/${r.documento!.id}/arquivo`).catch(() => undefined)}
+                      className="inline-flex items-center gap-1.5 self-start text-xs font-medium text-accent underline decoration-accent-line underline-offset-[3px] hover:decoration-accent"
+                    >
+                      <Paperclip size={12} aria-hidden />
+                      Ver arquivo de “{r.documento.nome}”
+                    </button>
+                  )}
                 </div>
                 <StatusTag tone={STATUS[r.status].tom} dot className="shrink-0">
                   {STATUS[r.status].rotulo}
@@ -171,7 +181,7 @@ export default function PainelDoFiscal({ tenderId }: { tenderId: string }) {
       ))}
 
       <p className="text-xs text-muted">
-        O cofre guarda a descrição e a validade dos documentos (não o arquivo). Cadastre e atualize em <TextLink href="/empresa">Empresa</TextLink>.
+        Cadastre os documentos, a validade e o arquivo (PDF ou imagem) em <TextLink href="/empresa">Empresa e documentos</TextLink>. Os arquivos entram no pacote de habilitação do estudo de custos.
       </p>
     </div>
   )

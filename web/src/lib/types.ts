@@ -167,6 +167,14 @@ export interface CompanyDocument {
   dataValidade: string | null
   observacao: string | null
   createdAt: string
+  arquivo?: ArquivoDoDocumento | null
+}
+
+export interface ArquivoDoDocumento {
+  nomeArquivo: string
+  mimeType: string
+  tamanho: number
+  updatedAt: string
 }
 
 export interface Paginated<T> {

@@ -21,6 +21,7 @@ import { findMunicipioByNomeUf, haversineKm } from '../../lib/geoService'
 import { PrecosIndisponiveisError, pesquisarPrecos } from '../../services/pesquisaDePrecosService'
 import { gerarPdfDoEstudo } from '../../services/estudoPdf'
 import { carregarDossie } from '../../services/dossieDaLicitacao'
+import { montarPacoteDeHabilitacao } from '../../lib/pacoteDeHabilitacao'
 
 export const estudosRouter = Router()
 
@@ -246,48 +247,76 @@ estudosRouter.post(
   })
 )
 
+async function montarPdfDoDossie(companyId: string, tenderId: string, userId: string) {
+  const ctx = await carregar(companyId, tenderId)
+  const { dados } = await dadosSalvos(companyId, tenderId, ctx)
+  const r = montarResposta(ctx, dados, null)
+  const usuario = await prisma.user.findUnique({ where: { id: userId }, select: { name: true, email: true } })
+
+  const dossie = await carregarDossie(companyId, tenderId).catch((err) => {
+    console.error('[Estudo] Erro ao montar o dossiê:', err)
+    return null
+  })
+
+  const pdf = await gerarPdfDoEstudo({
+    empresa: {
+      nome: ctx.empresa.name,
+      documento: ctx.empresa.cnpj ?? ctx.empresa.cpf,
+      base: ctx.empresa.baseMunicipio && ctx.empresa.baseUf ? `${ctx.empresa.baseMunicipio}/${ctx.empresa.baseUf}` : null,
+    },
+    dossie,
+    licitacao: {
+      objeto: ctx.tender.objeto,
+      orgao: ctx.tender.orgao,
+      local: [ctx.tender.municipio, ctx.tender.uf].filter(Boolean).join('/') || ctx.localDoEdital,
+      modalidade: ctx.tender.modalidade,
+      fonte: ctx.tender.fonte,
+      numeroControle: ctx.tender.numeroControle,
+      valorEstimado: num(ctx.tender.valorEstimado),
+      sessaoEm: ctx.tender.encerramentoAt ?? ctx.tender.aberturaAt,
+      linkEdital: ctx.tender.linkEdital,
+    },
+    itens: ctx.itens,
+    dados,
+    resultado: r.resultado,
+    geradoEm: new Date(),
+    geradoPor: usuario?.name ?? usuario?.email ?? 'usuário',
+  })
+  return { pdf, dossie }
+}
+
 estudosRouter.get(
   '/:tenderId/pdf',
   estudoPdfLimiter,
   asyncHandler(async (req, res) => {
-    const ctx = await carregar(req.companyId!, req.params.tenderId)
-    const { dados } = await dadosSalvos(req.companyId!, req.params.tenderId, ctx)
-    const r = montarResposta(ctx, dados, null)
-    const usuario = await prisma.user.findUnique({ where: { id: req.userId! }, select: { name: true, email: true } })
-
-    // O dossiê é um complemento: se algo falhar ao montá-lo, o estudo de custos ainda sai.
-    const dossie = await carregarDossie(req.companyId!, req.params.tenderId).catch((err) => {
-      console.error('[Estudo] Erro ao montar o dossiê:', err)
-      return null
-    })
-
-    const pdf = await gerarPdfDoEstudo({
-      empresa: {
-        nome: ctx.empresa.name,
-        documento: ctx.empresa.cnpj ?? ctx.empresa.cpf,
-        base: ctx.empresa.baseMunicipio && ctx.empresa.baseUf ? `${ctx.empresa.baseMunicipio}/${ctx.empresa.baseUf}` : null,
-      },
-      dossie,
-      licitacao: {
-        objeto: ctx.tender.objeto,
-        orgao: ctx.tender.orgao,
-        local: [ctx.tender.municipio, ctx.tender.uf].filter(Boolean).join('/') || ctx.localDoEdital,
-        modalidade: ctx.tender.modalidade,
-        fonte: ctx.tender.fonte,
-        numeroControle: ctx.tender.numeroControle,
-        valorEstimado: num(ctx.tender.valorEstimado),
-        sessaoEm: ctx.tender.encerramentoAt ?? ctx.tender.aberturaAt,
-        linkEdital: ctx.tender.linkEdital,
-      },
-      itens: ctx.itens,
-      dados,
-      resultado: r.resultado,
-      geradoEm: new Date(),
-      geradoPor: usuario?.name ?? usuario?.email ?? 'usuário',
-    })
+    const { pdf } = await montarPdfDoDossie(req.companyId!, req.params.tenderId, req.userId!)
     await registrarAuditoria(req, { action: 'ESTUDO_PDF_GERADO', entityType: 'licitacao', entityId: req.params.tenderId })
     res.setHeader('Content-Type', 'application/pdf')
     res.setHeader('Content-Disposition', `attachment; filename="dossie-da-licitacao-${req.params.tenderId.slice(0, 8)}.pdf"`)
     res.send(pdf)
+  })
+)
+
+estudosRouter.get(
+  '/:tenderId/pacote',
+  estudoPdfLimiter,
+  asyncHandler(async (req, res) => {
+    const { pdf, dossie } = await montarPdfDoDossie(req.companyId!, req.params.tenderId, req.userId!)
+    const requisitos = dossie?.habilitacao.requisitos ?? []
+    const idsDosDocumentos = [...new Set(requisitos.map((r) => r.documento?.id).filter((id): id is string => Boolean(id)))]
+    const arquivos = await prisma.companyDocumentFile.findMany({
+      where: { companyId: req.companyId!, documentId: { in: idsDosDocumentos } },
+      select: { documentId: true, nomeArquivo: true, conteudo: true },
+    })
+    const zip = montarPacoteDeHabilitacao(pdf, requisitos, arquivos)
+    await registrarAuditoria(req, {
+      action: 'PACOTE_HABILITACAO_GERADO',
+      entityType: 'licitacao',
+      entityId: req.params.tenderId,
+      metadata: { arquivos: arquivos.length },
+    })
+    res.setHeader('Content-Type', 'application/zip')
+    res.setHeader('Content-Disposition', `attachment; filename="pacote-de-habilitacao-${req.params.tenderId.slice(0, 8)}.zip"`)
+    res.send(Buffer.from(zip))
   })
 )

@@ -136,6 +136,10 @@ export const ROTULO_ACAO: Record<string, string> = {
   DOCUMENTO_CRIADO: 'Documento criado',
   DOCUMENTO_ALTERADO: 'Documento alterado',
   DOCUMENTO_REMOVIDO: 'Documento removido',
+  DOCUMENTO_ARQUIVO_ENVIADO: 'Arquivo de documento enviado',
+  DOCUMENTO_ARQUIVO_TROCADO: 'Arquivo de documento trocado',
+  DOCUMENTO_ARQUIVO_REMOVIDO: 'Arquivo de documento removido',
+  PACOTE_HABILITACAO_GERADO: 'Pacote de habilitação gerado',
   ANALISE_SOLICITADA: 'Análise de IA solicitada',
   PARTICIPACAO_STATUS: 'Decisão de participação',
   PLANO_EMPRESA_ALTERADO: 'Plano da empresa alterado',
@@ -179,7 +183,7 @@ export interface RequisitoDeHabilitacao {
   status: StatusHabilitacao
   motivo: string
   acao: string | null
-  documento: { id: string; nome: string; dataValidade: string | null } | null
+  documento: { id: string; nome: string; dataValidade: string | null; temArquivo?: boolean } | null
   citadoNoEdital: string[]
 }
 
