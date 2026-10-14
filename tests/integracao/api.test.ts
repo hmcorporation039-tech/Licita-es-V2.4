@@ -177,6 +177,37 @@ rodar('API com banco real', () => {
       expect(intacto.name).toBe('Item secreto de A')
     })
 
+    it('anexa, baixa, troca e remove o arquivo de um documento; B não acessa', async () => {
+      const pdf = Buffer.from('%PDF-1.4 conteudo de teste %%EOF')
+      const enviar = (quem: string, corpo: Buffer, nome = 'Certidão.pdf') =>
+        fetch(`${base}/api/company-documents/${docA}/arquivo`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/octet-stream', 'X-Nome-Arquivo': encodeURIComponent(nome), Authorization: `Bearer ${tokens[quem]}` },
+          body: corpo,
+        })
+
+      const up = await enviar('a', pdf)
+      expect(up.status).toBe(200)
+      expect(((await up.json()) as { nomeArquivo: string }).nomeArquivo).toBe('Certidao.pdf')
+
+      const lista = await http('GET', '/api/company-documents', 'a')
+      expect(lista.body.find((d: { id: string }) => d.id === docA).arquivo.tamanho).toBe(pdf.length)
+
+      const down = await fetch(`${base}/api/company-documents/${docA}/arquivo`, { headers: { Authorization: `Bearer ${tokens.a}` } })
+      expect(down.status).toBe(200)
+      expect(down.headers.get('content-type')).toBe('application/pdf')
+      expect(Buffer.from(await down.arrayBuffer()).equals(pdf)).toBe(true)
+
+      expect((await enviar('a', Buffer.from('<html>nao sou pdf</html>'), 'falso.pdf')).status).toBe(415)
+      expect((await enviar('b', pdf)).status).toBe(403)
+      const deB = await fetch(`${base}/api/company-documents/${docA}/arquivo`, { headers: { Authorization: `Bearer ${tokens.b}` } })
+      expect(deB.status).toBe(403)
+
+      expect((await enviar('a', Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1]), 'foto.png')).status).toBe(200)
+      expect((await http('DELETE', `/api/company-documents/${docA}/arquivo`, 'a')).status).toBe(204)
+      expect((await http('DELETE', `/api/company-documents/${docA}/arquivo`, 'a')).status).toBe(404)
+    })
+
     it('empresa B não altera nem apaga o documento de A pelo id', async () => {
       expect((await http('PATCH', `/api/company-documents/${docA}`, 'b', { nome: 'invadido' })).status).toBe(403)
       expect((await http('DELETE', `/api/company-documents/${docA}`, 'b')).status).toBe(403)

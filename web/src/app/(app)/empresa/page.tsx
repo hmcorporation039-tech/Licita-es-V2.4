@@ -2,10 +2,10 @@
 
 import { formatarData } from '@/lib/datas'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { FilePlus, Pause, Play, Save, Trash2, UserPlus, UserRoundCog } from 'lucide-react'
+import { Download, Eye, FilePlus, Paperclip, Pause, Play, Save, Trash2, Upload, UserPlus, UserRoundCog, X } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
-import { api, ApiRequestError } from '@/lib/api'
-import { Company, CompanyDocument, CompanyMember, CompanyType } from '@/lib/types'
+import { abrirArquivo, api, ApiRequestError, baixarArquivo, enviarArquivo } from '@/lib/api'
+import { ArquivoDoDocumento, Company, CompanyDocument, CompanyMember, CompanyType } from '@/lib/types'
 import { DOCUMENT_TYPE_OPTIONS, documentTypeLabel } from '@/lib/documentTypes'
 import {
   Button,
@@ -91,6 +91,93 @@ function Secao({ titulo, children }: { titulo: string; children: ReactNode }) {
   )
 }
 
+
+const TIPOS_ACEITOS = '.pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png'
+const TAMANHO_MAXIMO = 10 * 1024 * 1024
+
+function erroDoArquivo(arquivo: File): string | null {
+  const nome = arquivo.name.toLowerCase()
+  const tipoOk = ['application/pdf', 'image/jpeg', 'image/png'].includes(arquivo.type) || /\.(pdf|jpe?g|png)$/.test(nome)
+  if (!tipoOk) return 'Envie o documento em PDF, JPG ou PNG.'
+  if (arquivo.size > TAMANHO_MAXIMO) return 'O arquivo passa de 10 MB. Envie um arquivo menor.'
+  if (arquivo.size === 0) return 'O arquivo está vazio.'
+  return null
+}
+
+function tamanhoLegivel(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`
+  return `${(bytes / 1024 / 1024).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} MB`
+}
+
+function AcoesDoArquivo({
+  doc,
+  ocupado,
+  onAnexar,
+  onVer,
+  onBaixar,
+  onRemover,
+}: {
+  doc: CompanyDocument
+  ocupado: boolean
+  onAnexar: (arquivo: File) => void
+  onVer: () => void
+  onBaixar: () => void
+  onRemover: () => void
+}) {
+  const campo = useRef<HTMLInputElement>(null)
+  const arquivo: ArquivoDoDocumento | null | undefined = doc.arquivo
+  const escolher = (
+    <input
+      ref={campo}
+      type="file"
+      accept={TIPOS_ACEITOS}
+      className="sr-only"
+      tabIndex={-1}
+      aria-hidden
+      onChange={(e) => {
+        const escolhido = e.target.files?.[0]
+        e.target.value = ''
+        if (escolhido) onAnexar(escolhido)
+      }}
+    />
+  )
+
+  if (!arquivo) {
+    return (
+      <div className="flex items-center gap-2">
+        {escolher}
+        <Button size="sm" variant="secondary" icon={Paperclip} loading={ocupado} onClick={() => campo.current?.click()} aria-label={`Anexar arquivo de ${doc.nome}`}>
+          Anexar
+        </Button>
+        <span className="text-xs text-faint">sem arquivo</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex min-w-0 flex-col gap-1">
+      {escolher}
+      <span className="flex min-w-0 items-center gap-1.5 text-xs text-ink-2" title={arquivo.nomeArquivo}>
+        <Paperclip size={12} className="shrink-0 text-faint" aria-hidden />
+        <span className="truncate">{arquivo.nomeArquivo}</span>
+        <span className="shrink-0 font-mono text-faint">{tamanhoLegivel(arquivo.tamanho)}</span>
+      </span>
+      <span className="flex flex-wrap items-center gap-1">
+        <Button size="sm" variant="ghost" icon={Eye} onClick={onVer} disabled={ocupado} aria-label={`Ver arquivo de ${doc.nome}`}>
+          Ver
+        </Button>
+        <Button size="sm" variant="ghost" icon={Download} onClick={onBaixar} disabled={ocupado} aria-label={`Baixar arquivo de ${doc.nome}`}>
+          Baixar
+        </Button>
+        <Button size="sm" variant="ghost" icon={Upload} loading={ocupado} onClick={() => campo.current?.click()} aria-label={`Trocar arquivo de ${doc.nome}`}>
+          Trocar
+        </Button>
+        <Button size="sm" variant="ghost" icon={X} onClick={onRemover} disabled={ocupado} aria-label={`Remover arquivo de ${doc.nome}`} />
+      </span>
+    </div>
+  )
+}
+
 export default function EmpresaPage() {
   const user = useRequireSession()
   const { confirmar, dialogo } = useDialogo()
@@ -135,6 +222,10 @@ export default function EmpresaPage() {
   const [docDataValidade, setDocDataValidade] = useState('')
   const [docObservacao, setDocObservacao] = useState('')
   const [creatingDoc, setCreatingDoc] = useState(false)
+  const [docArquivo, setDocArquivo] = useState<File | null>(null)
+  const [docArquivoErro, setDocArquivoErro] = useState<string | null>(null)
+  const [versaoDoCampoDeArquivo, setVersaoDoCampoDeArquivo] = useState(0)
+  const [arquivoOcupado, setArquivoOcupado] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -319,23 +410,41 @@ export default function EmpresaPage() {
     }
   }
 
+  function escolherArquivoDoCadastro(arquivo: File | null) {
+    const erro = arquivo ? erroDoArquivo(arquivo) : null
+    setDocArquivoErro(erro)
+    setDocArquivo(erro ? null : arquivo)
+  }
+
   async function criarDocumento(e: React.FormEvent) {
     e.preventDefault()
     setDocsError(null)
+    if (docArquivoErro) return
     setCreatingDoc(true)
     try {
-      await api.post('/api/company-documents', {
+      const criado = await api.post<CompanyDocument>('/api/company-documents', {
         tipo: docTipo || null,
         nome: docNome,
         dataEmissao: docDataEmissao || null,
         dataValidade: docDataValidade || null,
         observacao: docObservacao.trim() || null,
       })
+      if (docArquivo) {
+        try {
+          await enviarArquivo(`/api/company-documents/${criado.id}/arquivo`, docArquivo)
+        } catch (err) {
+          setDocsError(
+            `Documento cadastrado, mas o arquivo não foi enviado: ${err instanceof ApiRequestError ? err.message : 'erro ao enviar'}. Use “Anexar” na lista para tentar de novo.`,
+          )
+        }
+      }
       setDocTipo('')
       setDocNome('')
       setDocDataEmissao('')
       setDocDataValidade('')
       setDocObservacao('')
+      setDocArquivo(null)
+      setVersaoDoCampoDeArquivo((v) => v + 1)
       await loadDocs()
     } catch (err) {
       setDocsError(err instanceof ApiRequestError ? err.message : 'Erro ao cadastrar documento')
@@ -343,6 +452,72 @@ export default function EmpresaPage() {
       setCreatingDoc(false)
     }
   }
+
+  async function anexarArquivo(doc: CompanyDocument, arquivo: File) {
+    const erro = erroDoArquivo(arquivo)
+    if (erro) {
+      setDocsError(`${doc.nome}: ${erro}`)
+      return
+    }
+    setDocsError(null)
+    setArquivoOcupado(doc.id)
+    try {
+      await enviarArquivo(`/api/company-documents/${doc.id}/arquivo`, arquivo)
+      await loadDocs()
+    } catch (err) {
+      setDocsError(`${doc.nome}: ${err instanceof ApiRequestError ? err.message : 'erro ao enviar o arquivo'}`)
+    } finally {
+      setArquivoOcupado(null)
+    }
+  }
+
+  async function verArquivo(doc: CompanyDocument) {
+    setDocsError(null)
+    try {
+      await abrirArquivo(`/api/company-documents/${doc.id}/arquivo`)
+    } catch (err) {
+      setDocsError(`${doc.nome}: ${err instanceof ApiRequestError ? err.message : 'não foi possível abrir o arquivo'}`)
+    }
+  }
+
+  async function baixarArquivoDoDocumento(doc: CompanyDocument) {
+    setDocsError(null)
+    try {
+      await baixarArquivo(`/api/company-documents/${doc.id}/arquivo`, doc.arquivo?.nomeArquivo ?? 'documento')
+    } catch (err) {
+      setDocsError(`${doc.nome}: ${err instanceof ApiRequestError ? err.message : 'não foi possível baixar o arquivo'}`)
+    }
+  }
+
+  async function removerArquivo(doc: CompanyDocument) {
+    const ok = await confirmar({
+      titulo: 'Remover o arquivo anexado?',
+      mensagem: `O cadastro de “${doc.nome}” continua; só o arquivo sai do sistema.`,
+      confirmarRotulo: 'Remover arquivo',
+      perigo: true,
+    })
+    if (!ok) return
+    setArquivoOcupado(doc.id)
+    try {
+      await api.delete(`/api/company-documents/${doc.id}/arquivo`)
+      await loadDocs()
+    } catch (err) {
+      setDocsError(`${doc.nome}: ${err instanceof ApiRequestError ? err.message : 'erro ao remover o arquivo'}`)
+    } finally {
+      setArquivoOcupado(null)
+    }
+  }
+
+  const acoesDoArquivo = (doc: CompanyDocument) => (
+    <AcoesDoArquivo
+      doc={doc}
+      ocupado={arquivoOcupado === doc.id}
+      onAnexar={(arquivo) => anexarArquivo(doc, arquivo)}
+      onVer={() => verArquivo(doc)}
+      onBaixar={() => baixarArquivoDoDocumento(doc)}
+      onRemover={() => removerArquivo(doc)}
+    />
+  )
 
   async function removerDocumento(docId: string) {
     if (!(await confirmar({ titulo: 'Remover este documento?', mensagem: 'Ele deixa de ser cruzado com o checklist das licitações.', confirmarRotulo: 'Remover', perigo: true }))) return
@@ -482,13 +657,14 @@ export default function EmpresaPage() {
                           <StatusTag tone={STATUS_TOM[status]}>{STATUS_LABEL[status]}</StatusTag>
                         </div>
                         {doc.observacao && <p className="text-xs text-faint">{doc.observacao}</p>}
+                        <div className="pt-1">{acoesDoArquivo(doc)}</div>
                       </div>
                       <Button size="sm" variant="ghost" icon={Trash2} aria-label={`Remover ${doc.nome}`} onClick={() => removerDocumento(doc.id)} />
                     </li>
                   )
                 })}
               </ul>
-              <TableWrap minWidth={640} className="hidden sm:block">
+              <TableWrap minWidth={860} className="hidden sm:block">
                 <Table>
                   <THead>
                     <tr>
@@ -496,6 +672,7 @@ export default function EmpresaPage() {
                       <Th align="right">Emissão</Th>
                       <Th align="right">Validade</Th>
                       <Th>Situação</Th>
+                      <Th>Arquivo</Th>
                       <Th>
                         <span className="sr-only">Ações</span>
                       </Th>
@@ -518,6 +695,7 @@ export default function EmpresaPage() {
                           <Td>
                             <StatusTag tone={STATUS_TOM[status]}>{STATUS_LABEL[status]}</StatusTag>
                           </Td>
+                          <Td>{acoesDoArquivo(doc)}</Td>
                           <Td className="w-px text-right">
                             <Button
                               size="sm"
@@ -564,6 +742,20 @@ export default function EmpresaPage() {
               </Field>
               <Field label="Observação" hint="Opcional." className="sm:col-span-2">
                 <Input value={docObservacao} onChange={(e) => setDocObservacao(e.target.value)} />
+              </Field>
+              <Field
+                label="Arquivo do documento"
+                hint="PDF, JPG ou PNG de até 10 MB — por exemplo, a certidão baixada no site do órgão."
+                error={docArquivoErro ?? undefined}
+                className="sm:col-span-2"
+              >
+                <input
+                  key={versaoDoCampoDeArquivo}
+                  type="file"
+                  accept={TIPOS_ACEITOS}
+                  onChange={(e) => escolherArquivoDoCadastro(e.target.files?.[0] ?? null)}
+                  className="block w-full cursor-pointer rounded border border-dashed border-line-strong bg-sunken px-3 py-2.5 text-sm text-ink-2 file:mr-3 file:cursor-pointer file:rounded file:border file:border-line-strong file:bg-surface file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-ink hover:border-faint"
+                />
               </Field>
             </div>
             <FormError>{docsError}</FormError>

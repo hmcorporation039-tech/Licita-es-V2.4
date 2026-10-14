@@ -500,15 +500,20 @@ tendersRouter.get(
 
     const docs = await prisma.companyDocument.findMany({
       where: { companyId: req.companyId! },
-      select: { id: true, nome: true, tipo: true, dataValidade: true },
+      select: { id: true, nome: true, tipo: true, dataValidade: true, arquivo: { select: { id: true } } },
     })
+    const comArquivo = new Set(docs.filter((d) => d.arquivo).map((d) => d.id))
 
-    const habilitacao = avaliarHabilitacao({
+    const avaliada = avaliarHabilitacao({
       checklist: buildChecklistTemplate(),
       documentos: docs,
       documentosExigidosIA: analise ? (analise.documentosExigidos ?? []) : null,
       sessao,
     })
+    const habilitacao = {
+      ...avaliada,
+      requisitos: avaliada.requisitos.map((r) => (r.documento ? { ...r, documento: { ...r.documento, temArquivo: comArquivo.has(r.documento.id) } } : r)),
+    }
 
     // Valor estimado: o cadastrado na licitação; na falta dele, o que a IA leu do edital.
     const valorEstimado =

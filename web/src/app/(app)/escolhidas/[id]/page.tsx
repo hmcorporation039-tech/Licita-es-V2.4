@@ -2,7 +2,7 @@
 
 import { formatarData } from '@/lib/datas'
 import { use, useCallback, useEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react'
-import { ArrowRight, FileDown, Plus, RefreshCw, Save, Search, Trash2 } from 'lucide-react'
+import { ArrowRight, FileDown, FolderArchive, Plus, RefreshCw, Save, Search, Trash2 } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
 import { api, ApiRequestError, baixarArquivo } from '@/lib/api'
 import { DadosDoEstudo, EstudoResposta, PesquisaDePrecosResposta, ResultadoDoEstudo } from '@/lib/estudoTypes'
@@ -125,6 +125,7 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
   const [erro, setErro] = useState<string | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
   const [salvando, setSalvando] = useState(false)
+  const [gerandoPacote, setGerandoPacote] = useState(false)
   const [sujo, setSujo] = useState(false)
   const [pesquisando, setPesquisando] = useState<string | null>(null)
   const [escopoUf, setEscopoUf] = useState<'BR' | 'UF'>('BR')
@@ -189,6 +190,18 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
       await baixarArquivo(`/api/estudos/${id}/pdf`, `dossie-da-licitacao-${id.slice(0, 8)}.pdf`)
     } catch (e) {
       setErro(e instanceof ApiRequestError ? e.message : 'Erro ao gerar o PDF')
+    }
+  }
+
+  async function baixarPacote() {
+    if (sujo && !(await salvar())) return
+    setGerandoPacote(true)
+    try {
+      await baixarArquivo(`/api/estudos/${id}/pacote`, `pacote-de-habilitacao-${id.slice(0, 8)}.zip`)
+    } catch (e) {
+      setErro(e instanceof ApiRequestError ? e.message : 'Erro ao gerar o pacote')
+    } finally {
+      setGerandoPacote(false)
     }
   }
 
@@ -709,6 +722,18 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
             <Button size="sm" icon={FileDown} onClick={baixarPdf} disabled={salvando} aria-label="Baixar dossiê em PDF — vou concorrer">
               <span className="sm:hidden">PDF</span>
               <span className="hidden sm:inline">Baixar dossiê em PDF — vou concorrer</span>
+            </Button>
+            <Button
+              size="sm"
+              icon={FolderArchive}
+              onClick={baixarPacote}
+              disabled={salvando}
+              loading={gerandoPacote}
+              aria-label="Baixar pacote de habilitação (dossiê e arquivos dos documentos em ZIP)"
+              title="Dossiê em PDF e os arquivos dos documentos exigidos, num ZIP"
+            >
+              <span className="sm:hidden">ZIP</span>
+              <span className="hidden sm:inline">Pacote com documentos (ZIP)</span>
             </Button>
           </div>
         </div>

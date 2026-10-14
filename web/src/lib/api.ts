@@ -75,18 +75,53 @@ export const api = {
     request<T>(path, { method: 'DELETE', body: data ? JSON.stringify(data) : undefined }),
 }
 
-// Baixa um arquivo (ex.: PDF) autenticado e dispara o download no navegador.
-export async function baixarArquivo(path: string, nomeSugerido: string): Promise<void> {
+async function buscarArquivo(path: string): Promise<Blob> {
   const token = getSessionToken()
   const res = await fetch(`${API_URL}${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
     throw new ApiRequestError(res.status, body.error ?? `Erro ${res.status}`)
   }
-  const url = URL.createObjectURL(await res.blob())
+  return res.blob()
+}
+
+export async function baixarArquivo(path: string, nomeSugerido: string): Promise<void> {
+  const url = URL.createObjectURL(await buscarArquivo(path))
   const a = document.createElement('a')
   a.href = url
   a.download = nomeSugerido
   a.click()
-  URL.revokeObjectURL(url)
+  setTimeout(() => URL.revokeObjectURL(url), 10_000)
+}
+
+export async function abrirArquivo(path: string): Promise<void> {
+  const janela = window.open('', '_blank')
+  try {
+    const url = URL.createObjectURL(await buscarArquivo(path))
+    if (janela) janela.location.href = url
+    else window.location.assign(url)
+    setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  } catch (err) {
+    janela?.close()
+    throw err
+  }
+}
+
+export async function enviarArquivo<T>(path: string, arquivo: File): Promise<T> {
+  const token = getSessionToken()
+  const res = await fetch(`${API_URL}${path}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': arquivo.type || 'application/octet-stream',
+      'X-Nome-Arquivo': encodeURIComponent(arquivo.name),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: arquivo,
+  })
+  const body = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    const mensagem = res.status === 413 ? 'O arquivo passa de 10 MB. Envie um arquivo menor.' : (body.error ?? `Erro ${res.status}`)
+    throw new ApiRequestError(res.status, mensagem)
+  }
+  return body as T
 }

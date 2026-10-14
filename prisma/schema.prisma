@@ -17,36 +17,36 @@ datasource db {
 // ============================================================
 
 model User {
-  id           String    @id @default(uuid())
-  email        String    @unique
-  name         String?
+  id              String    @id @default(uuid())
+  email           String    @unique
+  name            String?
   // null = conta antiga da fase pré-login, ainda sem senha definida —
   // ver POST /api/admin/users/:id/reset-password.
-  passwordHash String?   @map("password_hash")
-  isAdmin      Boolean   @default(false) @map("is_admin")
+  passwordHash    String?   @map("password_hash")
+  isAdmin         Boolean   @default(false) @map("is_admin")
   // Acesso por prazo determinado (contas de teste/clientes) — null = sem
   // validade. Expirada, o login passa a ser recusado (ver authMiddleware.ts)
   // mesmo com senha correta.
   accessExpiresAt DateTime? @map("access_expires_at")
-  plan      Plan     @default(FREE)
-  active    Boolean  @default(true)
+  plan            Plan      @default(FREE)
+  active          Boolean   @default(true)
   // Incrementado ao desativar a conta ou trocar a senha; vai dentro do token
   // e e conferido no authMiddleware, para que a sessao de 30 dias possa ser
   // revogada na hora em vez de sobreviver ate expirar sozinha.
-  tokenVersion Int   @default(0) @map("token_version")
+  tokenVersion    Int       @default(0) @map("token_version")
   // Marcado quando quem desativa a conta é o admin da plataforma (não o dono
   // da empresa). Enquanto true, o dono da empresa NÃO consegue reativar o
   // usuário — só o admin. Sem isto, o dono reativava alguém que o admin havia
   // bloqueado (ex.: conta de teste que abusou do sistema).
-  disabledByAdmin Boolean @default(false) @map("disabled_by_admin")
+  disabledByAdmin Boolean   @default(false) @map("disabled_by_admin")
   // Cadastro público: o login só é liberado depois de confirmar o e-mail.
   // Contas criadas pelo admin/dono da empresa nascem verificadas.
   emailVerifiedAt DateTime? @map("email_verified_at")
   // Aceite dos termos de uso no cadastro (data e versão do texto aceito).
   termsAcceptedAt DateTime? @map("terms_accepted_at")
   termsVersion    String?   @map("terms_version")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
   // Toda conta pertence a uma Company — mesmo quem usa sozinho (pessoa
   // física). Ver comentário no model Company. NOT NULL só depois da
@@ -84,45 +84,46 @@ enum Plan {
 // documento entrar (ver análise de viabilidade — "1 teste por CNPJ/CPF").
 // ============================================================
 model Company {
-  id        String      @id @default(uuid())
-  tipo      AccountType @default(PESSOA_FISICA)
-  name      String
-  cnpj      String?     @unique
-  cpf       String?     @unique
+  id                  String      @id @default(uuid())
+  tipo                AccountType @default(PESSOA_FISICA)
+  name                String
+  cnpj                String?     @unique
+  cpf                 String?     @unique
   // Dados de contato/cobrança — preparação para a Etapa 2 (pagamentos):
   // emissão de fatura/nota precisa de responsável, contato e endereço.
-  email       String?
-  telefone    String?
-  responsavel String?
-  endereco    String?
-  cep         String?
+  email               String?
+  telefone            String?
+  responsavel         String?
+  endereco            String?
+  cep                 String?
   // Endereço completo: o CEP preenche rua/bairro/cidade/UF e a pessoa informa só o número.
-  enderecoNumero      String? @map("endereco_numero")
-  enderecoComplemento String? @map("endereco_complemento")
-  enderecoBairro      String? @map("endereco_bairro")
-  enderecoCidade      String? @map("endereco_cidade")
-  enderecoUf          String? @map("endereco_uf") @db.Char(2)
+  enderecoNumero      String?     @map("endereco_numero")
+  enderecoComplemento String?     @map("endereco_complemento")
+  enderecoBairro      String?     @map("endereco_bairro")
+  enderecoCidade      String?     @map("endereco_cidade")
+  enderecoUf          String?     @map("endereco_uf") @db.Char(2)
   // Plano comercial (código em `plans`) e ajustes pontuais de limite combinados
   // com o cliente (ex.: { "itensMonitorados": 30 }) — ver lib/planos.ts.
-  planCode       String   @default("TESTE") @map("plan_code")
-  quotaOverrides Json?    @map("quota_overrides")
+  planCode            String      @default("TESTE") @map("plan_code")
+  quotaOverrides      Json?       @map("quota_overrides")
   // Base da empresa (de onde sai a entrega): usada no custo de deslocamento do estudo de
   // custos. Município/UF digitados; as coordenadas vêm da base do IBGE (lib/geoService).
-  baseMunicipio String? @map("base_municipio")
-  baseUf        String? @map("base_uf") @db.Char(2)
-  baseLat       Float?  @map("base_lat")
-  baseLng       Float?  @map("base_lng")
-  createdAt DateTime    @default(now()) @map("created_at")
-  updatedAt DateTime    @updatedAt @map("updated_at")
+  baseMunicipio       String?     @map("base_municipio")
+  baseUf              String?     @map("base_uf") @db.Char(2)
+  baseLat             Float?      @map("base_lat")
+  baseLng             Float?      @map("base_lng")
+  createdAt           DateTime    @default(now()) @map("created_at")
+  updatedAt           DateTime    @updatedAt @map("updated_at")
 
-  users              User[]
-  monitoredItems     MonitoredItem[]
-  companyDocuments   CompanyDocument[]
-  checklists         TenderChecklist[]
-  participationPlans TenderParticipationPlan[]
-  requirementProgress RequirementProgress[]
-  tenderMatches      TenderMatch[]
-  costStudies        CostStudy[]
+  users                User[]
+  monitoredItems       MonitoredItem[]
+  companyDocuments     CompanyDocument[]
+  arquivosDeDocumentos CompanyDocumentFile[]
+  checklists           TenderChecklist[]
+  participationPlans   TenderParticipationPlan[]
+  requirementProgress  RequirementProgress[]
+  tenderMatches        TenderMatch[]
+  costStudies          CostStudy[]
 
   @@map("companies")
 }
@@ -133,7 +134,7 @@ enum AccountType {
 }
 
 enum CompanyRole {
-  OWNER  // pode gerenciar membros (Etapa 1b) e cobrança (Etapa 2)
+  OWNER // pode gerenciar membros (Etapa 1b) e cobrança (Etapa 2)
   MEMBER
 }
 
@@ -147,35 +148,35 @@ model MonitoredItem {
   // existindo só para saber quem cadastrou (auditoria), não para acesso.
   companyId   String   @map("company_id")
   userId      String   @map("user_id")
-  name        String                        // Nome amigável do item
-  keywords    String[]                      // ['notebook', 'computador portátil']
+  name        String // Nome amigável do item
+  keywords    String[] // ['notebook', 'computador portátil']
   catmatCodes String[] @map("catmat_codes") // Códigos CATMAT (opcional)
   catserCodes String[] @map("catser_codes") // Códigos CATSER (opcional)
-  ufs         String[]                      // ['DF', 'GO'] — vazio = nacional
-  valorMin    Decimal? @map("valor_min")    // Filtro de valor mínimo
-  valorMax    Decimal? @map("valor_max")    // Filtro de valor máximo
-  modalidades String[]                      // ['pregao', 'dispensa', 'concorrencia']
+  ufs         String[] // ['DF', 'GO'] — vazio = nacional
+  valorMin    Decimal? @map("valor_min") // Filtro de valor mínimo
+  valorMax    Decimal? @map("valor_max") // Filtro de valor máximo
+  modalidades String[] // ['pregao', 'dispensa', 'concorrencia']
   // Filtro por órgão — trecho do nome (ex: "PREFEITURA DE UBERLÂNDIA" para um
   // órgão específico, ou "PREFEITURA"/"UNIVERSIDADE FEDERAL" para uma categoria
   // inteira). Casamento literal por palavra, igual às keywords — ver matcherService.
-  orgaos      String[]                      // vazio = qualquer órgão
+  orgaos      String[] // vazio = qualquer órgão
   // Filtro por código UASG (unidade compradora) — só existe no sistema legado
   // (ComprasNet/Lei 8.666); licitações do PNCP não têm UASG, então esse
   // filtro simplesmente não restringe candidatas do PNCP (ver uasgMatches em
   // matcherService.ts). Preenchido via busca na tabela cacheada em Uasg.
-  uasgCodes   String[] @map("uasg_codes")   // vazio = qualquer unidade
+  uasgCodes   String[] @map("uasg_codes") // vazio = qualquer unidade
   active      Boolean  @default(true)
 
   // Filtro por raio de distância — alternativa/complemento ao filtro por UF,
   // útil pra quem presta serviço presencial e só atende dentro de um raio.
-  raioKm          Int?     @map("raio_km")
-  origemMunicipio String?  @map("origem_municipio")
-  origemUf        String?  @map("origem_uf") @db.Char(2)
-  origemLat       Float?   @map("origem_lat")
-  origemLng       Float?   @map("origem_lng")
+  raioKm          Int?    @map("raio_km")
+  origemMunicipio String? @map("origem_municipio")
+  origemUf        String? @map("origem_uf") @db.Char(2)
+  origemLat       Float?  @map("origem_lat")
+  origemLng       Float?  @map("origem_lng")
 
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   company       Company       @relation(fields: [companyId], references: [id])
   user          User          @relation(fields: [userId], references: [id])
@@ -190,59 +191,59 @@ model MonitoredItem {
 // ============================================================
 
 model Tender {
-  id              String        @id @default(uuid())
-  fonte           FonteEnum                         // 'PNCP' | 'COMPRASNET'
-  fonteId         String        @unique @map("fonte_id") // ID único da fonte
-  modalidade      ModalidadeEnum
-  situacao        SituacaoEnum  @default(ABERTA)
-  objeto          String        @db.Text
-  objetoResumido  String?       @map("objeto_resumido") @db.VarChar(500)
+  id                 String         @id @default(uuid())
+  fonte              FonteEnum // 'PNCP' | 'COMPRASNET'
+  fonteId            String         @unique @map("fonte_id") // ID único da fonte
+  modalidade         ModalidadeEnum
+  situacao           SituacaoEnum   @default(ABERTA)
+  objeto             String         @db.Text
+  objetoResumido     String?        @map("objeto_resumido") @db.VarChar(500)
   // Versões sem acento/minúsculas de objeto/orgao/municipio, mantidas em sincronia
   // na gravação — usadas pela busca (ver tenders.ts) pra "uberlandia" achar
   // "Uberlândia" sem precisar da extensão unaccent do Postgres.
-  objetoNorm         String? @map("objeto_norm") @db.Text
-  objetoResumidoNorm String? @map("objeto_resumido_norm") @db.Text
-  orgaoNorm          String? @map("orgao_norm")
-  municipioNorm      String? @map("municipio_norm")
-  valorEstimado   Decimal?      @map("valor_estimado")
+  objetoNorm         String?        @map("objeto_norm") @db.Text
+  objetoResumidoNorm String?        @map("objeto_resumido_norm") @db.Text
+  orgaoNorm          String?        @map("orgao_norm")
+  municipioNorm      String?        @map("municipio_norm")
+  valorEstimado      Decimal?       @map("valor_estimado")
   // Preenchido pelo PNCP só quando a contratação já foi homologada/contratada —
   // ao contrário de situacaoCompraId, que na prática fica parado em "Divulgada
   // no PNCP" pra dispensa/inexigibilidade mesmo depois de concluída (ver
   // situacaoUpdateService.ts). É o sinal confiável de que o processo encerrou.
-  valorHomologado Decimal?      @map("valor_homologado")
+  valorHomologado    Decimal?       @map("valor_homologado")
   // Registro de Preços — só o PNCP preenche isso hoje (campo "srp" do payload).
-  srp             Boolean?
-  uf              String?       @db.Char(2)
-  municipio       String?
-  municipioIbge   String?       @map("municipio_ibge")
-  municipioLat    Float?        @map("municipio_lat")
-  municipioLng    Float?        @map("municipio_lng")
-  orgao           String?
-  orgaoCnpj       String?       @map("orgao_cnpj") @db.VarChar(14)
-  unidade         String?
-  aberturaAt      DateTime?     @map("abertura_at")
-  encerramentoAt  DateTime?     @map("encerramento_at")
-  publicadoAt     DateTime?     @map("publicado_at")
-  linkEdital      String?       @map("link_edital")
-  numeroControle  String?       @map("numero_controle")
-  rawJson         Json          @map("raw_json")
+  srp                Boolean?
+  uf                 String?        @db.Char(2)
+  municipio          String?
+  municipioIbge      String?        @map("municipio_ibge")
+  municipioLat       Float?         @map("municipio_lat")
+  municipioLng       Float?         @map("municipio_lng")
+  orgao              String?
+  orgaoCnpj          String?        @map("orgao_cnpj") @db.VarChar(14)
+  unidade            String?
+  aberturaAt         DateTime?      @map("abertura_at")
+  encerramentoAt     DateTime?      @map("encerramento_at")
+  publicadoAt        DateTime?      @map("publicado_at")
+  linkEdital         String?        @map("link_edital")
+  numeroControle     String?        @map("numero_controle")
+  rawJson            Json           @map("raw_json")
   // Impressao digital dos campos que importam (ver lib/tenderContentHash.ts).
   // Orgaos republicam licitacao o tempo todo; comparar o hash deixa a coleta
   // atualizar so o que mudou, sem reescrever milhares de registros por ciclo.
-  contentHash     String?       @map("content_hash")
+  contentHash        String?        @map("content_hash")
   // Ultima vez que a situacao real foi reconsultada no PNCP — usado para
   // fazer rodizio em vez de varrer a base inteira a cada execucao.
-  situacaoCheckedAt DateTime?   @map("situacao_checked_at")
-  createdAt       DateTime      @default(now()) @map("created_at")
-  updatedAt       DateTime      @updatedAt @map("updated_at")
+  situacaoCheckedAt  DateTime?      @map("situacao_checked_at")
+  createdAt          DateTime       @default(now()) @map("created_at")
+  updatedAt          DateTime       @updatedAt @map("updated_at")
 
-  items              TenderItem[]
-  tenderMatches      TenderMatch[]
-  checklists         TenderChecklist[]
-  analysis           TenderAnalysis?
-  participationPlans TenderParticipationPlan[]
+  items               TenderItem[]
+  tenderMatches       TenderMatch[]
+  checklists          TenderChecklist[]
+  analysis            TenderAnalysis?
+  participationPlans  TenderParticipationPlan[]
   requirementProgress RequirementProgress[]
-  costStudies        CostStudy[]
+  costStudies         CostStudy[]
 
   @@index([fonte])
   @@index([uf])
@@ -355,25 +356,25 @@ enum SituacaoEnum {
 // ============================================================
 
 model TenderItem {
-  id              String   @id @default(uuid())
-  tenderId        String   @map("tender_id")
-  numeroItem      Int?     @map("numero_item")
-  descricao       String   @db.Text
+  id                 String   @id @default(uuid())
+  tenderId           String   @map("tender_id")
+  numeroItem         Int?     @map("numero_item")
+  descricao          String   @db.Text
   // Mesma razao das colunas *_norm de Tender: o matcher procura a palavra-chave
   // tambem na descricao do item, e o pre-filtro no banco precisa achar
   // "cirurgico" dentro de "cirurgico" sem depender da extensao unaccent.
-  descricaoNorm   String?  @map("descricao_norm") @db.Text
+  descricaoNorm      String?  @map("descricao_norm") @db.Text
   // Descrição detalhada do item (PNCP: informacaoComplementar) e critério de
   // julgamento do item (PNCP: criterioJulgamentoNome) — ver pncpItemsService.
-  descricaoDetalhada String? @map("descricao_detalhada") @db.Text
-  criterioJulgamento String? @map("criterio_julgamento")
-  catmatCode      String?  @map("catmat_code")
-  catserCode      String?  @map("catser_code")
-  unidadeMedida   String?  @map("unidade_medida")
-  quantidade      Decimal?
-  valorUnitario   Decimal? @map("valor_unitario")
-  valorTotal      Decimal? @map("valor_total")
-  createdAt       DateTime @default(now()) @map("created_at")
+  descricaoDetalhada String?  @map("descricao_detalhada") @db.Text
+  criterioJulgamento String?  @map("criterio_julgamento")
+  catmatCode         String?  @map("catmat_code")
+  catserCode         String?  @map("catser_code")
+  unidadeMedida      String?  @map("unidade_medida")
+  quantidade         Decimal?
+  valorUnitario      Decimal? @map("valor_unitario")
+  valorTotal         Decimal? @map("valor_total")
+  createdAt          DateTime @default(now()) @map("created_at")
 
   tender Tender @relation(fields: [tenderId], references: [id], onDelete: Cascade)
 
@@ -397,8 +398,8 @@ model TenderMatch {
   // aviso (ver workers/notificador.ts), não é mais a chave de visibilidade.
   companyId       String   @map("company_id")
   userId          String   @map("user_id")
-  score           Float                              // Nota de aderência no momento do match, 0–1 (nota/100)
-  matchedKeywords String[] @map("matched_keywords")  // Palavras que deram match
+  score           Float // Nota de aderência no momento do match, 0–1 (nota/100)
+  matchedKeywords String[] @map("matched_keywords") // Palavras que deram match
   // Verdadeiro quando o match veio de código CATMAT/CATSER igual (o sinal mais
   // forte) — a nota de aderência ao vivo (lib/aderencia.ts) precisa disso.
   matchedByCode   Boolean  @default(false) @map("matched_by_code")
@@ -433,7 +434,7 @@ model TenderChecklist {
   companyId String   @map("company_id")
   userId    String   @map("user_id")
   tenderId  String   @map("tender_id")
-  items     Json     // [{ id, section, label, hint?, checked, custom }]
+  items     Json // [{ id, section, label, hint?, checked, custom }]
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -458,16 +459,16 @@ model TenderChecklist {
 // ============================================================
 
 model TenderParticipationPlan {
-  id         String                  @id @default(uuid())
+  id        String                  @id @default(uuid())
   // Dono de fato — plano é um por (empresa, licitação), compartilhado entre
   // todos os membros da empresa (ver Company). userId é só quem criou.
-  companyId  String                  @map("company_id")
-  userId     String                  @map("user_id")
-  tenderId   String                  @map("tender_id")
-  status     ParticipationStatusEnum @default(AVALIANDO)
-  state      Json // { doneIds: string[], custom: PlanMilestone[] }
-  createdAt  DateTime                @default(now()) @map("created_at")
-  updatedAt  DateTime                @updatedAt @map("updated_at")
+  companyId String                  @map("company_id")
+  userId    String                  @map("user_id")
+  tenderId  String                  @map("tender_id")
+  status    ParticipationStatusEnum @default(AVALIANDO)
+  state     Json // { doneIds: string[], custom: PlanMilestone[] }
+  createdAt DateTime                @default(now()) @map("created_at")
+  updatedAt DateTime                @updatedAt @map("updated_at")
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -496,30 +497,50 @@ enum ParticipationStatusEnum {
 // ============================================================
 
 model CompanyDocument {
-  id           String    @id @default(uuid())
+  id            String    @id @default(uuid())
   // Dono de fato — ver comentário no model Company. userId continua
   // existindo só para saber quem cadastrou (auditoria), não para acesso.
-  companyId    String    @map("company_id")
-  userId       String    @map("user_id")
-  tipo         String? // código do checklistTemplate, ou null pra avulso
-  nome         String // nome descritivo (ex: "Certidão Negativa Federal")
-  dataEmissao  DateTime? @map("data_emissao")
-  dataValidade DateTime? @map("data_validade") // null = não vence (ex: contrato social)
-  observacao   String?   @db.Text
+  companyId     String    @map("company_id")
+  userId        String    @map("user_id")
+  tipo          String? // código do checklistTemplate, ou null pra avulso
+  nome          String // nome descritivo (ex: "Certidão Negativa Federal")
+  dataEmissao   DateTime? @map("data_emissao")
+  dataValidade  DateTime? @map("data_validade") // null = não vence (ex: contrato social)
+  observacao    String?   @db.Text
   // Último alerta de vencimento enviado — evita reenviar todo dia; ver
   // documentAlertService.ts. Some naturalmente da consulta quando o
   // documento é renovado com uma validade mais distante.
   lastAlertedAt DateTime? @map("last_alerted_at")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
 
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  arquivo CompanyDocumentFile?
 
   @@index([companyId])
   @@index([userId])
   @@index([tipo])
   @@map("company_documents")
+}
+
+model CompanyDocumentFile {
+  id          String   @id @default(uuid())
+  documentId  String   @unique @map("document_id")
+  companyId   String   @map("company_id")
+  nomeArquivo String   @map("nome_arquivo")
+  mimeType    String   @map("mime_type")
+  tamanho     Int
+  sha256      String
+  conteudo    Bytes
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  documento CompanyDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  company   Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@map("company_document_files")
 }
 
 // ============================================================
@@ -533,7 +554,7 @@ model TenderAnalysis {
   status        AnalysisStatus @default(PENDING)
   documentoNome String?        @map("documento_nome")
   // Resultado FINAL: a análise revisada, ou o rascunho do analista quando não houve revisão.
-  resultado     Json?          // { resumo, valorEstimado, ..., matrizExigencias, riscos }
+  resultado     Json? // { resumo, valorEstimado, ..., matrizExigencias, riscos }
   // Análise em dupla: o que o analista (Gemini) entregou ANTES da revisão — só o admin vê, para auditar.
   rascunho      Json?
   // Relatório da revisão: status, veredito, resumo, alterações campo a campo, modelos usados.
@@ -563,15 +584,15 @@ enum AnalysisStatus {
 // ============================================================
 
 model Notification {
-  id        String             @id @default(uuid())
-  userId    String             @map("user_id")
+  id        String               @id @default(uuid())
+  userId    String               @map("user_id")
   type      NotificationTypeEnum
   title     String
-  body      String             @db.Text
+  body      String               @db.Text
   metadata  Json?
-  sentAt    DateTime?          @map("sent_at")
-  readAt    DateTime?          @map("read_at")
-  createdAt DateTime           @default(now()) @map("created_at")
+  sentAt    DateTime?            @map("sent_at")
+  readAt    DateTime?            @map("read_at")
+  createdAt DateTime             @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id])
 
@@ -590,18 +611,18 @@ enum NotificationTypeEnum {
 // ============================================================
 
 model WorkerLog {
-  id          String         @id @default(uuid())
-  worker      String                           // 'coletor-pncp' | 'coletor-comprasnet'
-  status      WorkerStatus
-  fonte       FonteEnum?
-  totalFetched Int?          @map("total_fetched")
-  totalNew    Int?           @map("total_new")
-  totalDupes  Int?           @map("total_dupes")
-  totalUpdated Int?          @map("total_updated")
-  errorMsg    String?        @map("error_msg") @db.Text
-  startedAt   DateTime       @map("started_at")
-  finishedAt  DateTime?      @map("finished_at")
-  createdAt   DateTime       @default(now()) @map("created_at")
+  id           String       @id @default(uuid())
+  worker       String // 'coletor-pncp' | 'coletor-comprasnet'
+  status       WorkerStatus
+  fonte        FonteEnum?
+  totalFetched Int?         @map("total_fetched")
+  totalNew     Int?         @map("total_new")
+  totalDupes   Int?         @map("total_dupes")
+  totalUpdated Int?         @map("total_updated")
+  errorMsg     String?      @map("error_msg") @db.Text
+  startedAt    DateTime     @map("started_at")
+  finishedAt   DateTime?    @map("finished_at")
+  createdAt    DateTime     @default(now()) @map("created_at")
 
   @@index([worker])
   @@index([status])

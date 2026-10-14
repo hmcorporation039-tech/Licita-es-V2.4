@@ -202,6 +202,27 @@ rodar('Estudo de custos', () => {
     expect(await prisma.auditLog.count({ where: { companyId: companyA, action: 'ESTUDO_PDF_GERADO' } })).toBe(1)
   })
 
+  it('gera o pacote ZIP com o dossiê e o arquivo do documento usado na habilitação', async () => {
+    const userA = await prisma.user.findFirstOrThrow({ where: { companyId: companyA } })
+    const doc = await prisma.companyDocument.create({ data: { companyId: companyA, userId: userA.id, tipo: 'cnd-federal', nome: 'CND federal de teste' } })
+    const pdf = Buffer.from('%PDF-1.4 certidao %%EOF')
+    const up = await fetch(`${base}/api/company-documents/${doc.id}/arquivo`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/pdf', 'X-Nome-Arquivo': 'cnd.pdf', Authorization: `Bearer ${tokenA}` },
+      body: pdf,
+    })
+    expect(up.status).toBe(200)
+
+    const r = await http('GET', `/api/estudos/${tenderId}/pacote`, undefined, tokenA)
+    expect(r.status).toBe(200)
+    expect(r.headers.get('content-type')).toBe('application/zip')
+    const { unzipSync } = await import('fflate')
+    const nomes = Object.keys(unzipSync(new Uint8Array(r.buf)))
+    expect(nomes).toContain('dossie-da-licitacao.pdf')
+    expect(nomes).toContain('LEIA-ME.txt')
+    expect(nomes.some((n) => n.startsWith('documentos/') && n.endsWith('cnd.pdf'))).toBe(true)
+  })
+
   it('sair da lista de escolhidas bloqueia o estudo de novo, mas o que foi salvo continua guardado', async () => {
     expect((await marcar('NAO_VOU_PARTICIPAR')).status).toBe(200)
     expect((await http('GET', `/api/estudos/${tenderId}`, undefined, tokenA)).status).toBe(409)
