@@ -64,7 +64,7 @@ export function renderizarPdf(documento: DocumentoDaLicitacao, timbrado: Timbrad
     }
 
     const desenharAssinatura = (local: string) => {
-      garantirEspaco(150)
+      garantirEspaco(125)
       doc.moveDown(0.6).font('Helvetica').fontSize(10.5).fillColor(COR.texto).text(local, MARGEM, doc.y, { width: largura, align: 'right' })
       doc.moveDown(3.2)
       const y = doc.y
@@ -100,6 +100,8 @@ export function renderizarPdf(documento: DocumentoDaLicitacao, timbrado: Timbrad
     const paginas = doc.bufferedPageRange()
     for (let i = 0; i < paginas.count; i++) {
       doc.switchToPage(paginas.start + i)
+      const margemInferior = doc.page.margins.bottom
+      doc.page.margins.bottom = 0
       const dims = logo && imagemLegivel(logo.conteudo) ? dimensoesDaImagem(logo.conteudo) : null
       if (logo && dims) {
         const caixa = encaixar(dims, 170, 52)
@@ -118,6 +120,7 @@ export function renderizarPdf(documento: DocumentoDaLicitacao, timbrado: Timbrad
         doc.font('Helvetica').fontSize(7.5).fillColor(COR.suave).text(t, MARGEM, yRodape + 7 + n * 10, { width: largura - 60, lineBreak: false })
       })
       doc.font('Helvetica').fontSize(7.5).fillColor(COR.suave).text(`Página ${i + 1} de ${paginas.count}`, MARGEM + largura - 80, yRodape + 7, { width: 80, align: 'right', lineBreak: false })
+      doc.page.margins.bottom = margemInferior
     }
 
     doc.end()
