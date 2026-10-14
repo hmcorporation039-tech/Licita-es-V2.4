@@ -36,6 +36,7 @@ export type DocumentoDaLicitacao = z.infer<typeof documentoSchema>
 export interface Proponente {
   razaoSocial: string
   documento: string
+  qualificacao: string
   endereco: string
   cidadeUf: string
   telefone: string

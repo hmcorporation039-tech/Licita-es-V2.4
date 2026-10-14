@@ -24,6 +24,7 @@ import type { PrazosDaSessao } from '@/lib/adminTypes'
 import PainelDoFiscal from '@/components/PainelDoFiscal'
 import MatrizDeExigencias from '@/components/MatrizDeExigencias'
 import RelatorioDaRevisao from '@/components/RelatorioDaRevisao'
+import DocumentosDaLicitacao from '@/components/DocumentosDaLicitacao'
 import {
   Button,
   buttonClasses,
@@ -71,7 +72,7 @@ const TOM_DA_SEVERIDADE: Record<string, Tom> = {
   baixa: 'neutral',
 }
 
-const ABAS = ['informacoes', 'itens', 'analise', 'habilitacao', 'exigencias', 'checklist', 'plano'] as const
+const ABAS = ['informacoes', 'itens', 'analise', 'habilitacao', 'exigencias', 'checklist', 'plano', 'documentos'] as const
 
 type TabId = (typeof ABAS)[number]
 
@@ -489,6 +490,7 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
       ),
     },
     { id: 'plano', label: 'Plano de participação' },
+    { id: 'documentos', label: 'Documentos' },
   ]
 
   const informacoes: Array<{ label: ReactNode; value: ReactNode; mono?: boolean }> = [
@@ -617,6 +619,8 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
           {activeTab === 'habilitacao' && <PainelDoFiscal tenderId={id} />}
 
           {activeTab === 'exigencias' && <MatrizDeExigencias tenderId={id} />}
+
+          {activeTab === 'documentos' && <DocumentosDaLicitacao tenderId={id} escolhida={escolhida} escolhendo={escolhendo} onEscolher={escolherLicitacao} />}
 
           {activeTab === 'itens' &&
             (!tender.items || tender.items.length === 0 ? (

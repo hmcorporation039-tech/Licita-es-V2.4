@@ -7,6 +7,7 @@ import { useRequireSession } from '@/hooks/useRequireSession'
 import { abrirArquivo, api, ApiRequestError, baixarArquivo, enviarArquivo } from '@/lib/api'
 import { ArquivoDoDocumento, Company, CompanyDocument, CompanyMember, CompanyType } from '@/lib/types'
 import { DOCUMENT_TYPE_OPTIONS, documentTypeLabel } from '@/lib/documentTypes'
+import PapelTimbrado, { type DadosDoTimbrado } from '@/components/PapelTimbrado'
 import {
   Button,
   Carregando,
@@ -526,6 +527,23 @@ export default function EmpresaPage() {
   }
 
   const travado = !souOwner || documentoTravado
+  const cidadeUf = [cidade.trim(), uf.trim().toUpperCase()].filter(Boolean).join('/')
+  const dadosDoTimbrado: DadosDoTimbrado = {
+    razaoSocial: name.trim(),
+    documento,
+    endereco: [
+      [endereco.trim(), numero.trim()].filter(Boolean).join(', '),
+      complemento.trim(),
+      bairro.trim(),
+      cidadeUf,
+      cep.trim() ? `CEP ${cep.trim()}` : '',
+    ]
+      .filter(Boolean)
+      .join(' · '),
+    telefone,
+    email: companyEmail.trim(),
+    responsavel: responsavel.trim(),
+  }
   const dicaDoCep = buscandoCep ? (
     'Buscando endereço…'
   ) : cepMsg ? (
@@ -628,6 +646,13 @@ export default function EmpresaPage() {
           )}
         </form>
       </Panel>
+
+      <PapelTimbrado
+        company={company}
+        souOwner={souOwner}
+        dados={dadosDoTimbrado}
+        onAtualizada={(parcial) => setCompany((prev) => (prev ? { ...prev, ...parcial } : prev))}
+      />
 
       <Panel
         title="Documentos de habilitação e constituição"

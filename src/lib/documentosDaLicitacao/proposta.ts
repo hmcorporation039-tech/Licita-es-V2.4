@@ -58,7 +58,7 @@ export function propostaComercial(
     { tipo: 'paragrafo', texto: `Objeto: ${certame.objeto}` },
     {
       tipo: 'paragrafo',
-      texto: `${proponente.razaoSocial}, inscrita no ${proponente.documento}, com sede em ${proponente.endereco}, por intermédio de seu representante legal, ${proponente.responsavel}, portador(a) do CPF nº ${proponente.responsavelCpf}, apresenta a seguinte proposta comercial para o objeto em referência, nas condições estabelecidas no edital e em seus anexos:`,
+      texto: `${proponente.qualificacao}, apresenta a seguinte proposta comercial para o objeto em referência, nas condições estabelecidas no edital e em seus anexos:`,
     },
     {
       tipo: 'tabela',

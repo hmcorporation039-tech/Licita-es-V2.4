@@ -41,7 +41,44 @@ export interface Company {
   enderecoUf?: string | null
   baseMunicipio?: string | null
   baseUf?: string | null
+  responsavelCpf?: string | null
+  responsavelCargo?: string | null
+  dadosBancarios?: string | null
+  logo?: LogoDaEmpresa | null
   users: CompanyMember[]
+}
+
+export interface LogoDaEmpresa {
+  mimeType: string
+  tamanho: number
+  updatedAt: string
+}
+
+export type TipoDeDocumentoDaLicitacao = 'proposta' | 'declaracoes'
+
+export type BlocoDoDocumento =
+  | { tipo: 'titulo'; texto: string }
+  | { tipo: 'paragrafo'; texto: string }
+  | { tipo: 'tabela'; colunas: string[]; linhas: string[][]; rodape?: string[]; alinharDireita?: number[] }
+  | { tipo: 'assinatura'; local: string }
+  | { tipo: 'quebra' }
+
+export interface DocumentoDaLicitacao {
+  tipo: TipoDeDocumentoDaLicitacao
+  titulo: string
+  blocos: BlocoDoDocumento[]
+}
+
+export interface ModelosDeDocumento {
+  proposta: { disponivel: boolean; motivo?: string }
+  declaracoes: Array<{ id: string; titulo: string; fundamento: string }>
+}
+
+export interface PreviaDoDocumento {
+  documento: DocumentoDaLicitacao
+  pendencias: string[]
+  total?: number
+  temLogo: boolean
 }
 
 export interface AdminUser {

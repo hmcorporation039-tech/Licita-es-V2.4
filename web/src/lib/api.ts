@@ -75,7 +75,7 @@ export const api = {
     request<T>(path, { method: 'DELETE', body: data ? JSON.stringify(data) : undefined }),
 }
 
-async function buscarArquivo(path: string): Promise<Blob> {
+export async function buscarArquivo(path: string): Promise<Blob> {
   const token = getSessionToken()
   const res = await fetch(`${API_URL}${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
   if (!res.ok) {
@@ -124,4 +124,26 @@ export async function enviarArquivo<T>(path: string, arquivo: File): Promise<T> 
     throw new ApiRequestError(res.status, mensagem)
   }
   return body as T
+}
+
+export async function baixarArquivoPost(path: string, corpo: unknown, nomeSugerido: string): Promise<void> {
+  const token = getSessionToken()
+  const res = await fetch(`${API_URL}${path}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(corpo),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new ApiRequestError(res.status, body.error ?? `Erro ${res.status}`)
+  }
+  const url = URL.createObjectURL(await res.blob())
+  const a = document.createElement('a')
+  a.href = url
+  a.download = nomeSugerido
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(url), 10_000)
 }

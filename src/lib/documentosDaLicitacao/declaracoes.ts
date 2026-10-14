@@ -9,7 +9,7 @@ export interface ModeloDeDeclaracao {
 }
 
 const qualificacao = (p: Proponente, c: Certame) =>
-  `${p.razaoSocial}, inscrita no ${p.documento}, com sede em ${p.endereco}, por intermédio de seu representante legal, ${p.responsavel}, portador(a) do CPF nº ${p.responsavelCpf}, para fins de participação no(a) ${c.modalidade} nº ${c.numero}, promovido(a) por ${c.orgao}`
+  `${p.qualificacao}, para fins de participação no(a) ${c.modalidade} nº ${c.numero}, promovido(a) por ${c.orgao}`
 
 export const MODELOS_DE_DECLARACAO: ModeloDeDeclaracao[] = [
   {

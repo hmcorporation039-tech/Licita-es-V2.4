@@ -54,6 +54,14 @@ describe('dadosDoProponente', () => {
     expect(p.responsavelCpf).toBe('[preencher: CPF do responsável legal]')
     expect(p.pendencias).toEqual(expect.arrayContaining(['CNPJ da empresa', 'CPF do responsável legal', 'endereço completo da empresa']))
   })
+
+  it('pessoa física se qualifica pelo próprio CPF e assina em nome próprio', () => {
+    const p = dadosDoProponente({ ...empresa, tipo: 'PESSOA_FISICA', name: 'Maria Souza', cnpj: null, cpf: '52998224725', responsavel: null, responsavelCpf: null, responsavelCargo: null })
+    expect(p.qualificacao).toBe('Maria Souza, inscrito(a) no CPF nº 529.982.247-25, residente e domiciliado(a) em QNA 10, 12 – Taguatinga Norte – Brasília/DF – CEP 72110-100')
+    expect(p.responsavel).toBe('Maria Souza')
+    expect(p.responsavelCpf).toBe('529.982.247-25')
+    expect(p.pendencias).toEqual([])
+  })
 })
 
 describe('propostaComercial', () => {

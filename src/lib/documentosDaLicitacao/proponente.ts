@@ -83,15 +83,40 @@ export function dadosDoProponente(e: EmpresaParaDocumento): Proponente {
     .filter(Boolean)
     .join(' – ')
 
+  const razaoSocial = exigir(limpo(e.name), juridica ? 'razão social' : 'nome completo')
+  const endereco = exigir(logradouro && cidadeUf ? partesDoEndereco : '', juridica ? 'endereço completo da empresa' : 'endereço completo')
+  const cidade = exigir(cidadeUf, juridica ? 'cidade/UF da empresa' : 'cidade/UF')
+
+  if (!juridica) {
+    const cpfProprio = numeroDoDocumento ? formatarCpf(numeroDoDocumento) : documento
+    return {
+      razaoSocial,
+      documento,
+      qualificacao: `${razaoSocial}, inscrito(a) no ${documento}, residente e domiciliado(a) em ${endereco}`,
+      endereco,
+      cidadeUf: cidade,
+      telefone: limpo(e.telefone),
+      email: limpo(e.email),
+      responsavel: limpo(e.responsavel) || razaoSocial,
+      responsavelCpf: e.responsavelCpf ? formatarCpf(e.responsavelCpf) : cpfProprio,
+      responsavelCargo: limpo(e.responsavelCargo) || 'Proponente',
+      dadosBancarios: limpo(e.dadosBancarios),
+      pendencias,
+    }
+  }
+
+  const responsavel = exigir(limpo(e.responsavel), 'nome do responsável legal')
+  const responsavelCpf = exigir(e.responsavelCpf ? formatarCpf(e.responsavelCpf) : '', 'CPF do responsável legal')
   return {
-    razaoSocial: exigir(limpo(e.name), 'razão social'),
+    razaoSocial,
     documento,
-    endereco: exigir(logradouro && cidadeUf ? partesDoEndereco : '', 'endereço completo da empresa'),
-    cidadeUf: exigir(cidadeUf, 'cidade/UF da empresa'),
+    qualificacao: `${razaoSocial}, inscrita no ${documento}, com sede em ${endereco}, por intermédio de seu representante legal, ${responsavel}, portador(a) do CPF nº ${responsavelCpf}`,
+    endereco,
+    cidadeUf: cidade,
     telefone: limpo(e.telefone),
     email: limpo(e.email),
-    responsavel: exigir(limpo(e.responsavel), 'nome do responsável legal'),
-    responsavelCpf: exigir(e.responsavelCpf ? formatarCpf(e.responsavelCpf) : '', 'CPF do responsável legal'),
+    responsavel,
+    responsavelCpf,
     responsavelCargo: limpo(e.responsavelCargo) || 'Representante legal',
     dadosBancarios: limpo(e.dadosBancarios),
     pendencias,
