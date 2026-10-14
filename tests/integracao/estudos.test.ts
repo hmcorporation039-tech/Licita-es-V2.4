@@ -223,6 +223,49 @@ rodar('Estudo de custos', () => {
     expect(nomes.some((n) => n.startsWith('documentos/') && n.endsWith('cnd.pdf'))).toBe(true)
   })
 
+  it('papel timbrado: logomarca PNG aceita, outro tipo recusado, só a própria empresa vê', async () => {
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64')
+    const pngCorrompido = Buffer.alloc(40)
+    png.copy(pngCorrompido, 0, 0, 24)
+    const enviar = (corpo: Buffer, token: string) =>
+      fetch(`${base}/api/company/logo`, { method: 'PUT', headers: { 'Content-Type': 'image/png', Authorization: `Bearer ${token}` }, body: corpo })
+    expect((await enviar(png, tokenA)).status).toBe(200)
+    expect((await enviar(Buffer.from('%PDF-1.4 x'), tokenA)).status).toBe(415)
+    expect((await enviar(pngCorrompido, tokenA)).status).toBe(415)
+    expect((await http('GET', '/api/company/logo', undefined, tokenB)).status).toBe(404)
+
+    const dados = await http('PATCH', '/api/company', { responsavel: 'Maria Teste', responsavelCpf: '529.982.247-25', responsavelCargo: 'Sócia', endereco: 'Rua 1', enderecoNumero: '10', enderecoCidade: 'Goiânia', enderecoUf: 'GO' }, tokenA)
+    expect(dados.status).toBe(200)
+    expect((await http('PATCH', '/api/company', { responsavelCpf: '111.111.111-11' }, tokenA)).status).toBe(400)
+  })
+
+  it('gera proposta e declarações com os dados reais da empresa, em PDF e Word', async () => {
+    const previa = await http('POST', `/api/tenders/${tenderId}/documentos/previa`, { tipo: 'proposta' }, tokenA)
+    expect(previa.status).toBe(200)
+    const textoDaPrevia = JSON.stringify(previa.body.documento)
+    expect(textoDaPrevia).toContain(`Empresa estudoa ${sufixo}`)
+    expect(textoDaPrevia).toContain('529.982.247-25')
+    expect(previa.body.temLogo).toBe(true)
+
+    const pdf = await http('POST', `/api/tenders/${tenderId}/documentos/arquivo`, { formato: 'pdf', documento: previa.body.documento }, tokenA)
+    expect(pdf.status).toBe(200)
+    expect(pdf.buf.subarray(0, 5).toString()).toBe('%PDF-')
+
+    const editado = { ...previa.body.documento, blocos: [...previa.body.documento.blocos, { tipo: 'paragrafo', texto: 'Parágrafo editado pelo usuário.' }] }
+    const docx = await http('POST', `/api/tenders/${tenderId}/documentos/arquivo`, { formato: 'docx', documento: editado }, tokenA)
+    expect(docx.status).toBe(200)
+    const { unzipSync, strFromU8 } = await import('fflate')
+    const partes = unzipSync(new Uint8Array(docx.buf))
+    expect(strFromU8(partes['word/document.xml'])).toContain('Parágrafo editado pelo usuário.')
+    expect(Object.keys(partes).some((n) => n.startsWith('word/media/'))).toBe(true)
+
+    const decl = await http('POST', `/api/tenders/${tenderId}/documentos/previa`, { tipo: 'declaracoes', declaracoes: ['menor', 'fato-impeditivo'] }, tokenA)
+    expect(decl.status).toBe(200)
+    expect(decl.body.documento.blocos.filter((b: { tipo: string }) => b.tipo === 'assinatura')).toHaveLength(2)
+    expect((await http('POST', `/api/tenders/${tenderId}/documentos/previa`, { tipo: 'declaracoes', declaracoes: ['inventada'] }, tokenA)).status).toBe(400)
+    expect(await prisma.auditLog.count({ where: { companyId: companyA, action: 'DOCUMENTO_GERADO' } })).toBe(2)
+  })
+
   it('sair da lista de escolhidas bloqueia o estudo de novo, mas o que foi salvo continua guardado', async () => {
     expect((await marcar('NAO_VOU_PARTICIPAR')).status).toBe(200)
     expect((await http('GET', `/api/estudos/${tenderId}`, undefined, tokenA)).status).toBe(409)

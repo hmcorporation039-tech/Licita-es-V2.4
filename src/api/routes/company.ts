@@ -6,7 +6,7 @@
 // só que escopada pro dono da empresa em vez do admin da plataforma).
 // ============================================================
 
-import { Router } from 'express'
+import express, { Router } from 'express'
 import { z } from 'zod'
 import { prisma } from '../../services/tenderService'
 import { generateTempPassword, hashPassword, normalizeEmail } from '../../services/authService'
@@ -21,6 +21,8 @@ import { cnpjValido, cpfValido, somenteDigitos } from '../../lib/documentos'
 import { Prisma } from '@prisma/client'
 import { findMunicipioByNomeUf } from '../../lib/geoService'
 import { CepIndisponivelError, CepNaoEncontradoError, consultarCep } from '../../lib/cep'
+import { detectarTipoDeArquivo } from '../../lib/arquivoDeDocumento'
+import { imagemLegivel } from '../../services/documentos/papelTimbrado'
 
 export const companyRouter = Router()
 
@@ -42,6 +44,8 @@ companyRouter.get(
       // Campos explícitos: a linha inteira traria também os ajustes comerciais (quotaOverrides).
       select: {
         id: true, tipo: true, name: true, cnpj: true, cpf: true, email: true, telefone: true, responsavel: true,
+        responsavelCpf: true, responsavelCargo: true, dadosBancarios: true,
+        logo: { select: { mimeType: true, tamanho: true, updatedAt: true } },
         endereco: true, cep: true, enderecoNumero: true, enderecoComplemento: true, enderecoBairro: true, enderecoCidade: true,
         enderecoUf: true, baseMunicipio: true, baseUf: true, planCode: true, createdAt: true, updatedAt: true,
         users: {
@@ -77,6 +81,9 @@ const updateCompanySchema = z.object({
   email: z.string().email().nullable().optional(),
   telefone: z.string().min(1).nullable().optional(),
   responsavel: z.string().min(1).nullable().optional(),
+  responsavelCpf: z.string().trim().max(20).nullable().optional(),
+  responsavelCargo: z.string().trim().max(80).nullable().optional(),
+  dadosBancarios: z.string().trim().max(300).nullable().optional(),
   endereco: z.string().min(1).nullable().optional(),
   cep: z.string().min(1).nullable().optional(),
   enderecoNumero: z.string().trim().max(20).nullable().optional(),
@@ -93,8 +100,14 @@ companyRouter.patch(
   '/',
   requireCompanyOwner,
   asyncHandler(async (req, res) => {
-    const { tipo, cnpj, cpf, baseMunicipio, baseUf, ...resto } = updateCompanySchema.parse(req.body)
+    const { tipo, cnpj, cpf, baseMunicipio, baseUf, responsavelCpf, ...resto } = updateCompanySchema.parse(req.body)
     const data: Prisma.CompanyUpdateInput = { ...resto }
+
+    if (responsavelCpf !== undefined) {
+      const digitosDoCpf = responsavelCpf ? somenteDigitos(responsavelCpf) : ''
+      if (digitosDoCpf && !cpfValido(digitosDoCpf)) throw new ApiError(400, 'CPF do responsável inválido.')
+      data.responsavelCpf = digitosDoCpf || null
+    }
 
     // Base de entregas: município + UF viram coordenadas pela base do IBGE. Limpar um limpa o outro.
     if (baseMunicipio !== undefined || baseUf !== undefined) {
@@ -142,6 +155,57 @@ companyRouter.patch(
       metadata: { campos: Object.keys(data) },
     })
     res.json(updated)
+  })
+)
+
+const TAMANHO_MAXIMO_LOGO = 2 * 1024 * 1024
+const lerLogo = express.raw({ type: () => true, limit: TAMANHO_MAXIMO_LOGO })
+
+companyRouter.put(
+  '/logo',
+  requireCompanyOwner,
+  escritaSensivelLimiter,
+  lerLogo,
+  asyncHandler(async (req, res) => {
+    const conteudo = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0)
+    if (conteudo.length === 0) throw new ApiError(400, 'Nenhuma imagem foi enviada')
+    const tipo = detectarTipoDeArquivo(conteudo)
+    if (tipo !== 'image/png' && tipo !== 'image/jpeg') throw new ApiError(415, 'Envie a logomarca em PNG ou JPG')
+    if (!imagemLegivel(conteudo)) throw new ApiError(415, 'Não foi possível ler esta imagem. Exporte a logomarca de novo em PNG ou JPG e tente outra vez.')
+
+    const logo = await prisma.companyLogo.upsert({
+      where: { companyId: req.companyId! },
+      update: { mimeType: tipo, tamanho: conteudo.length, conteudo },
+      create: { companyId: req.companyId!, mimeType: tipo, tamanho: conteudo.length, conteudo },
+      select: { mimeType: true, tamanho: true, updatedAt: true },
+    })
+    await registrarAuditoria(req, { action: 'EMPRESA_ALTERADA', entityType: 'empresa', entityId: req.companyId!, metadata: { campos: ['logo'] } })
+    res.json(logo)
+  })
+)
+
+companyRouter.get(
+  '/logo',
+  asyncHandler(async (req, res) => {
+    const logo = await prisma.companyLogo.findUnique({ where: { companyId: req.companyId! } })
+    if (!logo) throw new ApiError(404, 'A empresa ainda não tem logomarca')
+    res.setHeader('Content-Type', logo.mimeType)
+    res.setHeader('Content-Length', String(logo.tamanho))
+    res.setHeader('Cache-Control', 'private, no-store')
+    res.setHeader('X-Content-Type-Options', 'nosniff')
+    res.send(Buffer.from(logo.conteudo))
+  })
+)
+
+companyRouter.delete(
+  '/logo',
+  requireCompanyOwner,
+  escritaSensivelLimiter,
+  asyncHandler(async (req, res) => {
+    const { count } = await prisma.companyLogo.deleteMany({ where: { companyId: req.companyId! } })
+    if (count === 0) throw new ApiError(404, 'A empresa ainda não tem logomarca')
+    await registrarAuditoria(req, { action: 'EMPRESA_ALTERADA', entityType: 'empresa', entityId: req.companyId!, metadata: { campos: ['logo removida'] } })
+    res.status(204).send()
   })
 )
 
