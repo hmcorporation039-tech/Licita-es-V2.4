@@ -16,7 +16,7 @@ import { senhaSchema } from '../passwordPolicy'
 import { asyncHandler, ApiError } from '../asyncHandler'
 import { requireAuth } from '../authMiddleware'
 import { registrarAuditoria } from '../../services/auditService'
-import { loginLimiter, loginPorContaLimiter, codigoPorContaLimiter, changePasswordLimiter, cadastroLimiter, recuperacaoLimiter } from '../rateLimit'
+import { loginLimiter, loginPorContaLimiter, loginPorContaGlobalLimiter, codigoPorContaLimiter, changePasswordLimiter, cadastroLimiter, recuperacaoLimiter } from '../rateLimit'
 import { captchaValido, emailDescartavel, maxCadastrosPorHora } from '../../lib/protecaoCadastro'
 import { alertarFalha } from '../../services/alertaOperacional'
 import { cnpjValido, cpfValido } from '../../lib/documentos'
@@ -214,6 +214,7 @@ authRouter.post(
   '/login',
   loginLimiter,
   loginPorContaLimiter,
+  loginPorContaGlobalLimiter,
   asyncHandler(async (req, res) => {
     const parsed = loginSchema.parse(req.body)
     const email = normalizeEmail(parsed.email)

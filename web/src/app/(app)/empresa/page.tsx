@@ -365,10 +365,11 @@ export default function EmpresaPage() {
         name: memberName || undefined,
         password: memberPassword || undefined,
       })
+      const confirmacao = 'No primeiro acesso, a pessoa confirma o e-mail com o código que enviamos para ela.'
       setInfo(
         result.generatedPassword
-          ? `Conta criada para ${result.email}. Senha gerada: ${result.generatedPassword} (repasse com segurança — não fica salva em nenhum outro lugar)`
-          : `Conta criada para ${result.email}.`
+          ? `Conta criada para ${result.email}. Senha gerada: ${result.generatedPassword} (repasse com segurança — não fica salva em nenhum outro lugar). ${confirmacao}`
+          : `Conta criada para ${result.email}. ${confirmacao}`
       )
       setMemberEmail('')
       setMemberName('')

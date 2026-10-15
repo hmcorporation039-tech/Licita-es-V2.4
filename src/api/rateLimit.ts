@@ -4,7 +4,8 @@
 // era livre e barata.
 // ============================================================
 
-import rateLimit from 'express-rate-limit'
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit'
+import type { Request } from 'express'
 
 const JANELA_MS = 15 * 60 * 1000
 
@@ -17,6 +18,11 @@ if (desligado && process.env.NODE_ENV === 'production') {
   throw new Error(
     'RATE_LIMIT_DISABLED=true em produção — isto libera força bruta de senha. Remova a variável.'
   )
+}
+
+function emailDoCorpo(req: Request): string {
+  const email = (req.body as { email?: unknown } | undefined)?.email
+  return typeof email === 'string' ? email.trim().toLowerCase().slice(0, 254) : '?'
 }
 
 function limite(valor: number): number {
@@ -101,10 +107,19 @@ export const loginPorContaLimiter = rateLimit({
   standardHeaders: 'draft-7',
   legacyHeaders: false,
   skipSuccessfulRequests: true,
-  keyGenerator: (req) => {
-    const email = (req.body as { email?: unknown } | undefined)?.email
-    return typeof email === 'string' ? 'conta:' + email.trim().toLowerCase() : 'conta:?'
-  },
+  keyGenerator: (req) => `conta:${emailDoCorpo(req)}|${ipKeyGenerator(req.ip ?? '')}`,
+  message: { error: 'Muitas tentativas para esta conta — aguarde alguns minutos ou redefina a senha' },
+})
+
+// Teto por conta somando todos os IPs: freia ataque distribuído sem deixar que um único IP
+// tranque o login da vítima (o limite acima já é por conta + IP).
+export const loginPorContaGlobalLimiter = rateLimit({
+  windowMs: JANELA_MS,
+  limit: limite(300),
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  keyGenerator: (req) => 'conta-global:' + emailDoCorpo(req),
   message: { error: 'Muitas tentativas para esta conta — aguarde alguns minutos ou redefina a senha' },
 })
 

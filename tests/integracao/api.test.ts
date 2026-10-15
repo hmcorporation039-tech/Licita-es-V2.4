@@ -233,6 +233,31 @@ rodar('API com banco real', () => {
       expect((await prisma.user.findUnique({ where: { id: ids.a } })).active).toBe(true)
     })
 
+    it('membro convidado precisa confirmar o próprio e-mail antes de entrar', async () => {
+      const convite = await http('POST', '/api/company/members', 'a', { email: email('convidado'), name: 'Convidado', password: 'Convidado-Forte-2026' })
+      expect(convite.status).toBe(201)
+      const membro = await prisma.user.findUnique({ where: { email: email('convidado') } })
+      expect(membro.emailVerifiedAt).toBeNull()
+      const login = await http('POST', '/api/auth/login', null, { email: email('convidado'), password: 'Convidado-Forte-2026' })
+      expect(login.status).toBe(403)
+      expect(login.body.code).toBe('EMAIL_NAO_VERIFICADO')
+    })
+
+    it('PATCH da empresa devolve só os campos públicos', async () => {
+      const r = await http('PATCH', '/api/company', 'a', { telefone: '(61) 3333-0000' })
+      expect(r.status).toBe(200)
+      expect(r.body.telefone).toBe('(61) 3333-0000')
+      expect(r.body).not.toHaveProperty('quotaOverrides')
+      expect(Array.isArray(r.body.users)).toBe(true)
+    })
+
+    it('checklist e plano recusam listas e textos gigantes', async () => {
+      const enorme = Array.from({ length: 201 }, (_, i) => ({ id: `m${i}`, label: 'x', date: null, detalhe: null, done: false, custom: true }))
+      expect((await http('PUT', `/api/tenders/${tenderId}/plano`, 'a', { status: 'VOU_PARTICIPAR', milestones: enorme })).status).toBe(400)
+      const item = { id: 'c1', section: 's', label: 'x'.repeat(501), checked: false, custom: true }
+      expect((await http('PUT', `/api/tenders/${tenderId}/checklist`, 'a', { items: [item] })).status).toBe(400)
+    })
+
     it('endpoints de administrador recusam quem não é admin', async () => {
       for (const caminho of ['/api/admin/overview', '/api/admin/companies', '/api/admin/audit', '/api/admin/ai-usage', '/api/admin/plans', '/api/admin/users']) {
         expect((await http('GET', caminho, 'a')).status).toBe(403)
