@@ -300,3 +300,78 @@ export interface TenderAnalysis {
   rascunho?: AnalysisResultado | null
   errorMsg: string | null
 }
+
+export type ModalidadeFalada = 'PREGAO_ELETRONICO' | 'PREGAO_PRESENCIAL' | 'CONCORRENCIA' | 'DISPENSA_COM_DISPUTA' | 'INEXIGIBILIDADE' | 'CREDENCIAMENTO'
+
+export interface FiltrosDaBela {
+  q?: string
+  uf?: string
+  municipio?: string
+  modalidade?: ModalidadeFalada
+  situacao?: 'ABERTA'
+}
+
+export type ContextoDaBela = 'busca' | 'pregao'
+
+export type PedidoDaBela =
+  | { acao: 'buscar'; filtros: FiltrosDaBela; resumo: string }
+  | { acao: 'lance'; valor: number; item: number | null; resumo: string }
+  | { acao: 'desconhecida'; resumo: string }
+
+export type FaixaDoLance = 'verde' | 'amarela' | 'vermelha'
+export type CriterioDoPregao = 'UNITARIO' | 'TOTAL_DO_ITEM'
+export type ResultadoDoPregao = 'GANHOU' | 'PERDEU' | 'DESCLASSIFICADO' | 'FRACASSADO'
+export type OrigemDoLance = 'MELHOR_LANCE' | 'MEU_LANCE'
+
+export interface AvaliacaoDoLance {
+  valor: number
+  lucro: number
+  margemPct: number
+  faixa: FaixaDoLance
+  minimoComMargem: number | null
+  equilibrio: number | null
+  sugestao: { valor: number; margemPct: number; ultimo: boolean } | null
+  lancesRestantes: number
+  mensagem: string
+}
+
+export interface AlvoDoPregao {
+  id: string
+  rotulo: string
+  numero: number | null
+  quantidade: number
+  precoProposto: number | null
+  custo: number
+  minimoComMargem: number | null
+  equilibrio: number | null
+  meusLances: number
+  avaliacao: AvaliacaoDoLance | null
+}
+
+export interface LanceDoPregao {
+  id: string
+  alvo: string
+  origem: OrigemDoLance
+  valor: number
+  margemPct: number | null
+  createdAt: string
+}
+
+export interface ConfigDoPregao {
+  decrementoPct: number
+  maxLances: number
+  criterio: CriterioDoPregao
+  resultado: ResultadoDoPregao | null
+  valorFinal: number | null
+  encerradoEm: string | null
+}
+
+export interface PainelDoPregao {
+  tender: { id: string; orgao: string | null; numeroControle: string | null; objeto: string }
+  semCustos: boolean
+  impostosPct: number
+  margemDesejadaPct: number
+  config: ConfigDoPregao
+  alvos: AlvoDoPregao[]
+  lances: LanceDoPregao[]
+}

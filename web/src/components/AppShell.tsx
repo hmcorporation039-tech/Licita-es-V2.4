@@ -22,6 +22,7 @@ import {
 import { clearSessionUser, getSessionUser, type SessionUser } from '@/lib/session'
 import { api } from '@/lib/api'
 import { MedidorNoMenu } from '@/components/MedidorDeAnalises'
+import Bela, { BotaoDaBela } from '@/components/Bela'
 import { cx } from '@/components/ui'
 
 interface ItemDeMenu {
@@ -119,12 +120,14 @@ function Rodape({ user, onSair }: { user: SessionUser | null; onSair: () => void
 export default function AppShell({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(null)
   const [menuAberto, setMenuAberto] = useState(false)
+  const [belaAberta, setBelaAberta] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
 
   useEffect(() => {
     setUser(getSessionUser())
     setMenuAberto(false)
+    setBelaAberta(false)
   }, [pathname])
 
   useEffect(() => {
@@ -146,16 +149,19 @@ export default function AppShell({ children }: { children: ReactNode }) {
     <div className="flex min-h-screen flex-col lg:flex-row">
       <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-line bg-sunken px-3 lg:hidden">
         <Marca />
-        <button
-          type="button"
-          onClick={() => setMenuAberto(true)}
-          aria-label="Abrir menu"
-          aria-expanded={menuAberto}
-          aria-controls="menu-lateral"
-          className="inline-flex size-10 items-center justify-center rounded text-ink-2 hover:bg-line-soft"
-        >
-          <Menu size={20} aria-hidden />
-        </button>
+        <div className="flex shrink-0 items-center gap-1">
+          <BotaoDaBela onAbrir={() => setBelaAberta(true)} className="h-11" />
+          <button
+            type="button"
+            onClick={() => setMenuAberto(true)}
+            aria-label="Abrir menu"
+            aria-expanded={menuAberto}
+            aria-controls="menu-lateral"
+            className="inline-flex size-11 items-center justify-center rounded text-ink-2 hover:bg-line-soft"
+          >
+            <Menu size={20} aria-hidden />
+          </button>
+        </div>
       </header>
 
       {menuAberto && <div aria-hidden className="fixed inset-0 z-40 bg-ink/40 lg:hidden" onClick={() => setMenuAberto(false)} />}
@@ -173,11 +179,21 @@ export default function AppShell({ children }: { children: ReactNode }) {
             <X size={18} aria-hidden />
           </button>
         </div>
+        <BotaoDaBela
+          onAbrir={() => {
+            setMenuAberto(false)
+            setBelaAberta(true)
+          }}
+          rotulo="Falar com a Bela"
+          className="hidden h-10 w-full lg:inline-flex"
+        />
         <Navegacao user={user} pathname={pathname} />
         <div className="mt-auto">
           <Rodape user={user} onSair={sair} />
         </div>
       </aside>
+
+      <Bela aberta={belaAberta} onFechar={() => setBelaAberta(false)} />
 
       <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-7">
         <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-6">{children}</div>

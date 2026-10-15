@@ -2,7 +2,7 @@
 
 import { formatarData } from '@/lib/datas'
 import { use, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
-import { AlertCircle, Calculator, Check, CheckCircle2, ChevronDown, ChevronUp, ExternalLink, Loader2, Plus, RotateCcw, Trash2 } from 'lucide-react'
+import { AlertCircle, Calculator, Check, CheckCircle2, ChevronDown, ChevronUp, ExternalLink, Gavel, Loader2, Plus, RotateCcw, Trash2 } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
 import { avisarMudancaDeUso, useUsoDoPlano, type MedidaDeAnalises } from '@/hooks/useUsoDoPlano'
 import MedidorDeAnalises, { textoDoRestante } from '@/components/MedidorDeAnalises'
@@ -548,6 +548,9 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
                 <StatusTag tone="accent">Escolhida</StatusTag>
                 <LinkButton href={`/escolhidas/${id}`} variant="secondary" icon={Calculator}>
                   Estudo de custos
+                </LinkButton>
+                <LinkButton href={`/tenders/${id}/pregao`} variant="secondary" icon={Gavel}>
+                  Pregão com a Bela
                 </LinkButton>
               </>
             ) : (

@@ -3,7 +3,7 @@
 import { formatarData } from '@/lib/datas'
 import { use, useCallback, useEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowRight, FileDown, FileSignature, FolderArchive, Plus, RefreshCw, Save, Search, Trash2 } from 'lucide-react'
+import { ArrowRight, FileDown, FileSignature, FolderArchive, Gavel, Plus, RefreshCw, Save, Search, Trash2 } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
 import { api, ApiRequestError, baixarArquivo } from '@/lib/api'
 import { DadosDoEstudo, EstudoResposta, PesquisaDePrecosResposta, ResultadoDoEstudo } from '@/lib/estudoTypes'
@@ -14,6 +14,7 @@ import {
   DescriptionList,
   Field,
   Input,
+  LinkButton,
   Metric,
   MetricRow,
   Notice,
@@ -722,7 +723,7 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
               )}
             </span>
           </p>
-          <div className="ml-auto flex shrink-0 flex-wrap justify-end gap-2">
+          <div className="ml-auto flex max-w-full shrink-0 flex-wrap justify-end gap-2">
             <Button variant="primary" size="sm" icon={Save} onClick={salvar} disabled={!sujo} loading={salvando} aria-label={sujo ? 'Salvar estudo (alterações não salvas)' : 'Salvar estudo'}>
               Salvar
             </Button>
@@ -752,6 +753,10 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
             >
               Proposta
             </Button>
+            <LinkButton size="sm" icon={Gavel} href={`/tenders/${id}/pregao`} aria-label="Pregão com a Bela: acompanhar os lances ao vivo" title="Copiloto de lances para o dia do pregão">
+              <span className="sm:hidden">Pregão</span>
+              <span className="hidden sm:inline">Pregão com a Bela</span>
+            </LinkButton>
           </div>
         </div>
       </div>
