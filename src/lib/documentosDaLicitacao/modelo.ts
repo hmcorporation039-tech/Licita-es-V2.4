@@ -7,6 +7,8 @@ const MAX_TEXTO = 5000
 const MAX_BLOCOS = 200
 const MAX_LINHAS = 500
 const MAX_COLUNAS = 8
+const MAX_QUEBRAS = 40
+const MAX_CARACTERES = 200_000
 
 const texto = z.string().max(MAX_TEXTO)
 
@@ -24,10 +26,24 @@ export const blocoSchema = z.discriminatedUnion('tipo', [
   z.object({ tipo: z.literal('quebra') }),
 ])
 
+function caracteresDosBlocos(blocos: Array<z.infer<typeof blocoSchema>>): number {
+  return blocos.reduce((total, b) => {
+    if (b.tipo === 'titulo' || b.tipo === 'paragrafo') return total + b.texto.length
+    if (b.tipo === 'assinatura') return total + b.local.length
+    if (b.tipo === 'tabela') return total + [...b.colunas, ...(b.rodape ?? []), ...b.linhas.flat()].reduce((t, c) => t + c.length, 0)
+    return total
+  }, 0)
+}
+
 export const documentoSchema = z.object({
   tipo: z.enum(TIPOS_DE_DOCUMENTO),
   titulo: z.string().min(1).max(200),
-  blocos: z.array(blocoSchema).min(1).max(MAX_BLOCOS),
+  blocos: z
+    .array(blocoSchema)
+    .min(1)
+    .max(MAX_BLOCOS)
+    .refine((blocos) => blocos.filter((b) => b.tipo === 'quebra').length <= MAX_QUEBRAS, { message: `No máximo ${MAX_QUEBRAS} quebras de página por documento.` })
+    .refine((blocos) => caracteresDosBlocos(blocos) <= MAX_CARACTERES, { message: 'O documento ficou grande demais. Divida em arquivos menores.' }),
 })
 
 export type Bloco = z.infer<typeof blocoSchema>

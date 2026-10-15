@@ -124,4 +124,10 @@ export function instalarAlertasDoProcesso(origem: string): void {
     console.error(`[${origem}] Promessa rejeitada sem tratamento:`, motivo)
     void alertarFalha(origem, 'unhandledRejection', motivo)
   })
+  process.on('uncaughtException', (erro) => {
+    console.error(`[${origem}] Exceção sem tratamento, reiniciando o processo:`, erro)
+    const encerrar = setTimeout(() => process.exit(1), 3000)
+    encerrar.unref()
+    void alertarFalha(origem, 'uncaughtException', erro).finally(() => process.exit(1))
+  })
 }

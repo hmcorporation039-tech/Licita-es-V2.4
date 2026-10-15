@@ -232,6 +232,8 @@ rodar('Estudo de custos', () => {
     expect((await enviar(png, tokenA)).status).toBe(200)
     expect((await enviar(Buffer.from('%PDF-1.4 x'), tokenA)).status).toBe(415)
     expect((await enviar(pngCorrompido, tokenA)).status).toBe(415)
+    const pngQueDerrubavaAApi = Buffer.concat([png.subarray(0, 33), Buffer.from([0, 0, 0, 13]), Buffer.from('IDAT'), Buffer.from('lixo-nao-zlib'), Buffer.alloc(4), png.subarray(png.length - 12)])
+    expect((await enviar(pngQueDerrubavaAApi, tokenA)).status).toBe(415)
     expect((await http('GET', '/api/company/logo', undefined, tokenB)).status).toBe(404)
 
     const dados = await http('PATCH', '/api/company', { responsavel: 'Maria Teste', responsavelCpf: '529.982.247-25', responsavelCargo: 'Sócia', endereco: 'Rua 1', enderecoNumero: '10', enderecoCidade: 'Goiânia', enderecoUf: 'GO' }, tokenA)
