@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { interpretarPedido, lerValorFalado } from '../src/lib/bela/interpretar'
-import { avaliarLance, limitesDoAlvo } from '../src/lib/bela/copiloto'
+import { avaliarLance, avaliarMeuLance, limitesDoAlvo } from '../src/lib/bela/copiloto'
 
 describe('Bela: pedido de busca falado', () => {
   it('entende objeto e UF no pedido do dia a dia', () => {
@@ -82,6 +82,14 @@ describe('Bela: copiloto do lance', () => {
     expect(a.lancesRestantes).toBe(0)
     expect(a.mensagem).toContain('limite combinado')
     expect(avaliarLance(1400, limites, regras, 1).sugestao?.ultimo).toBe(true)
+  })
+
+  it('depois do meu lance, confirma a margem e espera o próximo lance em vez de repetir a sugestão', () => {
+    const a = avaliarMeuLance(1393, limites, regras, 1)
+    expect(a.sugestao).toBeNull()
+    expect(a.mensagem).toContain('Seu lance de R$')
+    expect(a.mensagem).toContain('Restam 1 lance')
+    expect(avaliarMeuLance(1300, limites, regras, 2).mensagem).toContain('último lance combinado')
   })
 
   it('sem custos, não inventa margem', () => {

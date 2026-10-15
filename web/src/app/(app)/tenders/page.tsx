@@ -135,6 +135,22 @@ export default function TendersPage() {
   const [page, setPage] = useState(1)
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const daUrl = (nome: string) => (params.get(nome) ?? '').trim().slice(0, 200)
+    const qInicial = daUrl('q')
+    const ufInicial = daUrl('uf').toUpperCase()
+    const municipioInicial = daUrl('municipio')
+    const modalidadeInicial = daUrl('modalidade')
+    const ufValida = /^[A-Z]{2}$/.test(ufInicial)
+    if (qInicial) setQ(qInicial)
+    if (ufValida) setUf(ufInicial)
+    if (municipioInicial) setMunicipio(municipioInicial)
+    if (MODALIDADE_OPTIONS.some((o) => o.value === modalidadeInicial)) setModalidade(modalidadeInicial)
+    if (params.get('relacionadas') === '0') setSomenteRelacionadas(false)
+    if (qInicial || ufValida || municipioInicial) setAdvancedOpen(true)
+  }, [])
+
+  useEffect(() => {
     if (!user) return
     setLoading(true)
     setErro(null)

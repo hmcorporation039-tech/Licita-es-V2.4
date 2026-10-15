@@ -42,10 +42,16 @@ function resultadoEm(valor: number, l: LimitesDoAlvo): { lucro: number; margemPc
   return { lucro, margemPct: valor > 0 ? Math.round((lucro / valor) * 1000) / 10 : 0 }
 }
 
+function faixaDe(valor: number, minimoComMargem: number | null, equilibrio: number | null): Faixa {
+  if (equilibrio !== null && valor < equilibrio) return 'vermelha'
+  if (minimoComMargem !== null && valor < minimoComMargem) return 'amarela'
+  return 'verde'
+}
+
 export function avaliarLance(valor: number, l: LimitesDoAlvo, regras: RegrasDoPregao, meusLances: number): Avaliacao {
   const { minimoComMargem, equilibrio } = limitesDoAlvo(l)
   const { lucro, margemPct } = resultadoEm(valor, l)
-  const faixa: Faixa = equilibrio !== null && valor < equilibrio ? 'vermelha' : minimoComMargem !== null && valor < minimoComMargem ? 'amarela' : 'verde'
+  const faixa = faixaDe(valor, minimoComMargem, equilibrio)
   const lancesRestantes = Math.max(0, regras.maxLances - meusLances)
 
   const frases = [`Melhor lance em ${reais(valor)}.`]
@@ -76,3 +82,15 @@ export function avaliarLance(valor: number, l: LimitesDoAlvo, regras: RegrasDoPr
 
   return { valor, lucro, margemPct, faixa, minimoComMargem, equilibrio, sugestao, lancesRestantes, mensagem: frases.join(' ') }
 }
+
+export function avaliarMeuLance(valor: number, l: LimitesDoAlvo, regras: RegrasDoPregao, meusLances: number): Avaliacao {
+  const { minimoComMargem, equilibrio } = limitesDoAlvo(l)
+  const { lucro, margemPct } = resultadoEm(valor, l)
+  const faixa = faixaDe(valor, minimoComMargem, equilibrio)
+  const lancesRestantes = Math.max(0, regras.maxLances - meusLances)
+  const frases = [`Seu lance de ${reais(valor)} foi registrado.`]
+  if (l.custoComRateio > 0) frases.push(faixa === 'vermelha' ? `Atenção: nesse valor há prejuízo de ${reais(-lucro)}.` : `Margem de ${pct(margemPct)}.`)
+  frases.push(lancesRestantes === 0 ? 'Era o seu último lance combinado.' : `Restam ${lancesRestantes} ${lancesRestantes === 1 ? 'lance' : 'lances'}. Me diga o próximo melhor lance quando ele aparecer.`)
+  return { valor, lucro, margemPct, faixa: l.custoComRateio > 0 ? faixa : 'verde', minimoComMargem, equilibrio, sugestao: null, lancesRestantes, mensagem: frases.join(' ') }
+}
+

@@ -4,7 +4,7 @@ import { prisma } from '../../services/tenderService'
 import { asyncHandler, ApiError } from '../asyncHandler'
 import { estudoCalculoLimiter } from '../rateLimit'
 import { calcularEstudo } from '../../lib/estudoDeCustos'
-import { avaliarLance, limitesDoAlvo, type Avaliacao, type LimitesDoAlvo } from '../../lib/bela/copiloto'
+import { avaliarLance, avaliarMeuLance, limitesDoAlvo, type Avaliacao, type LimitesDoAlvo } from '../../lib/bela/copiloto'
 import { carregar, dadosSalvos } from './estudos'
 
 export const pregaoRouter = Router({ mergeParams: true })
@@ -69,9 +69,13 @@ async function montarPainel(companyId: string, tenderId: string) {
   const regras = { decrementoPct: Number(acompanhamento.decrementoPct), maxLances: acompanhamento.maxLances }
   const painelDosAlvos = alvos.map((a) => {
     const doAlvo = lances.filter((l) => l.alvo === a.id)
-    const ultimoMelhor = doAlvo.find((l) => l.origem === 'MELHOR_LANCE')
+    const maisRecente = doAlvo[0]
     const meus = doAlvo.filter((l) => l.origem === 'MEU_LANCE').length
-    const avaliacao: Avaliacao | null = ultimoMelhor ? avaliarLance(Number(ultimoMelhor.valor), a.limites, regras, meus) : null
+    const avaliacao: Avaliacao | null = !maisRecente
+      ? null
+      : maisRecente.origem === 'MEU_LANCE'
+        ? avaliarMeuLance(Number(maisRecente.valor), a.limites, regras, meus)
+        : avaliarLance(Number(maisRecente.valor), a.limites, regras, meus)
     return {
       id: a.id,
       rotulo: a.rotulo,
