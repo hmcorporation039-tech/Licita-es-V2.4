@@ -23,6 +23,7 @@ import { findMunicipioByNomeUf } from '../../lib/geoService'
 import { CepIndisponivelError, CepNaoEncontradoError, consultarCep } from '../../lib/cep'
 import { detectarTipoDeArquivo } from '../../lib/arquivoDeDocumento'
 import { imagemLegivel } from '../../services/documentos/papelTimbrado'
+import { reenviarConfirmacao } from '../../services/contaService'
 
 export const companyRouter = Router()
 
@@ -36,23 +37,25 @@ companyRouter.get(
   })
 )
 
+const CAMPOS_PUBLICOS_DA_EMPRESA = {
+  id: true, tipo: true, name: true, cnpj: true, cpf: true, email: true, telefone: true, responsavel: true,
+  responsavelCpf: true, responsavelCargo: true, dadosBancarios: true,
+  logo: { select: { mimeType: true, tamanho: true, updatedAt: true } },
+  endereco: true, cep: true, enderecoNumero: true, enderecoComplemento: true, enderecoBairro: true, enderecoCidade: true,
+  enderecoUf: true, baseMunicipio: true, baseUf: true, planCode: true, createdAt: true, updatedAt: true,
+  users: {
+    select: { id: true, email: true, name: true, companyRole: true, active: true, createdAt: true },
+    orderBy: { createdAt: 'asc' as const },
+  },
+} satisfies Prisma.CompanySelect
+
 companyRouter.get(
   '/',
   asyncHandler(async (req, res) => {
     const company = await prisma.company.findUniqueOrThrow({
       where: { id: req.companyId! },
       // Campos explícitos: a linha inteira traria também os ajustes comerciais (quotaOverrides).
-      select: {
-        id: true, tipo: true, name: true, cnpj: true, cpf: true, email: true, telefone: true, responsavel: true,
-        responsavelCpf: true, responsavelCargo: true, dadosBancarios: true,
-        logo: { select: { mimeType: true, tamanho: true, updatedAt: true } },
-        endereco: true, cep: true, enderecoNumero: true, enderecoComplemento: true, enderecoBairro: true, enderecoCidade: true,
-        enderecoUf: true, baseMunicipio: true, baseUf: true, planCode: true, createdAt: true, updatedAt: true,
-        users: {
-          select: { id: true, email: true, name: true, companyRole: true, active: true, createdAt: true },
-          orderBy: { createdAt: 'asc' },
-        },
-      },
+      select: CAMPOS_PUBLICOS_DA_EMPRESA,
     })
     res.json(company)
   })
@@ -154,7 +157,7 @@ companyRouter.patch(
       entityId: updated.id,
       metadata: { campos: Object.keys(data) },
     })
-    res.json(updated)
+    res.json(await prisma.company.findUniqueOrThrow({ where: { id: updated.id }, select: CAMPOS_PUBLICOS_DA_EMPRESA }))
   })
 )
 
@@ -250,11 +253,13 @@ companyRouter.post(
         passwordHash: await hashPassword(tempPassword),
         companyId: req.companyId!,
         companyRole: 'MEMBER',
-        // Convidado pelo dono da empresa: não passa pela confirmação de e-mail.
-        emailVerifiedAt: new Date(),
+        // Convidado pelo dono: confirma o e-mail no primeiro acesso, para ninguém criar conta com e-mail alheio.
+        emailVerifiedAt: null,
         accessExpiresAt: owner?.accessExpiresAt ?? null,
       },
     })
+
+    await reenviarConfirmacao(member.email)
 
     await registrarAuditoria(req, {
       action: 'MEMBRO_CRIADO',

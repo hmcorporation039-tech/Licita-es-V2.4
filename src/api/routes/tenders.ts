@@ -196,10 +196,10 @@ tendersRouter.get(
 )
 
 const checklistItemSchema = z.object({
-  id: z.string().min(1),
-  section: z.string().min(1),
-  label: z.string().min(1),
-  hint: z.string().optional(),
+  id: z.string().min(1).max(100),
+  section: z.string().min(1).max(200),
+  label: z.string().min(1).max(500),
+  hint: z.string().max(2000).optional(),
   checked: z.boolean(),
   custom: z.boolean(),
 })
@@ -606,16 +606,18 @@ tendersRouter.get(
 
 const putPlanoSchema = z.object({
   status: z.enum(PARTICIPATION_STATUS_VALUES),
-  milestones: z.array(
-    z.object({
-      id: z.string().min(1),
-      label: z.string().min(1),
-      date: z.string().nullable(),
-      detalhe: z.string().nullable(),
-      done: z.boolean(),
-      custom: z.boolean(),
-    })
-  ),
+  milestones: z
+    .array(
+      z.object({
+        id: z.string().min(1).max(100),
+        label: z.string().min(1).max(500),
+        date: z.string().max(40).nullable(),
+        detalhe: z.string().max(2000).nullable(),
+        done: z.boolean(),
+        custom: z.boolean(),
+      })
+    )
+    .max(200),
 })
 
 // Salva o status de decisão + quais marcos foram marcados como feitos +
