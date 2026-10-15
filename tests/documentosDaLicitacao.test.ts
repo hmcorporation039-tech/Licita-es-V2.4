@@ -4,6 +4,7 @@ import { dadosDoCertame, dadosDoProponente, type EmpresaParaDocumento } from '..
 import { propostaComercial } from '../src/lib/documentosDaLicitacao/proposta'
 import { declaracoes, IDS_DE_DECLARACAO } from '../src/lib/documentosDaLicitacao/declaracoes'
 import { documentoSchema } from '../src/lib/documentosDaLicitacao/modelo'
+import { readequarPrecos } from '../src/lib/documentosDaLicitacao/readequacao'
 import { renderizarPdf } from '../src/services/documentos/renderizarPdf'
 import { renderizarDocx } from '../src/services/documentos/renderizarDocx'
 import { deflateSync } from 'node:zlib'
@@ -179,5 +180,47 @@ describe('logomarca hostil', () => {
     expect(documentoSchema.safeParse({ ...base, blocos: Array.from({ length: 41 }, () => ({ tipo: 'quebra' })) }).success).toBe(false)
     expect(documentoSchema.safeParse({ ...base, blocos: Array.from({ length: 41 }, () => ({ tipo: 'paragrafo', texto: 'x'.repeat(5000) })) }).success).toBe(false)
     expect(documentoSchema.safeParse({ ...base, blocos: Array.from({ length: 8 }, () => ({ tipo: 'quebra' })) }).success).toBe(true)
+  })
+})
+
+describe('proposta readequada', () => {
+  const itens = [
+    { id: 'a', quantidade: 10, precoBase: 3800 },
+    { id: 'b', quantidade: 20, precoBase: 450 },
+  ]
+
+  it('distribui o lance global na proporção dos preços originais, sem passar do lance', () => {
+    const r = readequarPrecos(itens, { global: 44_000.01, porItem: {} })
+    expect(r.total).toBe(44_000)
+    expect(r.precos).toEqual({ a: 3557.46, b: 421.27 })
+    expect(r.pendencias).toEqual([])
+  })
+
+  it('fecha o total exato quando há item que absorve os centavos', () => {
+    const r = readequarPrecos([...itens, { id: 'c', quantidade: 1, precoBase: 120 }], { global: 44_000.01, porItem: {} })
+    expect(r.total).toBe(44_000.01)
+  })
+
+  it('nunca passa do lance, mesmo quando o centavo não divide', () => {
+    const r = readequarPrecos([{ id: 'x', quantidade: 3, precoBase: 10 }], { global: 100, porItem: {} })
+    expect(r.precos.x).toBe(33.33)
+    expect(r.total).toBeLessThanOrEqual(100)
+  })
+
+  it('usa o lance de cada item quando a disputa foi por item', () => {
+    const r = readequarPrecos(itens, { global: null, porItem: { a: 35_000, b: 8_000 } })
+    expect(r.precos).toEqual({ a: 3500, b: 400 })
+    expect(r.total).toBe(43_000)
+  })
+
+  it('aponta o que falta em vez de inventar preço', () => {
+    expect(readequarPrecos(itens, { global: null, porItem: { a: 35_000 } }).pendencias).toEqual(['lance final de 1 item(ns)'])
+    expect(readequarPrecos([{ id: 'x', quantidade: 1, precoBase: null }], { global: 100, porItem: {} }).pendencias[0]).toContain('preço de venda')
+  })
+
+  it('o texto da proposta diz que ela foi readequada ao lance final', () => {
+    const { documento } = propostaComercial(dadosDoProponente(empresa), certame, [{ numero: 1, descricao: 'Item', unidade: 'un', quantidade: 2, precoUnitario: 49.5 }], { validadeDias: 60, prazoDeEntrega: '', condicoesDePagamento: '', lanceFinal: 99 }, quando)
+    expect(documento.titulo).toBe('Proposta comercial readequada')
+    expect(JSON.stringify(documento.blocos)).toContain('readequada ao valor final de R$ 99,00 (noventa e nove reais)')
   })
 })

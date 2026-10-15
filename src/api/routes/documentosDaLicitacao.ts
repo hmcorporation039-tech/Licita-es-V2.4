@@ -13,6 +13,7 @@ import { renderizarPdf } from '../../services/documentos/renderizarPdf'
 import { renderizarDocx } from '../../services/documentos/renderizarDocx'
 import type { Timbrado } from '../../services/documentos/papelTimbrado'
 import { carregar, dadosSalvos } from './estudos'
+import { readequarPrecos, type LancesFinais } from '../../lib/documentosDaLicitacao/readequacao'
 
 export const documentosDaLicitacaoRouter = Router({ mergeParams: true })
 
@@ -45,6 +46,25 @@ async function carregarCertame(tenderId: string) {
   }
 }
 
+async function lancesFinais(companyId: string, tenderId: string, itens: Array<{ id: string; quantidade: number }>): Promise<LancesFinais> {
+  const acompanhamento = await prisma.pregaoAcompanhamento.findUnique({
+    where: { companyId_tenderId: { companyId, tenderId } },
+    include: { lances: { where: { origem: 'MEU_LANCE' }, orderBy: { createdAt: 'desc' } } },
+  })
+  if (!acompanhamento) throw new ApiError(409, 'Registre seus lances ou o resultado em "Pregão com a Bela" para gerar a proposta readequada.')
+  const ultimoDe = (alvo: string) => acompanhamento.lances.find((l) => l.alvo === alvo)
+  const porItem: Record<string, number> = {}
+  for (const it of itens) {
+    const lance = ultimoDe(it.id)
+    if (lance) porItem[it.id] = acompanhamento.criterio === 'UNITARIO' ? Number(lance.valor) * it.quantidade : Number(lance.valor)
+  }
+  const global = acompanhamento.valorFinal !== null ? Number(acompanhamento.valorFinal) : ultimoDe('global') ? Number(ultimoDe('global')!.valor) : null
+  if (global === null && Object.keys(porItem).length === 0) {
+    throw new ApiError(409, 'Registre seus lances ou o resultado em "Pregão com a Bela" para gerar a proposta readequada.')
+  }
+  return itens.length === 1 && global !== null ? { global, porItem: {} } : { global, porItem }
+}
+
 const textoCurto = (v: string | undefined) => {
   const t = (v ?? '').replace(/\s+/g, ' ').trim()
   if (!t || /^(nao|não)\s+(informad|especificad|consta)/i.test(t)) return ''
@@ -68,7 +88,7 @@ documentosDaLicitacaoRouter.get(
 )
 
 const previaSchema = z.discriminatedUnion('tipo', [
-  z.object({ tipo: z.literal('proposta'), validadeDias: z.number().int().min(1).max(365).default(60) }),
+  z.object({ tipo: z.literal('proposta'), validadeDias: z.number().int().min(1).max(365).default(60), readequada: z.boolean().default(false) }),
   z.object({ tipo: z.literal('declaracoes'), declaracoes: z.array(z.enum(IDS_DE_DECLARACAO as [string, ...string[]])).min(1).max(IDS_DE_DECLARACAO.length) }),
 ])
 
@@ -86,27 +106,35 @@ documentosDaLicitacaoRouter.post(
 
     const ctx = await carregar(req.companyId!, req.params.id)
     const { dados } = await dadosSalvos(req.companyId!, req.params.id, ctx)
+    const readequacao = pedido.readequada
+      ? readequarPrecos(
+          ctx.itens.map((it) => ({ id: it.id, quantidade: it.quantidade, precoBase: dados.itens[it.id]?.precoVendaUnit ?? null })),
+          await lancesFinais(req.companyId!, req.params.id, ctx.itens),
+        )
+      : null
     const itens = ctx.itens.map((it) => ({
       numero: it.numero,
       descricao: it.descricao,
       unidade: it.unidade,
       quantidade: it.quantidade,
-      precoUnitario: dados.itens[it.id]?.precoVendaUnit ?? null,
+      precoUnitario: readequacao ? (readequacao.precos[it.id] ?? null) : (dados.itens[it.id]?.precoVendaUnit ?? null),
     }))
     const prazoDoEstudo = dados.prazo.exigidoDias ? `${dados.prazo.exigidoDias} dias${dados.prazo.exigidoEmDiasUteis ? ' úteis' : ''}` : ''
     const r = propostaComercial(timbrado.proponente, certame, itens, {
       validadeDias: pedido.validadeDias,
       prazoDeEntrega: prazoDoEstudo || textoCurto(analise?.prazoEntrega),
       condicoesDePagamento: textoCurto(analise?.pagamento),
+      ...(readequacao ? { lanceFinal: readequacao.total } : {}),
     })
-    res.json({ documento: r.documento, pendencias: r.pendencias, total: r.total, temLogo: timbrado.logo !== null })
+    const pendencias = readequacao ? [...readequacao.pendencias, ...r.pendencias.filter((p) => !p.startsWith('preço de venda'))] : r.pendencias
+    res.json({ documento: r.documento, pendencias, total: r.total, temLogo: timbrado.logo !== null })
   })
 )
 
 const arquivoSchema = z.object({ formato: z.enum(['pdf', 'docx']), documento: documentoSchema })
 
 const nomeDoArquivo = (doc: DocumentoDaLicitacao, numero: string, extensao: string) => {
-  const base = `${doc.tipo === 'proposta' ? 'proposta-comercial' : 'declaracoes'}-${numero}`
+  const base = `${doc.tipo === 'proposta' ? (doc.titulo.toLowerCase().includes('readequada') ? 'proposta-readequada' : 'proposta-comercial') : 'declaracoes'}-${numero}`
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
     .replace(/[^a-zA-Z0-9-]+/g, '-')

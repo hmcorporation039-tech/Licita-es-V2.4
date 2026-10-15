@@ -14,6 +14,7 @@ export interface OpcoesDaProposta {
   validadeDias: number
   prazoDeEntrega: string
   condicoesDePagamento: string
+  lanceFinal?: number
 }
 
 export interface PropostaGerada {
@@ -51,10 +52,14 @@ export function propostaComercial(
   })
 
   const sessao = certame.sessao ? `, cuja sessão pública está marcada para ${certame.sessao}` : ''
+  const readequada = opcoes.lanceFinal !== undefined
   const blocos: Bloco[] = [
-    { tipo: 'titulo', texto: 'PROPOSTA COMERCIAL' },
+    { tipo: 'titulo', texto: readequada ? 'PROPOSTA COMERCIAL READEQUADA' : 'PROPOSTA COMERCIAL' },
     { tipo: 'paragrafo', texto: `Ao(À) ${certame.orgao}` },
     { tipo: 'paragrafo', texto: `Referência: ${certame.modalidade} nº ${certame.numero}${sessao}.` },
+    ...(readequada
+      ? [{ tipo: 'paragrafo' as const, texto: `Proposta readequada ao valor final de R$ ${formatarReais(opcoes.lanceFinal!)} (${reaisPorExtenso(opcoes.lanceFinal!)}), ofertado na etapa de lances, com os preços unitários ajustados proporcionalmente.` }]
+      : []),
     { tipo: 'paragrafo', texto: `Objeto: ${certame.objeto}` },
     {
       tipo: 'paragrafo',
@@ -80,7 +85,7 @@ export function propostaComercial(
   if (proponente.dadosBancarios) blocos.push({ tipo: 'paragrafo', texto: `Dados bancários para pagamento: ${proponente.dadosBancarios}.` })
   blocos.push({ tipo: 'assinatura', local: localEData(proponente, quando) })
 
-  return { documento: { tipo: 'proposta', titulo: 'Proposta comercial', blocos }, pendencias, total }
+  return { documento: { tipo: 'proposta', titulo: readequada ? 'Proposta comercial readequada' : 'Proposta comercial', blocos }, pendencias, total }
 }
 
 function validadePorExtenso(dias: number): string {

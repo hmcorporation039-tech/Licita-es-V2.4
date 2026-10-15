@@ -1,7 +1,7 @@
 'use client'
 
 import { use, useEffect, useState, type FormEvent, type ReactNode } from 'react'
-import { ArrowLeft, Calculator, Check, Gavel, Mic, RotateCcw, Save, Square, Undo2 } from 'lucide-react'
+import { ArrowLeft, Calculator, Check, FileSignature, Gavel, Mic, RotateCcw, Save, Square, Undo2 } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
 import { useEscuta, useFalaDaBela } from '@/hooks/useBela'
 import { api, ApiRequestError } from '@/lib/api'
@@ -629,6 +629,13 @@ export default function PregaoComABelaPage({ params }: { params: Promise<{ id: s
             </>
           )}
           {config.encerradoEm && <span className="font-mono">{formatarData(config.encerradoEm, { comHora: true })}</span>}
+          {config.resultado === 'GANHOU' && (
+            <div className="mt-3">
+              <LinkButton href={`/tenders/${id}/documentos?tipo=proposta&readequada=1`} variant="primary" icon={FileSignature} className="h-11! sm:h-9!">
+                Gerar proposta readequada
+              </LinkButton>
+            </div>
+          )}
         </Notice>
       )}
 

@@ -306,6 +306,14 @@ rodar('Estudo de custos', () => {
     const fim = await http('PUT', `/api/tenders/${tenderId}/pregao/resultado`, { resultado: 'GANHOU', valorFinal: a1.sugestao.valor - 100 }, tokenA)
     expect(fim.body.config).toMatchObject({ resultado: 'GANHOU', valorFinal: a1.sugestao.valor - 100 })
     expect((await http('POST', `/api/tenders/${tenderId}/pregao/lances`, { alvo: 'global', origem: 'MELHOR_LANCE', valor: 1 }, tokenA)).status).toBe(409)
+
+    const valorFinal = a1.sugestao.valor - 100
+    const readequada = await http('POST', `/api/tenders/${tenderId}/documentos/previa`, { tipo: 'proposta', readequada: true }, tokenA)
+    expect(readequada.status).toBe(200)
+    expect(readequada.body.documento.titulo).toBe('Proposta comercial readequada')
+    expect(readequada.body.total).toBeLessThanOrEqual(valorFinal)
+    expect(readequada.body.total).toBeGreaterThan(valorFinal - 1)
+    expect((await http('POST', `/api/tenders/${tenderId}/documentos/previa`, { tipo: 'proposta', readequada: true }, tokenB)).status).toBe(409)
     expect((await http('PUT', `/api/tenders/${tenderId}/pregao/resultado`, { resultado: null }, tokenA)).body.config.encerradoEm).toBeNull()
 
     const fala = await http('POST', '/api/bela/interpretar', { texto: 'Bela, licitação de estrutura metálica no DF' }, tokenA)
