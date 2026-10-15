@@ -2,7 +2,8 @@
 
 import { formatarData } from '@/lib/datas'
 import { use, useCallback, useEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react'
-import { ArrowRight, FileDown, FolderArchive, Plus, RefreshCw, Save, Search, Trash2 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { ArrowRight, FileDown, FileSignature, FolderArchive, Plus, RefreshCw, Save, Search, Trash2 } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
 import { api, ApiRequestError, baixarArquivo } from '@/lib/api'
 import { DadosDoEstudo, EstudoResposta, PesquisaDePrecosResposta, ResultadoDoEstudo } from '@/lib/estudoTypes'
@@ -119,6 +120,7 @@ const SITUACAO_DO_PRAZO = {
 export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const user = useRequireSession()
+  const router = useRouter()
   const [estudo, setEstudo] = useState<EstudoResposta | null>(null)
   const [dados, setDados] = useState<DadosDoEstudo | null>(null)
   const [resultado, setResultado] = useState<ResultadoDoEstudo | null>(null)
@@ -203,6 +205,11 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
     } finally {
       setGerandoPacote(false)
     }
+  }
+
+  async function abrirProposta() {
+    if (sujo && !(await salvar())) return
+    router.push(`/tenders/${id}/documentos?tipo=proposta`)
   }
 
   async function pesquisarItem(itemId: string) {
@@ -699,7 +706,7 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
             {erro}
           </p>
         )}
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="flex min-w-0 items-baseline gap-x-2 text-sm">
             <span className="shrink-0 text-xs text-muted">Total</span>
             <span className={cx('truncate font-mono font-semibold', custosAcimaDoEstimado ? 'text-danger' : 'text-ink')}>{brl(resultado.custoTotal)}</span>
@@ -715,7 +722,7 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
               )}
             </span>
           </p>
-          <div className="flex shrink-0 gap-2">
+          <div className="ml-auto flex shrink-0 flex-wrap justify-end gap-2">
             <Button variant="primary" size="sm" icon={Save} onClick={salvar} disabled={!sujo} loading={salvando} aria-label={sujo ? 'Salvar estudo (alterações não salvas)' : 'Salvar estudo'}>
               Salvar
             </Button>
@@ -734,6 +741,16 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
             >
               <span className="sm:hidden">ZIP</span>
               <span className="hidden sm:inline">Pacote com documentos (ZIP)</span>
+            </Button>
+            <Button
+              size="sm"
+              icon={FileSignature}
+              onClick={abrirProposta}
+              disabled={salvando}
+              aria-label={sujo ? 'Salvar o estudo e gerar a proposta comercial' : 'Gerar a proposta comercial'}
+              title="Proposta comercial com os preços de venda deste estudo"
+            >
+              Proposta
             </Button>
           </div>
         </div>

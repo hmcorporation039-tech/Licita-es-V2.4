@@ -94,6 +94,9 @@ model Company {
   email               String?
   telefone            String?
   responsavel         String?
+  responsavelCpf      String?     @map("responsavel_cpf")
+  responsavelCargo    String?     @map("responsavel_cargo")
+  dadosBancarios      String?     @map("dados_bancarios")
   endereco            String?
   cep                 String?
   // Endereço completo: o CEP preenche rua/bairro/cidade/UF e a pessoa informa só o número.
@@ -119,6 +122,7 @@ model Company {
   monitoredItems       MonitoredItem[]
   companyDocuments     CompanyDocument[]
   arquivosDeDocumentos CompanyDocumentFile[]
+  logo                 CompanyLogo?
   checklists           TenderChecklist[]
   participationPlans   TenderParticipationPlan[]
   requirementProgress  RequirementProgress[]
@@ -766,4 +770,16 @@ model CostStudy {
 
   @@unique([companyId, tenderId])
   @@map("cost_studies")
+}
+
+model CompanyLogo {
+  companyId String   @id @map("company_id")
+  mimeType  String   @map("mime_type")
+  tamanho   Int
+  conteudo  Bytes
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("company_logos")
 }

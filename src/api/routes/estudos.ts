@@ -70,7 +70,7 @@ const num = (v: unknown): number | null => {
 }
 
 // Carrega tudo o que o estudo precisa e garante que a licitação foi ESCOLHIDA pela empresa.
-async function carregar(companyId: string, tenderId: string) {
+export async function carregar(companyId: string, tenderId: string) {
   let tender = await prisma.tender.findUnique({ where: { id: tenderId }, include: { items: { orderBy: { numeroItem: 'asc' } }, analysis: true } })
   if (!tender) throw new ApiError(404, 'Licitação não encontrada')
 
@@ -141,7 +141,7 @@ async function carregar(companyId: string, tenderId: string) {
 
 type Contexto = Awaited<ReturnType<typeof carregar>>
 
-async function dadosSalvos(companyId: string, tenderId: string, ctx: Contexto): Promise<{ dados: DadosDoEstudo; salvoEm: Date | null }> {
+export async function dadosSalvos(companyId: string, tenderId: string, ctx: Contexto): Promise<{ dados: DadosDoEstudo; salvoEm: Date | null }> {
   const salvo = await prisma.costStudy.findUnique({ where: { companyId_tenderId: { companyId, tenderId } } })
   if (salvo) {
     const lido = dadosSchema.safeParse(salvo.dados)

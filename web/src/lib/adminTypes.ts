@@ -140,6 +140,7 @@ export const ROTULO_ACAO: Record<string, string> = {
   DOCUMENTO_ARQUIVO_TROCADO: 'Arquivo de documento trocado',
   DOCUMENTO_ARQUIVO_REMOVIDO: 'Arquivo de documento removido',
   PACOTE_HABILITACAO_GERADO: 'Pacote de habilitação gerado',
+  DOCUMENTO_GERADO: 'Proposta ou declaração gerada',
   ANALISE_SOLICITADA: 'Análise de IA solicitada',
   PARTICIPACAO_STATUS: 'Decisão de participação',
   PLANO_EMPRESA_ALTERADO: 'Plano da empresa alterado',
