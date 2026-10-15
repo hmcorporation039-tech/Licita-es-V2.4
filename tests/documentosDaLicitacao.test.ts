@@ -6,7 +6,8 @@ import { declaracoes, IDS_DE_DECLARACAO } from '../src/lib/documentosDaLicitacao
 import { documentoSchema } from '../src/lib/documentosDaLicitacao/modelo'
 import { renderizarPdf } from '../src/services/documentos/renderizarPdf'
 import { renderizarDocx } from '../src/services/documentos/renderizarDocx'
-import { dimensoesDaImagem, encaixar } from '../src/services/documentos/papelTimbrado'
+import { deflateSync } from 'node:zlib'
+import { dimensoesDaImagem, encaixar, imagemLegivel } from '../src/services/documentos/papelTimbrado'
 
 const empresa: EmpresaParaDocumento = {
   name: 'H&M Engenharia e Tecnologia LTDA',
@@ -144,5 +145,39 @@ describe('papel timbrado', () => {
     expect(strFromU8(arquivos['word/document.xml'])).toContain('PROPOSTA COMERCIAL')
     const cabecalhos = Object.keys(arquivos).filter((n) => n.startsWith('word/header'))
     expect(cabecalhos.some((n) => strFromU8(arquivos[n]).includes('H&amp;M Engenharia'))).toBe(true)
+  })
+})
+
+describe('logomarca hostil', () => {
+  const pedaco = (tipo: string, dados: Buffer) => {
+    const tamanho = Buffer.alloc(4)
+    tamanho.writeUInt32BE(dados.length)
+    return Buffer.concat([tamanho, Buffer.from(tipo, 'latin1'), dados, Buffer.alloc(4)])
+  }
+  const montarPng = (largura: number, altura: number, tipoDeCor: number, idat: Buffer) => {
+    const ihdr = Buffer.alloc(13)
+    ihdr.writeUInt32BE(largura, 0)
+    ihdr.writeUInt32BE(altura, 4)
+    ihdr[8] = 8
+    ihdr[9] = tipoDeCor
+    return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), pedaco('IHDR', ihdr), pedaco('IDAT', idat), pedaco('IEND', Buffer.alloc(0))])
+  }
+  const legitimo = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64')
+
+  it('aceita PNG íntegro e recusa, sem derrubar o processo, os PNGs que travavam o pdfkit', async () => {
+    expect(imagemLegivel(legitimo)).toBe(true)
+    expect(imagemLegivel(montarPng(1, 1, 6, Buffer.from('lixo-nao-zlib')))).toBe(false)
+    expect(imagemLegivel(montarPng(1, 1, 6, deflateSync(Buffer.from([9, 1, 2, 3, 4]))))).toBe(false)
+    expect(imagemLegivel(montarPng(60000, 60000, 6, deflateSync(Buffer.alloc(10))))).toBe(false)
+    expect(imagemLegivel(montarPng(2, 1, 6, deflateSync(Buffer.alloc(3))))).toBe(false)
+    expect(imagemLegivel(montarPng(1, 1, 6, deflateSync(Buffer.from([0, 1, 2, 3, 4]))))).toBe(true)
+    await new Promise((r) => setTimeout(r, 50))
+  })
+
+  it('recusa documento com quebras de página ou texto em excesso', () => {
+    const base = { tipo: 'proposta' as const, titulo: 'Proposta' }
+    expect(documentoSchema.safeParse({ ...base, blocos: Array.from({ length: 41 }, () => ({ tipo: 'quebra' })) }).success).toBe(false)
+    expect(documentoSchema.safeParse({ ...base, blocos: Array.from({ length: 41 }, () => ({ tipo: 'paragrafo', texto: 'x'.repeat(5000) })) }).success).toBe(false)
+    expect(documentoSchema.safeParse({ ...base, blocos: Array.from({ length: 8 }, () => ({ tipo: 'quebra' })) }).success).toBe(true)
   })
 })

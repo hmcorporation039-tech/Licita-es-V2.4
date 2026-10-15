@@ -105,6 +105,14 @@ companyDocumentsRouter.delete(
   })
 )
 
+function nomeDoCabecalho(valor: string | undefined): string {
+  try {
+    return decodeURIComponent(valor ?? '')
+  } catch {
+    return ''
+  }
+}
+
 const lerArquivo = express.raw({ type: () => true, limit: TAMANHO_MAXIMO_ARQUIVO })
 
 companyDocumentsRouter.put(
@@ -126,7 +134,7 @@ companyDocumentsRouter.put(
       throw new ApiError(422, `O espaço de arquivos da empresa (${Math.round(limite / 1024 / 1024)} MB) acabou. Remova arquivos antigos para enviar este.`)
     }
 
-    const nomeRecebido = decodeURIComponent(String(req.header('x-nome-arquivo') ?? '')).slice(0, 200)
+    const nomeRecebido = nomeDoCabecalho(req.header('x-nome-arquivo')).slice(0, 200)
     const dados = {
       nomeArquivo: nomeDeArquivoSeguro(nomeRecebido, tipo),
       mimeType: tipo,

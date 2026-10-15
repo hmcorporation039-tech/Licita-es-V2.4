@@ -8,6 +8,7 @@ const BASE = 86
 const COR = { texto: '#1a1c1f', suave: '#5b5f66', linha: '#d3d0c7', fundo: '#f3f1ec' }
 
 type Tabela = Extract<Bloco, { tipo: 'tabela' }>
+type DocumentoComImagem = PDFKit.PDFDocument & { openImage(src: Buffer): object }
 
 function larguras(tabela: Tabela, total: number): number[] {
   if (tabela.colunas.length === 6) {
@@ -97,15 +98,16 @@ export function renderizarPdf(documento: DocumentoDaLicitacao, timbrado: Timbrad
     }
 
     const { proponente, logo } = timbrado
+    const dims = logo && imagemLegivel(logo.conteudo) ? dimensoesDaImagem(logo.conteudo) : null
+    const imagemDoLogo = logo && dims ? (doc as DocumentoComImagem).openImage(logo.conteudo) : null
     const paginas = doc.bufferedPageRange()
     for (let i = 0; i < paginas.count; i++) {
       doc.switchToPage(paginas.start + i)
       const margemInferior = doc.page.margins.bottom
       doc.page.margins.bottom = 0
-      const dims = logo && imagemLegivel(logo.conteudo) ? dimensoesDaImagem(logo.conteudo) : null
-      if (logo && dims) {
+      if (imagemDoLogo && dims) {
         const caixa = encaixar(dims, 170, 52)
-        doc.image(logo.conteudo, MARGEM, 34 + (52 - caixa.altura) / 2, { width: caixa.largura, height: caixa.altura })
+        doc.image(imagemDoLogo as unknown as Buffer, MARGEM, 34 + (52 - caixa.altura) / 2, { width: caixa.largura, height: caixa.altura })
         doc.font('Helvetica-Bold').fontSize(9).fillColor(COR.texto).text(proponente.razaoSocial, MARGEM + 190, 42, { width: largura - 190, align: 'right', lineBreak: false })
         doc.font('Helvetica').fontSize(8).fillColor(COR.suave).text(proponente.documento, MARGEM + 190, 56, { width: largura - 190, align: 'right', lineBreak: false })
       } else {
