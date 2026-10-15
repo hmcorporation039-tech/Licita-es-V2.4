@@ -62,6 +62,13 @@ describe('dadosDoProponente', () => {
     expect(p.responsavelCpf).toBe('529.982.247-25')
     expect(p.pendencias).toEqual([])
   })
+
+  it('pessoa física com procurador cita o representante no texto e na assinatura', () => {
+    const p = dadosDoProponente({ ...empresa, tipo: 'PESSOA_FISICA', name: 'Maria Souza', cnpj: null, cpf: '52998224725', responsavel: 'Carlos Lima', responsavelCpf: null, responsavelCargo: null })
+    expect(p.qualificacao).toContain('neste ato representado(a) por Carlos Lima, portador(a) do CPF nº [preencher: CPF do representante]')
+    expect(p.responsavel).toBe('Carlos Lima')
+    expect(p.pendencias).toEqual(['CPF do representante'])
+  })
 })
 
 describe('propostaComercial', () => {

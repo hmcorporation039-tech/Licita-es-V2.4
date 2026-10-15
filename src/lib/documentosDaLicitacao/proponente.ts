@@ -88,17 +88,36 @@ export function dadosDoProponente(e: EmpresaParaDocumento): Proponente {
   const cidade = exigir(cidadeUf, juridica ? 'cidade/UF da empresa' : 'cidade/UF')
 
   if (!juridica) {
-    const cpfProprio = numeroDoDocumento ? formatarCpf(numeroDoDocumento) : documento
+    const qualificacaoPropria = `${razaoSocial}, inscrito(a) no ${documento}, residente e domiciliado(a) em ${endereco}`
+    const representante = limpo(e.responsavel)
+    const representado = representante !== '' && representante.toLowerCase() !== limpo(e.name).toLowerCase()
+    if (representado) {
+      const cpfDoRepresentante = exigir(e.responsavelCpf ? formatarCpf(e.responsavelCpf) : '', 'CPF do representante')
+      return {
+        razaoSocial,
+        documento,
+        qualificacao: `${qualificacaoPropria}, neste ato representado(a) por ${representante}, portador(a) do CPF nº ${cpfDoRepresentante}`,
+        endereco,
+        cidadeUf: cidade,
+        telefone: limpo(e.telefone),
+        email: limpo(e.email),
+        responsavel: representante,
+        responsavelCpf: cpfDoRepresentante,
+        responsavelCargo: limpo(e.responsavelCargo) || 'Representante',
+        dadosBancarios: limpo(e.dadosBancarios),
+        pendencias,
+      }
+    }
     return {
       razaoSocial,
       documento,
-      qualificacao: `${razaoSocial}, inscrito(a) no ${documento}, residente e domiciliado(a) em ${endereco}`,
+      qualificacao: qualificacaoPropria,
       endereco,
       cidadeUf: cidade,
       telefone: limpo(e.telefone),
       email: limpo(e.email),
-      responsavel: limpo(e.responsavel) || razaoSocial,
-      responsavelCpf: e.responsavelCpf ? formatarCpf(e.responsavelCpf) : cpfProprio,
+      responsavel: razaoSocial,
+      responsavelCpf: numeroDoDocumento ? formatarCpf(numeroDoDocumento) : documento,
       responsavelCargo: limpo(e.responsavelCargo) || 'Proponente',
       dadosBancarios: limpo(e.dadosBancarios),
       pendencias,
