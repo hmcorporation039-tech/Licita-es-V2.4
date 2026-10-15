@@ -123,6 +123,7 @@ model Company {
   companyDocuments     CompanyDocument[]
   arquivosDeDocumentos CompanyDocumentFile[]
   logo                 CompanyLogo?
+  pregoes              PregaoAcompanhamento[]
   checklists           TenderChecklist[]
   participationPlans   TenderParticipationPlan[]
   requirementProgress  RequirementProgress[]
@@ -246,6 +247,7 @@ model Tender {
   checklists          TenderChecklist[]
   analysis            TenderAnalysis?
   participationPlans  TenderParticipationPlan[]
+  pregoes             PregaoAcompanhamento[]
   requirementProgress RequirementProgress[]
   costStudies         CostStudy[]
 
@@ -782,4 +784,62 @@ model CompanyLogo {
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@map("company_logos")
+}
+
+// ============================================================
+// PREGÃO COM A BELA — acompanhamento dos lances e sugestões
+// ============================================================
+
+enum CriterioDoLance {
+  UNITARIO
+  TOTAL_DO_ITEM
+}
+
+enum ResultadoDoPregao {
+  GANHOU
+  PERDEU
+  DESCLASSIFICADO
+  FRACASSADO
+}
+
+enum OrigemDoLance {
+  MELHOR_LANCE
+  MEU_LANCE
+}
+
+model PregaoAcompanhamento {
+  id            String             @id @default(uuid())
+  companyId     String             @map("company_id")
+  tenderId      String             @map("tender_id")
+  decrementoPct Decimal            @default(0.5) @map("decremento_pct") @db.Decimal(5, 2)
+  maxLances     Int                @default(2) @map("max_lances")
+  criterio      CriterioDoLance    @default(UNITARIO)
+  resultado     ResultadoDoPregao?
+  valorFinal    Decimal?           @map("valor_final") @db.Decimal(16, 2)
+  encerradoEm   DateTime?          @map("encerrado_em")
+  createdAt     DateTime           @default(now()) @map("created_at")
+  updatedAt     DateTime           @updatedAt @map("updated_at")
+
+  company Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  tender  Tender        @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  lances  PregaoLance[]
+
+  @@unique([companyId, tenderId])
+  @@map("pregao_acompanhamentos")
+}
+
+model PregaoLance {
+  id               String        @id @default(uuid())
+  acompanhamentoId String        @map("acompanhamento_id")
+  alvo             String
+  origem           OrigemDoLance
+  valor            Decimal       @db.Decimal(16, 2)
+  margemPct        Decimal?      @map("margem_pct") @db.Decimal(7, 2)
+  userId           String?       @map("user_id")
+  createdAt        DateTime      @default(now()) @map("created_at")
+
+  acompanhamento PregaoAcompanhamento @relation(fields: [acompanhamentoId], references: [id], onDelete: Cascade)
+
+  @@index([acompanhamentoId, createdAt])
+  @@map("pregao_lances")
 }

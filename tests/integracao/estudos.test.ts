@@ -268,6 +268,52 @@ rodar('Estudo de custos', () => {
     expect(await prisma.auditLog.count({ where: { companyId: companyA, action: 'DOCUMENTO_GERADO' } })).toBe(2)
   })
 
+  it('pregão com a Bela: limites batem com o estudo, lances sugeridos respeitam o máximo e ficam só na empresa', async () => {
+    const estudo = await http('GET', `/api/estudos/${tenderId}`, undefined, tokenA)
+    const painel = await http('GET', `/api/tenders/${tenderId}/pregao`, undefined, tokenA)
+    expect(painel.status).toBe(200)
+    const global = painel.body.alvos.find((a: { id: string }) => a.id === 'global')
+    expect(global.minimoComMargem).toBe(estudo.body.resultado.receitaMinima)
+    expect(painel.body.alvos).toHaveLength(3)
+    expect(painel.body.config).toMatchObject({ decrementoPct: 0.5, maxLances: 2, criterio: 'UNITARIO', resultado: null })
+
+    const alto = Math.round(global.minimoComMargem * 1.2)
+    const r1 = await http('POST', `/api/tenders/${tenderId}/pregao/lances`, { alvo: 'global', origem: 'MELHOR_LANCE', valor: alto }, tokenA)
+    expect(r1.status).toBe(201)
+    const a1 = r1.body.alvos.find((a: { id: string }) => a.id === 'global').avaliacao
+    expect(a1.faixa).toBe('verde')
+    expect(a1.sugestao.valor).toBeLessThan(alto)
+    expect(a1.sugestao.valor).toBeGreaterThanOrEqual(global.minimoComMargem)
+
+    for (const valor of [a1.sugestao.valor, a1.sugestao.valor - 100]) {
+      expect((await http('POST', `/api/tenders/${tenderId}/pregao/lances`, { alvo: 'global', origem: 'MEU_LANCE', valor }, tokenA)).status).toBe(201)
+    }
+    const r2 = await http('POST', `/api/tenders/${tenderId}/pregao/lances`, { alvo: 'global', origem: 'MELHOR_LANCE', valor: alto - 500 }, tokenA)
+    const a2 = r2.body.alvos.find((a: { id: string }) => a.id === 'global').avaliacao
+    expect(a2.sugestao).toBeNull()
+    expect(a2.mensagem).toContain('limite combinado')
+
+    expect((await http('POST', `/api/tenders/${tenderId}/pregao/lances`, { alvo: 'item-de-outra-licitacao', origem: 'MELHOR_LANCE', valor: 10 }, tokenA)).status).toBe(400)
+    expect((await http('POST', `/api/tenders/${tenderId}/pregao/lances`, { alvo: 'global', origem: 'MELHOR_LANCE', valor: -5 }, tokenA)).status).toBe(400)
+    expect((await http('PUT', `/api/tenders/${tenderId}/pregao/config`, { maxLances: 50 }, tokenA)).status).toBe(400)
+
+    const doB = await http('GET', `/api/tenders/${tenderId}/pregao`, undefined, tokenB)
+    expect(doB.body.lances ?? []).toHaveLength(0)
+    expect((await http('DELETE', `/api/tenders/${tenderId}/pregao/lances/${r2.body.lances[0].id}`, undefined, tokenB)).status).toBe(404)
+    const desfeito = await http('DELETE', `/api/tenders/${tenderId}/pregao/lances/${r2.body.lances[0].id}`, undefined, tokenA)
+    expect(desfeito.body.lances).toHaveLength(3)
+
+    const fim = await http('PUT', `/api/tenders/${tenderId}/pregao/resultado`, { resultado: 'GANHOU', valorFinal: a1.sugestao.valor - 100 }, tokenA)
+    expect(fim.body.config).toMatchObject({ resultado: 'GANHOU', valorFinal: a1.sugestao.valor - 100 })
+    expect((await http('POST', `/api/tenders/${tenderId}/pregao/lances`, { alvo: 'global', origem: 'MELHOR_LANCE', valor: 1 }, tokenA)).status).toBe(409)
+    expect((await http('PUT', `/api/tenders/${tenderId}/pregao/resultado`, { resultado: null }, tokenA)).body.config.encerradoEm).toBeNull()
+
+    const fala = await http('POST', '/api/bela/interpretar', { texto: 'Bela, licitação de estrutura metálica no DF' }, tokenA)
+    expect(fala.body).toMatchObject({ acao: 'buscar', filtros: { q: 'estrutura metálica', uf: 'DF' } })
+    expect((await http('POST', '/api/bela/interpretar', { texto: 'x'.repeat(501) }, tokenA)).status).toBe(400)
+    expect((await http('POST', '/api/bela/interpretar', { texto: 'oi' })).status).toBe(401)
+  })
+
   it('sair da lista de escolhidas bloqueia o estudo de novo, mas o que foi salvo continua guardado', async () => {
     expect((await marcar('NAO_VOU_PARTICIPAR')).status).toBe(200)
     expect((await http('GET', `/api/estudos/${tenderId}`, undefined, tokenA)).status).toBe(409)
