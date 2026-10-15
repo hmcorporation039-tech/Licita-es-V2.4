@@ -34,7 +34,7 @@ const MAX_CELULA = 1000
 const MAX_LOCAL = 200
 const MARCADOR = '[preencher:'
 
-type Pedido = { tipo: 'proposta' } | { tipo: 'declaracoes'; ids: string[] }
+type Pedido = { tipo: 'proposta'; readequada: boolean } | { tipo: 'declaracoes'; ids: string[] }
 type BlocoComChave = { chave: string; bloco: BlocoDoDocumento }
 type Formato = 'pdf' | 'docx'
 
@@ -46,7 +46,7 @@ const TITULO_DA_PAGINA: Record<TipoDeDocumentoDaLicitacao, string> = {
 function lerPedido(busca: string): Pedido | null {
   const params = new URLSearchParams(busca)
   const tipo = params.get('tipo')
-  if (tipo === 'proposta') return { tipo: 'proposta' }
+  if (tipo === 'proposta') return { tipo: 'proposta', readequada: params.get('readequada') === '1' }
   if (tipo === 'declaracoes') {
     const ids = (params.get('ids') ?? '')
       .split(',')
@@ -277,7 +277,7 @@ export default function DocumentosDaLicitacaoPage({ params }: { params: Promise<
     let cancelado = false
     setErro(null)
     setPrevia(null)
-    const corpo = pedido.tipo === 'proposta' ? { tipo: 'proposta' } : { tipo: 'declaracoes', declaracoes: pedido.ids }
+    const corpo = pedido.tipo === 'proposta' ? { tipo: 'proposta', readequada: pedido.readequada } : { tipo: 'declaracoes', declaracoes: pedido.ids }
     api
       .post<PreviaDoDocumento>(`/api/tenders/${id}/documentos/previa`, corpo)
       .then((r) => {
@@ -352,7 +352,7 @@ export default function DocumentosDaLicitacaoPage({ params }: { params: Promise<
     )
   }
 
-  const tituloDaPagina = TITULO_DA_PAGINA[pedido.tipo]
+  const tituloDaPagina = pedido.tipo === 'proposta' && pedido.readequada ? 'Proposta comercial readequada' : TITULO_DA_PAGINA[pedido.tipo]
   const descricao = (
     <>
       {tender ? (tender.objetoResumido ?? tender.objeto) : 'Revise o texto e baixe no papel timbrado da empresa.'}
@@ -396,7 +396,7 @@ export default function DocumentosDaLicitacaoPage({ params }: { params: Promise<
   const pendentes = blocosAtuais.filter(blocoTemMarcador).length
   const limiteDeBlocos = blocos.length >= MAX_BLOCOS
   const numero = tender?.numeroControle ? slug(tender.numeroControle) : id.slice(0, 8)
-  const base = pedido.tipo === 'proposta' ? 'proposta-comercial' : 'declaracoes'
+  const base = pedido.tipo === 'proposta' ? (pedido.readequada ? 'proposta-readequada' : 'proposta-comercial') : 'declaracoes'
 
   async function baixar(formato: Formato) {
     if (!previa) return
