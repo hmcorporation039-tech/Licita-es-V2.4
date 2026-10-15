@@ -92,6 +92,11 @@ async function listarDocumentosDisponiveis(tender: Tender): Promise<DocumentoDis
       const raw = tender.rawJson as { anexos?: DocumentoDisponivel[] }
       return ordenarPorPrioridade(raw.anexos ?? [])
     }
+    case 'QUERIDO_DIARIO': {
+      const raw = tender.rawJson as { gazetteUrl?: unknown }
+      if (typeof raw.gazetteUrl !== 'string') return []
+      return [{ uri: raw.gazetteUrl, titulo: `Diário oficial com o aviso ${tender.numeroControle ?? ''}`.trim() }]
+    }
     default:
       return []
   }

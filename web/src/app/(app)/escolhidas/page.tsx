@@ -7,6 +7,7 @@ import { useRequireSession } from '@/hooks/useRequireSession'
 import { api, ApiRequestError } from '@/lib/api'
 import { ParticipationPlanListItem } from '@/lib/types'
 import { Button, Carregando, EmptyState, ErrorState, LinkButton, PageHeader, StatusTag, Table, TableWrap, Td, Th, THead, Tr } from '@/components/ui'
+import { ROTULOS_DE_FONTE } from '@/lib/fontes'
 
 function formatValor(v: string | null) {
   if (!v) return '—'
@@ -14,7 +15,7 @@ function formatValor(v: string | null) {
 }
 
 function rotuloDaFonte(fonte: string) {
-  return fonte.replace(/_/g, ' ')
+  return ROTULOS_DE_FONTE[fonte] ?? fonte.replace(/_/g, ' ')
 }
 
 export default function EscolhidasPage() {

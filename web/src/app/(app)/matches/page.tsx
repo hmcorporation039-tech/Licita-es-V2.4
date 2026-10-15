@@ -8,6 +8,7 @@ import { api, ApiRequestError } from '@/lib/api'
 import { Paginated, TenderMatch } from '@/lib/types'
 import NotaDeAderencia from '@/components/NotaDeAderencia'
 import { Button, Carregando, Checkbox, EmptyState, ErrorState, Field, LinkButton, PageHeader, Select, StatusTag, cx, useDialogo } from '@/components/ui'
+import { ROTULOS_DE_FONTE } from '@/lib/fontes'
 
 type MatchComEscolha = TenderMatch & { escolhida?: boolean }
 
@@ -21,7 +22,7 @@ function formatValor(v: string | null) {
 }
 
 function rotuloDaFonte(fonte: string) {
-  return fonte.replace(/_/g, ' ')
+  return ROTULOS_DE_FONTE[fonte] ?? fonte.replace(/_/g, ' ')
 }
 
 export default function MatchesPage() {

@@ -1,0 +1,196 @@
+import { createHash } from 'crypto'
+import { Prisma } from '@prisma/client'
+import { ModalidadeEnum, NormalizedTender } from '../types'
+import { prisma } from './tenderService'
+import { normalize } from '../lib/geoService'
+import { queridoDiarioArquivosClient, queridoDiarioClient } from '../lib/httpClient'
+import { GazetaQueridoDiario } from './queridoDiarioParser'
+
+export const CONSULTA_DE_AVISOS = '"aviso de licitação" | "aviso de abertura" | "aviso de pregão" | "aviso de edital"'
+export const TAMANHO_DA_PAGINA = 25
+export const MAXIMO_DE_PAGINAS = 20
+export const HOST_DOS_ARQUIVOS_DO_QUERIDO_DIARIO = 'data.queridodiario.ok.org.br'
+
+const DIAS_DE_SOBREPOSICAO = 2
+const DIAS_SEM_CURSOR = 5
+const JANELA_MAXIMA_DIAS = 30
+const SIMILARIDADE_MINIMA_COM_O_PNCP = 0.45
+const SEMELHANCA_MINIMA_ENTRE_REPUBLICACOES = 0.3
+const DIAS_DE_HISTORICO_DO_PNCP = 180
+const ESPERA_ANTES_DE_REPETIR_MS = 5_000
+const HORAS_DE_BRASILIA_PARA_UTC = 3
+const DIA_MS = 86_400_000
+
+export interface JanelaDoQueridoDiario {
+  publicadoDesde: string
+  publicadoAte: string
+}
+
+export interface PaginaDoQueridoDiario {
+  total_gazettes: number
+  gazettes: GazetaQueridoDiario[]
+}
+
+export interface CandidatoDoPncp {
+  aberturaAt: Date | null
+  encerramentoAt: Date | null
+  similaridade: number
+}
+
+export interface RegistroJaColetado {
+  objeto: string
+  publicadoAt: Date | null
+  linkEdital: string | null
+  rawJson: unknown
+}
+
+function diaEmBrasilia(data: Date): string {
+  return new Date(data.getTime() - HORAS_DE_BRASILIA_PARA_UTC * 3_600_000).toISOString().slice(0, 10)
+}
+
+export function janelaDoQueridoDiario(agora: Date, ultimaPublicacao: Date | null): JanelaDoQueridoDiario {
+  const semCursor = agora.getTime() - DIAS_SEM_CURSOR * DIA_MS
+  const pelaUltimaPublicacao = ultimaPublicacao ? ultimaPublicacao.getTime() - DIAS_DE_SOBREPOSICAO * DIA_MS : semCursor
+  const limiteAntigo = agora.getTime() - JANELA_MAXIMA_DIAS * DIA_MS
+  const inicio = Math.max(limiteAntigo, Math.min(semCursor, pelaUltimaPublicacao))
+  return { publicadoDesde: diaEmBrasilia(new Date(inicio)), publicadoAte: diaEmBrasilia(agora) }
+}
+
+function esperar(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+export async function buscarDiarios(janela: JanelaDoQueridoDiario, offset: number): Promise<PaginaDoQueridoDiario> {
+  const params = {
+    querystring: CONSULTA_DE_AVISOS,
+    published_since: janela.publicadoDesde,
+    published_until: janela.publicadoAte,
+    size: TAMANHO_DA_PAGINA,
+    offset,
+    excerpt_size: 50,
+    number_of_excerpts: 1,
+    sort_by: 'descending_date',
+  }
+  try {
+    return (await queridoDiarioClient.get<PaginaDoQueridoDiario>('/gazettes', { params })).data
+  } catch {
+    await esperar(ESPERA_ANTES_DE_REPETIR_MS)
+    return (await queridoDiarioClient.get<PaginaDoQueridoDiario>('/gazettes', { params })).data
+  }
+}
+
+export function caminhoDoArquivoDoDiario(url: string): string | null {
+  try {
+    const u = new URL(url)
+    if (u.protocol !== 'https:' || u.hostname.toLowerCase() !== HOST_DOS_ARQUIVOS_DO_QUERIDO_DIARIO) return null
+    return u.pathname
+  } catch {
+    return null
+  }
+}
+
+export async function baixarTextoDoDiario(txtUrl: string): Promise<string> {
+  const caminho = caminhoDoArquivoDoDiario(txtUrl)
+  if (!caminho) throw new Error(`Endereço de texto fora do Querido Diário: ${txtUrl}`)
+  const resposta = await queridoDiarioArquivosClient.get<string>(caminho, {
+    responseType: 'text',
+    transformResponse: (dados) => dados,
+  })
+  return resposta.data
+}
+
+export function modalidadesEquivalentes(modalidade: ModalidadeEnum): ModalidadeEnum[] {
+  if (modalidade === 'PREGAO_ELETRONICO' || modalidade === 'PREGAO_PRESENCIAL') return ['PREGAO_ELETRONICO', 'PREGAO_PRESENCIAL']
+  if (modalidade === 'DISPENSA_COM_DISPUTA' || modalidade === 'DISPENSA_SEM_DISPUTA') {
+    return ['DISPENSA_COM_DISPUTA', 'DISPENSA_SEM_DISPUTA']
+  }
+  return [modalidade]
+}
+
+export function ehMesmaLicitacaoDoPncp(tender: Pick<NormalizedTender, 'aberturaAt'>, candidato: CandidatoDoPncp): boolean {
+  if (Number(candidato.similaridade) >= SIMILARIDADE_MINIMA_COM_O_PNCP) return true
+  if (!tender.aberturaAt) return false
+  const dia = diaEmBrasilia(tender.aberturaAt)
+  return [candidato.aberturaAt, candidato.encerramentoAt].some((data) => data !== null && diaEmBrasilia(new Date(data)) === dia)
+}
+
+export async function existeNoPncp(tender: NormalizedTender, agora: Date = new Date()): Promise<boolean> {
+  if (!tender.uf || (!tender.municipioIbge && !tender.municipio)) return false
+  const modalidades = modalidadesEquivalentes(tender.modalidade)
+  const limite = new Date(agora.getTime() - DIAS_DE_HISTORICO_DO_PNCP * DIA_MS)
+  const municipioNorm = tender.municipio ? normalize(tender.municipio) : null
+  const candidatos = await prisma.$queryRaw<CandidatoDoPncp[]>`
+    SELECT abertura_at AS "aberturaAt",
+           encerramento_at AS "encerramentoAt",
+           similarity(coalesce(objeto_norm, ''), ${normalize(tender.objeto)})::float8 AS similaridade
+    FROM tenders
+    WHERE fonte = 'PNCP'
+      AND uf = ${tender.uf}
+      AND publicado_at >= ${limite}
+      AND modalidade::text IN (${Prisma.join(modalidades)})
+      AND (municipio_ibge = ${tender.municipioIbge ?? null} OR municipio_norm = ${municipioNorm})
+    ORDER BY similaridade DESC
+    LIMIT 50
+  `
+  return candidatos.some((candidato) => ehMesmaLicitacaoDoPncp(tender, candidato))
+}
+
+function palavrasDoObjeto(objeto: string): Set<string> {
+  return new Set(
+    normalize(objeto)
+      .split(/[^a-z0-9]+/)
+      .filter((p) => p.length >= 4)
+  )
+}
+
+export function objetosCompativeis(a: string, b: string): boolean {
+  const pa = palavrasDoObjeto(a)
+  const pb = palavrasDoObjeto(b)
+  if (pa.size === 0 || pb.size === 0) return normalize(a) === normalize(b)
+  let comuns = 0
+  for (const p of pa) if (pb.has(p)) comuns++
+  return comuns / (pa.size + pb.size - comuns) >= SEMELHANCA_MINIMA_ENTRE_REPUBLICACOES
+}
+
+function dataDoDiarioNoRegistro(rawJson: unknown): string | null {
+  if (!rawJson || typeof rawJson !== 'object') return null
+  const data = (rawJson as Record<string, unknown>).date
+  return typeof data === 'string' ? data : null
+}
+
+export function ajustarRepublicacao(tender: NormalizedTender, existente: RegistroJaColetado | null): NormalizedTender | null {
+  if (!existente) return tender
+
+  if (!objetosCompativeis(tender.objeto, existente.objeto)) {
+    const sufixo = createHash('sha256').update(normalize(tender.objeto)).digest('hex').slice(0, 8)
+    return { ...tender, fonteId: `${tender.fonteId}:${sufixo}` }
+  }
+
+  const dataNova = dataDoDiarioNoRegistro(tender.rawJson)
+  const dataAnterior = dataDoDiarioNoRegistro(existente.rawJson)
+  if (dataNova && dataAnterior && dataNova < dataAnterior) return null
+
+  const primeiraPublicacao =
+    existente.publicadoAt && tender.publicadoAt && existente.publicadoAt.getTime() < tender.publicadoAt.getTime()
+      ? existente.publicadoAt
+      : tender.publicadoAt
+  const linkEhDoDiario = tender.linkEdital !== undefined && tender.linkEdital === tender.rawJson.gazetteUrl
+  const linkEdital = linkEhDoDiario && existente.linkEdital ? existente.linkEdital : tender.linkEdital
+
+  return { ...tender, publicadoAt: primeiraPublicacao, linkEdital }
+}
+
+export async function prepararRepublicacao(tender: NormalizedTender): Promise<NormalizedTender | null> {
+  const existente = await prisma.tender.findUnique({
+    where: { fonteId: tender.fonteId },
+    select: { objeto: true, publicadoAt: true, linkEdital: true, rawJson: true },
+  })
+  const ajustado = ajustarRepublicacao(tender, existente)
+  if (!ajustado || ajustado.fonteId === tender.fonteId) return ajustado
+
+  const homonimo = await prisma.tender.findUnique({
+    where: { fonteId: ajustado.fonteId },
+    select: { objeto: true, publicadoAt: true, linkEdital: true, rawJson: true },
+  })
+  return homonimo ? ajustarRepublicacao(ajustado, homonimo) : ajustado
+}

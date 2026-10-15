@@ -277,6 +277,7 @@ enum FonteEnum {
   // portal diferente por unidade; o parser de cada uma fica em
   // services/sescRegional/. A unidade vai em Tender.orgao/uf.
   SESC_REGIONAL
+  QUERIDO_DIARIO
 }
 
 // ============================================================

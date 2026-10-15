@@ -54,6 +54,7 @@ import {
   type Aba,
   type Tom,
 } from '@/components/ui'
+import { ROTULOS_DE_FONTE } from '@/lib/fontes'
 
 function validDocumentTypes(docs: CompanyDocument[]): Set<string> {
   const now = Date.now()
@@ -129,7 +130,7 @@ function groupBySection(items: ChecklistItem[]) {
 }
 
 function rotuloDaFonte(fonte: string) {
-  return fonte.replace(/_/g, ' ')
+  return ROTULOS_DE_FONTE[fonte] ?? fonte.replace(/_/g, ' ')
 }
 
 function Mono({ children }: { children: ReactNode }) {
