@@ -82,7 +82,7 @@ adminGestaoRouter.get(
       ? {
           OR: [
             { name: { contains: q, mode: 'insensitive' } },
-            { cnpj: { contains: q.replace(/\D/g, '') || q } },
+            ...(/^[\d./\s-]+$/.test(q) && /\d/.test(q) ? [{ cnpj: { contains: q.replace(/\D/g, '') } }] : []),
             { email: { contains: q, mode: 'insensitive' } },
             { users: { some: { email: { contains: q, mode: 'insensitive' } } } },
           ],
