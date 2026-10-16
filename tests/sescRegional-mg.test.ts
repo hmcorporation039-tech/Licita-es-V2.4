@@ -2,12 +2,13 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { sescMG } from '../src/services/sescRegional/mg'
+import { horaDeBrasilia } from '../src/lib/dataDeBrasilia'
 
 // Recorte do HTML real de sescmg.com.br/licitacoes/?situacao_licitacao=em-andamento (2026-09-30).
 const html = readFileSync(join(__dirname, 'fixtures/sesc/mg.html'), 'utf8')
 const ctx = {
   url: 'https://sescmg.com.br/licitacoes/?situacao_licitacao=em-andamento',
-  agora: new Date(2026, 8, 30, 10, 0),
+  agora: horaDeBrasilia(2026, 8, 30, 10, 0),
 }
 
 describe('sescMG', () => {
@@ -33,11 +34,11 @@ describe('sescMG', () => {
     const t = r[0]
     expect(t.modalidade).toBe('PREGAO_ELETRONICO')
     expect(t.objeto).toContain('limpeza, tratamento, conservação e monitoramento de piscinas')
-    expect(t.publicadoAt).toEqual(new Date(2026, 8, 30))
+    expect(t.publicadoAt).toEqual(horaDeBrasilia(2026, 8, 30))
   })
 
   it('a janela de publicação depende do "agora"', () => {
-    expect(sescMG.parse(html, { ...ctx, agora: new Date(2026, 11, 31) })).toHaveLength(0)
+    expect(sescMG.parse(html, { ...ctx, agora: horaDeBrasilia(2026, 11, 31) })).toHaveLength(0)
   })
 
   it('aponta a próxima página só se a atual ainda tem itens recentes', () => {

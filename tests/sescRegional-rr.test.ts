@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { sescRR } from '../src/services/sescRegional/rr'
+import { horaDeBrasilia } from '../src/lib/dataDeBrasilia'
 
 // Recorte da resposta real de GET /licitacao?etapa=1 do portal do Sesc RR em
 // 30/09/2026: 26/027 (abre 02/10) e 26/023 (abriu em 26/08) e 24/0037 (2024,
@@ -9,7 +10,7 @@ import { sescRR } from '../src/services/sescRegional/rr'
 // não tinha no dia da coleta (republicada, credenciamento, etapa encerrada).
 const json = readFileSync(join(__dirname, 'fixtures/sesc/rr.json'), 'utf8')
 const URL1 = 'https://licitacao.sescrr.com.br/licitacao?etapa=1&offset=0&limit=50'
-const ctx = { url: URL1, agora: new Date(2026, 8, 30, 12, 0) }
+const ctx = { url: URL1, agora: horaDeBrasilia(2026, 8, 30, 12, 0) }
 
 const item = (over: Record<string, unknown>) => ({
   id: 900,
@@ -39,8 +40,8 @@ describe('sescRR', () => {
     expect(t.orgao).toBe('Sesc Roraima')
     expect(t.modalidade).toBe('PREGAO_PRESENCIAL') // "PREGÃO PRESENCIAL - SRP"
     expect(t.objeto).toContain('MATERIAIS DE ILUMINAÇÃO')
-    expect(t.aberturaAt).toEqual(new Date(2026, 9, 2))
-    expect(t.publicadoAt).toEqual(new Date(2026, 8, 25))
+    expect(t.aberturaAt).toEqual(horaDeBrasilia(2026, 9, 2))
+    expect(t.publicadoAt).toEqual(horaDeBrasilia(2026, 8, 25))
     expect(t.linkEdital).toBe('https://licitacao.sescrr.com.br/') // arquivos exigem login
   })
 

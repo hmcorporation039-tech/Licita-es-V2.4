@@ -2,11 +2,12 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { sescPE } from '../src/services/sescRegional/pe'
+import { horaDeBrasilia } from '../src/lib/dataDeBrasilia'
 
 // Recorte (mesmas colunas e registros reais) da planilha pública do Google Sheets que
 // alimenta licitacoes.sescpe.com.br, exportada em CSV (2026-09-30), + 1 linha vazia.
 const csv = readFileSync(join(__dirname, 'fixtures/sesc/pe.csv'), 'utf8')
-const ctx = { url: sescPE.urls(new Date())[0], agora: new Date(2026, 7, 15, 10, 0) }
+const ctx = { url: sescPE.urls(new Date())[0], agora: horaDeBrasilia(2026, 7, 15, 10, 0) }
 
 describe('sescPE', () => {
   const r = sescPE.parse(csv, ctx)
@@ -24,7 +25,7 @@ describe('sescPE', () => {
     expect(nums).not.toContain('003/2026') // Finalizado
     expect(nums).not.toContain('067/2026') // Cancelado
     expect(r.find((t) => t.modalidade === 'PREGAO_ELETRONICO' && t.numeroControle === '001/2026')).toBeUndefined() // sessão 11/02
-    const fim = sescPE.parse(csv, { ...ctx, agora: new Date(2026, 8, 30) })
+    const fim = sescPE.parse(csv, { ...ctx, agora: horaDeBrasilia(2026, 8, 30) })
     expect(fim.map((t) => t.numeroControle)).toEqual(['091/2026'])
   })
 
@@ -41,10 +42,10 @@ describe('sescPE', () => {
 
   it('extrai modalidade, datas e objeto (inclusive campo multilinha entre aspas)', () => {
     const cc = r.find((t) => t.numeroControle === '002/2026' && t.modalidade === 'CONCORRENCIA')!
-    expect(cc.aberturaAt).toEqual(new Date(2026, 7, 20))
+    expect(cc.aberturaAt).toEqual(horaDeBrasilia(2026, 7, 20))
     const pe = r.find((t) => t.numeroControle === '091/2026')!
     expect(pe.modalidade).toBe('PREGAO_ELETRONICO')
-    expect(pe.aberturaAt).toEqual(new Date(2026, 9, 6))
+    expect(pe.aberturaAt).toEqual(horaDeBrasilia(2026, 9, 6))
     expect(pe.objeto).toContain('FREEZER')
     expect(pe.objeto).not.toContain('\n')
     expect(r.find((t) => t.modalidade === 'OUTROS')!.objeto).toMatch(/^ALIEN/)

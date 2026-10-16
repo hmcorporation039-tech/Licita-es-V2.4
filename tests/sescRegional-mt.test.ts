@@ -2,9 +2,10 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { sescMT } from '../src/services/sescRegional/mt'
+import { horaDeBrasilia } from '../src/lib/dataDeBrasilia'
 
 const html = readFileSync(join(__dirname, 'fixtures/sesc/mt.html'), 'utf8')
-const ctx = { url: 'https://www.sescmt.com.br/index.php/licitacao/', agora: new Date(2026, 8, 30, 10, 0) }
+const ctx = { url: 'https://www.sescmt.com.br/index.php/licitacao/', agora: horaDeBrasilia(2026, 8, 30, 10, 0) }
 
 describe('sescMT.parse', () => {
   const tenders = sescMT.parse(html, ctx)
@@ -20,8 +21,8 @@ describe('sescMT.parse', () => {
     expect(t.orgao).toBe('Sesc Mato Grosso')
     expect(t.modalidade).toBe('CONCORRENCIA')
     expect(t.fonteId).toBe('SESC-MT-26-001-concorrencia-eletronica')
-    expect(t.encerramentoAt).toEqual(new Date(2026, 9, 6, 9, 0))
-    expect(t.publicadoAt).toEqual(new Date(2026, 8, 1))
+    expect(t.encerramentoAt).toEqual(horaDeBrasilia(2026, 9, 6, 9, 0))
+    expect(t.publicadoAt).toEqual(horaDeBrasilia(2026, 8, 1))
     expect(t.objeto).toContain('TRANSACOES FINANCEIRAS')
     expect(t.linkEdital).toBe('https://www.sescmt.com.br/index.php/licitacao/')
     expect((t.rawJson as { anexos: unknown[] }).anexos.length).toBeGreaterThan(0)

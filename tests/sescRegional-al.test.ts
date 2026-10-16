@@ -2,11 +2,12 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { sescAL } from '../src/services/sescRegional/al'
+import { horaDeBrasilia } from '../src/lib/dataDeBrasilia'
 
 // Recorte do HTML real de sescalagoas.com.br/licitacoes/abertas (1 item aberto) mais
 // 2 itens de /licitacoes/andamento (mesmo markup, sessão já realizada), capturado em 2026-09-30.
 const html = readFileSync(join(__dirname, 'fixtures/sesc/al.html'), 'utf8')
-const ctx = { url: 'https://www.sescalagoas.com.br/licitacoes/abertas', agora: new Date(2026, 8, 30, 10, 0) }
+const ctx = { url: 'https://www.sescalagoas.com.br/licitacoes/abertas', agora: horaDeBrasilia(2026, 8, 30, 10, 0) }
 
 describe('sescAL', () => {
   const r = sescAL.parse(html, ctx)
@@ -29,8 +30,8 @@ describe('sescAL', () => {
     const t = r[0]
     expect(t.objeto).toMatch(/^Registro de Preços para a Aquisição e instalação de câmaras frigorificas/)
     expect(t.modalidade).toBe('PREGAO_ELETRONICO')
-    expect(t.aberturaAt).toEqual(new Date(2026, 9, 2))
-    expect(t.publicadoAt).toEqual(new Date(2026, 8, 14))
+    expect(t.aberturaAt).toEqual(horaDeBrasilia(2026, 9, 2))
+    expect(t.publicadoAt).toEqual(horaDeBrasilia(2026, 8, 14))
   })
 
   it('devolve [] quando não há itens', () => {

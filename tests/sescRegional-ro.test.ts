@@ -2,10 +2,11 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { sescRO } from '../src/services/sescRegional/ro'
+import { horaDeBrasilia } from '../src/lib/dataDeBrasilia'
 
 // Recorte do HTML real de sescro.com.br/licitacoes/{pregao-eletronico,credenciamento,convite,...} (2026-09-30).
 const html = readFileSync(join(__dirname, 'fixtures/sesc/ro.html'), 'utf8')
-const ctx = { url: 'https://sescro.com.br/licitacoes/pregao-eletronico/', agora: new Date(2026, 8, 30, 10, 0) }
+const ctx = { url: 'https://sescro.com.br/licitacoes/pregao-eletronico/', agora: horaDeBrasilia(2026, 8, 30, 10, 0) }
 
 describe('sescRO', () => {
   const r = sescRO.parse(html, ctx)
@@ -36,18 +37,18 @@ describe('sescRO', () => {
     const pe = r.find((t) => t.numeroControle === '0023/26-PGE')!
     expect(pe.modalidade).toBe('PREGAO_ELETRONICO')
     expect(pe.objeto).toContain('FORNECIMENTO PARCELADO DE GÊNEROS ALIMENTÍCIOS')
-    expect(pe.publicadoAt).toEqual(new Date(2026, 8, 28))
+    expect(pe.publicadoAt).toEqual(horaDeBrasilia(2026, 8, 28))
     expect(pe.linkEdital).toContain('IgBUTjip')
     expect((pe.rawJson as { anexos: unknown[] }).anexos).toHaveLength(2)
     const cred = r.find((t) => t.numeroControle === '0003/26-SEALI')!
     expect(cred.modalidade).toBe('CREDENCIAMENTO')
-    expect(cred.publicadoAt).toEqual(new Date(2026, 8, 2))
+    expect(cred.publicadoAt).toEqual(horaDeBrasilia(2026, 8, 2))
   })
 
   it('aponta para as páginas do ano corrente', () => {
-    const u = sescRO.urls(new Date(2026, 8, 30))
+    const u = sescRO.urls(horaDeBrasilia(2026, 8, 30))
     expect(u[0]).toBe('https://sescro.com.br/licitacoes/editais-pregao-presencial/2026-2/')
     expect(u).toHaveLength(5)
-    expect(sescRO.urls(new Date(2026, 0, 15))).toHaveLength(6)
+    expect(sescRO.urls(horaDeBrasilia(2026, 0, 15))).toHaveLength(6)
   })
 })

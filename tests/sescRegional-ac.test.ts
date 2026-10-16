@@ -2,10 +2,11 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { sescAC } from '../src/services/sescRegional/ac'
+import { horaDeBrasilia } from '../src/lib/dataDeBrasilia'
 
 // Recorte do HTML real de cpl.sescacre.com.br/transparencia/ (2026-09-30).
 const html = readFileSync(join(__dirname, 'fixtures/sesc/ac.html'), 'utf8')
-const ctx = { url: 'http://cpl.sescacre.com.br/transparencia/', agora: new Date(2026, 8, 15, 10, 0) }
+const ctx = { url: 'http://cpl.sescacre.com.br/transparencia/', agora: horaDeBrasilia(2026, 8, 15, 10, 0) }
 
 describe('sescAC', () => {
   const r = sescAC.parse(html, ctx)
@@ -31,11 +32,11 @@ describe('sescAC', () => {
     const t = r.find((x) => x.fonteId === 'SESC-AC-580')!
     expect(t.modalidade).toBe('PREGAO_ELETRONICO')
     expect(t.objeto).toContain('resíduos sólidos urbanos')
-    expect(t.aberturaAt).toEqual(new Date(2026, 8, 21))
+    expect(t.aberturaAt).toEqual(horaDeBrasilia(2026, 8, 21))
   })
 
   it('sem licitação atual quando todas já abriram', () => {
-    expect(sescAC.parse(html, { ...ctx, agora: new Date(2026, 8, 30) })).toHaveLength(0)
+    expect(sescAC.parse(html, { ...ctx, agora: horaDeBrasilia(2026, 8, 30) })).toHaveLength(0)
   })
 
   it('aponta as próximas páginas só a partir da primeira', () => {

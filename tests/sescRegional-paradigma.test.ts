@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { horaDeBrasilia } from '../src/lib/dataDeBrasilia'
 import {
   criarUnidadeParadigma,
   dataParadigma,
@@ -17,7 +18,7 @@ const dn = ler('paradigma-dn.json')
 const rj = ler('paradigma-rj.json')
 const sp = ler('paradigma-sp.json')
 
-const AGORA = new Date(2026, 8, 30, 12, 0)
+const AGORA = horaDeBrasilia(2026, 8, 30, 12, 0)
 const ctx = (url: string) => ({ url, agora: AGORA })
 
 describe('dataParadigma', () => {
@@ -142,9 +143,9 @@ describe('Paradigma — configuração das unidades', () => {
     const item = (inicio: Date) => ({ nCdProcesso: 1, sDsObjeto: 'x', tDtInicial: `/Date(${Date.UTC(inicio.getFullYear(), inicio.getMonth(), inicio.getDate())})/` })
     const cheia = (inicio: Date) => JSON.stringify({ d: Array.from({ length: 50 }, () => item(inicio)) })
     const url = sescDN.urls(AGORA)[0]
-    expect(sescDN.proximasPaginas!(cheia(new Date(2026, 8, 1)), ctx(url))).toEqual([url.replace('#pagina=1', '#pagina=2')])
-    expect(sescDN.proximasPaginas!(cheia(new Date(2026, 0, 1)), ctx(url))).toEqual([]) // histórico
-    expect(sescDN.proximasPaginas!(JSON.stringify({ d: [item(new Date(2026, 8, 1))] }), ctx(url))).toEqual([]) // página curta
+    expect(sescDN.proximasPaginas!(cheia(horaDeBrasilia(2026, 8, 1)), ctx(url))).toEqual([url.replace('#pagina=1', '#pagina=2')])
+    expect(sescDN.proximasPaginas!(cheia(horaDeBrasilia(2026, 0, 1)), ctx(url))).toEqual([]) // histórico
+    expect(sescDN.proximasPaginas!(JSON.stringify({ d: [item(horaDeBrasilia(2026, 8, 1))] }), ctx(url))).toEqual([]) // página curta
   })
 
   it('falha com mensagem clara se a resposta não for JSON (ex.: 403 do IIS)', () => {

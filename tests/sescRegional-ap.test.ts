@@ -2,10 +2,11 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { sescAP } from '../src/services/sescRegional/ap'
+import { horaDeBrasilia } from '../src/lib/dataDeBrasilia'
 
 // Recorte do HTML real de www.sescamapa.com.br/licitacoes (2026-09-30).
 const html = readFileSync(join(__dirname, 'fixtures/sesc/ap.html'), 'utf8')
-const ctx = { url: 'https://www.sescamapa.com.br/licitacoes', agora: new Date(2026, 8, 30, 10, 0) }
+const ctx = { url: 'https://www.sescamapa.com.br/licitacoes', agora: horaDeBrasilia(2026, 8, 30, 10, 0) }
 
 describe('sescAP', () => {
   const r = sescAP.parse(html, ctx)
@@ -16,7 +17,7 @@ describe('sescAP', () => {
   })
 
   it('a janela de publicação acompanha o relógio', () => {
-    const recuado = sescAP.parse(html, { ...ctx, agora: new Date(2026, 5, 20) })
+    const recuado = sescAP.parse(html, { ...ctx, agora: horaDeBrasilia(2026, 5, 20) })
     expect(recuado.map((t) => t.numeroControle)).toContain('000009-26-PG')
   })
 
@@ -36,6 +37,6 @@ describe('sescAP', () => {
     const t = r.find((x) => x.numeroControle === '000011-26-PG')!
     expect(t.modalidade).toBe('PREGAO_ELETRONICO')
     expect(t.objeto).toContain('EQUIPAMENTOS ODONTOLÓGICOS')
-    expect(t.publicadoAt).toEqual(new Date(2026, 8, 10))
+    expect(t.publicadoAt).toEqual(horaDeBrasilia(2026, 8, 10))
   })
 })

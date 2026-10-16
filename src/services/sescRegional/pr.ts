@@ -28,6 +28,7 @@ import {
   limparTexto,
   montarTender,
 } from './tipos'
+import { horaDeBrasilia } from '../../lib/dataDeBrasilia'
 
 const PAGINA_PUBLICA = 'https://www.sescpr.com.br/licitacoes/'
 const API = 'https://www.sescpr.com.br/wp-json/sclc-view/v1/dados'
@@ -65,7 +66,7 @@ function dataHora(data?: string | null, hora?: string | null): Date | undefined 
   const m = data?.match(/^(\d{4})-(\d{2})-(\d{2})/)
   if (!m) return undefined
   const h = hora?.match(/^(\d{2}):(\d{2})/)
-  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(h?.[1] ?? 0), Number(h?.[2] ?? 0))
+  const d = horaDeBrasilia(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(h?.[1] ?? 0), Number(h?.[2] ?? 0))
   return Number.isNaN(d.getTime()) ? undefined : d
 }
 

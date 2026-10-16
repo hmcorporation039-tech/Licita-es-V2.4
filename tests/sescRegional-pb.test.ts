@@ -2,12 +2,13 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { sescPB } from '../src/services/sescRegional/pb'
+import { horaDeBrasilia } from '../src/lib/dataDeBrasilia'
 
 // Recorte do parcial real www.sescpb.com.br/transparencia/partials/licitacoes.php (2026-09-30).
 const html = readFileSync(join(__dirname, 'fixtures/sesc/pb.html'), 'utf8')
 const ctx = {
   url: 'https://www.sescpb.com.br/transparencia/partials/licitacoes.php',
-  agora: new Date(2026, 8, 30, 10, 0),
+  agora: horaDeBrasilia(2026, 8, 30, 10, 0),
 }
 
 describe('sescPB', () => {
@@ -22,7 +23,7 @@ describe('sescPB', () => {
   })
 
   it('descarta painéis de processos concluídos', () => {
-    const tardia = sescPB.parse(html, { ...ctx, agora: new Date(2026, 0, 1) })
+    const tardia = sescPB.parse(html, { ...ctx, agora: horaDeBrasilia(2026, 0, 1) })
     // Recuando o relógio voltam as em andamento, nunca a da aba "Concluida".
     expect(tardia.length).toBeGreaterThan(r.length)
     expect(tardia.every((t) => t.numeroControle !== '00001/2026')).toBe(true)
@@ -43,7 +44,7 @@ describe('sescPB', () => {
     const t = r[0]
     expect(t.modalidade).toBe('CONCORRENCIA')
     expect(t.objeto).toContain('CONSTRUCAO CIVIL')
-    expect(t.aberturaAt).toEqual(new Date(2026, 9, 1, 10, 0))
+    expect(t.aberturaAt).toEqual(horaDeBrasilia(2026, 9, 1, 10, 0))
     expect(t.linkEdital).toMatch(/^https:\/\/www\.sescpb\.com\.br\/transparencia\/mostrar_arquivo\.php\?id=\d+$/)
     const anexos = (t.rawJson as { anexos: { uri: string; titulo: string }[] }).anexos
     expect(anexos.length).toBeGreaterThan(0)

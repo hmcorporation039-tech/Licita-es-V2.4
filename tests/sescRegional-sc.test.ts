@@ -2,10 +2,11 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { sescSC } from '../src/services/sescRegional/sc'
+import { horaDeBrasilia } from '../src/lib/dataDeBrasilia'
 
 // Recorte do HTML real de www.sesc-sc.com.br/sobre-o-sesc/licitacoes (2026-09-30).
 const html = readFileSync(join(__dirname, 'fixtures/sesc/sc.html'), 'utf8')
-const ctx = { url: 'https://www.sesc-sc.com.br/sobre-o-sesc/licitacoes', agora: new Date(2026, 8, 30, 10, 0) }
+const ctx = { url: 'https://www.sesc-sc.com.br/sobre-o-sesc/licitacoes', agora: horaDeBrasilia(2026, 8, 30, 10, 0) }
 
 describe('sescSC', () => {
   const r = sescSC.parse(html, ctx)
@@ -34,8 +35,8 @@ describe('sescSC', () => {
     const t = r.find((x) => x.fonteId === 'SESC-SC-16507')!
     expect(t.objeto).toBe('AQUISIÇÃO DE EQUIPAMENTOS DE INFORMÁTICA PARA UNIDADES DO SESC SC')
     expect(t.modalidade).toBe('PREGAO_ELETRONICO')
-    expect(t.aberturaAt).toEqual(new Date(2026, 9, 19, 14, 0))
-    expect(t.publicadoAt).toEqual(new Date(2026, 8, 29))
+    expect(t.aberturaAt).toEqual(horaDeBrasilia(2026, 9, 19, 14, 0))
+    expect(t.publicadoAt).toEqual(horaDeBrasilia(2026, 8, 29))
     expect(t.linkEdital).toBe('https://www.sesc-sc.com.br/sescsc/conteudo/EDITAL_PE_103-26.pdf')
     const anexos = (t.rawJson as { anexos: { uri: string }[] }).anexos
     expect(anexos).toHaveLength(2)

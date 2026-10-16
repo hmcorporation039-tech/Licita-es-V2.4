@@ -18,6 +18,7 @@ import {
   montarTender,
   urlAbsoluta,
 } from './tipos'
+import { horaDeBrasilia } from '../../lib/dataDeBrasilia'
 
 const MESES: Record<string, number> = {
   janeiro: 0, fevereiro: 1, marco: 2, abril: 3, maio: 4, junho: 5,
@@ -32,7 +33,7 @@ export function extrairDataSessao(texto: string): Date | undefined {
   if (mes === undefined) return undefined
   const antes = texto.slice(0, m.index)
   const h = antes.match(/(\d{1,2})\s*h(?:\s*(\d{2}))?[^\d]*$/i) ?? antes.match(/(\d{1,2})\s*\([^)]*horas?\)\s*$/i)
-  const d = new Date(Number(m[3]), mes, Number(m[1]), h ? Number(h[1]) : 0, h?.[2] ? Number(h[2]) : 0)
+  const d = horaDeBrasilia(Number(m[3]), mes, Number(m[1]), h ? Number(h[1]) : 0, h?.[2] ? Number(h[2]) : 0)
   return Number.isNaN(d.getTime()) ? undefined : d
 }
 
