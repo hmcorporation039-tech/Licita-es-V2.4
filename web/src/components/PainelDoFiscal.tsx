@@ -122,7 +122,7 @@ export default function PainelDoFiscal({ tenderId }: { tenderId: string }) {
             )}
             <ul className="flex flex-col divide-y divide-line-soft">
               {alertas.itens.map((a) => (
-                <li key={a.id} className="flex flex-col gap-1.5 px-4 py-3 text-sm">
+                <li key={a.chave ?? a.id} className="flex flex-col gap-1.5 px-4 py-3 text-sm">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium text-ink">{a.titulo}</span>
                     <StatusTag tone={a.gravidade === 'alta' ? 'danger' : 'warn'}>{a.gravidade === 'alta' ? 'alta' : 'média'}</StatusTag>
@@ -130,6 +130,7 @@ export default function PainelDoFiscal({ tenderId }: { tenderId: string }) {
                   <p className="text-ink-2">{a.detalhe}</p>
                   <p className="text-xs text-muted">Base: {a.fundamento}</p>
                   <blockquote className="border-l-2 border-line-strong pl-3 text-xs italic text-muted">{a.trecho}</blockquote>
+                  {a.local && <p className="text-xs text-muted">Onde: {a.local}</p>}
                 </li>
               ))}
             </ul>
@@ -138,8 +139,8 @@ export default function PainelDoFiscal({ tenderId }: { tenderId: string }) {
       ) : (
         <Notice tone="info">
           {dados.analise.feita
-            ? 'Esta análise é anterior aos alertas sobre garantias, patrimônio líquido e visita técnica. Peça uma nova análise ao administrador para habilitá-los.'
-            : 'Os alertas sobre garantias, patrimônio líquido e visita técnica aparecem depois que a análise do edital é feita.'}
+            ? 'Esta análise é anterior aos alertas de exigências fora da lei (garantias, índices, atestados, documentos fora do rol). Peça uma nova análise ao administrador para habilitá-los.'
+            : 'Os alertas de exigências fora da lei (garantias, índices contábeis, atestados, documentos fora do rol) aparecem depois que a análise do edital é feita.'}
         </Notice>
       )}
 

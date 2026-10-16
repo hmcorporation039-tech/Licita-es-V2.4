@@ -190,6 +190,8 @@ export interface RequisitoDeHabilitacao {
 
 export interface AlertaLegal {
   id: string
+  chave?: string
+  local?: string
   titulo: string
   gravidade: 'alta' | 'media'
   detalhe: string
