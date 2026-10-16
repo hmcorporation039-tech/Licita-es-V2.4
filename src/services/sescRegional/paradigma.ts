@@ -26,9 +26,10 @@
 // situação sem indício de suspensão, homologação ou fase pós-disputa.
 // ============================================================
 
-import { NormalizedTender } from '../../types'
+import { FonteEnum, ModalidadeEnum, NormalizedTender } from '../../types'
 import {
   ContextoDeParse,
+  ORIGEM_SESC_REGIONAL,
   SescUnidade,
   detectarModalidade,
   ehLicitacaoAtual,
@@ -42,7 +43,7 @@ const VISAO_EM_ANDAMENTO = 999
 // Só pedimos a próxima página se o último item desta ainda começou há pouco.
 const DIAS_PARA_SEGUIR_PAGINACAO = 90
 
-interface ProcessoParadigma {
+export interface ProcessoParadigma {
   nCdProcesso?: number
   sNrEdital?: string | null
   sNrProcessoDisplay?: string | null
@@ -75,7 +76,7 @@ export function dataParadigma(valor?: string | null): Date | undefined {
 }
 
 // Remove os caracteres de controle com que a API mascara alguns campos.
-function semControle(texto?: string | null): string {
+export function semControle(texto?: string | null): string {
   // eslint-disable-next-line no-control-regex
   return limparTexto((texto ?? '').replace(/[\u0000-\u001f\u007f]/g, ' '))
 }
@@ -129,13 +130,41 @@ function corpoDaRequisicao(pagina: number): string {
   })
 }
 
+export interface EmpresaDoParadigma {
+  orgao: string
+  cnpj?: string
+  unidade?: string
+}
+
+export interface OpcoesDoParadigma {
+  fonte?: FonteEnum
+  prefixoFonteId?: string
+  empresa?: (sNmEmpresa: string) => EmpresaDoParadigma | null
+  modalidade?: (processo: ProcessoParadigma, situacao: string) => ModalidadeEnum
+  lerData?: (valor?: string | null) => Date | undefined
+  situacaoFora?: RegExp
+}
+
+function empresaDoSesc(nome: string, orgao: string): EmpresaDoParadigma | null {
+  if (/senac/i.test(nome) && !/sesc/i.test(nome)) return null
+  return { orgao, unidade: nome || undefined }
+}
+
 export function criarUnidadeParadigma(cfg: {
   uf: string
   chave?: string
   nome: string
   // Raiz da aplicação, sem barra final (ex.: https://egov.paradigmabs.com.br/SESCRJ).
   base: string
-}): SescUnidade {
+} & OpcoesDoParadigma): SescUnidade {
+  const origem = {
+    fonte: cfg.fonte ?? ORIGEM_SESC_REGIONAL.fonte,
+    prefixoFonteId: cfg.prefixoFonteId ?? ORIGEM_SESC_REGIONAL.prefixoFonteId,
+  }
+  const lerData = cfg.lerData ?? dataParadigma
+  const situacaoFora = cfg.situacaoFora ?? SITUACAO_FORA
+  const empresaDe = cfg.empresa ?? ((nome: string) => empresaDoSesc(nome, cfg.nome))
+  const modalidadeDoProcesso = cfg.modalidade ?? modalidadeDe
   const endpoint = `${cfg.base}/portal/WebService/Servicos.asmx/PesquisarProcessos`
   const urlPagina = (n: number) => `${endpoint}#pagina=${n}`
 
@@ -157,21 +186,22 @@ export function criarUnidadeParadigma(cfg: {
         const objeto = semControle(p.sDsObjeto)
         if (!p.nCdProcesso || !objeto) continue
         // Portal compartilhado com o Senac (ex.: RS): só entra o que é do Sesc.
-        if (/senac/i.test(p.sNmEmpresa ?? '') && !/sesc/i.test(p.sNmEmpresa ?? '')) continue
+        const empresa = empresaDe(semControle(p.sNmEmpresa))
+        if (!empresa) continue
 
         const situacao = semControle(p.sDsSituacao)
-        if (SITUACAO_FORA.test(situacao)) continue
+        if (situacaoFora.test(situacao)) continue
 
-        const inicio = dataParadigma(p.tDtInicial)
-        const fim = dataParadigma(p.tDtFinal)
+        const inicio = lerData(p.tDtInicial)
+        const fim = lerData(p.tDtFinal)
         if (!ehLicitacaoAtual({ situacao, encerramentoAt: fim }, ctx.agora)) continue
         // Sem data final não dá para afirmar que está aberto: só vale se começou há pouco.
         if (!fim && !publicadaRecentemente(inicio, ctx.agora)) continue
 
-        const tender = montarTender(unidade, {
+        const tender = montarTender({ uf: cfg.uf, chave: cfg.chave, nome: empresa.orgao, cnpj: empresa.cnpj }, {
           idLocal: String(p.nCdProcesso),
           objeto,
-          modalidade: modalidadeDe(p),
+          modalidade: modalidadeDoProcesso(p, situacao),
           numeroControle: semControle(p.sNrProcessoDisplay) || semControle(p.sNrEdital) || undefined,
           valorEstimado: p.dVlEstimado && p.dVlEstimado > 0 ? p.dVlEstimado : undefined,
           aberturaAt: fim,
@@ -179,9 +209,9 @@ export function criarUnidadeParadigma(cfg: {
           publicadoAt: inicio,
           // O detalhe só abre pelo JavaScript do Mural; apontamos para o Mural público.
           linkEdital: `${cfg.base}/portal/Mural.aspx`,
-        })
+        }, origem)
         // Subunidade que compra (ex.: "SESC FLAMENGO", "SESC - FEIRA DE SANTANA").
-        tender.unidade = semControle(p.sNmEmpresa) || undefined
+        tender.unidade = empresa.unidade
         resultado.push(tender)
       }
       return resultado
@@ -192,7 +222,7 @@ export function criarUnidadeParadigma(cfg: {
     proximasPaginas(texto: string, ctx: ContextoDeParse): string[] {
       const itens = lerResposta(texto)
       if (itens.length < POR_PAGINA) return []
-      const inicioUltimo = dataParadigma(itens[itens.length - 1].tDtInicial)
+      const inicioUltimo = lerData(itens[itens.length - 1].tDtInicial)
       if (!inicioUltimo) return []
       const limite = ctx.agora.getTime() - DIAS_PARA_SEGUIR_PAGINACAO * 24 * 60 * 60 * 1000
       return inicioUltimo.getTime() >= limite ? [urlPagina(paginaDaUrl(ctx.url) + 1)] : []

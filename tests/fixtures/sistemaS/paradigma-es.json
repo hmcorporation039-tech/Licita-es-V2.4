@@ -1,0 +1,43 @@
+{
+ "d": [
+  {
+   "nCdProcesso": 2685,
+   "sNrProcessoDisplay": "CDE 2026002332",
+   "sNrEdital": "CDE 2026002332",
+   "sDsObjeto": "FLUIG 856533 - SERVICO DE LOCACAO, MONTAGEM E DESMONTAGEM DE TENDAS PARA O EVENTO MEETING DE LIDERES  - CINDES",
+   "sNmEmpresa": "CINDES CENTRO DA INDUSTRIA DO ES | CENTRO DA INDUSTRIA DO ES",
+   "sNmModalidade": "Processo de contratação",
+   "sNmModalidadeTipo": "Processo de seleção sem disputa",
+   "sDsSituacao": "Em andamento",
+   "tDtInicial": "/Date(1792094880000)/",
+   "tDtFinal": "/Date(1792184400000)/",
+   "dVlEstimado": 0
+  },
+  {
+   "nCdProcesso": 2679,
+   "sNrProcessoDisplay": "CDE 2026002326",
+   "sNrEdital": "CDE 2026002326",
+   "sDsObjeto": "FLUIG 847243: CONTRATAÇÃO DE EMPRESA PARA O FORNECIMENTO DE CORDOES PARA CRACHA (IEL)",
+   "sNmEmpresa": "IEL/ES SEDE | INSTITUTO EUVALDO LODI - IEL",
+   "sNmModalidade": "Processo de contratação",
+   "sNmModalidadeTipo": "Processo de seleção sem disputa",
+   "sDsSituacao": "Em andamento",
+   "tDtInicial": "/Date(1792072500000)/",
+   "tDtFinal": "/Date(1792158900000)/",
+   "dVlEstimado": 0
+  },
+  {
+   "nCdProcesso": 2671,
+   "sNrProcessoDisplay": "CDE 2026002318",
+   "sNrEdital": "CDE 2026002318",
+   "sDsObjeto": "FLUIG 834129: AQUISIÇÃO DE MATERIAIS ELETRICOS PARA PROVA SAEP (SENAI COLATINA)",
+   "sNmEmpresa": "SENAI-DR/ES COLATINA | CENTRO DE EDUCAÇÃO PROFISSIONAL ALBANO FRANCO",
+   "sNmModalidade": "Processo de contratação",
+   "sNmModalidadeTipo": "Processo de seleção sem disputa",
+   "sDsSituacao": "Em andamento",
+   "tDtInicial": "/Date(1792000200000)/",
+   "tDtFinal": "/Date(1792173000000)/",
+   "dVlEstimado": 0
+  }
+ ]
+}

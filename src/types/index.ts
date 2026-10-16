@@ -2,7 +2,7 @@
 // types/index.ts — Tipos compartilhados da plataforma
 // ============================================================
 
-export type FonteEnum = 'PNCP' | 'COMPRASNET' | 'NOVACAP' | 'FIEG' | 'SESC_GO' | 'SEST_SENAT' | 'SESC_REGIONAL' | 'QUERIDO_DIARIO'
+export type FonteEnum = 'PNCP' | 'COMPRASNET' | 'NOVACAP' | 'FIEG' | 'SESC_GO' | 'SEST_SENAT' | 'SESC_REGIONAL' | 'QUERIDO_DIARIO' | 'SISTEMA_S'
 
 export type ModalidadeEnum =
   | 'PREGAO_ELETRONICO'

@@ -1,0 +1,57 @@
+{
+ "count": 31,
+ "next": "http://licitacoes.sistemafibra.org.br/api/licitacoes/?current=1&page=2&status=A",
+ "previous": null,
+ "results": [
+  {
+   "id": 934,
+   "numero": 59,
+   "titulo": "NÚMERO 59/2026",
+   "data_abertura": "2026-10-27",
+   "empresas": [
+    {
+     "id": 1,
+     "nome": "SENAI"
+    }
+   ],
+   "ano": 2026,
+   "modalidade": "RCA Disputa Aberta",
+   "objeto": "Aquisição de equipamentos de informática necessários à execução do projeto ActionPPC - Equipamento para Controle Autônomo de Usinas Solares (Projeto: 337047), vinculado à Chamada Smart Factory da Plataforma Inovação para a Indústria.",
+   "documentos": [
+    {
+     "id": 5243,
+     "descricao": "Edital CP Senai nº 59/2026",
+     "arquivo": "/media/cp-59-2026_proc43273-2026-equip-IST.c-dta.pdf",
+     "tipo": "Edital"
+    }
+   ],
+   "status": "Em andamento",
+   "criterios_julgamento": "Menor Preço"
+  },
+  {
+   "id": 932,
+   "numero": 64,
+   "titulo": "CHAMAMENTO PÚBLICO SENAI NR 64/2026",
+   "data_abertura": "2026-10-26",
+   "empresas": [
+    {
+     "id": 1,
+     "nome": "SENAI"
+    }
+   ],
+   "ano": 2026,
+   "modalidade": "RCA Disputa Aberta",
+   "objeto": "Aquisição de materiais elétricos e eletrônicos necessários à execução do projeto \"MISSÃO INDÚSTRIA 4.0: IOT, IA, ELETRÔNICA E PROGRAMAÇÃO COM SATÉLITES\" (Projeto 338910), vinculado à Chamada ALIANÇA EDUCACIONAL da Plataforma Inovação para a Indústria, conforme especificações e condições estabelecidas Chamamento e seus Anexos",
+   "documentos": [
+    {
+     "id": 5239,
+     "descricao": "Edital Senai nº 64/2026",
+     "arquivo": "/media/cp-64-2026_proc43265-2026-aq-mat-elet-eletr-cd._manifesto_1.pdf",
+     "tipo": "Edital"
+    }
+   ],
+   "status": "Em andamento",
+   "criterios_julgamento": "Menor Preço"
+  }
+ ]
+}

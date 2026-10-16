@@ -1,0 +1,43 @@
+{
+ "d": [
+  {
+   "nCdProcesso": 5182,
+   "sNrProcessoDisplay": "RE005482026",
+   "sNrEdital": "000918",
+   "sDsObjeto": "CONTRATACAO DE EMPRESA PARA SERVICO DE ELABORACAO DE PROJETO TECNICO E DESENHOS DE ENGENHARIA DA UNIDADE LABORATORIAL DE DESIDRATACAO E SECAGEM DE LODO EM ATENDIMENTO AO INSTITUTO SENAI DE INOVACAO, UNIDADE  QUIMICA VERDE.",
+   "sNmEmpresa": "03.848.688/0063-55 - ISI QUÍMICA VERDE",
+   "sNmModalidade": "Compra direta",
+   "sNmModalidadeTipo": "",
+   "sDsSituacao": "Recebimento de lances",
+   "tDtInicial": "/Date(1792099800000)/",
+   "tDtFinal": "/Date(1792584000000)/",
+   "dVlEstimado": 0
+  },
+  {
+   "nCdProcesso": 3947,
+   "sNrProcessoDisplay": "SC 00313/2026",
+   "sNrEdital": "SC 00313/2026",
+   "sDsObjeto": "CONTRATACAO DE EMPRESA ESPECIALIZADA PARA EXECUCAO DE SERVICOS EMERGENCIAIS DE RECUPERACAO E PINTURA DE TRECHOS DAS FACHADAS DOS BLOCOS DA UNIDADE FIRJAN SENAI BENFICA, INCLUINDO FORNECIMENTO DE MATERIAIS, MAO DE OBRA, EQUIPAMENTOS, PROTECAO DAS AREAS, SERVICOS DE TRABALHO EM ALTURA, RECUPERACAO LOCALIZADA DE SUPERFICIE, INTERVENCAO CORRETIVA EM BRISE [COMPARTILHADO-SENAI]",
+   "sNmEmpresa": "03.851.171/0001-12 - SESI SEDE",
+   "sNmModalidade": "Processo de contratação",
+   "sNmModalidadeTipo": "Processo de seleção com disputa",
+   "sDsSituacao": "Em andamento",
+   "tDtInicial": "/Date(1791923400000)/",
+   "tDtFinal": "/Date(1792672200000)/",
+   "dVlEstimado": 0
+  },
+  {
+   "nCdProcesso": 5180,
+   "sNrProcessoDisplay": "CD003772026",
+   "sNrEdital": "003521",
+   "sDsObjeto": "AQUISICAO DE  MESA DE CENTRO, BASE EM ACO, DIMENSOES: 80CM DE DIAMETRO X 40CM DE ALTURA PARA ATENDIMENTO AO PROJETO LAB PROCEL FASE II",
+   "sNmEmpresa": "03.848.688/0001-52 - SENAI SEDE",
+   "sNmModalidade": "Compra direta",
+   "sNmModalidadeTipo": "",
+   "sDsSituacao": "Recebimento de lances",
+   "tDtInicial": "/Date(1792102800000)/",
+   "tDtFinal": "/Date(1792422000000)/",
+   "dVlEstimado": 0
+  }
+ ]
+}

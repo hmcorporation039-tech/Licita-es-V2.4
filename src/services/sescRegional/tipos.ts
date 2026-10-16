@@ -11,7 +11,7 @@
 // Histórico e processos encerrados são descartados já no parser.
 // ============================================================
 
-import { ModalidadeEnum, NormalizedTender } from '../../types'
+import { FonteEnum, ModalidadeEnum, NormalizedTender } from '../../types'
 
 export interface ContextoDeParse {
   // URL da página de onde veio o HTML (base para resolver links relativos).
@@ -153,6 +153,13 @@ export function detectarModalidade(texto: string): ModalidadeEnum {
   return 'OUTROS'
 }
 
+export interface OrigemDoTender {
+  fonte: FonteEnum
+  prefixoFonteId: string
+}
+
+export const ORIGEM_SESC_REGIONAL: OrigemDoTender = { fonte: 'SESC_REGIONAL', prefixoFonteId: 'SESC' }
+
 // Monta o NormalizedTender padrão das unidades do SESC Regional. O parser de
 // cada unidade só preenche o que o portal traz.
 export function montarTender(
@@ -171,13 +178,14 @@ export function montarTender(
     publicadoAt?: Date
     linkEdital?: string
     anexos?: { uri: string; titulo: string }[]
-  }
+  },
+  origem: OrigemDoTender = ORIGEM_SESC_REGIONAL
 ): NormalizedTender {
   const objeto = limparTexto(dados.objeto)
   const id = limparTexto(dados.idLocal).replace(/[^\w.-]+/g, '-').replace(/-+/g, '-')
   return {
-    fonte: 'SESC_REGIONAL',
-    fonteId: `SESC-${unidade.chave ?? unidade.uf}-${id}`,
+    fonte: origem.fonte,
+    fonteId: `${origem.prefixoFonteId}-${unidade.chave ?? unidade.uf}-${id}`,
     modalidade: dados.modalidade ?? detectarModalidade(dados.modalidadeTexto ?? objeto),
     objeto,
     objetoResumido: truncar(objeto),

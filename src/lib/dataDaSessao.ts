@@ -1,5 +1,5 @@
 const FONTES_COM_ABERTURA_NO_INICIO_DAS_PROPOSTAS = new Set(['PNCP', 'COMPRASNET'])
-const FONTES_COM_SESSAO_NA_ABERTURA = new Set(['FIEG', 'SESC_REGIONAL', 'QUERIDO_DIARIO'])
+const FONTES_COM_SESSAO_NA_ABERTURA = new Set(['FIEG', 'SESC_REGIONAL', 'QUERIDO_DIARIO', 'SISTEMA_S'])
 
 export interface DatasDaLicitacao {
   fonte: string

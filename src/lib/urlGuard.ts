@@ -19,7 +19,25 @@ import type { LookupFunction } from 'node:net'
 
 // Sufixos de host aceitos. Só as fontes de onde a plataforma realmente baixa
 // anexo (ver pncpDocumentsService.downloadPNCPDocument e quem o chama).
-const HOSTS_PERMITIDOS = ['pncp.gov.br', 'novacap.df.gov.br', 'sescgo.com.br', 'data.queridodiario.ok.org.br']
+const HOSTS_PERMITIDOS = [
+  'pncp.gov.br',
+  'novacap.df.gov.br',
+  'sescgo.com.br',
+  'data.queridodiario.ok.org.br',
+  'transparencia.senac.br',
+  'licitacao.fiea.com.br',
+  'licitacoes.fieam.com.br',
+  'licitacao.sesisenaiap.org.br',
+  'licitacoes.sistemafibra.org.br',
+  'licitacao.senaipa.org.br',
+  'licitacoes.fiepb.org.br',
+  'licitacoes.pe.senai.br',
+  'licitacao.fiepi.com.br',
+  'licitacao.fiero.org.br',
+  'lsa.fies.org.br',
+  'www.portaldaindustria.com.br',
+  'static.portaldaindustria.com.br',
+]
 
 export function hostPermitido(hostname: string): boolean {
   const h = hostname.toLowerCase().replace(/\.$/, '')

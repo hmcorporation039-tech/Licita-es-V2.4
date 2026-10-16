@@ -28,9 +28,27 @@ import { analyzeEdital as analyzeWithGemini } from './llm/geminiAnalyzer'
 import { reviewEdital } from './llm/claudeReviewer'
 import { ConfiguracaoDeIa, configuracaoDeIa, executarPipeline } from './analiseEmDupla'
 import { pareceErroDeChave, textoDoDiagnostico } from '../lib/diagnosticoDeChave'
+import { assertUrlDownloadPermitida } from '../lib/urlGuard'
 
 interface DocumentoDisponivel extends DocumentoComTitulo {
   uri: string
+}
+
+function urlBaixavel(uri: string): boolean {
+  try {
+    assertUrlDownloadPermitida(uri)
+    return true
+  } catch {
+    return false
+  }
+}
+
+export function anexosBaixaveis(anexos: unknown): DocumentoDisponivel[] {
+  if (!Array.isArray(anexos)) return []
+  return anexos.filter(
+    (a): a is DocumentoDisponivel =>
+      !!a && typeof a === 'object' && typeof a.uri === 'string' && typeof a.titulo === 'string' && urlBaixavel(a.uri)
+  )
 }
 
 // Teto por requisição da API (32 MB). Ficamos abaixo com folga porque o
@@ -91,6 +109,10 @@ async function listarDocumentosDisponiveis(tender: Tender): Promise<DocumentoDis
       // vieram capturados na coleta (ver sescGoParser.ts).
       const raw = tender.rawJson as { anexos?: DocumentoDisponivel[] }
       return ordenarPorPrioridade(raw.anexos ?? [])
+    }
+    case 'SISTEMA_S': {
+      const raw = tender.rawJson as { anexos?: unknown }
+      return ordenarPorPrioridade(anexosBaixaveis(raw.anexos))
     }
     default:
       return []

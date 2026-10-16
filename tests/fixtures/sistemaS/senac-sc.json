@@ -1,0 +1,381 @@
+{
+ "success": true,
+ "data": [
+  {
+   "id": "00000000-0000-0000-0000-000000000000",
+   "modalidadeId": "34b00243-a19f-4b21-80cb-936e0c7defa6",
+   "modalidade": "Concorrência",
+   "dataUltimaCarga": "2026-10-08T18:37:44.616Z",
+   "dadosModalidadeLicitacao": [
+    {
+     "id": "556e861e-23ae-4bb8-aee6-24c445e7f37c",
+     "situacao": "Em processo",
+     "numeroProcesso": "07/2026",
+     "objeto": "Contratação De Agência De Publicidade E Propaganda Para Prestação, Sob Demanda, De Serviços De Planejamento, Pesquisa, Criação, Produção, Execução, Intermediação, Supervisão, Distribuição E Veiculação De Campanhas E Ações De Comunicação Institucional, Mercadológica,...",
+     "linkPregaoEletronico": "https://licitacao.sc.senac.br",
+     "dataAbertura": "2026-10-22T14:00:00Z",
+     "dataSituacao": "2026-10-22T14:00:00Z",
+     "documentos": [
+      {
+       "id": "f8bacece-7020-46d3-a6a4-37ee43b37754",
+       "idLicitacao": "556e861e-23ae-4bb8-aee6-24c445e7f37c",
+       "nomeDocumento": "Edital 1",
+       "tipoDocumento": {
+        "id": "2499f576-6764-4879-995a-f93557dabd71",
+        "descricao": "Edital"
+       },
+       "dataPublicacao": "2026-09-29T10:43:46-03:00",
+       "arquivoLicitacao": {
+        "nomeArquivo": "2473f01571bf0dcb7d2b16d67da6dd031769947d.pdf",
+        "nomeArquivoFisico": "Licitações/556e861e-23ae-4bb8-aee6-24c445e7f37c/2de40ee2-b914-448d-a35e-cd2eeb158dd5.pdf",
+        "tamanho": 700304
+       },
+       "ativo": true,
+       "recurso": "N",
+       "download": 10
+      },
+      {
+       "id": "be0cb972-3110-4b6d-8d66-9b5802ebecf0",
+       "idLicitacao": "556e861e-23ae-4bb8-aee6-24c445e7f37c",
+       "nomeDocumento": "Participantes 1",
+       "tipoDocumento": {
+        "id": "9433b563-e662-47c2-bd50-37912e10afa5",
+        "descricao": "Participantes"
+       },
+       "dataPublicacao": "2026-10-08T15:31:25-03:00",
+       "arquivoLicitacao": {
+        "nomeArquivo": "Participantes.pdf",
+        "nomeArquivoFisico": "Licitações/556e861e-23ae-4bb8-aee6-24c445e7f37c/b47413aa-683a-4ab9-b534-5ed506106f80.pdf",
+        "tamanho": 59913
+       },
+       "ativo": true,
+       "recurso": "N",
+       "download": 10
+      }
+     ],
+     "criterioDeJulgamento": "3-Técnica e Preço"
+    },
+    {
+     "id": "5837e2c7-5ef7-4624-8480-c424e2ef9b12",
+     "situacao": "Em processo",
+     "numeroProcesso": "08/2026",
+     "objeto": "Contratação De Empresa Especializada Para Execução Das Obras De Fechamento Da área Externa E Da Quadra Poliesportiva Da Unidade Educacional Palhoça Do Senac/sc, Incluindo Pavimentação, Drenagem, Cercamento, Construção De Muro, Sistema De Controle De Acesso Veicular, Instalação De...",
+     "linkPregaoEletronico": "https://licitacao.sc.senac.br",
+     "dataAbertura": "2026-10-14T14:00:00Z",
+     "dataSituacao": "2026-10-14T14:00:00Z",
+     "documentos": [
+      {
+       "id": "4f794e3f-25f2-4ee3-9d35-e29970559330",
+       "idLicitacao": "5837e2c7-5ef7-4624-8480-c424e2ef9b12",
+       "nomeDocumento": "Esclarecimento / Diligência 1",
+       "tipoDocumento": {
+        "id": "4579e6f3-2192-4237-9cc9-6c6c64019e71",
+        "descricao": "Esclarecimento / Diligência"
+       },
+       "dataPublicacao": "2026-10-06T06:00:31-03:00",
+       "arquivoLicitacao": {
+        "nomeArquivo": "904f2cc1c3677bb35876e91f4716341c06769cc6.pdf",
+        "nomeArquivoFisico": "Licitações/5837e2c7-5ef7-4624-8480-c424e2ef9b12/091c974c-e9aa-42ad-a6d3-a424da83cf96.pdf",
+        "tamanho": 147377
+       },
+       "ativo": true,
+       "recurso": "N",
+       "download": 6
+      },
+      {
+       "id": "0e395a45-3ccd-46a8-9445-1289fcfd6075",
+       "idLicitacao": "5837e2c7-5ef7-4624-8480-c424e2ef9b12",
+       "nomeDocumento": "Esclarecimento / Diligência 2",
+       "tipoDocumento": {
+        "id": "4579e6f3-2192-4237-9cc9-6c6c64019e71",
+        "descricao": "Esclarecimento / Diligência"
+       },
+       "dataPublicacao": "2026-09-30T14:04:37-03:00",
+       "arquivoLicitacao": {
+        "nomeArquivo": "77c8184f671aa0397dd897541ed5ec0a8be0380b.pdf",
+        "nomeArquivoFisico": "Licitações/5837e2c7-5ef7-4624-8480-c424e2ef9b12/41b98473-7b9d-4cdf-ae94-61f418241c85.pdf",
+        "tamanho": 149652
+       },
+       "ativo": true,
+       "recurso": "N",
+       "download": 5
+      },
+      {
+       "id": "906d9f77-fb06-48c7-9135-64391f5b5afc",
+       "idLicitacao": "5837e2c7-5ef7-4624-8480-c424e2ef9b12",
+       "nomeDocumento": "Comunicado 1",
+       "tipoDocumento": {
+        "id": "9195d16e-0131-4054-ab13-21a89d2ae8ea",
+        "descricao": "Comunicado"
+       },
+       "dataPublicacao": "2026-09-30T08:47:57-03:00",
+       "arquivoLicitacao": {
+        "nomeArquivo": "84582c1dbe026475319df14c19967d1dd0bf751f.pdf",
+        "nomeArquivoFisico": "Licitações/5837e2c7-5ef7-4624-8480-c424e2ef9b12/a1143a45-b3a2-4d97-9bb9-1d07179cf66b.pdf",
+        "tamanho": 151555
+       },
+       "ativo": true,
+       "recurso": "N",
+       "download": 5
+      }
+     ],
+     "criterioDeJulgamento": "1-Menor preço"
+    },
+    {
+     "id": "040c2fb3-06e0-4bc6-8f13-60f4b7d31c7d",
+     "situacao": "Finalizada",
+     "numeroProcesso": "06/2026",
+     "objeto": "Contratação De Empresa Especializada Para A Execução Integral Das Obras De Reforma Geral Do Imóvel Senac Ead (edifício Cascaes), Situado Na Rua Av. Hercílio Luz, Nº 301, Centro, Florianópolis/sc, Incluído Fornecimento De Materiais, Equipamentos, Mão De Obra E Serviços Técnicos,...",
+     "linkPregaoEletronico": "https://licitacao.sc.senac.br",
+     "dataAbertura": "2026-08-10T14:00:00Z",
+     "dataSituacao": "2026-08-10T14:00:00Z",
+     "documentos": [
+      {
+       "id": "85d0b3e2-8959-4f3e-897b-dc5478f79f5c",
+       "idLicitacao": "040c2fb3-06e0-4bc6-8f13-60f4b7d31c7d",
+       "nomeDocumento": "Ata 1",
+       "tipoDocumento": {
+        "id": "07582368-a958-4dbd-b09c-1355da2c594c",
+        "descricao": "Ata"
+       },
+       "dataPublicacao": "2026-08-11T06:56:31-03:00",
+       "arquivoLicitacao": {
+        "nomeArquivo": "9d94ce174298e08402d1271df4e20f4cb50f7340.pdf",
+        "nomeArquivoFisico": "Licitações/040c2fb3-06e0-4bc6-8f13-60f4b7d31c7d/5380d89b-c770-436e-b714-fa29b96a9819.pdf",
+        "tamanho": 1544942
+       },
+       "ativo": true,
+       "recurso": "N",
+       "download": 2
+      },
+      {
+       "id": "b91b879a-ecc8-45f5-aff1-ec3f383011b7",
+       "idLicitacao": "040c2fb3-06e0-4bc6-8f13-60f4b7d31c7d",
+       "nomeDocumento": "Comunicado 1",
+       "tipoDocumento": {
+        "id": "9195d16e-0131-4054-ab13-21a89d2ae8ea",
+        "descricao": "Comunicado"
+       },
+       "dataPublicacao": "2026-08-07T07:02:00-03:00",
+       "arquivoLicitacao": {
+        "nomeArquivo": "945335a6aaa02e8642218d06ddbb9073cb1e3d69.pdf",
+        "nomeArquivoFisico": "Licitações/040c2fb3-06e0-4bc6-8f13-60f4b7d31c7d/adc5d372-189b-484e-98a2-a70da5804e87.pdf",
+        "tamanho": 139417
+       },
+       "ativo": true,
+       "recurso": "N",
+       "download": 0
+      },
+      {
+       "id": "b6a327a0-117e-47e9-810a-4ac008dd16b2",
+       "idLicitacao": "040c2fb3-06e0-4bc6-8f13-60f4b7d31c7d",
+       "nomeDocumento": "Adiamento / Prorrogação / Suspensão 1",
+       "tipoDocumento": {
+        "id": "0444a2ae-d425-4bfa-9566-e67a2a0e5c50",
+        "descricao": "Adiamento / Prorrogação / Suspensão"
+       },
+       "dataPublicacao": "2026-08-07T06:10:01-03:00",
+       "arquivoLicitacao": {
+        "nomeArquivo": "1d7deb7af392ce1dd0b07cc0e31a54ffbcbfe9fc.pdf",
+        "nomeArquivoFisico": "Licitações/040c2fb3-06e0-4bc6-8f13-60f4b7d31c7d/3e182d11-a316-40c8-be55-b3131341c9e0.pdf",
+        "tamanho": 133440
+       },
+       "ativo": true,
+       "recurso": "N",
+       "download": 0
+      }
+     ],
+     "criterioDeJulgamento": "1-Menor preço"
+    },
+    {
+     "id": "6cb1747e-9535-434b-81fe-582175a20120",
+     "situacao": "Cancelada",
+     "numeroProcesso": "08/2025",
+     "objeto": "Contratação De Empresa Especializada, Em Regime De Empreitada Global Com Fornecimento De Materiais, Mão De Obra, Para Executar As Adequações Das Instalações Elétricas De Circuitos De Condicionadores De Ar Da Faculdade Senac Da Cidade De Caçador/sc",
+     "linkPregaoEletronico": "https://licitacao.sc.senac.br",
+     "dataAbertura": "2025-11-25T15:00:00Z",
+     "dataSituacao": "2025-11-25T15:00:00Z",
+     "documentos": [
+      {
+       "id": "f2448f4c-c9cc-4aa0-b75e-1280b1e4754a",
+       "idLicitacao": "6cb1747e-9535-434b-81fe-582175a20120",
+       "nomeDocumento": "Adiamento / Prorrogação / Suspensão 1",
+       "tipoDocumento": {
+        "id": "0444a2ae-d425-4bfa-9566-e67a2a0e5c50",
+        "descricao": "Adiamento / Prorrogação / Suspensão"
+       },
+       "dataPublicacao": "2025-11-25T12:29:48-03:00",
+       "arquivoLicitacao": {
+        "nomeArquivo": "beba4d5d3ffb8fac7fe5ce87ac1eb2f75c4cd1a2.pdf",
+        "nomeArquivoFisico": "Licitações/6cb1747e-9535-434b-81fe-582175a20120/40717df1-a053-4323-af99-7d3e8d63a46b.pdf",
+        "tamanho": 88957
+       },
+       "ativo": true,
+       "recurso": "N",
+       "download": 1
+      },
+      {
+       "id": "967f4195-7d68-48af-bf1a-a450512aac70",
+       "idLicitacao": "6cb1747e-9535-434b-81fe-582175a20120",
+       "nomeDocumento": "Edital 1",
+       "tipoDocumento": {
+        "id": "2499f576-6764-4879-995a-f93557dabd71",
+        "descricao": "Edital"
+       },
+       "dataPublicacao": "2025-11-12T07:45:29-03:00",
+       "arquivoLicitacao": {
+        "nomeArquivo": "10309cbe2800a679343754aa99688bac884f9fac.pdf",
+        "nomeArquivoFisico": "Licitações/6cb1747e-9535-434b-81fe-582175a20120/bd5a79e7-d42f-4031-9a2a-a9c306fcec69.pdf",
+        "tamanho": 606477
+       },
+       "ativo": true,
+       "recurso": "N",
+       "download": 0
+      },
+      {
+       "id": "0ec99bde-e48f-4f56-9e31-936d3c21e23c",
+       "idLicitacao": "6cb1747e-9535-434b-81fe-582175a20120",
+       "nomeDocumento": "Participantes 1",
+       "tipoDocumento": {
+        "id": "9433b563-e662-47c2-bd50-37912e10afa5",
+        "descricao": "Participantes"
+       },
+       "dataPublicacao": "2026-10-08T15:33:53-03:00",
+       "arquivoLicitacao": {
+        "nomeArquivo": "Participantes.pdf",
+        "nomeArquivoFisico": "Licitações/6cb1747e-9535-434b-81fe-582175a20120/504960ac-9353-45d6-9d80-e48fa01c7014.pdf",
+        "tamanho": 59785
+       },
+       "ativo": true,
+       "recurso": "N",
+       "download": 0
+      }
+     ],
+     "criterioDeJulgamento": "1-Menor preço"
+    }
+   ]
+  },
+  {
+   "id": "00000000-0000-0000-0000-000000000000",
+   "modalidadeId": "780db3d0-f193-47d2-b96a-20155e00ea5f",
+   "modalidade": "Pregão eletrônico",
+   "dataUltimaCarga": "2026-10-08T18:37:44.616Z",
+   "dadosModalidadeLicitacao": [
+    {
+     "id": "3f953a98-a1a3-45bd-b00a-d8123c41b172",
+     "situacao": "Em processo",
+     "numeroProcesso": "33/2026",
+     "objeto": "Contratação De Empresa Especializada Para Fornecimento E Instalação De Móveis Sob Medida Para O Auditório Da Fecomércio",
+     "linkPregaoEletronico": "https://licitacao.sc.senac.br",
+     "dataAbertura": "2026-10-20T11:00:00Z",
+     "dataSituacao": "2026-10-20T11:00:00Z",
+     "documentos": [
+      {
+       "id": "e74f6f13-cb96-434c-a8b0-1c95aa3e1d4f",
+       "idLicitacao": "3f953a98-a1a3-45bd-b00a-d8123c41b172",
+       "nomeDocumento": "Edital 1",
+       "tipoDocumento": {
+        "id": "2499f576-6764-4879-995a-f93557dabd71",
+        "descricao": "Edital"
+       },
+       "dataPublicacao": "2026-10-06T10:56:25-03:00",
+       "arquivoLicitacao": {
+        "nomeArquivo": "68b7933743e4841afc42c7b7eb5b4974a1070228.pdf",
+        "nomeArquivoFisico": "Licitações/3f953a98-a1a3-45bd-b00a-d8123c41b172/f514758f-73f3-4116-93d2-86c7c05a63bc.pdf",
+        "tamanho": 454448
+       },
+       "ativo": true,
+       "recurso": "N",
+       "download": 13
+      },
+      {
+       "id": "37484781-f833-4fd8-b064-c89473eb28c0",
+       "idLicitacao": "3f953a98-a1a3-45bd-b00a-d8123c41b172",
+       "nomeDocumento": "Participantes 1",
+       "tipoDocumento": {
+        "id": "9433b563-e662-47c2-bd50-37912e10afa5",
+        "descricao": "Participantes"
+       },
+       "dataPublicacao": "2026-10-08T15:31:19-03:00",
+       "arquivoLicitacao": {
+        "nomeArquivo": "Participantes.pdf",
+        "nomeArquivoFisico": "Licitações/3f953a98-a1a3-45bd-b00a-d8123c41b172/4c6ea4de-8ba0-41dd-9603-1b056f0a4a20.pdf",
+        "tamanho": 59701
+       },
+       "ativo": true,
+       "recurso": "N",
+       "download": 6
+      }
+     ],
+     "criterioDeJulgamento": "1-Menor preço"
+    },
+    {
+     "id": "0036ca43-669d-417e-854e-d8f92b3f0f5b",
+     "situacao": "Em processo",
+     "numeroProcesso": "32/2026",
+     "objeto": "Aquisição De Mobiliários Para O Auditório, Sala De Controle E Sala Técnica Do Ed. Haroldo Soares Glavan",
+     "linkPregaoEletronico": "https://licitacao.sc.senac.br",
+     "dataAbertura": "2026-10-01T10:00:00Z",
+     "dataSituacao": "2026-10-01T10:00:00Z",
+     "documentos": [
+      {
+       "id": "59bc2474-e03a-4c3f-8ffe-576f69ccd24a",
+       "idLicitacao": "0036ca43-669d-417e-854e-d8f92b3f0f5b",
+       "nomeDocumento": "Esclarecimento / Diligência 1",
+       "tipoDocumento": {
+        "id": "4579e6f3-2192-4237-9cc9-6c6c64019e71",
+        "descricao": "Esclarecimento / Diligência"
+       },
+       "dataPublicacao": "2026-09-28T08:09:13-03:00",
+       "arquivoLicitacao": {
+        "nomeArquivo": "859371c78674de37bb9ae20743117bad002716e1.pdf",
+        "nomeArquivoFisico": "Licitações/0036ca43-669d-417e-854e-d8f92b3f0f5b/8e785321-334f-405c-bfed-309eb0aa5882.pdf",
+        "tamanho": 145677
+       },
+       "ativo": true,
+       "recurso": "N",
+       "download": 3
+      },
+      {
+       "id": "db1898f6-31d5-49bc-8026-cbddedf8bd94",
+       "idLicitacao": "0036ca43-669d-417e-854e-d8f92b3f0f5b",
+       "nomeDocumento": "Edital 1",
+       "tipoDocumento": {
+        "id": "2499f576-6764-4879-995a-f93557dabd71",
+        "descricao": "Edital"
+       },
+       "dataPublicacao": "2026-09-21T05:41:16-03:00",
+       "arquivoLicitacao": {
+        "nomeArquivo": "170377543ef02d8082756be316e863c382a1d1bc.pdf",
+        "nomeArquivoFisico": "Licitações/0036ca43-669d-417e-854e-d8f92b3f0f5b/e2c34740-cf38-4688-bad0-b12d03a423bf.pdf",
+        "tamanho": 664192
+       },
+       "ativo": true,
+       "recurso": "N",
+       "download": 3
+      },
+      {
+       "id": "4877437a-0c8e-4f1f-8386-8f5ac532160e",
+       "idLicitacao": "0036ca43-669d-417e-854e-d8f92b3f0f5b",
+       "nomeDocumento": "Participantes 1",
+       "tipoDocumento": {
+        "id": "9433b563-e662-47c2-bd50-37912e10afa5",
+        "descricao": "Participantes"
+       },
+       "dataPublicacao": "2026-10-08T15:31:50-03:00",
+       "arquivoLicitacao": {
+        "nomeArquivo": "Participantes.pdf",
+        "nomeArquivoFisico": "Licitações/0036ca43-669d-417e-854e-d8f92b3f0f5b/49f66858-bf6e-4279-b953-d3a44efff613.pdf",
+        "tamanho": 59697
+       },
+       "ativo": true,
+       "recurso": "N",
+       "download": 3
+      }
+     ],
+     "criterioDeJulgamento": "1-Menor preço"
+    }
+   ]
+  }
+ ]
+}
