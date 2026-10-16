@@ -27,10 +27,10 @@ export function PublicFrame({ children }: { children: React.ReactNode }) {
             Monitor de Licitações
           </Link>
           <nav aria-label="Conta" className="flex items-center gap-1 sm:gap-2">
-            <LinkButton href="/login" variant="ghost" size="sm">
+            <LinkButton href="/login" variant="ghost" size="sm" className="h-11! sm:h-8!">
               Entrar
             </LinkButton>
-            <LinkButton href="/cadastro" variant="primary" size="sm">
+            <LinkButton href="/cadastro" variant="primary" size="sm" className="h-11! sm:h-8!">
               Teste grátis
             </LinkButton>
           </nav>
