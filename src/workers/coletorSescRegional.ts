@@ -16,6 +16,7 @@
 // ============================================================
 
 import type { Agent } from 'node:https'
+import type { AxiosInstance } from 'axios'
 import { Worker } from 'bullmq'
 import { redisConnection } from '../queues'
 import { sescRegionalClient } from '../lib/httpClient'
@@ -64,6 +65,13 @@ function opcoesDeRede(url: string) {
   }
 }
 
+export interface RedeDeColeta {
+  cliente: AxiosInstance
+  timeoutMs: number
+}
+
+const REDE_DO_SESC: RedeDeColeta = { cliente: sescRegionalClient, timeoutMs: 45_000 }
+
 interface Sessao {
   cookie?: string
   referer?: string
@@ -73,17 +81,17 @@ interface Sessao {
 
 // Abre a página de sessão da unidade (se houver) e guarda os cookies que o
 // portal entrega, para reenviá-los nas páginas seguintes.
-async function abrirSessao(sessaoUrl: string, agente?: Agent): Promise<Sessao> {
-  const response = await sescRegionalClient.get(sessaoUrl, { timeout: 45_000, httpsAgent: agente, ...opcoesDeRede(sessaoUrl) })
+async function abrirSessao(sessaoUrl: string, agente: Agent | undefined, rede: RedeDeColeta): Promise<Sessao> {
+  const response = await rede.cliente.get(sessaoUrl, { timeout: rede.timeoutMs, httpsAgent: agente, ...opcoesDeRede(sessaoUrl) })
   const setCookie = response.headers['set-cookie'] as string[] | undefined
   const cookie = setCookie?.map((c) => c.split(';')[0]).join('; ')
   return { cookie: cookie || undefined, referer: sessaoUrl, agente }
 }
 
-async function baixarPagina(url: string, sessao: Sessao = {}, unidade?: SescUnidade): Promise<string> {
+async function baixarPagina(url: string, sessao: Sessao, unidade: SescUnidade, rede: RedeDeColeta): Promise<string> {
   const config = {
     responseType: 'arraybuffer' as const,
-    timeout: 45_000,
+    timeout: rede.timeoutMs,
     httpsAgent: sessao.agente,
     ...opcoesDeRede(url),
     headers: {
@@ -92,13 +100,13 @@ async function baixarPagina(url: string, sessao: Sessao = {}, unidade?: SescUnid
     },
   }
   // Portais cuja lista só sai por POST (API JSON do próprio site).
-  const post = unidade?.requisicaoPost?.(url)
+  const post = unidade.requisicaoPost?.(url)
   const response = post
-    ? await sescRegionalClient.post<ArrayBuffer>(url, post.corpo, {
+    ? await rede.cliente.post<ArrayBuffer>(url, post.corpo, {
         ...config,
         headers: { ...config.headers, 'Content-Type': post.contentType ?? 'application/json' },
       })
-    : await sescRegionalClient.get<ArrayBuffer>(url, config)
+    : await rede.cliente.get<ArrayBuffer>(url, config)
   return decodificarHtml(Buffer.from(response.data), String(response.headers['content-type'] ?? ''))
 }
 
@@ -118,9 +126,13 @@ export function mesmoDominio(a: string, b: string): boolean {
 
 // Coleta todas as páginas de uma unidade e devolve as licitações atuais,
 // sem repetir o mesmo fonteId (a mesma licitação pode aparecer em 2 páginas).
-export async function coletarUnidade(unidade: SescUnidade, agora = new Date()): Promise<NormalizedTender[]> {
+export async function coletarUnidade(
+  unidade: SescUnidade,
+  agora = new Date(),
+  rede: RedeDeColeta = REDE_DO_SESC
+): Promise<NormalizedTender[]> {
   const agente = agenteDaUnidade(unidade)
-  const sessao: Sessao = unidade.sessaoUrl ? await abrirSessao(unidade.sessaoUrl, agente) : { agente }
+  const sessao: Sessao = unidade.sessaoUrl ? await abrirSessao(unidade.sessaoUrl, agente, rede) : { agente }
   const fila = [...unidade.urls(agora)]
   const vistas = new Set<string>()
   const porFonteId = new Map<string, NormalizedTender>()
@@ -130,7 +142,7 @@ export async function coletarUnidade(unidade: SescUnidade, agora = new Date()): 
     if (vistas.has(url)) continue
     vistas.add(url)
 
-    const html = await baixarPagina(url, sessao, unidade)
+    const html = await baixarPagina(url, sessao, unidade, rede)
     for (const tender of unidade.parse(html, { url, agora })) {
       porFonteId.set(tender.fonteId, tender)
     }

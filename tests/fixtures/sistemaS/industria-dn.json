@@ -1,0 +1,125 @@
+{
+ "count": 4,
+ "next": null,
+ "previous": null,
+ "results": [
+  {
+   "id": 837,
+   "numero": 82,
+   "titulo": "Chamamento Público 082/2026 - Reforma Cozinha e Restaurante ISI",
+   "data_abertura": "2026-10-26",
+   "empresas": [
+    {
+     "id": 15,
+     "nome": "SESI/SENAI"
+    }
+   ],
+   "ano": 2026,
+   "modalidade": "RCA Disputa Aberta",
+   "objeto": "Contratação pelo menor preço global de empresa especializada para execução de obra civil de reforma no pavimento 1º Pavimento do Instituto Integrador para Inovação Industrial e Museu da Indústria Brasileira, localizado na Gleba A da Fazenda Barreiros, no limite do Distrito Federal com Goiás, próximo ao Alphaville Brasília, para cozinha industrial e restaurante, incluindo o fornecimento completo de equipamentos, marcenaria, materiais e mão de obra, conforme especificações técnicas descritas no Chamamento Público e seus anexos.",
+   "documentos": [
+    {
+     "id": 3934,
+     "descricao": "Chamamento Público 082/2026",
+     "arquivo": null,
+     "tipo": "Edital/Chamamento"
+    }
+   ],
+   "status": "Em andamento",
+   "criterios_julgamento": "RCA - Econômico"
+  },
+  {
+   "id": 836,
+   "numero": 81,
+   "titulo": "CHAMAMENTO PUBLICO-81-2026 - Kit fim de ano - Calendarios, cadernos",
+   "data_abertura": "2026-10-22",
+   "empresas": [
+    {
+     "id": 10,
+     "nome": "Sistema Indústria"
+    }
+   ],
+   "ano": 2026,
+   "modalidade": "RCA Disputa Aberta",
+   "objeto": "Contratação de empresa especializada para a produção, personalização, montagem, embalagem, transporte e entrega de materiais institucionais, conforme especificações técnicas, quantitativos, condições e demais exigências estabelecidas no Termo de Referência. \r\nA contratação compreenderá a produção dos seguintes kits:\r\n Kit 1 - 1.300 (mil e trezentos) kits institucionais montados, compostos por 01 (um) caderno, 01 (um) calendário de mesa, 01 (uma) caneta, 01 (uma) garrafa térmica, 01 (uma) caixa premium tampa e fundo com função de quadro, e 01 (um) Cartão colaborador com assinatura. (Caixa do kit com shrink). \r\n\r\n Kit 2 - 1.830 (mil oitocentos e trinta) kits institucionais montados, compostos por 01 (um) caderno, 01 (um) calendário de mesa e 01(um) cartão com assinatura. (kit com shrink). \r\n\r\nKit 3 - 3.823 (três mil oitocentos e vinte e três) kits institucionais montados, compostos por 01 (um) caderno, 01 (um) calendário de mesa e 01 (um) cartão sem assinatura. (kit com shrink).",
+   "documentos": [
+    {
+     "id": 3933,
+     "descricao": "CHAMAMENTO PUBLICO-81-2026 - Kit fim de ano - Calendarios, cadernos",
+     "arquivo": "https://static.portaldaindustria.com.br/media/filer_public/38/28/3828cf38-b139-43ce-8948-4f25da6f9c80/4_chamamento_e_anexos_publicados.zip",
+     "tipo": "Edital/Chamamento"
+    }
+   ],
+   "status": "Em andamento",
+   "criterios_julgamento": "RLC - Menor Preço"
+  },
+  {
+   "id": 805,
+   "numero": 36,
+   "titulo": "Chamamento 36/2026 - Licença de Suporte Swtches Core",
+   "data_abertura": "2026-08-06",
+   "empresas": [
+    {
+     "id": 5,
+     "nome": "CNI"
+    }
+   ],
+   "ano": 2026,
+   "modalidade": "RCA Disputa Aberta",
+   "objeto": "Contratação de empresa especializada para a renovação do fornecimento das licenças de suporte dos switches core do Sistema Indústria, pelo período de 60 (sessenta) meses, conforme os SKU - Stock Keeping Unit.",
+   "documentos": [
+    {
+     "id": 3879,
+     "descricao": "Chamamento 36/2026 - Licença de Suporte Swtches Core",
+     "arquivo": "https://static.portaldaindustria.com.br/media/filer_public/8e/62/8e62d1fc-c5b7-4c8e-8e39-22b7105d4bc0/termo_de_referencia_-_licencas_sw_core_-_ers_-_rv02_-_assinado.zip",
+     "tipo": "Edital/Chamamento"
+    },
+    {
+     "id": 3883,
+     "descricao": "Aviso de Adiamento",
+     "arquivo": "https://static.portaldaindustria.com.br/media/filer_public/83/5d/835d3c2c-7b6a-4fa5-abfe-95678dd23751/aviso_de_adiamento.docx",
+     "tipo": "Outros Documentos"
+    },
+    {
+     "id": 3880,
+     "descricao": "Aviso de Adiamento",
+     "arquivo": "https://static.portaldaindustria.com.br/media/filer_public/53/bf/53bf5114-2cb5-4f58-bc9d-460b5beacde6/termo_de_referencia_-_licencas_sw_core_-_ers_-_rv02_-_assinado.zip",
+     "tipo": "Outros Documentos"
+    },
+    {
+     "id": 3884,
+     "descricao": "Aviso de Adiamento",
+     "arquivo": "https://static.portaldaindustria.com.br/media/filer_public/b1/be/b1be66a2-b775-4bd2-8041-2fcac9f9298c/aviso_de_adiamento_3.docx",
+     "tipo": "Outros Documentos"
+    }
+   ],
+   "status": "Em andamento",
+   "criterios_julgamento": "RLC - Menor Preço"
+  },
+  {
+   "id": 771,
+   "numero": 18,
+   "titulo": "CHAMAMENTO N. 18/2026 - Serviço de Terceirização",
+   "data_abertura": "2026-03-27",
+   "empresas": [
+    {
+     "id": 10,
+     "nome": "Sistema Indústria"
+    }
+   ],
+   "ano": 2026,
+   "modalidade": "RCA Disputa Aberta",
+   "objeto": "O objeto desta seleção com disputa é a Contratação de empresa para prestação dos serviços de mão de obra especializada e gestão de serviços nas atividades de mensageria, garçom, copeiragem, cozinheiro, e supervisão nas dependências das Entidades e Órgãos Nacionais do Sistema Indústria, incluindo o SESI-Lab, em Brasília, observadas as condições e especificações estabelecidas no Termo de Referência – Anexo I deste Chamamento Público",
+   "documentos": [
+    {
+     "id": 3770,
+     "descricao": "Chamamento Público n. 18-2026",
+     "arquivo": "https://static.portaldaindustria.com.br/media/filer_public/e5/2a/e52ad351-70cc-4d10-916c-4e71f212b411/chamamento_publico_no_18-2026_-_servico_de_terceirizacao.zip",
+     "tipo": "Edital/Chamamento"
+    }
+   ],
+   "status": "Em andamento",
+   "criterios_julgamento": "RCA - Econômico"
+  }
+ ]
+}

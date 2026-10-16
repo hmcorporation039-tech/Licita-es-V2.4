@@ -1,0 +1,139 @@
+{
+ "count": 236,
+ "next": "http://licitacao.fiepi.com.br/api/licitacoes/?current=1&page=2&status=A",
+ "previous": null,
+ "results": [
+  {
+   "id": 454,
+   "numero": 39,
+   "titulo": "Fornecimento de equipamento",
+   "data_abertura": "26/10/2026",
+   "empresas": [
+    {
+     "id": 2,
+     "nome": "SENAI"
+    }
+   ],
+   "ano": 2026,
+   "modalidade": "Chamamento Público",
+   "objeto": "Fornecimento de equipamento para ampliar e modernizar a infraestrutura tecnológica do laboratório  industria 4.0 do Centro de formação profissional Cândido Athayde",
+   "documentos": [
+    {
+     "id": 2462,
+     "descricao": "Edital",
+     "arquivo": "/media/JURID-0860.pdf",
+     "tipo": "EDITAL",
+     "edital_filho": 454
+    }
+   ],
+   "status": "Aberto/Em execução",
+   "criterios_julgamento": null
+  },
+  {
+   "id": 452,
+   "numero": 38,
+   "titulo": "01 (um) Veículo tipo SUV",
+   "data_abertura": "26/10/2026",
+   "empresas": [
+    {
+     "id": 2,
+     "nome": "SENAI"
+    }
+   ],
+   "ano": 2026,
+   "modalidade": "Chamamento Público",
+   "objeto": "01 (um) Veículo tipo SUV",
+   "documentos": [
+    {
+     "id": 2457,
+     "descricao": "Edital",
+     "arquivo": "/media/14102026_SENAi_001.pdf",
+     "tipo": "EDITAL",
+     "edital_filho": 452
+    }
+   ],
+   "status": "Aberto/Em execução",
+   "criterios_julgamento": null
+  },
+  {
+   "id": 450,
+   "numero": 36,
+   "titulo": "Contratação de empresa especializada",
+   "data_abertura": "13/10/2026",
+   "empresas": [
+    {
+     "id": 2,
+     "nome": "SENAI"
+    }
+   ],
+   "ano": 2026,
+   "modalidade": "Chamamento Público",
+   "objeto": "Aquisição, fornecimento е instalação de divisórias piso-teto, portas, persianas entre vidros e materiais para tratamento acústico, incluindo os serviços de montagem das novas divisórias e desmontagem das divisórias existentes",
+   "documentos": [
+    {
+     "id": 2448,
+     "descricao": "edital",
+     "arquivo": "/media/edital.pdf",
+     "tipo": "EDITAL",
+     "edital_filho": 450
+    },
+    {
+     "id": 2449,
+     "descricao": "termo de referencia",
+     "arquivo": "/media/termo_de_referencia_senai_hv3Pm6m.pdf",
+     "tipo": "OUTROS DOCUMENTOS",
+     "edital_filho": 450
+    },
+    {
+     "id": 2450,
+     "descricao": "anexo senai",
+     "arquivo": "/media/anexo_senai.pdf",
+     "tipo": "OUTROS DOCUMENTOS",
+     "edital_filho": 450
+    }
+   ],
+   "status": "Aberto/Em execução",
+   "criterios_julgamento": null
+  },
+  {
+   "id": 448,
+   "numero": 35,
+   "titulo": "Fornecimento de equipamentos",
+   "data_abertura": "13/10/2026",
+   "empresas": [
+    {
+     "id": 2,
+     "nome": "SENAI"
+    }
+   ],
+   "ano": 2026,
+   "modalidade": "Chamamento Público",
+   "objeto": "Fornecimento de equipamentos para ampliar e modernizar a infraestrutura tecnológica do laboratório\r\nindústria 4.0 do Centro de Formação Profissional Cândido Athayde",
+   "documentos": [
+    {
+     "id": 2443,
+     "descricao": "Edital",
+     "arquivo": "/media/02102026_SNAi.pdf",
+     "tipo": "EDITAL",
+     "edital_filho": 448
+    },
+    {
+     "id": 2444,
+     "descricao": "Relatório de envio de arquivos",
+     "arquivo": "/media/02102026_Notifica%C3%A7%C3%A3o_de_PUBLICA%C3%87%C3%83O_de_edital.pdf",
+     "tipo": "OUTROS DOCUMENTOS",
+     "edital_filho": 448
+    },
+    {
+     "id": 2458,
+     "descricao": "Ata da Reunião inicial",
+     "arquivo": "/media/15102026_SeNAi.pdf",
+     "tipo": "OUTROS DOCUMENTOS",
+     "edital_filho": 448
+    }
+   ],
+   "status": "Aberto/Em execução",
+   "criterios_julgamento": null
+  }
+ ]
+}

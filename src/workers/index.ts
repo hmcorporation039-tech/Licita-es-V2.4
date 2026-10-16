@@ -13,6 +13,7 @@ import { startColetorSescGoWorker } from './coletorSescGo'
 import { startColetorSestSenatWorker } from './coletorSestSenat'
 import { startColetorSescRegionalWorker } from './coletorSescRegional'
 import { startColetorQueridoDiarioWorker } from './coletorQueridoDiario'
+import { startColetorSistemaSWorker } from './coletorSistemaS'
 import { startMatcherWorker } from './matcher'
 import { startNotificadorWorker } from './notificador'
 import { startAnaliseWorker } from './analise'
@@ -35,16 +36,17 @@ async function main() {
   const workerSestSenat = startColetorSestSenatWorker()
   const workerSescRegional = startColetorSescRegionalWorker()
   const workerQueridoDiario = startColetorQueridoDiarioWorker()
+  const workerSistemaS = startColetorSistemaSWorker()
   const workerMatcher = startMatcherWorker()
   const workerNotificador = startNotificadorWorker()
   const workerAnalise = startAnaliseWorker()
 
-  console.log('✅ Workers ativos: PNCP, ComprasNet, Novacap, FIEG, SESC GO, SEST SENAT, SESC Regionais, Querido Diário, Matcher, Notificador, Análise')
+  console.log('✅ Workers ativos: PNCP, ComprasNet, Novacap, FIEG, SESC GO, SEST SENAT, SESC Regionais, Querido Diário, Sistema S, Matcher, Notificador, Análise')
 
   // Alerta ao administrador só na falha DEFINITIVA (esgotadas as tentativas): uma tentativa
   // que falha e depois dá certo (portal instável) não é motivo para acordar ninguém.
   instalarAlertasDoProcesso('workers')
-  const todos = [workerPNCP, workerComprasnet, workerNovacap, workerFieg, workerSescGo, workerSestSenat, workerSescRegional, workerQueridoDiario, workerMatcher, workerNotificador, workerAnalise]
+  const todos = [workerPNCP, workerComprasnet, workerNovacap, workerFieg, workerSescGo, workerSestSenat, workerSescRegional, workerQueridoDiario, workerSistemaS, workerMatcher, workerNotificador, workerAnalise]
   for (const w of todos) {
     w.on('failed', (job, err) => {
       const tentativas = job?.opts?.attempts ?? 1
@@ -141,6 +143,7 @@ async function main() {
     await workerSestSenat.close()
     await workerSescRegional.close()
     await workerQueridoDiario.close()
+    await workerSistemaS.close()
     await workerMatcher.close()
     await workerNotificador.close()
     await workerAnalise.close()

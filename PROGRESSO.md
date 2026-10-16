@@ -115,6 +115,37 @@ Ver o cabeçalho de `scripts/enxugarRawJson.ts`.
 
 ---
 
+## v2.4 — Outubro/2026: produto comercial (PRs #30 a #42)
+
+| Entrega | PR | Status |
+|---|---|---|
+| Redesign azul-tinta (IBM Plex, design system, todas as telas, responsivo 375–1440 px) | #30 | ✅ |
+| Documentos da empresa com arquivo (anexar, trocar, baixar, pacote de habilitação ZIP) | #31 | ✅ |
+| Documentos da licitação: proposta comercial e 8 declarações em papel timbrado da empresa (logo, rodapé, assinatura), revisão editável, PDF e Word | #32 | ✅ |
+| Hotfix de segurança: PNG de logo que derrubava a API | #33 | ✅ |
+| Endurecimento pós-auditoria (convite com confirmação de e-mail, limite de login por conta+IP, tetos de tamanho, PATCH sem campos internos) | #34 | ✅ |
+| **Bela**: busca de licitações por voz e copiloto de lances do pregão (margem, faixa, sugestão até o mínimo, máximo de lances, histórico, resultado) | #35 | ✅ |
+| Relatório de segurança (auditoria white-box, Semgrep, OWASP ZAP, gitleaks, npm audit) — `docs/RELATORIO_SEGURANCA_2026-10-15.md` | #36 | ✅ |
+| Proposta readequada com o valor final do pregão | #37 | ✅ |
+| Fonte nova: diários oficiais municipais (Querido Diário) | #38 | ✅ |
+| Alertas de cláusulas impugnáveis (índices, faturamento, atestados, propriedade/sede, documentos fora do rol) + aviso no topo da licitação | #39 | ✅ |
+| Gerador de impugnação e de pedido de esclarecimento | #40 | ✅ |
+| Correções do teste de ponta a ponta: **fuso do PNCP** (horários 3 h adiantados; migration 27 corrige 47.966 registros), deslocamento até o local de execução, número real do edital, avisos de preço acima do estimado, alterações não salvas | #41 | ✅ |
+| Fonte nova: Sistema S — SENAC (API nacional, 28 unidades), SESI/SENAI/federações (Portal de Licitações da indústria, 13 portais; Paradigma, 9 federações) | #42 | 🟡 |
+
+### Pendente (próxima sessão)
+
+| O que | Observação |
+|---|---|
+| Cobrança por assinatura (cartão + Pix Automático) | Recomendação: Asaas. Aguarda decisão de planos/preços e a conta de teste |
+| Sistema S restante | SP (HTML), AC/MA/RN (páginas próprias); PR bloqueado por Cloudflare |
+| Fuso dos parsers HTML do SESC regional | O Paradigma (SESC DN/SP/RJ/BA/RS e indústria) foi corrigido no #42; os parsers HTML dos demais SESC montam datas com `new Date(ano, mes, dia…)` no fuso do processo — em produção (UTC) saem 3 h adiantadas. Mesma correção: hora de Brasília explícita (a regra de diferença exata de 3 h já evita aviso falso) |
+| `totalNew` dos coletores inflado | Ex.: sesc-go conta ~336 "novos" por rodada com 953 no total — investigar a contagem |
+| Endurecimento | CSP com nonce e token fora do `localStorage`; corrida nas cotas; Actions fixadas por SHA (precisa `gh auth refresh -s workflow`) |
+| Pentest final antes do lançamento | Repetir o roteiro do relatório de 15/10 incluindo a cobrança |
+
+---
+
 ## Próximas fases (não iniciadas)
 
 | Fase | Escopo | Status |

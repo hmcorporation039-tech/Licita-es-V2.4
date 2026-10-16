@@ -129,3 +129,14 @@ export const queridoDiarioArquivosClient = createRateLimitedClient('https://data
 queridoDiarioArquivosClient.defaults.timeout = 60_000
 queridoDiarioArquivosClient.defaults.maxContentLength = 8 * 1024 * 1024
 queridoDiarioArquivosClient.defaults.maxRedirects = 0
+
+export const senacTransparenciaClient = createRateLimitedClient('https://transparencia.senac.br/service/api', 1200)
+senacTransparenciaClient.defaults.timeout = 60_000
+senacTransparenciaClient.defaults.maxContentLength = 20 * 1024 * 1024
+
+export const portalDaIndustriaClient = createRateLimitedClient('', 1200, { Accept: 'application/json', 'Accept-Encoding': 'gzip' })
+portalDaIndustriaClient.defaults.timeout = 60_000
+portalDaIndustriaClient.defaults.maxContentLength = 20 * 1024 * 1024
+
+export const paradigmaDaIndustriaClient = createRateLimitedClient('', 1200, { Accept: 'application/json, text/html;q=0.9, */*;q=0.8' })
+paradigmaDaIndustriaClient.defaults.timeout = 60_000

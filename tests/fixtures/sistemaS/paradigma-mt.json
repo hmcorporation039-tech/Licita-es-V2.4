@@ -1,0 +1,82 @@
+{
+ "d": [
+  {
+   "nCdProcesso": 57197,
+   "sNrProcessoDisplay": "OC 0127-10/2026",
+   "sNrEdital": "OC 0127-10/2026",
+   "sDsObjeto": "AQUISIÇÃO DE MATERIAIS DIDATICOS PARA A UTILIZAÇÃO DE AULAS PRÁTICAS DURANTE O CURSO DE: MECANICA INDUSTRIAL (TEC. 168.001 E 168.002) NA UNIDADE OPERACIONAL SENAI SINOP",
+   "sNmEmpresa": "SENAI - SERVICO NACIONAL DE APRENDIZAGEM INDUSTRIAL SINOP",
+   "sNmModalidade": "Compra direta",
+   "sNmModalidadeTipo": "",
+   "sDsSituacao": "Análise dos lances",
+   "tDtInicial": "/Date(1792012800000)/",
+   "tDtFinal": "/Date(1792101600000)/",
+   "dVlEstimado": 0
+  },
+  {
+   "nCdProcesso": 57279,
+   "sNrProcessoDisplay": "OC 0534-10/2026",
+   "sNrEdital": "\u0013\u0012\u0012\u0013",
+   "sDsObjeto": "AQUISIÇÃO DE APOIO ERGONÔMICO PARA ATENDER AO SESI ESCOLA VÁRZEA GRANDE.",
+   "sNmEmpresa": "SESI - SERVICO SOCIAL DA INDUSTRIA VÁRZEA GRANDE",
+   "sNmModalidade": "Compra direta",
+   "sNmModalidadeTipo": "",
+   "sDsSituacao": "Recebimento de lances",
+   "tDtInicial": "/Date(1792099860000)/",
+   "tDtFinal": "/Date(1792436400000)/",
+   "dVlEstimado": 0
+  },
+  {
+   "nCdProcesso": 815,
+   "sNrProcessoDisplay": "OC 0177-10/2026",
+   "sNrEdital": "\u0013\u0012\u0012\u0013",
+   "sDsObjeto": "AQUISIÇÃO DE CALENDÁRIO DE MESA PERSONALIZADO, DESTINADOS À COMPOSIÇÃO DO KIT DE DESENVOLVIMENTO DOS PROFISSIONAIS DO SISTEMA FIEMT, PARA UTILIZAÇÃO NO EVENTO SFIEMT SUMMIT 2027, NOS TERMOS DA DESCRIÇÃO ANEXA.",
+   "sNmEmpresa": "SFIEMT",
+   "sNmModalidade": "Cotação",
+   "sNmModalidadeTipo": "",
+   "sDsSituacao": "Em andamento",
+   "tDtInicial": "/Date(1791922800000)/",
+   "tDtFinal": "/Date(1792182000000)/",
+   "dVlEstimado": 0
+  },
+  {
+   "nCdProcesso": 57168,
+   "sNrProcessoDisplay": "OC 0618-10/2026",
+   "sNrEdital": "\u0013\u0012\u0012\u0013",
+   "sDsObjeto": "AQUISIÇÃO DE MATERIAL DE COPA E COZINNHA (BULE DE ALUMINIO)",
+   "sNmEmpresa": "CONDOMINIO CASA DA IND DO ESTADO MT",
+   "sNmModalidade": "Compra direta",
+   "sNmModalidadeTipo": "",
+   "sDsSituacao": "Análise dos lances",
+   "tDtInicial": "/Date(1791924180000)/",
+   "tDtFinal": "/Date(1792094400000)/",
+   "dVlEstimado": 0
+  },
+  {
+   "nCdProcesso": 343,
+   "sNrProcessoDisplay": "CHA 120/2026 OC 1489-09/2026 ",
+   "sNrEdital": "CHA 120/2026 OC 1489-09/2026 ",
+   "sDsObjeto": "AQUISIÇÃO DE EQUIPAMENTOS DE INFORMÁTICA, MEDIANTE TERMO DE REGISTRO DE PREÇOS, PARA ATENDER AS NECESSIDADES DO SESI DR/MT E SENAI DR/MT, DE ACORDO COM O PLANO DIRETOR DE INVESTIMENTO – PDI/2026, NOS TERMOS DA DESCRIÇÃO ANEXA.",
+   "sNmEmpresa": "SESI-SENAI",
+   "sNmModalidade": "Processo de contratação",
+   "sNmModalidadeTipo": "RCA Com Disputa",
+   "sDsSituacao": "Em andamento",
+   "tDtInicial": "/Date(1791311460000)/",
+   "tDtFinal": "/Date(1791981000000)/",
+   "dVlEstimado": 0
+  },
+  {
+   "nCdProcesso": 820,
+   "sNrProcessoDisplay": "OC 1426-07/2026",
+   "sNrEdital": "\u0013\u0012\u0012\u0013",
+   "sDsObjeto": "CONTRATAÇÃO DE EMPRESA ESPECIALIZADA, MEDIANTE TERMO DE REGISTRO DE PREÇOS (TRP), PARA PRESTAÇÃO DOS SERVIÇOS DE COLETA, CUSTÓDIA E TRANSPORTE DE VALORES PROVENIENTE DAS OPERAÇÕES FINANCEIRAS REALIZADAS NAS CANTINAS, RESTAURANTES DA ALIMENTAÇÃO SOCIAL NUTRE MAIS E NAS ESCOLAS DO SESI, EM TODO ESTADO DE MATO GROSSO, CONFORME DESCRITO NESTE TERMO DE REFERÊNCIA E SEUS RESPECTIVOS ANEXOS.",
+   "sNmEmpresa": "SESI DR - COMPRADOR",
+   "sNmModalidade": "Cotação",
+   "sNmModalidadeTipo": "",
+   "sDsSituacao": "Em andamento",
+   "tDtInicial": "/Date(1791928800000)/",
+   "tDtFinal": "/Date(1793721600000)/",
+   "dVlEstimado": 0
+  }
+ ]
+}

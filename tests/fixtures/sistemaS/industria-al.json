@@ -1,0 +1,106 @@
+{
+ "count": 3,
+ "next": null,
+ "previous": null,
+ "results": [
+  {
+   "id": 2069,
+   "numero": 53,
+   "titulo": "ENERGIA SOLAR FOTOVOLTAICA",
+   "data_abertura": "2026-10-26",
+   "empresas": [
+    {
+     "id": 8,
+     "nome": "SESI / SENAI - AL"
+    }
+   ],
+   "ano": 2026,
+   "modalidade": "RCA Disputa Fechada",
+   "objeto": "Processo nº 53/2026; Critério: Menor Preço Global; Abertura: 26/10/2026; Horário: 09h. Local: Avenida Fernandes Lima, 385, Farol, Maceió, Alagoas. Fone (82) 2121 3000 – E-mail: licitacao@al.senai.br\r\n\r\nObjeto: Contratação de Empresa Especializada para a Instalação de Energia Solar Fotovoltaica ON-GRID",
+   "documentos": [
+    {
+     "id": 8380,
+     "descricao": "CHAMAMENTO PÚBLICO",
+     "arquivo": "/media/CHAMAMENTO_P%C3%9ABLICO_SESI_SENAI_N%C2%BA_53-2026_-_ENERGIA_SOLAR_FOTOVOLTAICA.pdf",
+     "tipo": "CHAMAMENTO"
+    }
+   ],
+   "status": "Em andamento",
+   "criterios_julgamento": "Menor Preço"
+  },
+  {
+   "id": 2068,
+   "numero": 52,
+   "titulo": "MÁQUINA CNC ROUTER LASER",
+   "data_abertura": "2026-10-23",
+   "empresas": [
+    {
+     "id": 7,
+     "nome": "SESI - AL"
+    }
+   ],
+   "ano": 2026,
+   "modalidade": "RCA Disputa Fechada",
+   "objeto": "Processo nº 52/2026; Critério: Menor Preço; Abertura: 23/10/2026; Horário: 09h\r\nLocal: Avenida Fernandes Lima, 385, Farol, Maceió, Alagoas. Fone (82) 2121 3000 – E-mail: licitacao@al.senai.br\r\n\r\nObjeto: Aquisição de Máquina CNC Router Laser",
+   "documentos": [
+    {
+     "id": 8372,
+     "descricao": "CHAMAMENTO PÚBLICO",
+     "arquivo": "/media/CHAMAMENTO_P%C3%9ABLICO_SESI_N%C2%BA_52-2026_-_M%C3%81QUINA_CNC_ROUTER.pdf",
+     "tipo": "CHAMAMENTO"
+    }
+   ],
+   "status": "Em andamento",
+   "criterios_julgamento": "Menor Preço"
+  },
+  {
+   "id": 1981,
+   "numero": 1,
+   "titulo": "PROGRAMA \"O FUTURO É DELAS\"",
+   "data_abertura": "2026-06-11",
+   "empresas": [
+    {
+     "id": 6,
+     "nome": "SENAI - AL"
+    }
+   ],
+   "ano": 2026,
+   "modalidade": "Concurso",
+   "objeto": "O presente edital tem por objetivo apresentar regras e condições para a seleção de empreendedoras que participarão do programa “O FUTURO É DELAS”, decorrente do Convite 001/2024 – Impacthon: Desafios de Impacto – Inclusão Produtiva de Mulheres no Setor de STEM, no âmbito do Acordo de Cooperação Financeira nº 274/2026, celebrado entre a Caixa Econômica Federal, na qualidade de instituição financeira, e o Serviço Nacional de Aprendizagem Industrial de Alagoas – Departamento Regional de Alagoas (SENAI/AL), inscrito no CNPJ sob o nº 03.798.361/0001-13, sediado à Avenida Fernandes Lima, 385, 4º andar, Farol, CEP 57.055-000, Maceió/AL, na condição de Agente Executor.\r\n\r\nhttps://conteudo.fiea.com.br/o-futuro-e-delas",
+   "documentos": [
+    {
+     "id": 8069,
+     "descricao": "EDITAL",
+     "arquivo": "/media/Edital_Caixa_STEM_v260611_1.pdf",
+     "tipo": "EDITAL"
+    },
+    {
+     "id": 8166,
+     "descricao": "RESULTADO PRELIMINAR",
+     "arquivo": "/media/resultado_preliminar.pdf",
+     "tipo": "RESULTADO"
+    },
+    {
+     "id": 8180,
+     "descricao": "RESULTADO FINAL",
+     "arquivo": "/media/Resultado_Final_Programa_-_O_Futuro_%C3%A9_Delas_1.pdf",
+     "tipo": "RESULTADO FINAL"
+    },
+    {
+     "id": 8147,
+     "descricao": "ERRATA - ITEM 15 CRONOGRAMA GERAL DO PROGRAMA",
+     "arquivo": "/media/RETIFICA%C3%87%C3%83O_ITEM_15.pdf",
+     "tipo": "ERRATAS E AVISOS"
+    },
+    {
+     "id": 8148,
+     "descricao": "ALTERAÇÃO CRONOGRAMA",
+     "arquivo": "/media/ALTERA%C3%87%C3%83O_CRONOGRAMA.pdf",
+     "tipo": "ERRATAS E AVISOS"
+    }
+   ],
+   "status": "Em andamento",
+   "criterios_julgamento": null
+  }
+ ]
+}

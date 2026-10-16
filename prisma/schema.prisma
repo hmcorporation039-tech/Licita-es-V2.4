@@ -278,6 +278,7 @@ enum FonteEnum {
   // services/sescRegional/. A unidade vai em Tender.orgao/uf.
   SESC_REGIONAL
   QUERIDO_DIARIO
+  SISTEMA_S
 }
 
 // ============================================================

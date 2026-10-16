@@ -1,0 +1,69 @@
+{
+ "d": [
+  {
+   "nCdProcesso": 16063,
+   "sNrProcessoDisplay": "SDE 2026004296",
+   "sNrEdital": "SDE 2026004296",
+   "sDsObjeto": "Contratação de empresa para prestação de serviços de licenciamento do evento ENA – Encontro Nacional de Automação, a ser realizado no Expominas, situado na Avenida Amazonas, nº 6.200, Bairro Gameleira, Belo Horizonte/MG, conforme condições do termo de referência anexo.",
+   "sNmEmpresa": "FIEMG - SEDE",
+   "sNmModalidade": "Processo de contratação",
+   "sNmModalidadeTipo": "Processo de seleção sem disputa",
+   "sDsSituacao": "Em andamento",
+   "tDtInicial": "/Date(1792097700000)/",
+   "tDtFinal": "/Date(1792418400000)/",
+   "dVlEstimado": 0
+  },
+  {
+   "nCdProcesso": 16059,
+   "sNrProcessoDisplay": "SDE 2026004292",
+   "sNrEdital": "SDE 2026004292",
+   "sDsObjeto": "Contratação de empresa para serviços de transporte rodoviário de passageiros para a realização de até 16(dezesseis) viagens, ida e volta, sob demanda, com a disponibilização de ônibus com capacidade mínima para 40 (quarenta) passageiros, para a cidade de Raposos/MG, em atendimento ao projeto de Lei Federal de Incentivo à Cultura CICLO DE VIVÊNCIAS ODS – PRONAC 2512043, conforme condições do termo de referência anexo.",
+   "sNmEmpresa": "SESI/DRMG - SEDE",
+   "sNmModalidade": "Processo de contratação",
+   "sNmModalidadeTipo": "Processo de seleção sem disputa",
+   "sDsSituacao": "Em andamento",
+   "tDtInicial": "/Date(1792090200000)/",
+   "tDtFinal": "/Date(1792422000000)/",
+   "dVlEstimado": 0
+  },
+  {
+   "nCdProcesso": 15641,
+   "sNrProcessoDisplay": "CDE 2026000475",
+   "sNrEdital": "CDE 2026000475",
+   "sDsObjeto": "Contratação de empresa especializada na prestação de serviços contínuos de portaria em atendimento a unidade SENAI CFP Luiz de Paula, situada a avenida Dulce Sarmento, n.º 601, bairro Alto São João, Montes Claros – MG",
+   "sNmEmpresa": "SENAI/DRMG - SEDE",
+   "sNmModalidade": "Processo de contratação",
+   "sNmModalidadeTipo": "Processo de seleção com disputa",
+   "sDsSituacao": "Em andamento",
+   "tDtInicial": "/Date(1792011060000)/",
+   "tDtFinal": "/Date(1792778400000)/",
+   "dVlEstimado": 0
+  },
+  {
+   "nCdProcesso": 16060,
+   "sNrProcessoDisplay": "SDE 2026004293",
+   "sNrEdital": "SDE 2026004293",
+   "sDsObjeto": "Contratação de empresa para prestação de serviços, com cessão temporária de estruturas para ambientação, abrangendo todas as etapas de montagem, instalação, operação e desmontagem, em atendimento do evento do Sistema FIEMG, a ser realizado no BH Shopping, conforme condições do termo de referência anexo.",
+   "sNmEmpresa": "IEL/NRMG - SEDE",
+   "sNmModalidade": "Processo de contratação",
+   "sNmModalidadeTipo": "Processo de seleção sem disputa",
+   "sDsSituacao": "Em andamento",
+   "tDtInicial": "/Date(1792092600000)/",
+   "tDtFinal": "/Date(1792179000000)/",
+   "dVlEstimado": 0
+  },
+  {
+   "nCdProcesso": 15994,
+   "sNrProcessoDisplay": "SDE 2026004237",
+   "sNrEdital": "SDE 2026004237",
+   "sDsObjeto": "Materiais elétricos para construção do quadro elétrico do kit didático de compressor de ar (protótipo). SENAI / ITAUNA",
+   "sNmEmpresa": "SENAI/DRMG - SEDE",
+   "sNmModalidade": "Processo de contratação",
+   "sNmModalidadeTipo": "Processo de seleção sem disputa",
+   "sDsSituacao": "Em andamento",
+   "tDtInicial": "/Date(1791893400000)/",
+   "tDtFinal": "/Date(1792011600000)/",
+   "dVlEstimado": 0
+  }
+ ]
+}

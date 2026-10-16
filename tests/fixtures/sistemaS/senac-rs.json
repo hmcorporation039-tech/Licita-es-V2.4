@@ -1,0 +1,43 @@
+{
+ "success": true,
+ "data": [
+  {
+   "id": "00000000-0000-0000-0000-000000000000",
+   "modalidadeId": "780db3d0-f193-47d2-b96a-20155e00ea5f",
+   "modalidade": "Pregão eletrônico",
+   "dataUltimaCarga": "2026-10-15T17:35:57.509Z",
+   "dadosModalidadeLicitacao": [
+    {
+     "id": "8f5218d8-8896-4363-88e5-226823d1cd8d",
+     "situacao": "Em processo",
+     "numeroProcesso": "042/2026",
+     "objeto": "Contratação de empresa especializada em serviços de reforma em embarcação.",
+     "linkPregaoEletronico": "https://www.portaldecompraspublicas.com.br/processos/rs/servico-nacional-de-aprendizagem-comercial-de-porto-alegre-senac-5365/pe-pcp-042-2026-2026-517603",
+     "dataAbertura": "2026-10-23T09:30:00Z",
+     "documentos": [],
+     "criterioDeJulgamento": "1-Menor preço"
+    },
+    {
+     "id": "5212c268-9f7f-48fe-a908-f1980a10c5b2",
+     "situacao": "Em processo",
+     "numeroProcesso": "041/2026",
+     "objeto": "Contratação de empresa especializada na prestação de serviço de tradução e interpretação da Língua Portuguesa para Libras para o Senac Novo Hamburgo",
+     "linkPregaoEletronico": " https://www.portaldecompraspublicas.com.br/processos/rs/servico-nacional-de-aprendizagem-comercial-de-porto-alegre-senac-5365/pe-pcp-041-2026-2026-515898",
+     "dataAbertura": "2026-10-23T09:30:00Z",
+     "documentos": [],
+     "criterioDeJulgamento": "1-Menor preço"
+    },
+    {
+     "id": "ce176c05-1650-4aec-a06a-c773e5c97eb9",
+     "situacao": "Em processo",
+     "numeroProcesso": "040/2026",
+     "objeto": "Registro de Preços para eventual aquisição de utensílios de inox e alumínio para a composição dos laboratórios de Gastronomia das Escolas do Senac-RS",
+     "linkPregaoEletronico": "https://www.portaldecompraspublicas.com.br/processos/rs/servico-nacional-de-aprendizagem-comercial-de-porto-alegre-senac-5365/rpe-pcp-040-2026-2026-514297",
+     "dataAbertura": "2026-10-13T09:30:00Z",
+     "documentos": [],
+     "criterioDeJulgamento": "1-Menor preço"
+    }
+   ]
+  }
+ ]
+}
