@@ -15,7 +15,7 @@ const OPCOES_DE_TIPO = [
   { valor: 'PESSOA_FISICA', rotulo: 'Pessoa física (CPF)' },
 ] as const
 
-const TRIAL_DIAS_PADRAO = 14
+const TRIAL_DIAS_PADRAO = 7
 const CHAVES_DE_UTM = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'] as const
 
 export type InteresseInicial = Interesse

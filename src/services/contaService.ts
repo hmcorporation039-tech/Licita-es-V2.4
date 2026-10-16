@@ -40,7 +40,7 @@ import {
   tokenUtilizavel,
 } from '../lib/tokensDeConta'
 
-export const TRIAL_DIAS_PADRAO = 14
+export const TRIAL_DIAS_PADRAO = 7
 
 export function trialDias(env: NodeJS.ProcessEnv = process.env): number {
   const n = Number(env.TRIAL_DIAS)
