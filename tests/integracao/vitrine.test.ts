@@ -42,7 +42,7 @@ rodar('Vitrine pública da página de entrada', () => {
   })
 
   afterAll(async () => {
-    await prisma.tender.deleteMany({ where: { fonteId: `vitrine-${sufixo}` } })
+    await prisma.tender.deleteMany({ where: { fonteId: { startsWith: `vitrine-${sufixo}` } } })
     server?.close()
     desconectar()
   })
@@ -54,6 +54,21 @@ rodar('Vitrine pública da página de entrada', () => {
     expect(corpo.total).toBe(1)
     expect(corpo.amostras[0]).toMatchObject({ orgao: 'Prefeitura de Teste', local: 'Anápolis/GO', fonte: 'PNCP' })
     expect(Object.keys(corpo.amostras[0]).sort()).toEqual(['fonte', 'local', 'objeto', 'orgao', 'prazo'])
+  })
+
+  it('só conta o que tem prazo ou sessão confirmados: dispensa sem data e processo sem data coletado há pouco ficam de fora', async () => {
+    const termo = `rodos especiais ${sufixo}`
+    const comum = { objeto: `Aquisição de ${termo}`, objetoNorm: `aquisicao de ${termo}`, uf: 'GO', situacao: 'ABERTA' as const, rawJson: {}, contentHash: sufixo }
+    await prisma.tender.createMany({
+      data: [
+        { ...comum, fonte: 'PNCP', fonteId: `vitrine-${sufixo}-com-prazo`, modalidade: 'PREGAO_ELETRONICO', encerramentoAt: new Date(Date.now() + 3 * 86_400_000) },
+        { ...comum, fonte: 'PNCP', fonteId: `vitrine-${sufixo}-dispensa-sem-data`, modalidade: 'DISPENSA_SEM_DISPUTA', publicadoAt: new Date(Date.now() - 2 * 86_400_000) },
+        { ...comum, fonte: 'SEST_SENAT', fonteId: `vitrine-${sufixo}-sem-data`, modalidade: 'OUTROS' },
+        { ...comum, fonte: 'SEST_SENAT', fonteId: `vitrine-${sufixo}-sessao-futura`, modalidade: 'OUTROS', aberturaAt: new Date(Date.now() + 4 * 86_400_000) },
+      ],
+    })
+    const corpo = (await (await fetch(`${base}/api/public/vitrine?q=${encodeURIComponent(termo)}`)).json()) as { total: number }
+    expect(corpo.total).toBe(2)
   })
 
   it('recusa busca curta demais e informa as estatísticas', async () => {
