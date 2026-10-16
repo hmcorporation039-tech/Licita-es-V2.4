@@ -44,6 +44,17 @@ export function whereLicitacaoAberta(agora: Date = new Date()): Prisma.TenderWhe
   }
 }
 
+export function whereLicitacaoComPrazoConfirmado(agora: Date = new Date()): Prisma.TenderWhereInput {
+  return {
+    situacao: 'ABERTA',
+    valorHomologado: null,
+    OR: [
+      { encerramentoAt: { gte: agora } },
+      { encerramentoAt: null, fonte: { notIn: FONTES_ABERTURA_E_INICIO }, aberturaAt: { gte: inicioDoDia(agora) } },
+    ],
+  }
+}
+
 export interface DatasDaLicitacao {
   fonte: FonteEnum
   situacao: SituacaoEnum

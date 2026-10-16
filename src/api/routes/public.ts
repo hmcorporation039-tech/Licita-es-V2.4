@@ -11,7 +11,7 @@ import { trialDias } from '../../services/contaService'
 import { TERMOS_VERSAO } from '../../lib/legal'
 import { z } from 'zod'
 import { normalize } from '../../lib/geoService'
-import { whereLicitacaoAberta } from '../../lib/licitacaoAberta'
+import { whereLicitacaoComPrazoConfirmado } from '../../lib/licitacaoAberta'
 import { dataDaSessao } from '../../lib/dataDaSessao'
 import { vitrineLimiter } from '../rateLimit'
 
@@ -66,8 +66,8 @@ publicRouter.get(
       return
     }
     const [abertas, porFonte, ultimaColeta] = await Promise.all([
-      prisma.tender.count({ where: whereLicitacaoAberta() }),
-      prisma.tender.groupBy({ by: ['fonte'], where: whereLicitacaoAberta(), _count: { _all: true } }),
+      prisma.tender.count({ where: whereLicitacaoComPrazoConfirmado() }),
+      prisma.tender.groupBy({ by: ['fonte'], where: whereLicitacaoComPrazoConfirmado(), _count: { _all: true } }),
       prisma.workerLog.findFirst({ where: { status: { in: ['SUCCESS', 'PARTIAL'] }, finishedAt: { not: null } }, orderBy: { finishedAt: 'desc' }, select: { finishedAt: true } }),
     ])
     const valor = { abertas, fontes: porFonte.filter((f) => f._count._all > 0).length, atualizadoEm: ultimaColeta?.finishedAt ?? null }
@@ -95,7 +95,7 @@ publicRouter.get(
       return
     }
     const where = {
-      AND: [whereLicitacaoAberta(), { OR: [{ objetoNorm: { contains: qNorm } }, { objetoResumidoNorm: { contains: qNorm } }] }, ...(uf ? [{ uf }] : [])],
+      AND: [whereLicitacaoComPrazoConfirmado(), { OR: [{ objetoNorm: { contains: qNorm } }, { objetoResumidoNorm: { contains: qNorm } }] }, ...(uf ? [{ uf }] : [])],
     }
     const [total, amostras] = await Promise.all([
       prisma.tender.count({ where }),
