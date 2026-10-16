@@ -71,7 +71,7 @@ export function dataParadigma(valor?: string | null): Date | undefined {
   const ms = Number(valor?.match(/-?\d+/)?.[0])
   if (!Number.isFinite(ms)) return undefined
   const u = new Date(ms)
-  const d = new Date(u.getUTCFullYear(), u.getUTCMonth(), u.getUTCDate(), u.getUTCHours(), u.getUTCMinutes())
+  const d = new Date(Date.UTC(u.getUTCFullYear(), u.getUTCMonth(), u.getUTCDate(), u.getUTCHours() + 3, u.getUTCMinutes()))
   return Number.isNaN(d.getTime()) ? undefined : d
 }
 

@@ -139,7 +139,7 @@ Ver o cabeçalho de `scripts/enxugarRawJson.ts`.
 |---|---|
 | Cobrança por assinatura (cartão + Pix Automático) | Recomendação: Asaas. Aguarda decisão de planos/preços e a conta de teste |
 | Sistema S restante | SP (HTML), AC/MA/RN (páginas próprias); PR bloqueado por Cloudflare |
-| Fuso do SESC via Paradigma | O leitor de datas do Paradigma (SESC DN/SP/RJ/BA/RS) usa o fuso do processo; em produção (UTC) as datas devem estar 3 h adiantadas — mesma correção do PNCP |
+| Fuso dos parsers HTML do SESC regional | O Paradigma (SESC DN/SP/RJ/BA/RS e indústria) foi corrigido no #42; os parsers HTML dos demais SESC montam datas com `new Date(ano, mes, dia…)` no fuso do processo — em produção (UTC) saem 3 h adiantadas. Mesma correção: hora de Brasília explícita (a regra de diferença exata de 3 h já evita aviso falso) |
 | `totalNew` dos coletores inflado | Ex.: sesc-go conta ~336 "novos" por rodada com 953 no total — investigar a contagem |
 | Endurecimento | CSP com nonce e token fora do `localStorage`; corrida nas cotas; Actions fixadas por SHA (precisa `gh auth refresh -s workflow`) |
 | Pentest final antes do lançamento | Repetir o roteiro do relatório de 15/10 incluindo a cobrança |

@@ -19,7 +19,7 @@ const dataLocal = (ano: number, mes: number, dia: number, hora: number, minuto =
 
 describe('Paradigma — saída do SESC não muda com a generalização', () => {
   it('as cinco unidades do SESC produzem exatamente o mesmo resultado de antes', () => {
-    const agoraSesc = new Date(2026, 8, 30, 12, 0)
+    const agoraSesc = new Date('2026-09-30T12:00:00-03:00')
     const ctx = (url: string) => ({ url, agora: agoraSesc })
     const misto = criarUnidadeParadigma({ uf: 'RS', nome: 'Sesc Rio Grande do Sul', base: 'https://x.test/app' })
     const atual = {
@@ -30,7 +30,10 @@ describe('Paradigma — saída do SESC não muda com a generalização', () => {
       misto: misto.parse(lerSesc('paradigma-dn.json'), ctx('https://x.test/app')),
     }
     const dois = (n: number) => String(n).padStart(2, '0')
-    const local = (d: Date) => `${d.getFullYear()}-${dois(d.getMonth() + 1)}-${dois(d.getDate())} ${dois(d.getHours())}:${dois(d.getMinutes())}`
+    const local = (d: Date) => {
+      const b = new Date(d.getTime() - 3 * 3_600_000)
+      return `${b.getUTCFullYear()}-${dois(b.getUTCMonth() + 1)}-${dois(b.getUTCDate())} ${dois(b.getUTCHours())}:${dois(b.getUTCMinutes())}`
+    }
     const serial = JSON.stringify(
       atual,
       function (this: Record<string, unknown>, k, v) {
