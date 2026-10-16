@@ -18,7 +18,7 @@ import { calcularPrazosDaSessao, lerDataTexto } from '../../lib/diasUteis'
 import { exigirCotaDaRequisicao } from '../cotas'
 import { registrarAuditoria } from '../../services/auditService'
 import { avaliarHabilitacao } from '../../lib/habilitacao'
-import { calcularAlertasLegais, exigenciasDaAnalise, lerValoresEmReais } from '../../lib/alertasLegais'
+import { alertasDaAnalise } from '../../lib/alertasLegais'
 import type { EditalAnalysisResult } from '../../services/llm/types'
 import { chaveDaExigencia, ExigenciaVerificada, resumoDaVerificacao } from '../../lib/matrizExigencias'
 import { analiseParaResposta } from '../../lib/analiseParaResposta'
@@ -515,29 +515,14 @@ tendersRouter.get(
       requisitos: avaliada.requisitos.map((r) => (r.documento ? { ...r, documento: { ...r.documento, temArquivo: comArquivo.has(r.documento.id) } } : r)),
     }
 
-    // Valor estimado: o cadastrado na licitação; na falta dele, o que a IA leu do edital.
-    const valorEstimado =
-      tender.valorEstimado != null ? Number(tender.valorEstimado) : (lerValoresEmReais(analise?.valorEstimado ?? '')[0] ?? null)
-
-    // Análises antigas (anteriores a esta função) não trazem os campos que alimentam os alertas.
-    const alertasDisponiveis = analise !== null && typeof analise.garantiaProposta === 'string'
-    const alertas = alertasDisponiveis
-      ? calcularAlertasLegais({
-          garantiaProposta: analise.garantiaProposta,
-          garantiaContratual: analise.garantiaContratual,
-          patrimonioLiquidoMinimo: analise.patrimonioLiquidoMinimo,
-          visitaTecnica: analise.visitaTecnica,
-          exigencias: exigenciasDaAnalise(analise),
-          valorEstimado,
-        })
-      : []
+    const alertas = alertasDaAnalise(analise, tender.valorEstimado != null ? Number(tender.valorEstimado) : null)
 
     res.json({
       analise: { status: tender.analysis?.status ?? null, feita: analisada },
       habilitacao,
       alertas: {
-        disponivel: alertasDisponiveis,
-        itens: alertas,
+        disponivel: alertas.disponivel,
+        itens: alertas.itens,
         aviso:
           'Indícios para análise jurídica, não conclusões. O texto extraído pode estar incompleto e a lei admite exceções; valide com advogado antes de impugnar.',
       },

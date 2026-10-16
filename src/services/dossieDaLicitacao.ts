@@ -7,7 +7,7 @@
 import { prisma } from './tenderService'
 import { buildChecklistTemplate } from '../lib/checklistTemplate'
 import { avaliarHabilitacao, ResultadoHabilitacao } from '../lib/habilitacao'
-import { AlertaLegal, calcularAlertasLegais, exigenciasDaAnalise, lerValoresEmReais } from '../lib/alertasLegais'
+import { AlertaLegal, alertasDaAnalise } from '../lib/alertasLegais'
 import { lerDataTexto } from '../lib/diasUteis'
 import { chaveDaExigencia, ExigenciaVerificada } from '../lib/matrizExigencias'
 import type { EditalAnalysisResult, EditalAnalysisRisco } from './llm/types'
@@ -70,18 +70,7 @@ export async function carregarDossie(companyId: string, tenderId: string): Promi
     }
   })
 
-  const valorEstimado = tender?.valorEstimado != null ? Number(tender.valorEstimado) : (lerValoresEmReais(a?.valorEstimado ?? '')[0] ?? null)
-  const alertas =
-    a && typeof a.garantiaProposta === 'string'
-      ? calcularAlertasLegais({
-          garantiaProposta: a.garantiaProposta,
-          garantiaContratual: a.garantiaContratual,
-          patrimonioLiquidoMinimo: a.patrimonioLiquidoMinimo,
-          visitaTecnica: a.visitaTecnica,
-          exigencias: exigenciasDaAnalise(a),
-          valorEstimado,
-        })
-      : []
+  const alertas = alertasDaAnalise(a ?? null, tender?.valorEstimado != null ? Number(tender.valorEstimado) : null).itens
 
   const condicoes = a
     ? ([

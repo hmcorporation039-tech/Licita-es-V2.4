@@ -54,7 +54,7 @@ export interface LogoDaEmpresa {
   updatedAt: string
 }
 
-export type TipoDeDocumentoDaLicitacao = 'proposta' | 'declaracoes'
+export type TipoDeDocumentoDaLicitacao = 'proposta' | 'declaracoes' | 'impugnacao' | 'esclarecimento'
 
 export type BlocoDoDocumento =
   | { tipo: 'titulo'; texto: string }
@@ -69,7 +69,15 @@ export interface DocumentoDaLicitacao {
   blocos: BlocoDoDocumento[]
 }
 
+export interface AlertaParaImpugnar {
+  chave: string
+  titulo: string
+  gravidade: 'alta' | 'media'
+  local: string | null
+}
+
 export interface ModelosDeDocumento {
+  impugnacao: { analiseFeita: boolean; prazo: { limite: string; passou: boolean } | null; alertas: AlertaParaImpugnar[] }
   proposta: { disponivel: boolean; motivo?: string }
   declaracoes: Array<{ id: string; titulo: string; fundamento: string }>
 }

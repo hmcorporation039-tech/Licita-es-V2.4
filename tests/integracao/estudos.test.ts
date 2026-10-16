@@ -265,6 +265,15 @@ rodar('Estudo de custos', () => {
     expect(decl.status).toBe(200)
     expect(decl.body.documento.blocos.filter((b: { tipo: string }) => b.tipo === 'assinatura')).toHaveLength(2)
     expect((await http('POST', `/api/tenders/${tenderId}/documentos/previa`, { tipo: 'declaracoes', declaracoes: ['inventada'] }, tokenA)).status).toBe(400)
+
+    const modelos = await http('GET', `/api/tenders/${tenderId}/documentos/modelos`, undefined, tokenA)
+    expect(Array.isArray(modelos.body.impugnacao.alertas)).toBe(true)
+    const esclarecimento = await http('POST', `/api/tenders/${tenderId}/documentos/previa`, { tipo: 'esclarecimento', alertas: [] }, tokenA)
+    expect(esclarecimento.status).toBe(200)
+    expect(esclarecimento.body.documento.tipo).toBe('esclarecimento')
+    expect(esclarecimento.body.pendencias).toContain('pergunta do pedido de esclarecimento')
+    expect((await http('POST', `/api/tenders/${tenderId}/documentos/previa`, { tipo: 'impugnacao', alertas: ['alerta-inventado'] }, tokenA)).status).not.toBe(200)
+    expect((await http('POST', `/api/tenders/${tenderId}/documentos/previa`, { tipo: 'impugnacao', alertas: [] }, tokenA)).status).toBe(400)
     expect(await prisma.auditLog.count({ where: { companyId: companyA, action: 'DOCUMENTO_GERADO' } })).toBe(2)
   })
 

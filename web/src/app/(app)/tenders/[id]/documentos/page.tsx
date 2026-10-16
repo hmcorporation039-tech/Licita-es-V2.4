@@ -34,19 +34,39 @@ const MAX_CELULA = 1000
 const MAX_LOCAL = 200
 const MARCADOR = '[preencher:'
 
-type Pedido = { tipo: 'proposta'; readequada: boolean } | { tipo: 'declaracoes'; ids: string[] }
+type Pedido = { tipo: 'proposta'; readequada: boolean } | { tipo: 'declaracoes'; ids: string[] } | { tipo: 'impugnacao' | 'esclarecimento'; alertas: string[] }
 type BlocoComChave = { chave: string; bloco: BlocoDoDocumento }
 type Formato = 'pdf' | 'docx'
 
 const TITULO_DA_PAGINA: Record<TipoDeDocumentoDaLicitacao, string> = {
   proposta: 'Proposta comercial',
   declaracoes: 'Declarações',
+  impugnacao: 'Impugnação ao edital',
+  esclarecimento: 'Pedido de esclarecimento',
 }
+
+const PREFIXO_DO_ARQUIVO: Record<TipoDeDocumentoDaLicitacao, string> = {
+  proposta: 'proposta-comercial',
+  declaracoes: 'declaracoes',
+  impugnacao: 'impugnacao',
+  esclarecimento: 'pedido-de-esclarecimento',
+}
+
+const listaDaUrl = (valor: string | null) =>
+  (valor ?? '')
+    .split(',')
+    .map((v) => v.trim())
+    .filter(Boolean)
 
 function lerPedido(busca: string): Pedido | null {
   const params = new URLSearchParams(busca)
   const tipo = params.get('tipo')
   if (tipo === 'proposta') return { tipo: 'proposta', readequada: params.get('readequada') === '1' }
+  if (tipo === 'impugnacao') {
+    const alertas = listaDaUrl(params.get('alertas'))
+    return alertas.length > 0 ? { tipo: 'impugnacao', alertas } : null
+  }
+  if (tipo === 'esclarecimento') return { tipo: 'esclarecimento', alertas: listaDaUrl(params.get('alertas')) }
   if (tipo === 'declaracoes') {
     const ids = (params.get('ids') ?? '')
       .split(',')
@@ -277,7 +297,12 @@ export default function DocumentosDaLicitacaoPage({ params }: { params: Promise<
     let cancelado = false
     setErro(null)
     setPrevia(null)
-    const corpo = pedido.tipo === 'proposta' ? { tipo: 'proposta', readequada: pedido.readequada } : { tipo: 'declaracoes', declaracoes: pedido.ids }
+    const corpo =
+      pedido.tipo === 'proposta'
+        ? { tipo: 'proposta', readequada: pedido.readequada }
+        : pedido.tipo === 'declaracoes'
+          ? { tipo: 'declaracoes', declaracoes: pedido.ids }
+          : { tipo: pedido.tipo, alertas: pedido.alertas }
     api
       .post<PreviaDoDocumento>(`/api/tenders/${id}/documentos/previa`, corpo)
       .then((r) => {
@@ -396,7 +421,7 @@ export default function DocumentosDaLicitacaoPage({ params }: { params: Promise<
   const pendentes = blocosAtuais.filter(blocoTemMarcador).length
   const limiteDeBlocos = blocos.length >= MAX_BLOCOS
   const numero = tender?.numeroControle ? slug(tender.numeroControle) : id.slice(0, 8)
-  const base = pedido.tipo === 'proposta' ? (pedido.readequada ? 'proposta-readequada' : 'proposta-comercial') : 'declaracoes'
+  const base = pedido.tipo === 'proposta' && pedido.readequada ? 'proposta-readequada' : PREFIXO_DO_ARQUIVO[pedido.tipo]
 
   async function baixar(formato: Formato) {
     if (!previa) return

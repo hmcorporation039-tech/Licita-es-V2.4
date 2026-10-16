@@ -5,6 +5,8 @@ import { propostaComercial } from '../src/lib/documentosDaLicitacao/proposta'
 import { declaracoes, IDS_DE_DECLARACAO } from '../src/lib/documentosDaLicitacao/declaracoes'
 import { documentoSchema } from '../src/lib/documentosDaLicitacao/modelo'
 import { readequarPrecos } from '../src/lib/documentosDaLicitacao/readequacao'
+import { impugnacao, pedidoDeEsclarecimento } from '../src/lib/documentosDaLicitacao/impugnacao'
+import { calcularAlertasLegais } from '../src/lib/alertasLegais'
 import { renderizarPdf } from '../src/services/documentos/renderizarPdf'
 import { renderizarDocx } from '../src/services/documentos/renderizarDocx'
 import { deflateSync } from 'node:zlib'
@@ -222,5 +224,52 @@ describe('proposta readequada', () => {
     const { documento } = propostaComercial(dadosDoProponente(empresa), certame, [{ numero: 1, descricao: 'Item', unidade: 'un', quantidade: 2, precoUnitario: 49.5 }], { validadeDias: 60, prazoDeEntrega: '', condicoesDePagamento: '', lanceFinal: 99 }, quando)
     expect(documento.titulo).toBe('Proposta comercial readequada')
     expect(JSON.stringify(documento.blocos)).toContain('readequada ao valor final de R$ 99,00 (noventa e nove reais)')
+  })
+})
+
+describe('impugnação e pedido de esclarecimento', () => {
+  const alertas = calcularAlertasLegais({
+    valorEstimado: null,
+    exigencias: [
+      { texto: 'Atestado de capacidade técnica de no mínimo 80% do quantitativo', local: 'Edital, p. 14, item 9.4.2' },
+      { texto: 'Certidão negativa de protesto de títulos', local: 'Edital, p. 13, item 9.2.5' },
+    ],
+  })
+  const prazo = { limite: '20/10/2026', passou: false }
+  const texto = (d: { blocos: Array<{ tipo: string; texto?: string }> }) => d.blocos.map((b) => b.texto ?? '').join('\n')
+
+  it('a impugnação traz tempestividade, fatos com página e item, fundamentos e um pedido para cada cláusula', () => {
+    const { documento, pendencias } = impugnacao(dadosDoProponente(empresa), certame, alertas, prazo, quando)
+    const t = texto(documento)
+    expect(documento.tipo).toBe('impugnacao')
+    expect(t).toContain('IMPUGNAÇÃO AO EDITAL')
+    expect(t).toContain('art. 164 da Lei nº 14.133/2021')
+    expect(t).toContain('prazo que se encerra em 20/10/2026')
+    expect(t).toContain('O edital (Edital, p. 14, item 9.4.2) estabelece')
+    expect(t).toContain('b) quanto ao item II.1 (Edital, p. 14, item 9.4.2), limitar o quantitativo exigido nos atestados')
+    expect(t).toContain('c) quanto ao item II.2 (Edital, p. 13, item 9.2.5), excluir a exigência do documento')
+    expect(t).toContain('d) a republicação do edital')
+    expect(documento.blocos.at(-1)?.tipo).toBe('assinatura')
+    expect(pendencias).toEqual([])
+  })
+
+  it('avisa quando o prazo já passou e quando não há data da sessão', () => {
+    expect(impugnacao(dadosDoProponente(empresa), certame, alertas, { limite: '01/10/2026', passou: true }, quando).pendencias).toContain('o prazo para impugnação terminou em 01/10/2026')
+    expect(impugnacao(dadosDoProponente(empresa), certame, alertas, null, quando).pendencias[0]).toContain('data limite')
+  })
+
+  it('o esclarecimento pergunta sobre cada cláusula e aceita perguntas livres', () => {
+    const { documento } = pedidoDeEsclarecimento(dadosDoProponente(empresa), certame, alertas.slice(0, 1), ['Qual o prazo de garantia dos produtos?'], prazo, quando)
+    const t = texto(documento)
+    expect(documento.tipo).toBe('esclarecimento')
+    expect(t).toContain('1. Considerando o disposto no edital (Edital, p. 14, item 9.4.2)')
+    expect(t).toContain('2. Qual o prazo de garantia dos produtos?')
+    expect(t).toContain('parágrafo único do art. 164')
+  })
+
+  it('esclarecimento sem pergunta vira pendência com marcador', () => {
+    const r = pedidoDeEsclarecimento(dadosDoProponente(empresa), certame, [], [], prazo, quando)
+    expect(r.pendencias).toContain('pergunta do pedido de esclarecimento')
+    expect(texto(r.documento)).toContain('[preencher: escreva aqui a sua pergunta]')
   })
 })
