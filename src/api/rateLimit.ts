@@ -37,6 +37,14 @@ export const globalLimiter = rateLimit({
   message: { error: 'Muitas requisições — aguarde alguns minutos e tente de novo' },
 })
 
+export const vitrineLimiter = rateLimit({
+  windowMs: JANELA_MS,
+  limit: limite(60),
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { error: 'Muitas buscas seguidas. Aguarde alguns minutos ou crie sua conta grátis para buscar à vontade.' },
+})
+
 export const loginLimiter = rateLimit({
   windowMs: JANELA_MS,
   limit: limite(10),

@@ -9,6 +9,10 @@ import { asyncHandler } from '../asyncHandler'
 import { lerLimites } from '../../lib/planos'
 import { trialDias } from '../../services/contaService'
 import { TERMOS_VERSAO } from '../../lib/legal'
+import { z } from 'zod'
+import { normalize } from '../../lib/geoService'
+import { whereLicitacaoAberta } from '../../lib/licitacaoAberta'
+import { vitrineLimiter } from '../rateLimit'
 
 export const publicRouter = Router()
 
@@ -31,3 +35,92 @@ publicRouter.get(
     })
   })
 )
+
+const DEZ_MINUTOS = 10 * 60 * 1000
+const MAX_ENTRADAS_NO_CACHE = 500
+const cacheDaVitrine = new Map<string, { expiraEm: number; valor: unknown }>()
+
+function lerCache(chave: string): unknown | undefined {
+  const item = cacheDaVitrine.get(chave)
+  if (!item) return undefined
+  if (item.expiraEm < Date.now()) {
+    cacheDaVitrine.delete(chave)
+    return undefined
+  }
+  return item.valor
+}
+
+function gravarCache(chave: string, valor: unknown) {
+  if (cacheDaVitrine.size >= MAX_ENTRADAS_NO_CACHE) cacheDaVitrine.delete(cacheDaVitrine.keys().next().value as string)
+  cacheDaVitrine.set(chave, { expiraEm: Date.now() + DEZ_MINUTOS, valor })
+}
+
+publicRouter.get(
+  '/estatisticas',
+  vitrineLimiter,
+  asyncHandler(async (_req, res) => {
+    const emCache = lerCache('estatisticas')
+    if (emCache) {
+      res.json(emCache)
+      return
+    }
+    const [abertas, porFonte, ultimaColeta] = await Promise.all([
+      prisma.tender.count({ where: whereLicitacaoAberta() }),
+      prisma.tender.groupBy({ by: ['fonte'], where: whereLicitacaoAberta(), _count: { _all: true } }),
+      prisma.workerLog.findFirst({ where: { status: { in: ['SUCCESS', 'PARTIAL'] }, finishedAt: { not: null } }, orderBy: { finishedAt: 'desc' }, select: { finishedAt: true } }),
+    ])
+    const valor = { abertas, fontes: porFonte.filter((f) => f._count._all > 0).length, atualizadoEm: ultimaColeta?.finishedAt ?? null }
+    gravarCache('estatisticas', valor)
+    res.setHeader('Cache-Control', 'public, max-age=300')
+    res.json(valor)
+  })
+)
+
+const vitrineSchema = z.object({
+  q: z.string().trim().min(3).max(60),
+  uf: z.string().trim().toUpperCase().length(2).optional(),
+})
+
+publicRouter.get(
+  '/vitrine',
+  vitrineLimiter,
+  asyncHandler(async (req, res) => {
+    const { q, uf } = vitrineSchema.parse(req.query)
+    const qNorm = normalize(q)
+    const chave = `vitrine:${qNorm}:${uf ?? ''}`
+    const emCache = lerCache(chave)
+    if (emCache) {
+      res.json(emCache)
+      return
+    }
+    const where = {
+      AND: [whereLicitacaoAberta(), { OR: [{ objetoNorm: { contains: qNorm } }, { objetoResumidoNorm: { contains: qNorm } }] }, ...(uf ? [{ uf }] : [])],
+    }
+    const [total, amostras] = await Promise.all([
+      prisma.tender.count({ where }),
+      prisma.tender.findMany({
+        where,
+        orderBy: [{ encerramentoAt: { sort: 'asc', nulls: 'last' } }, { aberturaAt: 'asc' }],
+        take: 3,
+        select: { objeto: true, objetoResumido: true, orgao: true, uf: true, municipio: true, encerramentoAt: true, aberturaAt: true, fonte: true },
+      }),
+    ])
+    const valor = {
+      total,
+      amostras: amostras.map((t) => {
+        const objeto = (t.objetoResumido ?? t.objeto).replace(/\s+/g, ' ').trim()
+        return {
+          objeto: objeto.length > 140 ? `${objeto.slice(0, 137)}...` : objeto,
+          orgao: t.orgao,
+          local: [t.municipio, t.uf].filter(Boolean).join('/'),
+          prazo: t.encerramentoAt ?? t.aberturaAt,
+          fonte: t.fonte,
+        }
+      }),
+    }
+    gravarCache(chave, valor)
+    res.setHeader('Cache-Control', 'public, max-age=300')
+    res.json(valor)
+  })
+)
+
