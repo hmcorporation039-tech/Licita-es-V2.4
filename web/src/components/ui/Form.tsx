@@ -4,7 +4,7 @@ import { cloneElement, isValidElement, useId, type ComponentProps, type ReactEle
 import { cx } from './cx'
 
 const CONTROLE =
-  'w-full rounded border border-line-strong bg-surface text-[16px] text-ink placeholder:text-faint hover:border-faint focus-visible:border-accent disabled:cursor-not-allowed disabled:bg-sunken disabled:text-muted aria-[invalid=true]:border-danger sm:text-sm'
+  'w-full rounded-lg border border-line-strong bg-surface text-[16px] text-ink transition-[border-color,box-shadow] placeholder:text-faint hover:border-accent-line focus-visible:border-accent focus-visible:ring-4 focus-visible:ring-accent/15 disabled:cursor-not-allowed disabled:bg-sunken disabled:text-muted aria-[invalid=true]:border-danger aria-[invalid=true]:focus-visible:ring-danger/15 sm:text-sm'
 
 export function Input({ className, ...rest }: ComponentProps<'input'>) {
   return <input className={cx(CONTROLE, 'h-10 px-3', className)} {...rest} />
@@ -60,7 +60,7 @@ export function Field({ label, hint, error, required, id, className, children }:
 
   return (
     <div className={cx('flex min-w-0 flex-col gap-1.5', className)}>
-      <label htmlFor={controleId} className="text-xs font-medium text-muted">
+      <label htmlFor={controleId} className="text-xs font-semibold text-ink-2">
         {label}
         {required && <span className="text-danger"> *</span>}
       </label>

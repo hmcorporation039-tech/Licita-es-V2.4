@@ -62,9 +62,8 @@ const GRUPOS: GrupoDeMenu[] = [
 
 function Marca() {
   return (
-    <Link href="/dashboard" className="flex items-center gap-2.5 rounded px-2 py-1 text-sm font-semibold tracking-[-0.005em] text-ink">
-      <span aria-hidden className="size-3.5 rounded-sm bg-accent" />
-      Monitor de Licitações
+    <Link href="/dashboard" className="whitespace-nowrap rounded-lg px-2 py-1 font-display text-lg leading-none tracking-[-0.02em] text-nav-ink focus-visible:outline-white">
+      <span className="font-black">Monitor</span> <span className="font-light text-nav-muted">de Licitações</span>
     </Link>
   )
 }
@@ -74,7 +73,7 @@ function Navegacao({ user, pathname }: { user: SessionUser | null; pathname: str
     <nav aria-label="Principal" className="flex flex-col gap-5">
       {GRUPOS.filter((g) => !g.soAdmin || user?.isAdmin).map((grupo) => (
         <div key={grupo.nome} className="flex flex-col gap-0.5">
-          <p className="px-2 pb-1 text-2xs font-semibold uppercase tracking-[0.06em] text-faint">{grupo.nome}</p>
+          <p className="px-2.5 pb-1 text-2xs font-bold uppercase tracking-[0.08em] text-nav-muted">{grupo.nome}</p>
           {grupo.itens.map(({ href, label, icon: Icone }) => {
             const ativo = pathname === href || pathname?.startsWith(href + '/')
             return (
@@ -83,11 +82,11 @@ function Navegacao({ user, pathname }: { user: SessionUser | null; pathname: str
                 href={href}
                 aria-current={ativo ? 'page' : undefined}
                 className={cx(
-                  'flex h-8 items-center gap-2.5 rounded px-2 text-sm transition-colors',
-                  ativo ? 'bg-accent-soft font-semibold text-accent shadow-[inset_2px_0_0_var(--color-accent)]' : 'text-ink-2 hover:bg-line-soft hover:text-ink',
+                  'flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-sm transition-colors focus-visible:outline-white',
+                  ativo ? 'bg-surface font-bold text-accent shadow-[0_2px_8px_rgb(3_28_85/0.25)]' : 'font-medium text-nav-ink/90 hover:bg-white/12 hover:text-nav-ink',
                 )}
               >
-                <Icone size={16} strokeWidth={ativo ? 2 : 1.75} className={ativo ? 'text-accent' : 'text-faint'} aria-hidden />
+                <Icone size={17} strokeWidth={ativo ? 2.25 : 1.85} className={ativo ? 'text-accent' : 'text-nav-muted'} aria-hidden />
                 {label}
               </Link>
             )
@@ -101,14 +100,14 @@ function Navegacao({ user, pathname }: { user: SessionUser | null; pathname: str
 function Rodape({ user, onSair }: { user: SessionUser | null; onSair: () => void }) {
   if (!user) return null
   return (
-    <div className="flex flex-col gap-3 border-t border-line pt-3">
+    <div className="flex flex-col gap-2 rounded-xl bg-surface p-2 text-ink shadow-[0_6px_18px_rgb(3_28_85/0.3)]">
       <MedidorNoMenu />
       <div className="flex items-center justify-between gap-2 px-2">
         <Link href="/conta" title={user.email} className="min-w-0 text-xs leading-4 text-muted hover:text-ink">
           <span className="block truncate font-medium text-ink">{user.name ?? user.email}</span>
           {user.name && <span className="block truncate">{user.email}</span>}
         </Link>
-        <button type="button" onClick={onSair} className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded px-2 text-xs font-medium text-muted hover:bg-line-soft hover:text-danger">
+        <button type="button" onClick={onSair} className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-muted hover:bg-danger-soft hover:text-danger">
           <LogOut size={14} aria-hidden />
           Sair
         </button>
@@ -147,35 +146,35 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen flex-col lg:flex-row">
-      <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-line bg-sunken px-3 lg:hidden">
+      <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-2 bg-nav-2 px-2 shadow-[0_2px_10px_rgb(3_28_85/0.25)] sm:px-3 lg:hidden">
         <Marca />
         <div className="flex shrink-0 items-center gap-1">
-          <BotaoDaBela onAbrir={() => setBelaAberta(true)} className="h-11" />
+          <BotaoDaBela onAbrir={() => setBelaAberta(true)} className="h-11 focus-visible:outline-white" />
           <button
             type="button"
             onClick={() => setMenuAberto(true)}
             aria-label="Abrir menu"
             aria-expanded={menuAberto}
             aria-controls="menu-lateral"
-            className="inline-flex size-11 items-center justify-center rounded text-ink-2 hover:bg-line-soft"
+            className="inline-flex size-11 items-center justify-center rounded-lg text-nav-ink hover:bg-white/15 focus-visible:outline-white"
           >
             <Menu size={20} aria-hidden />
           </button>
         </div>
       </header>
 
-      {menuAberto && <div aria-hidden className="fixed inset-0 z-40 bg-ink/40 lg:hidden" onClick={() => setMenuAberto(false)} />}
+      {menuAberto && <div aria-hidden className="fixed inset-0 z-40 bg-ink/50 lg:hidden" onClick={() => setMenuAberto(false)} />}
 
       <aside
         id="menu-lateral"
         className={cx(
-          'fixed inset-y-0 left-0 z-50 flex w-[264px] flex-col gap-6 overflow-y-auto border-r border-line bg-sunken px-3 py-4 transition-transform lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:w-[232px] lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-50 flex w-[272px] flex-col gap-5 overflow-y-auto bg-[linear-gradient(180deg,var(--color-nav-2)_0%,var(--color-nav)_100%)] px-3 py-4 text-nav-ink transition-transform lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:w-[244px] lg:translate-x-0',
           menuAberto ? 'translate-x-0' : '-translate-x-full',
         )}
       >
         <div className="flex items-center justify-between">
           <Marca />
-          <button type="button" onClick={() => setMenuAberto(false)} aria-label="Fechar menu" className="inline-flex size-9 items-center justify-center rounded text-muted hover:bg-line-soft lg:hidden">
+          <button type="button" onClick={() => setMenuAberto(false)} aria-label="Fechar menu" className="inline-flex size-11 items-center justify-center rounded-lg text-nav-ink hover:bg-white/15 focus-visible:outline-white lg:hidden">
             <X size={18} aria-hidden />
           </button>
         </div>
@@ -185,7 +184,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
             setBelaAberta(true)
           }}
           rotulo="Falar com a Bela"
-          className="hidden h-10 w-full lg:inline-flex"
+          detalhe="Busca por voz ou texto"
+          className="w-full rounded-xl py-1.5 pl-1.5"
         />
         <Navegacao user={user} pathname={pathname} />
         <div className="mt-auto">

@@ -495,7 +495,7 @@ export default function DocumentosDaLicitacaoPage({ params }: { params: Promise<
         </Notice>
       )}
 
-      <article aria-label={`Prévia editável: ${tituloDaPagina}`} className="mx-auto flex w-full max-w-[820px] flex-col rounded border border-line bg-surface px-3 py-5 sm:px-10 sm:py-10 lg:px-14">
+      <article aria-label={`Prévia editável: ${tituloDaPagina}`} className="mx-auto flex w-full max-w-[820px] flex-col rounded border border-line bg-surface px-3 py-5 shadow-cartao-alto sm:px-10 sm:py-10 lg:px-14">
         <p className="mb-6 border-b border-line pb-3 text-center text-xs text-faint">Cabeçalho com a logomarca e os dados da empresa</p>
 
         <div className="flex flex-col gap-3">

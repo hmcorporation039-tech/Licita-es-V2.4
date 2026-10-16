@@ -3,18 +3,18 @@ import { cx } from './cx'
 
 export function TableWrap({ children, className, minWidth }: { children: ReactNode; className?: string; minWidth?: number }) {
   return (
-    <div className={cx('relative min-w-0 overflow-x-auto rounded border border-line bg-surface', className)}>
+    <div className={cx('relative min-w-0 overflow-x-auto rounded-xl border border-line bg-surface shadow-cartao', className)}>
       <div style={minWidth ? { minWidth } : undefined}>{children}</div>
     </div>
   )
 }
 
 export function Table({ className, ...rest }: ComponentProps<'table'>) {
-  return <table className={cx('w-full border-collapse text-left text-sm', className)} {...rest} />
+  return <table className={cx('tabela w-full border-collapse text-left text-sm', className)} {...rest} />
 }
 
 export function THead({ className, ...rest }: ComponentProps<'thead'>) {
-  return <thead className={cx('bg-sunken', className)} {...rest} />
+  return <thead className={cx('bg-accent-soft/55', className)} {...rest} />
 }
 
 export function Th({ className, align = 'left', ...rest }: ComponentProps<'th'> & { align?: 'left' | 'right' | 'center' }) {
@@ -22,7 +22,7 @@ export function Th({ className, align = 'left', ...rest }: ComponentProps<'th'> 
     <th
       scope="col"
       className={cx(
-        'h-9 whitespace-nowrap border-b border-line px-3 text-xs font-semibold text-muted first:pl-4 last:pr-4',
+        'h-10 whitespace-nowrap border-b border-line px-3 text-2xs font-bold uppercase tracking-[0.05em] text-muted first:pl-4 last:pr-4',
         align === 'right' && 'text-right',
         align === 'center' && 'text-center',
         className,
@@ -35,7 +35,7 @@ export function Th({ className, align = 'left', ...rest }: ComponentProps<'th'> 
 export function Tr({ className, selected = false, interactive = false, ...rest }: ComponentProps<'tr'> & { selected?: boolean; interactive?: boolean }) {
   return (
     <tr
-      className={cx('border-b border-line-soft last:border-0', selected && 'bg-accent-soft', interactive && !selected && 'hover:bg-sunken', className)}
+      className={cx('border-b border-line-soft transition-colors last:border-0', selected && 'bg-accent-soft shadow-[inset_3px_0_0_var(--color-accent)]', interactive && !selected && 'cursor-pointer hover:bg-accent-soft/70', className)}
       {...rest}
     />
   )

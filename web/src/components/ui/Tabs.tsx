@@ -11,13 +11,13 @@ export interface Aba<T extends string> {
 }
 
 const ABA =
-  'inline-flex h-10 shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-0.5 text-sm transition-colors'
-const ATIVA = 'border-accent font-semibold text-accent'
-const INATIVA = 'border-transparent text-muted hover:border-line-strong hover:text-ink'
+  'group inline-flex h-11 shrink-0 items-center gap-1.5 whitespace-nowrap border-b-[3px] px-1 text-sm transition-colors'
+const ATIVA = 'border-accent font-bold text-accent'
+const INATIVA = 'border-transparent font-medium text-muted hover:border-accent-line hover:text-ink'
 
 function Contador({ n }: { n?: number }) {
   if (n === undefined) return null
-  return <span className="rounded-sm bg-line-soft px-1 font-mono text-2xs text-muted">{n}</span>
+  return <span className="rounded-full bg-line-soft px-1.5 font-mono text-2xs text-muted group-aria-selected:bg-accent group-aria-selected:text-white group-aria-[current=page]:bg-accent group-aria-[current=page]:text-white">{n}</span>
 }
 
 export function Tabs<T extends string>({

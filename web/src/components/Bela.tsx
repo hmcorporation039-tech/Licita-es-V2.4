@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { ArrowRight, Mic, Search, Square, X } from 'lucide-react'
@@ -101,12 +102,12 @@ function ResultadosDaBusca({ estado, onAbrir }: { estado: Extract<EstadoDaBela, 
         )}
       </p>
       {itens.length > 0 && (
-        <ul className="flex flex-col divide-y divide-line-soft rounded border border-line">
+        <ul className="flex flex-col divide-y divide-line-soft overflow-hidden rounded-xl border border-line">
           {itens.map((t) => {
             const objeto = t.objetoResumido ?? t.objeto
             return (
               <li key={t.id}>
-                <Link href={`/tenders/${t.id}`} onClick={onAbrir} className="flex min-h-11 min-w-0 flex-col gap-1 px-3 py-2.5 hover:bg-sunken">
+                <Link href={`/tenders/${t.id}`} onClick={onAbrir} className="flex min-h-11 min-w-0 flex-col gap-1 px-3 py-2.5 hover:bg-accent-soft/60">
                   <span className="line-clamp-2 break-words text-sm font-medium text-ink" title={objeto}>
                     {objeto}
                   </span>
@@ -132,19 +133,40 @@ function ResultadosDaBusca({ estado, onAbrir }: { estado: Extract<EstadoDaBela, 
   )
 }
 
-export function BotaoDaBela({ onAbrir, className, rotulo = 'Bela' }: { onAbrir: () => void; className?: string; rotulo?: string }) {
+export function AvatarDaBela({ tamanho = 32, className }: { tamanho?: number; className?: string }) {
+  const largura = Math.round(tamanho * 2.6)
+  return (
+    <span aria-hidden className={cx('relative inline-block shrink-0 overflow-hidden rounded-full bg-nav-2', className)} style={{ width: tamanho, height: tamanho }}>
+      <Image
+        src="/bela/bela-640.webp"
+        alt=""
+        width={640}
+        height={605}
+        sizes={`${largura}px`}
+        className="absolute h-auto max-w-none"
+        style={{ width: largura, left: Math.round(tamanho * -0.76), top: Math.round(tamanho * -0.1) }}
+      />
+    </span>
+  )
+}
+
+export function BotaoDaBela({ onAbrir, className, rotulo = 'Bela', detalhe }: { onAbrir: () => void; className?: string; rotulo?: string; detalhe?: string }) {
   return (
     <button
       type="button"
       onClick={onAbrir}
       aria-haspopup="dialog"
       className={cx(
-        'inline-flex items-center gap-2 rounded border border-accent-line bg-accent-soft px-3 text-sm font-semibold text-accent transition-colors hover:border-accent hover:bg-accent hover:text-white',
+        'inline-flex items-center gap-2.5 rounded-full border border-white/25 bg-white/10 py-1 pl-1 pr-3.5 text-left text-sm font-bold text-white transition-colors hover:border-white/50 hover:bg-white/20',
         className,
       )}
     >
-      <Mic size={16} strokeWidth={2} aria-hidden />
-      {rotulo}
+      <AvatarDaBela tamanho={detalhe ? 40 : 32} className="ring-2 ring-white/80" />
+      <span className="flex min-w-0 flex-col">
+        <span className="font-display leading-tight">{rotulo}</span>
+        {detalhe && <span className="truncate text-2xs font-medium text-nav-muted">{detalhe}</span>}
+      </span>
+      {detalhe && <Mic size={16} strokeWidth={2} className="ml-auto shrink-0 text-nav-muted" aria-hidden />}
     </button>
   )
 }
@@ -230,19 +252,21 @@ export default function Bela({ aberta, onFechar }: { aberta: boolean; onFechar: 
       onClick={(e) => {
         if (e.target === e.currentTarget) onFechar()
       }}
-      className="m-auto max-h-[calc(100dvh-1rem)] w-[min(600px,calc(100vw-1rem))] overflow-y-auto rounded border border-line bg-surface p-0 text-ink shadow-[0_8px_24px_rgb(26_28_31/0.12)]"
+      className="m-auto max-h-[calc(100dvh-1rem)] w-[min(600px,calc(100vw-1rem))] overflow-y-auto rounded-2xl border border-line bg-surface p-0 text-ink shadow-cartao-alto"
     >
       {aberta && (
         <div className="flex flex-col gap-4 p-4 sm:p-5">
           <div className="flex items-start justify-between gap-3">
-            <div className="flex min-w-0 flex-col gap-0.5">
-              <h2 id="bela-titulo" className="flex items-center gap-2 text-lg font-semibold">
-                <Mic size={18} className="text-accent" aria-hidden />
-                Bela
-              </h2>
-              <p id="bela-descricao" className="text-sm text-muted">
-                Peça uma busca de licitações falando ou digitando.
-              </p>
+            <div className="flex min-w-0 items-center gap-3">
+              <AvatarDaBela tamanho={48} className="ring-2 ring-accent-soft" />
+              <div className="flex min-w-0 flex-col gap-0.5">
+                <h2 id="bela-titulo" className="text-xl font-extrabold">
+                  Bela
+                </h2>
+                <p id="bela-descricao" className="text-sm text-muted">
+                  Peça uma busca de licitações falando ou digitando.
+                </p>
+              </div>
             </div>
             <button type="button" onClick={onFechar} aria-label="Fechar a Bela" className="-mr-1.5 -mt-1 inline-flex size-11 shrink-0 items-center justify-center rounded text-muted hover:bg-line-soft hover:text-ink">
               <X size={18} aria-hidden />

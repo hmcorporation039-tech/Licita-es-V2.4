@@ -51,6 +51,7 @@ import {
   StatusTag,
   TextLink,
 } from "@/components/ui";
+import { AvatarDaBela } from "@/components/Bela";
 
 const ALVO_GLOBAL = "global";
 const MAXIMO_DE_ALVOS_EM_BOTOES = 5;
@@ -978,7 +979,12 @@ export default function PregaoComABelaPage({
             )}
           </span>
         }
-        title="Pregão com a Bela"
+        title={
+          <span className="inline-flex items-center gap-3">
+            <AvatarDaBela tamanho={44} className="ring-2 ring-accent-soft" />
+            Pregão com a Bela
+          </span>
+        }
         description={
           <span className="line-clamp-3 max-w-[920px] break-words">
             {tender.objeto}

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
+import { BellDot, CalendarClock, FileWarning, Inbox, ListChecks } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
 import { api } from '@/lib/api'
 import { DashboardData } from '@/lib/types'
@@ -50,9 +51,9 @@ export default function DashboardPage() {
       ) : (
         <>
           <MetricRow>
-            <Metric label="Itens monitorados ativos" value={numero(data.itensMonitoradosAtivos)} href="/items" />
-            <Metric label="Matches não lidos" value={numero(data.matchesNaoLidos)} href="/matches" />
-            <Metric label="Matches no total" value={numero(data.matchesTotal)} href="/matches" className="col-span-2 sm:col-span-1" />
+            <Metric label="Itens monitorados ativos" value={numero(data.itensMonitoradosAtivos)} href="/items" icon={ListChecks} color="accent" />
+            <Metric label="Matches não lidos" value={numero(data.matchesNaoLidos)} href="/matches" icon={BellDot} color="violeta" />
+            <Metric label="Matches no total" value={numero(data.matchesTotal)} href="/matches" icon={Inbox} color="ceu" className="col-span-2 sm:col-span-1" />
           </MetricRow>
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
@@ -63,7 +64,7 @@ export default function DashboardPage() {
 
               <Panel title="Últimos matches" actions={<TextLink href="/matches" className="text-sm">Ver todos</TextLink>} padding={data.ultimosMatches.length === 0 ? 'md' : 'none'}>
                 {data.ultimosMatches.length === 0 ? (
-                  <EmptyState title="Nenhum match ainda" description="Os matches aparecem aqui quando uma licitação coletada combina com os seus itens monitorados." />
+                  <EmptyState icon={Inbox} title="Nenhum match ainda" description="Os matches aparecem aqui quando uma licitação coletada combina com os seus itens monitorados." />
                 ) : (
                   <ul className="flex flex-col divide-y divide-line-soft">
                     {data.ultimosMatches.map((m) => (
@@ -82,7 +83,7 @@ export default function DashboardPage() {
             <div className="flex min-w-0 flex-col gap-6">
               <Panel title="Próximos prazos" description="Próximos 14 dias" padding={data.proximosPrazos.length === 0 ? 'md' : 'none'}>
                 {data.proximosPrazos.length === 0 ? (
-                  <EmptyState title="Nenhum prazo próximo" description="Nenhum prazo nos próximos 14 dias entre as licitações que você está avaliando ou vai participar." />
+                  <EmptyState icon={CalendarClock} title="Nenhum prazo próximo" description="Nenhum prazo nos próximos 14 dias entre as licitações que você está avaliando ou vai participar." />
                 ) : (
                   <ul className="flex flex-col divide-y divide-line-soft">
                     {data.proximosPrazos.map((p, i) => (
@@ -107,7 +108,7 @@ export default function DashboardPage() {
                 padding={data.documentosVencendoEmBreve.length === 0 ? 'md' : 'none'}
               >
                 {data.documentosVencendoEmBreve.length === 0 ? (
-                  <EmptyState title="Nenhum documento vencendo" description="Nenhum documento do cofre vencendo nos próximos 15 dias." />
+                  <EmptyState icon={FileWarning} title="Nenhum documento vencendo" description="Nenhum documento do cofre vencendo nos próximos 15 dias." />
                 ) : (
                   <ul className="flex flex-col divide-y divide-line-soft">
                     {data.documentosVencendoEmBreve.map((d) => (

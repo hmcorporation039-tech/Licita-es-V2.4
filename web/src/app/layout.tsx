@@ -21,6 +21,13 @@ const plexMono = localFont({
   ],
 })
 
+const nunito = localFont({
+  variable: '--font-nunito',
+  display: 'swap',
+  weight: '200 1000',
+  src: './fonts/nunito-latin-variable.woff2',
+})
+
 export const metadata: Metadata = {
   title: 'Monitor de Licitações',
   description: 'Licitações abertas para o seu negócio, com prazo, edital e habilitação no mesmo lugar.',
@@ -28,7 +35,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
-    <html lang="pt-BR" className={`${plexSans.variable} ${plexMono.variable} h-full`}>
+    <html lang="pt-BR" className={`${plexSans.variable} ${plexMono.variable} ${nunito.variable} h-full`}>
       <body className="min-h-full bg-canvas text-ink antialiased">{children}</body>
     </html>
   )
