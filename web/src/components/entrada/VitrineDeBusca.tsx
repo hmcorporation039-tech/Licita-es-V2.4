@@ -1,14 +1,13 @@
 'use client'
 
 import { useEffect, useEffectEvent, useState, type FormEvent } from 'react'
-import { Search } from 'lucide-react'
-import { Button, Carregando, Field, Input, Notice, Prazo, Select, StatusTag } from '@/components/ui'
+import { Loader2, Search, TriangleAlert } from 'lucide-react'
 import { api, ApiRequestError } from '@/lib/api'
-import { ROTULOS_DE_FONTE } from '@/lib/fontes'
-import { paraData } from '@/lib/datas'
 import { rastrear } from '@/lib/rastreamento'
 import type { AmostraDaVitrine, RespostaDaVitrine } from '@/lib/dadosPublicos'
 import LinkDeCadastro from './LinkDeCadastro'
+import PrazoNoCliente from './PrazoNoCliente'
+import { rotuloCurtoDaFonte } from './ChegandoAgora'
 import { EVENTO_DE_BUSCA, ID_DA_BUSCA, type PedidoDeBusca } from './buscaDaEntrada'
 import { frasePropria, nomeProprio } from '@/lib/textoLegivel'
 
@@ -58,10 +57,6 @@ function onde(uf: string): string {
   return ESTADOS.find((e) => e.sigla === uf)?.local ?? 'em todo o Brasil'
 }
 
-function rotuloDaFonte(fonte: string): string {
-  return ROTULOS_DE_FONTE[fonte] ?? fonte.replace(/_/g, ' ')
-}
-
 function destinoDoCadastro(termo: string, uf: string) {
   const query: Record<string, string> = {}
   if (termo) query.q = termo
@@ -69,27 +64,19 @@ function destinoDoCadastro(termo: string, uf: string) {
   return { pathname: '/cadastro', query }
 }
 
-function PrazoDaAmostra({ prazo }: { prazo: string | null }) {
-  const data = paraData(prazo)
-  if (!data || data.getTime() < Date.now()) return <span className="text-xs text-muted">Data no edital</span>
-  return <Prazo data={prazo} />
-}
-
 function Amostra({ amostra }: { amostra: AmostraDaVitrine }) {
   return (
-    <li className="flex flex-col gap-2 border-b border-line-soft px-4 py-3 last:border-0 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-      <div className="flex min-w-0 flex-col gap-0.5">
-        <p className="line-clamp-2 text-sm font-medium text-ink">{frasePropria(amostra.objeto)}</p>
-        <p className="truncate text-xs text-muted" title={`${amostra.orgao} · ${amostra.local}`}>
+    <li className="az-resultado-item">
+      <div className="flex min-w-0 flex-col gap-1">
+        <p className="az-resultado-objeto">{frasePropria(amostra.objeto)}</p>
+        <p className="az-resultado-orgao" title={`${amostra.orgao} · ${amostra.local}`}>
           {nomeProprio(amostra.orgao ?? '')}
           {amostra.local && ` · ${amostra.local}`}
         </p>
       </div>
-      <div className="flex shrink-0 items-center gap-3 sm:flex-col sm:items-end sm:gap-1.5">
-        <PrazoDaAmostra prazo={amostra.prazo} />
-        <StatusTag mono title={rotuloDaFonte(amostra.fonte)}>
-          {rotuloDaFonte(amostra.fonte)}
-        </StatusTag>
+      <div className="az-resultado-meta">
+        <PrazoNoCliente prazo={amostra.prazo} />
+        <span className="az-fonte-tag">{rotuloCurtoDaFonte(amostra.fonte)}</span>
       </div>
     </li>
   )
@@ -100,14 +87,14 @@ function Resultado({ termo, uf, total, amostras }: { termo: string; uf: string; 
 
   if (total === 0) {
     return (
-      <div className="flex flex-col gap-3 px-4 py-4">
-        <p className="text-sm text-ink">
-          Nenhuma licitação aberta agora para <strong className="font-semibold">“{termo}”</strong> {onde(uf)}.
+      <div className="az-resultado-corpo">
+        <p className="az-resultado-titulo">
+          Nenhuma licitação aberta agora para <strong>“{termo}”</strong> {onde(uf)}.
         </p>
-        <p className="text-sm text-muted">
+        <p className="az-resultado-nota">
           Licitações novas abrem todo dia. Tente um termo mais curto ou todo o Brasil, ou crie a conta: você cadastra o que vende e o Monitor avisa quando aparecer.
         </p>
-        <LinkDeCadastro origem="vitrine" href={destino} variant="primary" className="h-11! w-full">
+        <LinkDeCadastro origem="vitrine" href={destino} className="az-pilula az-pilula-verde az-pilula-cheia">
           Criar conta grátis e ser avisado
         </LinkDeCadastro>
       </div>
@@ -115,24 +102,19 @@ function Resultado({ termo, uf, total, amostras }: { termo: string; uf: string; 
   }
 
   return (
-    <div className="flex flex-col">
-      <p className="px-4 pb-1 pt-4 text-sm text-ink">
-        <span className="font-mono text-base font-semibold">{total.toLocaleString('pt-BR')}</span>{' '}
-        {total === 1 ? 'licitação aberta' : 'licitações abertas'} agora para <strong className="font-semibold">“{termo}”</strong> {onde(uf)}
+    <div className="az-resultado-corpo">
+      <p className="az-resultado-titulo">
+        <span className="az-resultado-numero">{total.toLocaleString('pt-BR')}</span> {total === 1 ? 'licitação aberta' : 'licitações abertas'} agora para <strong>“{termo}”</strong> {onde(uf)}
       </p>
-      <p className="px-4 pb-2 text-xs text-muted">
-        {total > amostras.length ? `Mostrando ${amostras.length} de ${total.toLocaleString('pt-BR')}, pelo prazo mais próximo.` : 'Ordenadas pelo prazo mais próximo.'}
-      </p>
-      <ul className="border-y border-line-soft">
+      <p className="az-resultado-nota">{total > amostras.length ? `Mostrando ${amostras.length} de ${total.toLocaleString('pt-BR')}, pelo prazo mais próximo.` : 'Ordenadas pelo prazo mais próximo.'}</p>
+      <ul className="az-resultado-lista">
         {amostras.map((a, i) => (
           <Amostra key={`${a.objeto}-${i}`} amostra={a} />
         ))}
       </ul>
-      <div className="px-4 py-4">
-        <LinkDeCadastro origem="vitrine" href={destino} variant="primary" className="h-11! w-full">
-          Criar conta grátis e ver todas
-        </LinkDeCadastro>
-      </div>
+      <LinkDeCadastro origem="vitrine" href={destino} className="az-pilula az-pilula-verde az-pilula-cheia">
+        Criar conta grátis e ver todas
+      </LinkDeCadastro>
     </div>
   )
 }
@@ -186,57 +168,65 @@ export default function VitrineDeBusca() {
     return () => window.removeEventListener(EVENTO_DE_BUSCA, aoPedirBusca)
   }, [])
 
+  const buscando = estado.fase === 'buscando'
+
   return (
-    <section id={ID_DA_BUSCA} aria-labelledby="vitrine-titulo" className="min-w-0 scroll-mt-6 rounded border border-line-strong bg-surface">
+    <section id={ID_DA_BUSCA} aria-labelledby="vitrine-titulo" className="az-busca">
+      <h2 id="vitrine-titulo" className="sr-only">
+        Veja o que está aberto agora para o que você vende
+      </h2>
       <form
         onSubmit={(e: FormEvent) => {
           e.preventDefault()
           buscar(termo)
         }}
         noValidate
-        className="flex flex-col gap-3 p-4"
+        role="search"
+        className="az-busca-form"
       >
-        <div className="flex flex-col gap-0.5">
-          <h2 id="vitrine-titulo" className="text-sm font-semibold text-ink">
-            Veja o que está aberto agora para o que você vende
-          </h2>
-          <p className="text-xs text-muted">Busca real nas licitações abertas que o Monitor acompanha. Sem cadastro.</p>
+        <div className="az-busca-caixa">
+          <Search size={20} strokeWidth={2.5} aria-hidden className="az-busca-lupa" />
+          <label htmlFor="busca-termo" className="sr-only">
+            O que você vende?
+          </label>
+          <input
+            id="busca-termo"
+            type="search"
+            name="q"
+            value={termo}
+            onChange={(e) => setTermo(e.target.value)}
+            placeholder="O que você vende?"
+            maxLength={MAXIMO_DE_LETRAS}
+            autoComplete="off"
+            enterKeyHint="search"
+            aria-invalid={erroDoTermo ? true : undefined}
+            aria-describedby={erroDoTermo ? 'busca-erro' : 'busca-nota'}
+            className="az-busca-campo"
+          />
+          <button type="submit" disabled={buscando} aria-busy={buscando || undefined} className="az-pilula az-pilula-verde az-busca-botao">
+            {buscando && <Loader2 size={18} strokeWidth={2.5} className="animate-spin" aria-hidden />}
+            Ver licitações abertas
+          </button>
         </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_9.5rem] md:grid-cols-[minmax(0,1fr)_9.5rem_auto] md:items-start">
-          <Field label="O que você vende?" error={erroDoTermo}>
-            <Input
-              type="search"
-              name="q"
-              value={termo}
-              onChange={(e) => setTermo(e.target.value)}
-              placeholder="material de limpeza, notebook, medicamentos…"
-              maxLength={MAXIMO_DE_LETRAS}
-              autoComplete="off"
-              enterKeyHint="search"
-              className="h-12! text-base!"
-            />
-          </Field>
-          <Field label="Estado">
-            <Select name="uf" value={uf} onChange={(e) => setUf(e.target.value)} className="h-12! text-base!">
+        {erroDoTermo && (
+          <p id="busca-erro" role="alert" className="az-busca-erro">
+            <TriangleAlert size={14} strokeWidth={2.5} aria-hidden />
+            {erroDoTermo}
+          </p>
+        )}
+        <div className="az-busca-extras">
+          <label className="az-busca-uf">
+            <span>Onde</span>
+            <select name="uf" value={uf} onChange={(e) => setUf(e.target.value)}>
               <option value="">Todo o Brasil</option>
               {ESTADOS.map((e) => (
                 <option key={e.sigla} value={e.sigla}>
                   {e.sigla} · {e.nome}
                 </option>
               ))}
-            </Select>
-          </Field>
-          <div className="flex flex-col gap-1.5 sm:col-span-2 md:col-span-1">
-            <span aria-hidden className="hidden text-xs font-medium md:block">
-              &nbsp;
-            </span>
-            <Button type="submit" variant="primary" icon={Search} loading={estado.fase === 'buscando'} className="h-12! w-full px-5! text-base! md:w-auto">
-              Ver licitações abertas
-            </Button>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-x-1 gap-y-1 text-xs text-muted">
-          <span className="mr-1">Experimente:</span>
+            </select>
+          </label>
+          <span className="az-busca-experimente">Experimente:</span>
           {SUGESTOES.map((s) => (
             <button
               key={s}
@@ -245,44 +235,43 @@ export default function VitrineDeBusca() {
                 setTermo(s)
                 buscar(s)
               }}
-              className="inline-flex min-h-11 items-center rounded-sm px-1.5 font-medium text-accent underline decoration-accent-line underline-offset-[3px] hover:decoration-accent sm:min-h-7"
+              className="az-chip"
             >
               {s}
             </button>
           ))}
         </div>
+        <p id="busca-nota" className="az-busca-nota">
+          Busca real nas licitações abertas que o Monitor acompanha. Sem cadastro.
+        </p>
       </form>
       <div aria-live="polite">
         {estado.fase !== 'ocioso' && (
-          <div className="border-t border-line-soft">
+          <div className="az-resultado">
             {estado.fase === 'buscando' && (
-              <div className="px-4 py-4">
-                <Carregando linhas={3} texto="Buscando licitações abertas…" />
+              <div className="az-resultado-corpo" aria-busy>
+                <p className="az-resultado-nota">Buscando licitações abertas…</p>
+                <span className="az-esqueleto" />
+                <span className="az-esqueleto az-esqueleto-curto" />
+                <span className="az-esqueleto" />
               </div>
             )}
             {estado.fase === 'resultado' && <Resultado termo={estado.termo} uf={estado.uf} total={estado.total} amostras={estado.amostras} />}
             {estado.fase === 'limite' && (
-              <div className="flex flex-col gap-3 px-4 py-4">
-                <Notice tone="warn" title="Muitas buscas em pouco tempo">
-                  Para continuar buscando sem limite, crie a sua conta grátis.
-                </Notice>
-                <LinkDeCadastro origem="vitrine" href={destinoDoCadastro(termo.trim(), uf)} variant="primary" className="h-11! w-full">
+              <div className="az-resultado-corpo">
+                <p className="az-resultado-titulo">Muitas buscas em pouco tempo</p>
+                <p className="az-resultado-nota">Para continuar buscando sem limite, crie a sua conta grátis.</p>
+                <LinkDeCadastro origem="vitrine" href={destinoDoCadastro(termo.trim(), uf)} className="az-pilula az-pilula-verde az-pilula-cheia">
                   Criar conta grátis
                 </LinkDeCadastro>
               </div>
             )}
             {estado.fase === 'erro' && (
-              <div className="px-4 py-4">
-                <Notice
-                  tone="danger"
-                  action={
-                    <button type="button" onClick={() => buscar(termo)} className="inline-flex min-h-11 items-center text-sm font-medium text-danger underline underline-offset-[3px] sm:min-h-0">
-                      Tentar de novo
-                    </button>
-                  }
-                >
-                  Não deu para buscar agora. Tente de novo em instantes.
-                </Notice>
+              <div className="az-resultado-corpo">
+                <p className="az-resultado-titulo az-resultado-erro">Não deu para buscar agora. Tente de novo em instantes.</p>
+                <button type="button" onClick={() => buscar(termo)} className="az-pilula az-pilula-contorno az-pilula-cheia">
+                  Tentar de novo
+                </button>
               </div>
             )}
           </div>

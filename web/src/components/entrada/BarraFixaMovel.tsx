@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { Search } from 'lucide-react'
-import { Button, cx } from '@/components/ui'
 import { rastrear } from '@/lib/rastreamento'
 import LinkDeCadastro from './LinkDeCadastro'
 import { irParaBusca } from './buscaDaEntrada'
@@ -37,31 +36,21 @@ export default function BarraFixaMovel({ idDoTopo, idDoFim, rotuloDoCadastro }: 
   const visivel = passouDoTopo && !fimNaTela
 
   return (
-    <div
-      aria-hidden={!visivel}
-      inert={!visivel}
-      className={cx(
-        'barra-fixa fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface pt-3 transition-[transform,opacity,visibility] duration-300 ease-out sm:hidden',
-        visivel ? 'visible translate-y-0 opacity-100' : 'invisible translate-y-full opacity-0',
-      )}
-    >
-      <div className="flex items-center gap-2">
-        <LinkDeCadastro origem="barra" variant="primary" className="h-12! min-w-0 flex-1 text-base!">
-          {rotuloDoCadastro}
-        </LinkDeCadastro>
-        <Button
-          type="button"
-          variant="secondary"
-          icon={Search}
-          onClick={() => {
-            rastrear('clique_buscar_barra')
-            irParaBusca()
-          }}
-          className="h-12! px-4! text-base!"
-        >
-          Buscar
-        </Button>
-      </div>
+    <div aria-hidden={!visivel} inert={!visivel} data-visivel={visivel} className="az-barra-fixa">
+      <LinkDeCadastro origem="barra" className="az-pilula az-pilula-verde az-barra-fixa-cadastro">
+        {rotuloDoCadastro}
+      </LinkDeCadastro>
+      <button
+        type="button"
+        onClick={() => {
+          rastrear('clique_buscar_barra')
+          irParaBusca()
+        }}
+        className="az-pilula az-pilula-contorno"
+      >
+        <Search size={18} strokeWidth={2.5} aria-hidden />
+        Buscar
+      </button>
     </div>
   )
 }

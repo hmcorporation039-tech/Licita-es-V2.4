@@ -1,8 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { Pause, Play } from 'lucide-react'
-import { StatusTag } from '@/components/ui'
+import { Mic, Pause, Play } from 'lucide-react'
 import type { AmostraDaVitrine } from '@/lib/dadosPublicos'
 import PrazoNoCliente from './PrazoNoCliente'
 import { prefereMenosMovimento } from './movimento'
@@ -38,17 +37,17 @@ function filaInicial(total: number): ItemNaTela[] {
 
 function Linha({ amostra, chegando }: { amostra: AmostraDaVitrine; chegando: boolean }) {
   return (
-    <li className={`flex h-(--altura-da-linha) items-start justify-between gap-3 border-b border-line-soft px-4 py-3 ${chegando ? 'item-chegando bg-sunken' : ''}`}>
-      <div className="flex min-w-0 flex-col gap-1">
-        <p className="line-clamp-2 text-sm font-medium text-ink">{frasePropria(amostra.objeto)}</p>
-        <p className="truncate text-xs text-muted">
+    <li className={`az-tela-linha ${chegando ? 'item-chegando' : ''}`}>
+      <div className={`az-tela-item ${chegando ? 'az-tela-item-novo' : ''}`}>
+        <p className="az-tela-objeto">{frasePropria(amostra.objeto)}</p>
+        <p className="az-tela-orgao">
           {nomeProprio(amostra.orgao ?? '')}
           {amostra.local && ` · ${amostra.local}`}
         </p>
-      </div>
-      <div className="flex shrink-0 flex-col items-end gap-1.5">
-        <PrazoNoCliente prazo={amostra.prazo} />
-        <StatusTag mono>{rotuloCurtoDaFonte(amostra.fonte)}</StatusTag>
+        <div className="az-tela-rodape-item">
+          <PrazoNoCliente prazo={amostra.prazo} />
+          <span className="az-fonte-tag">{rotuloCurtoDaFonte(amostra.fonte)}</span>
+        </div>
       </div>
     </li>
   )
@@ -90,34 +89,33 @@ export default function ChegandoAgora({ itens, ilustrativo }: { itens: AmostraDa
     return () => window.clearInterval(relogio)
   }, [podeAnimar, pausado, naTela, itens.length])
 
-  const estiloDaJanela = { '--altura-da-linha': '5.75rem', height: `calc(${LINHAS_VISIVEIS} * var(--altura-da-linha))` } as CSSProperties
-  const estiloDaLista: CSSProperties = pulsos > 0 ? { animationName: pulsos % 2 ? 'empurrar-lista-a' : 'empurrar-lista-b' } : {}
+  const estiloDaLista: CSSProperties = { '--altura-da-linha': '6.75rem', ...(pulsos > 0 ? { animationName: pulsos % 2 ? 'empurrar-lista-a' : 'empurrar-lista-b' } : {}) } as CSSProperties
 
   return (
-    <section ref={referencia} aria-labelledby="chegando-titulo" className="flex min-w-0 flex-col overflow-hidden rounded border border-line-strong bg-surface">
-      <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-2">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <span aria-hidden className={`size-2 shrink-0 rounded-full bg-ok ${podeAnimar && !pausado ? 'ponto-ao-vivo' : ''}`} />
-          <h2 id="chegando-titulo" className="truncate text-sm font-semibold text-ink">
-            Licitações chegando agora
+    <section ref={referencia} aria-labelledby="chegando-titulo" className="az-tela-app">
+      <div className="az-tela-topo">
+        <div className="min-w-0">
+          <p className="az-tela-sobretitulo">
+            <span aria-hidden className={`az-ponto-vivo ${podeAnimar && !pausado ? 'ponto-ao-vivo' : ''}`} />
+            {ilustrativo ? 'Exemplo ilustrativo' : 'Amostra real, ao vivo'}
+          </p>
+          <h2 id="chegando-titulo" className="az-tela-titulo">
+            Chegando agora
           </h2>
         </div>
-        <div className="flex shrink-0 items-center gap-1">
-          {ilustrativo ? <StatusTag>Exemplo ilustrativo</StatusTag> : <StatusTag>Amostra real</StatusTag>}
-          {podeAnimar && (
-            <button
-              type="button"
-              onClick={() => setPausado((p) => !p)}
-              aria-pressed={pausado}
-              aria-label={pausado ? 'Continuar a lista animada' : 'Pausar a lista animada'}
-              className="inline-flex size-11 items-center justify-center rounded text-muted hover:bg-sunken hover:text-ink"
-            >
-              {pausado ? <Play size={14} strokeWidth={2} aria-hidden /> : <Pause size={14} strokeWidth={2} aria-hidden />}
-            </button>
-          )}
-        </div>
+        {podeAnimar && (
+          <button
+            type="button"
+            onClick={() => setPausado((p) => !p)}
+            aria-pressed={pausado}
+            aria-label={pausado ? 'Continuar a lista animada' : 'Pausar a lista animada'}
+            className="az-tela-pausa"
+          >
+            {pausado ? <Play size={16} strokeWidth={2.5} aria-hidden /> : <Pause size={16} strokeWidth={2.5} aria-hidden />}
+          </button>
+        )}
       </div>
-      <div aria-hidden className="relative overflow-hidden" style={estiloDaJanela}>
+      <div aria-hidden className="az-tela-janela">
         <ul className="lista-chegando" style={estiloDaLista}>
           {fila.map((item, posicao) => (
             <Linha key={item.chave} amostra={itens[item.indice]} chegando={pulsos > 0 && posicao === 0} />
@@ -132,11 +130,12 @@ export default function ChegandoAgora({ itens, ilustrativo }: { itens: AmostraDa
           </li>
         ))}
       </ul>
-      <p className="border-t border-line-soft bg-sunken px-4 py-2.5 text-xs text-muted">
-        {ilustrativo
-          ? 'Exemplo ilustrativo, com dados fictícios. Busque o que você vende para ver as licitações reais.'
-          : 'Amostra real de licitações abertas que o Monitor acompanha, de termos como material de limpeza, medicamentos e notebook.'}
-      </p>
+      <div aria-hidden className="az-tela-microfone">
+        <span className="az-tela-microfone-botao">
+          <Mic size={14} strokeWidth={2.5} />
+        </span>
+        Fale com a Bela
+      </div>
     </section>
   )
 }

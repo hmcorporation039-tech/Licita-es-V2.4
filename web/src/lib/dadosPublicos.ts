@@ -43,6 +43,7 @@ export interface DadosDaEntrada {
   planos: PlanosResposta | null
   chegando: ListaChegando
   totaisPorTermo: Record<string, number | null>
+  primeiroPrazoPorTermo: Record<string, string | null>
 }
 
 const DEZ_MINUTOS_EM_SEGUNDOS = 600
@@ -140,6 +141,17 @@ const EXEMPLOS_DA_LISTA: Array<Omit<AmostraDaVitrine, 'prazo'> & { horas: number
   { objeto: 'Equipamentos de informática para laboratórios de ensino', orgao: 'Instituto federal', local: 'Campinas/SP', fonte: 'COMPRASNET', horas: 13 * 24 },
 ]
 
+export function primeiroPrazoUtil(resposta: RespostaDaVitrine | null, agora: number = Date.now()): string | null {
+  if (!resposta) return null
+  let primeiro: { prazo: string; instante: number } | null = null
+  for (const amostra of resposta.amostras) {
+    if (!amostra.prazo || !prazoAindaUtil(amostra.prazo, agora)) continue
+    const instante = new Date(amostra.prazo).getTime()
+    if (!primeiro || instante < primeiro.instante) primeiro = { prazo: amostra.prazo, instante }
+  }
+  return primeiro?.prazo ?? null
+}
+
 export function listaIlustrativa(agora: number = Date.now()): AmostraDaVitrine[] {
   return EXEMPLOS_DA_LISTA.map(({ horas, ...resto }) => ({ ...resto, prazo: new Date(agora + horas * HORA).toISOString() }))
 }
@@ -157,10 +169,14 @@ export async function carregarDadosDaEntrada(termosDosRamos: string[]): Promise<
   ])
   const respostas = vitrines.map((r) => valorOuNulo(r))
   const porTermo = new Map(termos.map((t, i) => [t, respostas[i] ?? null]))
-  const totaisPorTermo: Record<string, number | null> = {}
-  for (const [termo, resposta] of porTermo) totaisPorTermo[termo] = resposta ? resposta.total : null
-
   const agora = Date.now()
+  const totaisPorTermo: Record<string, number | null> = {}
+  const primeiroPrazoPorTermo: Record<string, string | null> = {}
+  for (const [termo, resposta] of porTermo) {
+    totaisPorTermo[termo] = resposta ? resposta.total : null
+    primeiroPrazoPorTermo[termo] = primeiroPrazoUtil(resposta, agora)
+  }
+
   const ordemDaLista = [...TERMOS_DO_HERO, ...termos.filter((t) => !TERMOS_DO_HERO.includes(t))]
   const reais = juntarAmostras(ordemDaLista.map((t) => porTermo.get(t) ?? null), agora)
   const chegando: ListaChegando = reais.length >= MINIMO_REAL_NA_LISTA ? { itens: reais, ilustrativo: false } : { itens: listaIlustrativa(agora), ilustrativo: true }
@@ -170,5 +186,6 @@ export async function carregarDadosDaEntrada(termosDosRamos: string[]): Promise<
     planos: valorOuNulo(planos[0]),
     chegando,
     totaisPorTermo,
+    primeiroPrazoPorTermo,
   }
 }

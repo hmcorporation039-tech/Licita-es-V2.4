@@ -14,11 +14,24 @@ Direção aprovada em 13/10/2026: **azul-tinta**, IBM Plex, neutros quentes, den
 | Texto secundário / terciário | `text-muted` / `text-faint` | `#5B5F66` / `#74777D` (os dois passam AA no branco) |
 | Destaque | `bg-accent`, `text-accent`, `bg-accent-soft`, `border-accent-line`, `hover:bg-accent-hover` | `#1F3A5F` |
 | Risco / atenção / ok | `danger`, `warn`, `ok` (+ `-soft`, `-line`) | `#B42318` / `#A15C07` / `#1E6B3A` |
-| Faixa escura (só na landing) | `bg-noite`, `bg-noite-2`, `border-noite-line`, `text-noite-ink`, `text-noite-muted`, `text-noite-accent` + classe `.faixa-noite` | `#0E1B2E` / `#14253D` / `#26395A` / `#EEF2F7` / `#A9B8CB` / `#9CBCE3` |
+| Faixa escura (landing v2, sem uso desde a página azul) | `bg-noite`, `bg-noite-2`, `border-noite-line`, `text-noite-ink`, `text-noite-muted`, `text-noite-accent` + classe `.faixa-noite` | `#0E1B2E` / `#14253D` / `#26395A` / `#EEF2F7` / `#A9B8CB` / `#9CBCE3` |
 
 Escala de texto (redefinida, mais densa): `text-2xs` 11 · `text-xs` 12 · **`text-sm` 13 (padrão de tela)** · `text-base` 14 (corpo de texto corrido) · `text-lg` 16 · `text-xl` 20 · `text-2xl` 24 (título de página) · `text-3xl` 32 · `text-4xl` 40 (só na landing).
 
 As escalas `indigo-*` e `slate-*` foram sobrescritas para o azul-tinta e o neutro quente, como rede de segurança. **Código novo usa os tokens semânticos**, nunca `indigo-*`/`slate-*`/`gray-*`/`blue-*`/`red-*`/`amber-*`/`emerald-*` direto.
+
+## Página de entrada (estilo B · azul vibrante, 16/10/2026)
+
+A página pública `/` (`web/src/app/(entrada)/`) tem identidade própria e **não** usa os tokens acima. Tudo fica isolado no grupo de rotas `(entrada)`: fonte Nunito variável (`fonts/nunito-latin-variable.woff2`, carregada só no `layout.tsx` desse grupo) e as classes `az-*` de `entrada.css`, todas sob `.entrada-azul`. O app logado continua com IBM Plex e o azul-tinta.
+
+| Uso | Valor |
+|---|---|
+| Azul principal / claro / fundo / noite | `#0A4FD6` / `#2469F0` / `#063AA8` / `#052C82` |
+| Azul suave (só texto grande sobre azul) | `#9FD3FF` |
+| Papel / tinta / tinta secundária / linha | `#F4F8FF` / `#0B1F44` / `#51617F` / `#DBE6F7` |
+| Verde dos botões (texto `#04220F`, não branco: branco no verde não passa AA) | `#18C25A` |
+
+Regras: títulos misturam Nunito 300 e 900; botões em pílula (`az-pilula` + `-verde`, `-branca`, `-vazada`, `-azul`, `-contorno`); cartões brancos com raio 24 px sobre o papel; telas do produto sempre com o selo "Exemplo ilustrativo". Logotipos das fontes ficam em `web/public/fontes/`, baixados só dos sites oficiais e exibidos em branco monocromático.
 
 ## Componentes (`web/src/components/ui`, importar de `@/components/ui`)
 
