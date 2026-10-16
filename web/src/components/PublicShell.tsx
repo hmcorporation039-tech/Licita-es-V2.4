@@ -1,55 +1,135 @@
+import Image from 'next/image'
 import Link from 'next/link'
-import { LinkButton } from '@/components/ui'
+import { useId, type ReactNode } from 'react'
+import { Check } from 'lucide-react'
+import NavegacaoPublica from '@/components/NavegacaoPublica'
 
-export function PublicCard({ title, description, children }: { title: React.ReactNode; description?: React.ReactNode; children: React.ReactNode }) {
+export interface DestaqueDoPainel {
+  texto: ReactNode
+  detalhe?: ReactNode
+}
+
+const FALA_PADRAO = 'Estou aqui para te ajudar a achar as licitações certas.'
+
+function Anel({ classe }: { classe: string }) {
+  return <span aria-hidden className={`pb-anel ${classe}`} />
+}
+
+function PainelDaBela({ fala, destaques }: { fala: ReactNode; destaques?: DestaqueDoPainel[] }) {
   return (
-    <div className="mx-auto flex w-full max-w-[420px] flex-col gap-6 px-4 py-10 sm:py-16">
-      <div className="flex flex-col gap-1.5">
-        <h1 className="text-2xl font-semibold tracking-[-0.01em] text-ink">{title}</h1>
-        {description && <div className="text-sm text-muted">{description}</div>}
-      </div>
-      <div className="rounded border border-line bg-surface p-5 sm:p-6">{children}</div>
+    <aside className="pb-painel" aria-label="Recado da Bela, assistente do Monitor">
+      <Anel classe="pb-anel-a" />
+      <Anel classe="pb-anel-b" />
+      <figure className="pb-bela">
+        <Image
+          src="/bela/bela-640.webp"
+          alt=""
+          width={640}
+          height={605}
+          sizes="(min-width: 1024px) 460px, 64px"
+          loading="eager"
+          className="pb-bela-foto"
+        />
+      </figure>
+      <p className="pb-fala">
+        <span className="pb-fala-autora">Bela</span>
+        <span className="pb-fala-texto">{fala}</span>
+      </p>
+      {destaques && destaques.length > 0 && (
+        <ul className="pb-destaques">
+          {destaques.map((d, i) => (
+            <li key={i} className="pb-destaque">
+              <span className="pb-destaque-icone" aria-hidden>
+                <Check size={14} strokeWidth={3.5} />
+              </span>
+              <span>
+                {d.texto}
+                {d.detalhe && <span className="pb-destaque-detalhe"> {d.detalhe}</span>}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </aside>
+  )
+}
+
+export function PublicCard({
+  title,
+  description,
+  children,
+  fala = FALA_PADRAO,
+  destaques,
+}: {
+  title: ReactNode
+  description?: ReactNode
+  children: ReactNode
+  fala?: ReactNode
+  destaques?: DestaqueDoPainel[]
+}) {
+  const tituloId = useId()
+  return (
+    <div className="pb-acesso">
+      <PainelDaBela fala={fala} destaques={destaques} />
+      <section className="pb-cartao" aria-labelledby={tituloId}>
+        <div className="pb-cartao-cabeca">
+          <h1 id={tituloId} className="pb-titulo">
+            {title}
+          </h1>
+          {description && <div className="pb-descricao">{description}</div>}
+        </div>
+        <div className="pb-cartao-corpo">{children}</div>
+      </section>
     </div>
   )
 }
 
-export function PublicProse({ children }: { children: React.ReactNode }) {
-  return <article className="mx-auto w-full max-w-[720px] px-4 py-10 sm:py-14">{children}</article>
+export function PublicProse({ titulo, rotulo, children }: { titulo: ReactNode; rotulo?: ReactNode; children: ReactNode }) {
+  return (
+    <>
+      <div className="pb-faixa">
+        <Anel classe="pb-anel-a" />
+        <div className="pb-conteiner">
+          <div className="pb-faixa-conteudo">
+            {rotulo && <p className="pb-faixa-rotulo">{rotulo}</p>}
+            <h1>{titulo}</h1>
+          </div>
+        </div>
+      </div>
+      <article className="pb-documento">{children}</article>
+    </>
+  )
 }
 
-export function PublicFrame({ children }: { children: React.ReactNode }) {
+export function PublicFrame({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-dvh w-full flex-col">
-      <header className="shrink-0 border-b border-line bg-surface">
-        <div className="mx-auto flex h-14 w-full max-w-[1200px] items-center justify-between px-4 sm:px-6">
-          <Link href="/" className="flex items-center gap-2.5 text-sm font-semibold tracking-[-0.005em] text-ink">
-            <span aria-hidden className="size-3.5 rounded-sm bg-accent" />
-            Monitor de Licitações
+    <>
+      <a href="#conteudo" className="pb-pular">
+        Pular para o conteúdo
+      </a>
+      <header className="pb-topo">
+        <div className="pb-conteiner pb-topo-linha">
+          <Link href="/" className="pb-marca" aria-label="Monitor de Licitações, página inicial">
+            Monitor <span>de Licitações</span>
           </Link>
-          <nav aria-label="Conta" className="flex items-center gap-1 sm:gap-2">
-            <LinkButton href="/login" variant="ghost" size="sm" className="h-11! sm:h-8!">
-              Entrar
-            </LinkButton>
-            <LinkButton href="/cadastro" variant="primary" size="sm" className="h-11! sm:h-8!">
-              Teste grátis
-            </LinkButton>
-          </nav>
+          <NavegacaoPublica />
         </div>
       </header>
-      <main className="flex min-w-0 flex-1 flex-col">{children}</main>
-      <footer className="mt-auto shrink-0 border-t border-line bg-surface">
-        <div className="mx-auto flex w-full max-w-[1200px] flex-wrap items-center justify-between gap-3 px-4 py-5 text-xs text-muted sm:px-6">
-          <span>© Monitor de Licitações · H&amp;M Engenharia e Tecnologia</span>
-          <nav aria-label="Documentos legais" className="flex gap-4">
-            <Link href="/termos" className="hover:text-ink hover:underline">
-              Termos de Uso
-            </Link>
-            <Link href="/privacidade" className="hover:text-ink hover:underline">
-              Política de Privacidade
-            </Link>
+      <main id="conteudo" className="pb-principal">
+        {children}
+      </main>
+      <footer className="pb-rodape">
+        <div className="pb-conteiner pb-rodape-grade">
+          <p className="pb-marca">
+            Monitor <span>de Licitações</span>
+          </p>
+          <p>© Monitor de Licitações · H&amp;M Engenharia e Tecnologia · Brasília/DF</p>
+          <nav aria-label="Documentos legais" className="pb-rodape-links">
+            <Link href="/termos">Termos de Uso</Link>
+            <Link href="/privacidade">Política de Privacidade</Link>
           </nav>
         </div>
       </footer>
-    </div>
+    </>
   )
 }

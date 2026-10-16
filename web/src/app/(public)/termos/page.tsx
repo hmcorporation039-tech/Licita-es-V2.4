@@ -5,9 +5,8 @@ export const metadata = { title: 'Termos de Uso — Monitor de Licitações' }
 
 export default function TermosPage() {
   return (
-    <PublicProse>
-      <h1 className="text-2xl font-semibold tracking-[-0.01em] text-ink">Termos de Uso</h1>
-      <Notice tone="warn" title="Minuta em revisão." className="mt-4">
+    <PublicProse titulo="Termos de Uso" rotulo="Documento legal">
+      <Notice tone="warn" title="Minuta em revisão.">
         Este texto é um ponto de partida e será revisado por advogado antes do lançamento
         comercial. Versão: 2026-10-minuta-1.
       </Notice>

@@ -28,6 +28,8 @@ import {
   solicitarRecuperacao,
   trialDias,
 } from '../../services/contaService'
+import { interesseSchema, montarOrigem, utmSchema } from '../../lib/origemDoCadastro'
+import { criarItemDoCadastro } from './monitoredItems'
 
 export const authRouter = Router()
 
@@ -55,6 +57,8 @@ const cadastroSchema = z
     website: z.string().max(200).optional(),
     // Resposta do captcha (Turnstile), quando ligado.
     captcha: z.string().max(4000).optional(),
+    origem: utmSchema.optional().catch(undefined),
+    interesse: interesseSchema.optional().catch(undefined),
   })
   .superRefine((d, ctx) => {
     const ok = d.tipo === 'PESSOA_FISICA' ? cpfValido(d.documento) : cnpjValido(d.documento)
@@ -99,6 +103,7 @@ authRouter.post(
       documento: d.documento,
       empresaNome: d.empresaNome,
       telefone: d.telefone,
+      origem: montarOrigem(d.origem, d.interesse),
     })
 
     if (r.criado) {
@@ -164,6 +169,11 @@ authRouter.post(
       )
     }
     await registrarAuditoria(req, { action: 'EMAIL_VERIFICADO', entityType: 'usuario', entityId: r.userId, companyId: r.companyId }, { userId: r.userId })
+    try {
+      await criarItemDoCadastro(req, r.userId, r.companyId)
+    } catch (err) {
+      console.error('[Cadastro] Item do interesse não foi criado:', err instanceof Error ? err.message : err)
+    }
     res.json({ ok: true })
   })
 )

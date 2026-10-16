@@ -7,7 +7,7 @@ import { ArrowLeft, ArrowRight, ShieldCheck } from 'lucide-react'
 import AdminShell, { RotuloDoPlano } from '@/components/AdminShell'
 import { api, ApiRequestError } from '@/lib/api'
 import { ROTULO_ACAO } from '@/lib/adminTypes'
-import type { DetalheEmpresa, Limites, PlanoComercial, RecursoDoPlano } from '@/lib/adminTypes'
+import type { DetalheEmpresa, Limites, OrigemDoCadastro, PlanoComercial, RecursoDoPlano } from '@/lib/adminTypes'
 import {
   Button,
   Carregando,
@@ -36,6 +36,18 @@ const data = (v: string | null) => formatarData(v)
 const dataHora = (v: string) => formatarData(v, { comHora: true })
 const nf = new Intl.NumberFormat('pt-BR')
 const ehNumero = (v: string | undefined) => /^\d+$/.test((v ?? '').trim())
+
+function textoDaOrigem(origem: OrigemDoCadastro | null | undefined): string {
+  if (!origem) return 'direto, sem campanha'
+  const partes: string[] = []
+  const fonte = [origem.utm_source, origem.utm_medium].filter(Boolean).join(' / ')
+  if (fonte) partes.push(fonte)
+  if (origem.utm_campaign) partes.push(`campanha ${origem.utm_campaign}`)
+  if (origem.utm_content) partes.push(`anúncio ${origem.utm_content}`)
+  if (origem.utm_term) partes.push(`termo ${origem.utm_term}`)
+  if (origem.interesse) partes.push(`buscou “${origem.interesse.termo}” ${origem.interesse.uf ? `em ${origem.interesse.uf}` : 'no Brasil'}`)
+  return partes.join(' · ') || 'direto, sem campanha'
+}
 
 function situacaoDaCota(r: RecursoDoPlano): 'excedido' | 'atingido' | null {
   if (r.limite === null) return null
@@ -189,6 +201,7 @@ function Conteudo({ id }: { id: string }) {
             { label: 'Telefone', value: e.telefone, mono: Boolean(e.telefone) },
             { label: 'Responsável', value: e.responsavel },
             { label: 'Criada em', value: data(e.createdAt), mono: true },
+            { label: 'Origem do cadastro', value: textoDaOrigem(e.origemDoCadastro) },
           ]}
         />
       </Panel>

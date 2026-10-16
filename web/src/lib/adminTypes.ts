@@ -82,8 +82,17 @@ export interface PlanoComercial {
   empresas: number
 }
 
+export interface OrigemDoCadastro {
+  utm_source?: string
+  utm_medium?: string
+  utm_campaign?: string
+  utm_content?: string
+  utm_term?: string
+  interesse?: { termo: string; uf?: string }
+}
+
 export interface DetalheEmpresa {
-  empresa: { id: string; name: string; tipo: string; cnpj: string | null; cpf: string | null; email: string | null; telefone: string | null; responsavel: string | null; planCode: string; quotaOverrides: Partial<Limites> | null; createdAt: string }
+  empresa: { id: string; name: string; tipo: string; cnpj: string | null; cpf: string | null; email: string | null; telefone: string | null; responsavel: string | null; planCode: string; quotaOverrides: Partial<Limites> | null; origemDoCadastro?: OrigemDoCadastro | null; createdAt: string }
   usuarios: { id: string; email: string; name: string | null; companyRole: string; isAdmin: boolean; active: boolean; disabledByAdmin: boolean; accessExpiresAt: string | null; createdAt: string }[]
   itensMonitorados: { id: string; name: string; active: boolean; ufs: string[]; keywords: string[]; catmatCodes: string[]; catserCodes: string[]; createdAt: string }[]
   documentos: { id: string; nome: string; tipo: string | null; dataEmissao: string | null; dataValidade: string | null }[]

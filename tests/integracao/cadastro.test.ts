@@ -500,4 +500,100 @@ rodar('Cadastro público e recuperação de senha', () => {
       expect(r.body.planos[0].precoMensalCentavos).toBeNull()
     })
   })
+
+  describe('origem do anúncio e o que a pessoa buscou na entrada', () => {
+    async function confirmar(endereco: string) {
+      const codigo = ultimoEmailPara(endereco).codigo
+      return http('POST', '/api/auth/verify-email', { email: endereco, codigo })
+    }
+
+    it('grava as UTMs conhecidas e o interesse; descarta chaves desconhecidas', async () => {
+      const r = await http(
+        'POST',
+        '/api/auth/register',
+        cadastro({
+          email: email('origem'),
+          documento: gerarCpf(),
+          origem: { utm_source: 'google', utm_medium: 'cpc', utm_campaign: 'limpeza-go', utm_content: 'anuncio-1', utm_term: 'licitacao limpeza', capturadoEm: '2026-10-16', gclid: 'abc' },
+          interesse: { termo: '  material   de limpeza ', uf: 'go' },
+        })
+      )
+      expect(r.status).toBe(202)
+      const user = await prisma.user.findUnique({ where: { email: email('origem') }, include: { company: true } })
+      expect(user.company.origemDoCadastro).toEqual({
+        utm_source: 'google',
+        utm_medium: 'cpc',
+        utm_campaign: 'limpeza-go',
+        utm_content: 'anuncio-1',
+        utm_term: 'licitacao limpeza',
+        interesse: { termo: 'material de limpeza', uf: 'GO' },
+      })
+      expect(await prisma.monitoredItem.count({ where: { companyId: user.companyId } })).toBe(0)
+    })
+
+    it('ao confirmar o e-mail, cria o primeiro item monitorado com o termo e a UF, uma vez só, já com as licitações abertas ligadas', async () => {
+      const daquiAVinteDias = new Date(Date.now() + 20 * 24 * 60 * 60 * 1000)
+      const emGoias = await prisma.tender.create({
+        data: { fonte: 'PNCP', fonteId: `limpeza-go-${sufixo}`, modalidade: 'PREGAO_ELETRONICO', objeto: `Aquisição de material de limpeza ${sufixo}`, objetoNorm: `aquisicao de material de limpeza ${sufixo}`, uf: 'GO', rawJson: {}, encerramentoAt: daquiAVinteDias },
+      })
+      const emSaoPaulo = await prisma.tender.create({
+        data: { fonte: 'PNCP', fonteId: `limpeza-sp-${sufixo}`, modalidade: 'PREGAO_ELETRONICO', objeto: `Aquisição de material de limpeza ${sufixo}`, objetoNorm: `aquisicao de material de limpeza ${sufixo}`, uf: 'SP', rawJson: {}, encerramentoAt: daquiAVinteDias },
+      })
+
+      expect((await confirmar(email('origem'))).status).toBe(200)
+      const user = await prisma.user.findUnique({ where: { email: email('origem') } })
+      const itens = await prisma.monitoredItem.findMany({ where: { companyId: user.companyId } })
+      expect(itens).toHaveLength(1)
+      expect(itens[0]).toMatchObject({ name: 'Material de limpeza', keywords: ['material de limpeza'], ufs: ['GO'], active: true, userId: user.id })
+      const ligadas = await prisma.tenderMatch.findMany({ where: { monitoredItemId: itens[0].id }, select: { tenderId: true } })
+      const idsLigados = ligadas.map((m: { tenderId: string }) => m.tenderId)
+      expect(idsLigados).toContain(emGoias.id)
+      expect(idsLigados).not.toContain(emSaoPaulo.id)
+      const trilha = await prisma.auditLog.findFirst({ where: { companyId: user.companyId, action: 'ITEM_MONITORADO_CRIADO' } })
+      expect(trilha.metadata).toMatchObject({ origem: 'cadastro', nome: 'Material de limpeza' })
+      expect(trilha.actorUserId).toBe(user.id)
+
+      const login = await http('POST', '/api/auth/login', { email: email('origem'), password: SENHA })
+      const lista = await http('GET', '/api/monitored-items', undefined, login.body.token)
+      expect(lista.body.map((i: { name: string }) => i.name)).toEqual(['Material de limpeza'])
+    })
+
+    it('UTM grande demais ou UF inválida não barram o cadastro: só aquele dado é ignorado', async () => {
+      const r = await http(
+        'POST',
+        '/api/auth/register',
+        cadastro({ email: email('origem-ruim'), documento: gerarCpf(), origem: { utm_source: 'x'.repeat(201), utm_medium: 'cpc' }, interesse: { termo: 'notebook', uf: 'XX' } })
+      )
+      expect(r.status).toBe(202)
+      const user = await prisma.user.findUnique({ where: { email: email('origem-ruim') }, include: { company: true } })
+      expect(user.company.origemDoCadastro).toBeNull()
+      expect((await confirmar(email('origem-ruim'))).status).toBe(200)
+      expect(await prisma.monitoredItem.count({ where: { companyId: user.companyId } })).toBe(0)
+    })
+
+    it('interesse sem UF vira item nacional; cadastro sem interesse não cria item', async () => {
+      await http('POST', '/api/auth/register', cadastro({ email: email('nacional'), documento: gerarCpf(), origem: { utm_source: 'meta' }, interesse: { termo: 'notebook' } }))
+      await http('POST', '/api/auth/register', cadastro({ email: email('sem-interesse'), documento: gerarCpf() }))
+      expect((await confirmar(email('nacional'))).status).toBe(200)
+      expect((await confirmar(email('sem-interesse'))).status).toBe(200)
+
+      const nacional = await prisma.user.findUnique({ where: { email: email('nacional') }, include: { company: true } })
+      expect(nacional.company.origemDoCadastro).toEqual({ utm_source: 'meta', interesse: { termo: 'notebook' } })
+      const itens = await prisma.monitoredItem.findMany({ where: { companyId: nacional.companyId } })
+      expect(itens).toHaveLength(1)
+      expect(itens[0]).toMatchObject({ name: 'Notebook', keywords: ['notebook'], ufs: [] })
+
+      const sem = await prisma.user.findUnique({ where: { email: email('sem-interesse') }, include: { company: true } })
+      expect(sem.company.origemDoCadastro).toBeNull()
+      expect(await prisma.monitoredItem.count({ where: { companyId: sem.companyId } })).toBe(0)
+    })
+
+    it('o detalhe da empresa no admin mostra a origem do cadastro', async () => {
+      const admin = (await http('POST', '/api/auth/login', { email: email('admin'), password: SENHA })).body.token
+      const user = await prisma.user.findUnique({ where: { email: email('origem') } })
+      const r = await http('GET', `/api/admin/companies/${user.companyId}`, undefined, admin)
+      expect(r.status).toBe(200)
+      expect(r.body.empresa.origemDoCadastro).toMatchObject({ utm_source: 'google', interesse: { termo: 'material de limpeza', uf: 'GO' } })
+    })
+  })
 })

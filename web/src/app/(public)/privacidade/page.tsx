@@ -5,9 +5,8 @@ export const metadata = { title: 'Política de Privacidade — Monitor de Licita
 
 export default function PrivacidadePage() {
   return (
-    <PublicProse>
-      <h1 className="text-2xl font-semibold tracking-[-0.01em] text-ink">Política de Privacidade</h1>
-      <Notice tone="warn" title="Minuta em revisão." className="mt-4">
+    <PublicProse titulo="Política de Privacidade" rotulo="Documento legal">
+      <Notice tone="warn" title="Minuta em revisão.">
         Este texto descreve o que a plataforma faz hoje e será revisado por advogado
         (LGPD) antes do lançamento comercial. Versão: 2026-10-minuta-1.
       </Notice>

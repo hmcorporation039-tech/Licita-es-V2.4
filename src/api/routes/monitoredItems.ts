@@ -2,17 +2,17 @@
 // api/routes/monitoredItems.ts — CRUD de itens monitorados + rematch
 // ============================================================
 
-import { Router } from 'express'
+import { Router, type Request } from 'express'
 import { z } from 'zod'
 import { prisma } from '../../services/tenderService'
-import { findMatchingTendersForItem } from '../../services/matcherService'
 import { findMunicipioByNomeUf } from '../../lib/geoService'
-import { notificadorQueue } from '../../queues'
-import { enfileirarSemTravar } from '../../queues/enfileirar'
 import { asyncHandler, ApiError } from '../asyncHandler'
 import { exigirCotaDaRequisicao } from '../cotas'
 import { rematchLimiter } from '../rateLimit'
 import { registrarAuditoria } from '../../services/auditService'
+import { exigirCota } from '../../services/quotaService'
+import { buscarLicitacoesDoItem } from '../../services/rematchService'
+import { interesseDaOrigem, nomeDoItemDoInteresse } from '../../lib/origemDoCadastro'
 
 export const monitoredItemsRouter = Router()
 
@@ -38,7 +38,6 @@ export const MODALIDADE_VALUES = [
 // 90 dias) ou strings enormes — custo de CPU/memória desproporcional. Os
 // limites são bem acima de qualquer uso real.
 const MAX_ITENS_LISTA = 200
-const MAX_EMAILS_POR_REMATCH = 20
 const MAX_TAM_TERMO = 120
 const MIN_TAM_PALAVRA_CHAVE = 2
 
@@ -87,6 +86,35 @@ async function assertOwnership(itemId: string, companyId: string) {
   if (!item) throw new ApiError(404, 'Item monitorado não encontrado')
   if (item.companyId !== companyId) throw new ApiError(403, 'Este item não pertence a você')
   return item
+}
+
+export async function criarItemDoCadastro(req: Request, userId: string, companyId: string): Promise<{ id: string; name: string } | null> {
+  const empresa = await prisma.company.findUnique({
+    where: { id: companyId },
+    select: { origemDoCadastro: true, _count: { select: { monitoredItems: true } } },
+  })
+  const interesse = interesseDaOrigem(empresa?.origemDoCadastro)
+  if (!empresa || !interesse || empresa._count.monitoredItems > 0) return null
+
+  const body = createSchema.parse({ name: nomeDoItemDoInteresse(interesse), keywords: [interesse.termo], ufs: interesse.uf ? [interesse.uf] : [] })
+  await exigirCota(companyId, 'itensMonitorados')
+
+  const item = await prisma.monitoredItem.create({
+    data: { ...body, companyId, userId, origemLat: null, origemLng: null },
+  })
+  await registrarAuditoria(
+    req,
+    {
+      action: 'ITEM_MONITORADO_CRIADO',
+      entityType: 'item-monitorado',
+      entityId: item.id,
+      companyId,
+      metadata: { nome: item.name, origem: 'cadastro' },
+    },
+    { userId }
+  )
+  await buscarLicitacoesDoItem(item, { notificar: false })
+  return { id: item.id, name: item.name }
 }
 
 monitoredItemsRouter.post(
@@ -204,69 +232,6 @@ monitoredItemsRouter.post(
   rematchLimiter,
   asyncHandler(async (req, res) => {
     const item = await assertOwnership(req.params.id, req.companyId!)
-
-    const candidates = await findMatchingTendersForItem(
-      {
-        keywords: item.keywords,
-        catmatCodes: item.catmatCodes,
-        catserCodes: item.catserCodes,
-        ufs: item.ufs,
-        modalidades: item.modalidades,
-        orgaos: item.orgaos,
-        uasgCodes: item.uasgCodes,
-        valorMin: item.valorMin ? Number(item.valorMin) : null,
-        valorMax: item.valorMax ? Number(item.valorMax) : null,
-        raioKm: item.raioKm,
-        origemLat: item.origemLat,
-        origemLng: item.origemLng,
-      },
-      90
-    )
-
-    if (candidates.length === 0) {
-      res.json({ matchesFound: 0 })
-      return
-    }
-
-    const tenderIds = candidates.map((c) => c.tenderId)
-    const existing = await prisma.tenderMatch.findMany({
-      where: { monitoredItemId: item.id, tenderId: { in: tenderIds } },
-      select: { tenderId: true },
-    })
-    const existingSet = new Set(existing.map((e) => e.tenderId))
-    const newCandidates = candidates.filter((c) => !existingSet.has(c.tenderId))
-
-    if (newCandidates.length === 0) {
-      res.json({ matchesFound: 0 })
-      return
-    }
-
-    await prisma.tenderMatch.createMany({
-      data: newCandidates.map((c) => ({
-        tenderId: c.tenderId,
-        monitoredItemId: item.id,
-        companyId: item.companyId,
-        userId: item.userId,
-        score: c.score,
-        matchedByCode: c.matchedByCode,
-        matchedKeywords: c.matchedKeywords,
-      })),
-      skipDuplicates: true,
-    })
-
-    const created = await prisma.tenderMatch.findMany({
-      where: { monitoredItemId: item.id, tenderId: { in: newCandidates.map((c) => c.tenderId) } },
-      select: { id: true },
-    })
-
-    // Enfileirar o e-mail é um efeito colateral, não o objetivo do rematch —
-    // se o Redis estiver indisponível (ex: cota do plano gratuito estourada),
-    // isso não pode derrubar a resposta com os matches que já foram achados.
-    // Teto de e-mails por rematch: um item com palavra genérica não vira enxurrada de notificações.
-    for (const match of created.slice(0, MAX_EMAILS_POR_REMATCH)) {
-      await enfileirarSemTravar(notificadorQueue, 'notify-match', { tenderMatchId: match.id }, 'Rematch')
-    }
-
-    res.json({ matchesFound: created.length })
+    res.json(await buscarLicitacoesDoItem(item, { notificar: true }))
   })
 )

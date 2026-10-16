@@ -51,6 +51,7 @@ export default function LoginPage() {
   return (
     <PublicCard
       title="Entrar"
+      fala="Bom te ver de novo. Já separei as licitações de hoje."
       description={
         <>
           Não tem conta? <TextLink href="/cadastro">Crie uma e teste grátis</TextLink>.
@@ -76,7 +77,7 @@ export default function LoginPage() {
           </div>
         )}
         {info && <Notice tone="ok">{info}</Notice>}
-        <Button type="submit" variant="primary" loading={loading} className="w-full">
+        <Button type="submit" variant="primary" loading={loading} className="pb-cta w-full">
           {loading ? 'Entrando…' : 'Entrar'}
         </Button>
         <TextLink href="/esqueci-senha" className="self-start text-sm">

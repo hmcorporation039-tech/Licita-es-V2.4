@@ -6,11 +6,13 @@ import { PublicCard } from '@/components/PublicShell'
 import { Button, Carregando, Field, FormError, Input, LinkButton, TextLink } from '@/components/ui'
 import { api, ApiRequestError } from '@/lib/api'
 
+const FALA = 'Escolha uma senha nova e voltamos às suas licitações.'
+
 export default function RedefinirSenhaPage() {
   return (
     <Suspense
       fallback={
-        <PublicCard title="Nova senha">
+        <PublicCard title="Nova senha" fala={FALA}>
           <Carregando linhas={2} />
         </PublicCard>
       }
@@ -52,7 +54,7 @@ function Formulario() {
 
   if (!token) {
     return (
-      <PublicCard title="Link incompleto">
+      <PublicCard title="Link incompleto" fala="Esse link chegou pela metade. Peça um novo e eu te mando outro.">
         <p className="text-sm text-ink-2">
           Abra o link do e-mail ou <TextLink href="/esqueci-senha">peça um novo</TextLink>.
         </p>
@@ -62,8 +64,8 @@ function Formulario() {
 
   if (pronto) {
     return (
-      <PublicCard title="Senha alterada" description="Todas as sessões abertas foram encerradas. Entre com a nova senha.">
-        <LinkButton href="/login" variant="primary" className="w-full">
+      <PublicCard title="Senha alterada" description="Todas as sessões abertas foram encerradas. Entre com a nova senha." fala="Pronto, senha nova salva. Vamos voltar ao trabalho?">
+        <LinkButton href="/login" variant="primary" className="pb-cta w-full">
           Entrar
         </LinkButton>
       </PublicCard>
@@ -71,7 +73,7 @@ function Formulario() {
   }
 
   return (
-    <PublicCard title="Nova senha" description="Escolha uma senha com pelo menos 10 caracteres.">
+    <PublicCard title="Nova senha" description="Escolha uma senha com pelo menos 10 caracteres." fala={FALA}>
       <form onSubmit={enviar} className="flex flex-col gap-4">
         <Field label="Nova senha" required>
           <Input type="password" value={senha} onChange={(e) => setSenha(e.target.value)} maxLength={72} autoComplete="new-password" />
@@ -85,7 +87,7 @@ function Formulario() {
             {erro.startsWith('Link') && <TextLink href="/esqueci-senha">Pedir novo link</TextLink>}
           </FormError>
         )}
-        <Button type="submit" variant="primary" loading={enviando} className="w-full">
+        <Button type="submit" variant="primary" loading={enviando} className="pb-cta w-full">
           {enviando ? 'Salvando…' : 'Salvar nova senha'}
         </Button>
       </form>
