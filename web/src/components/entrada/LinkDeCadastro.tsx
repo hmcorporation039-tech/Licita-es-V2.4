@@ -5,7 +5,7 @@ import { ArrowRight } from 'lucide-react'
 import { LinkButton } from '@/components/ui'
 import { rastrear } from '@/lib/rastreamento'
 
-export type OrigemDoCadastro = 'hero' | 'vitrine' | 'final'
+export type OrigemDoCadastro = 'hero' | 'vitrine' | 'ramo' | 'diferenciais' | 'barra' | 'final'
 
 type PropsDoLink = ComponentProps<typeof LinkButton>
 

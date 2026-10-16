@@ -49,6 +49,13 @@
   --color-ok-soft: #eef6f0;
   --color-ok-line: #bcd9c4;
 
+  --color-noite: #0e1b2e;
+  --color-noite-2: #14253d;
+  --color-noite-line: #26395a;
+  --color-noite-ink: #eef2f7;
+  --color-noite-muted: #a9b8cb;
+  --color-noite-accent: #9cbce3;
+
   --color-indigo-50: #f2f5f9;
   --color-indigo-100: #e3e9f1;
   --color-indigo-200: #c7d3e3;
@@ -124,9 +131,232 @@ dialog::backdrop {
   animation: map-blink 1.3s ease-in-out infinite;
 }
 
+.faixa-noite {
+  background-color: var(--color-noite);
+  background-image:
+    radial-gradient(ellipse 70% 60% at 50% 0%, rgb(47 78 120 / 0.32), transparent 70%),
+    linear-gradient(to right, rgb(238 242 247 / 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(238 242 247 / 0.045) 1px, transparent 1px);
+  background-size: 100% 100%, 56px 56px, 56px 56px;
+  background-position: center top, center top, center top;
+  color: var(--color-noite-ink);
+}
+
+.faixa-noite :where(a, button, summary):focus-visible {
+  outline-color: var(--color-noite-accent);
+}
+
+@keyframes entrar-subindo {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes entrar-da-direita {
+  from {
+    opacity: 0;
+    transform: translate3d(28px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes entrar-surgindo {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes entrar-crescendo {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes desenhar-traco {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@keyframes desenhar-pagina {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0) rotate(-2deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+[data-revelar='aguardando'] :where(.revela, .revela-direita, .revela-palavra, .revela-pop, .revela-pagina) {
+  opacity: 0;
+}
+
+[data-revelar='aguardando'] .revela-traco {
+  transform: scaleX(0);
+}
+
+[data-revelar='visivel'] :where(.revela, .revela-direita, .revela-palavra, .revela-pop, .revela-pagina, .revela-traco) {
+  animation-duration: 0.6s;
+  animation-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1);
+  animation-fill-mode: both;
+  animation-delay: var(--atraso, 0ms);
+}
+
+[data-revelar='visivel'] .revela {
+  animation-name: entrar-subindo;
+}
+
+[data-revelar='visivel'] .revela-direita {
+  animation-name: entrar-da-direita;
+  animation-duration: 0.7s;
+}
+
+[data-revelar='visivel'] .revela-palavra {
+  animation-name: entrar-surgindo;
+  animation-duration: 0.25s;
+}
+
+[data-revelar='visivel'] .revela-pop {
+  animation-name: entrar-crescendo;
+  animation-duration: 0.45s;
+}
+
+[data-revelar='visivel'] .revela-pagina {
+  animation-name: desenhar-pagina;
+  animation-duration: 0.8s;
+}
+
+[data-revelar='visivel'] .revela-traco {
+  animation-name: desenhar-traco;
+  animation-duration: 0.5s;
+}
+
+.revela-traco {
+  transform-origin: left center;
+}
+
+@keyframes chegar-no-topo {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -12px, 0) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes empurrar-lista-a {
+  from {
+    transform: translate3d(0, calc(-1 * var(--altura-da-linha)), 0);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@keyframes empurrar-lista-b {
+  from {
+    transform: translate3d(0, calc(-1 * var(--altura-da-linha)), 0);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@keyframes sair-por-baixo {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.lista-chegando {
+  animation-duration: 0.7s;
+  animation-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1);
+  animation-fill-mode: both;
+}
+
+.item-chegando {
+  animation: chegar-no-topo 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.item-saindo {
+  animation: sair-por-baixo 0.7s ease-out both;
+}
+
+@keyframes pulsar-ao-vivo {
+  0%,
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(0.8);
+  }
+}
+
+.ponto-ao-vivo {
+  animation: pulsar-ao-vivo 1.8s ease-in-out infinite;
+}
+
+.barra-fixa {
+  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+  padding-left: calc(1rem + env(safe-area-inset-left));
+  padding-right: calc(1rem + env(safe-area-inset-right));
+}
+
+.acima-da-barra-fixa {
+  bottom: calc(5.25rem + env(safe-area-inset-bottom));
+}
+
+@media (min-width: 40rem) {
+  .acima-da-barra-fixa {
+    bottom: 1.5rem;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .map-blink {
-    animation: none;
+  .map-blink,
+  .ponto-ao-vivo,
+  .lista-chegando,
+  .item-chegando,
+  .item-saindo {
+    animation: none !important;
+  }
+
+  :where([data-revelar]) :where(.revela, .revela-direita, .revela-palavra, .revela-pop, .revela-pagina, .revela-traco) {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
   }
 
   *,

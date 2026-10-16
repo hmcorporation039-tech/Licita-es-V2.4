@@ -33,14 +33,35 @@ export interface RespostaDaVitrine {
   amostras: AmostraDaVitrine[]
 }
 
-const DEZ_MINUTOS_EM_SEGUNDOS = 600
-const ESPERA_MAXIMA_MS = 5000
+export interface ListaChegando {
+  itens: AmostraDaVitrine[]
+  ilustrativo: boolean
+}
 
-async function buscarPublico<T>(caminho: string): Promise<T | null> {
+export interface DadosDaEntrada {
+  estatisticas: EstatisticasPublicas | null
+  planos: PlanosResposta | null
+  chegando: ListaChegando
+  totaisPorTermo: Record<string, number | null>
+}
+
+const DEZ_MINUTOS_EM_SEGUNDOS = 600
+const ESPERA_DAS_ESTATISTICAS_MS = 15000
+const ESPERA_DOS_PLANOS_MS = 5000
+const ESPERA_DA_VITRINE_MS = 8000
+const MINUTO = 60 * 1000
+const HORA = 60 * MINUTO
+const FOLGA_MINIMA_DO_PRAZO_MS = 30 * MINUTO
+const MAXIMO_NA_LISTA = 8
+const MINIMO_REAL_NA_LISTA = 4
+
+export const TERMOS_DO_HERO = ['material de limpeza', 'medicamentos', 'notebook', 'pavimentação']
+
+async function buscarPublico<T>(caminho: string, esperaMaximaMs: number): Promise<T | null> {
   try {
     const resposta = await fetch(`${API_URL}${caminho}`, {
       next: { revalidate: DEZ_MINUTOS_EM_SEGUNDOS },
-      signal: AbortSignal.timeout(ESPERA_MAXIMA_MS),
+      signal: AbortSignal.timeout(esperaMaximaMs),
     })
     if (!resposta.ok) return null
     return (await resposta.json()) as T
@@ -60,10 +81,94 @@ function planosValidos(dados: PlanosResposta | null): PlanosResposta | null {
   return dados
 }
 
+function vitrineValida(dados: RespostaDaVitrine | null): RespostaDaVitrine | null {
+  if (!dados || typeof dados.total !== 'number' || dados.total < 0 || !Array.isArray(dados.amostras)) return null
+  return dados
+}
+
 export async function buscarEstatisticas(): Promise<EstatisticasPublicas | null> {
-  return estatisticasValidas(await buscarPublico<EstatisticasPublicas>('/api/public/estatisticas'))
+  return estatisticasValidas(await buscarPublico<EstatisticasPublicas>('/api/public/estatisticas', ESPERA_DAS_ESTATISTICAS_MS))
 }
 
 export async function buscarPlanos(): Promise<PlanosResposta | null> {
-  return planosValidos(await buscarPublico<PlanosResposta>('/api/public/plans'))
+  return planosValidos(await buscarPublico<PlanosResposta>('/api/public/plans', ESPERA_DOS_PLANOS_MS))
+}
+
+export async function buscarVitrine(termo: string): Promise<RespostaDaVitrine | null> {
+  const query = new URLSearchParams({ q: termo })
+  return vitrineValida(await buscarPublico<RespostaDaVitrine>(`/api/public/vitrine?${query.toString()}`, ESPERA_DA_VITRINE_MS))
+}
+
+function chaveDaAmostra(amostra: AmostraDaVitrine): string {
+  return `${amostra.objeto}|${amostra.orgao}`.toLowerCase().replace(/\s+/g, ' ')
+}
+
+function prazoAindaUtil(prazo: string | null, agora: number): boolean {
+  if (!prazo) return true
+  const instante = new Date(prazo).getTime()
+  if (Number.isNaN(instante)) return false
+  return instante - agora > FOLGA_MINIMA_DO_PRAZO_MS
+}
+
+export function juntarAmostras(respostas: Array<RespostaDaVitrine | null>, agora: number = Date.now()): AmostraDaVitrine[] {
+  const filas = respostas.map((r) => (r ? r.amostras.filter((a) => a.objeto && a.orgao && prazoAindaUtil(a.prazo, agora)) : []))
+  const vistas = new Set<string>()
+  const juntas: AmostraDaVitrine[] = []
+  const maiorFila = Math.max(0, ...filas.map((f) => f.length))
+  for (let posicao = 0; posicao < maiorFila && juntas.length < MAXIMO_NA_LISTA; posicao++) {
+    for (const fila of filas) {
+      const amostra = fila[posicao]
+      if (!amostra) continue
+      const chave = chaveDaAmostra(amostra)
+      if (vistas.has(chave)) continue
+      vistas.add(chave)
+      juntas.push(amostra)
+      if (juntas.length >= MAXIMO_NA_LISTA) break
+    }
+  }
+  return juntas
+}
+
+const EXEMPLOS_DA_LISTA: Array<Omit<AmostraDaVitrine, 'prazo'> & { horas: number }> = [
+  { objeto: 'Aquisição de material de limpeza e higienização para escolas da rede municipal', orgao: 'Prefeitura municipal', local: 'Anápolis/GO', fonte: 'PNCP', horas: 26 },
+  { objeto: 'Registro de preços para medicamentos da farmácia básica', orgao: 'Secretaria estadual de saúde', local: 'Salvador/BA', fonte: 'PNCP', horas: 3 * 24 },
+  { objeto: 'Aquisição de notebooks e monitores para unidades administrativas', orgao: 'Universidade federal', local: 'Recife/PE', fonte: 'COMPRASNET', horas: 5 * 24 },
+  { objeto: 'Pavimentação asfáltica e drenagem de vias urbanas', orgao: 'Empresa pública distrital', local: 'Brasília/DF', fonte: 'NOVACAP', horas: 9 * 24 },
+  { objeto: 'Gêneros alimentícios para alimentação escolar', orgao: 'Prefeitura municipal', local: 'Uberlândia/MG', fonte: 'QUERIDO_DIARIO', horas: 40 },
+  { objeto: 'Mobiliário de escritório: cadeiras, mesas e armários', orgao: 'Unidade do Sistema S', local: 'Goiânia/GO', fonte: 'SISTEMA_S', horas: 6 * 24 },
+  { objeto: 'Manutenção predial com fornecimento de materiais', orgao: 'Tribunal regional', local: 'Porto Alegre/RS', fonte: 'PNCP', horas: 11 * 24 },
+  { objeto: 'Equipamentos de informática para laboratórios de ensino', orgao: 'Instituto federal', local: 'Campinas/SP', fonte: 'COMPRASNET', horas: 13 * 24 },
+]
+
+export function listaIlustrativa(agora: number = Date.now()): AmostraDaVitrine[] {
+  return EXEMPLOS_DA_LISTA.map(({ horas, ...resto }) => ({ ...resto, prazo: new Date(agora + horas * HORA).toISOString() }))
+}
+
+function valorOuNulo<T>(resultado: PromiseSettledResult<T | null> | undefined): T | null {
+  return resultado && resultado.status === 'fulfilled' ? resultado.value : null
+}
+
+export async function carregarDadosDaEntrada(termosDosRamos: string[]): Promise<DadosDaEntrada> {
+  const termos = [...new Set([...TERMOS_DO_HERO, ...termosDosRamos])]
+  const [estatisticas, planos, vitrines] = await Promise.all([
+    Promise.allSettled([buscarEstatisticas()]),
+    Promise.allSettled([buscarPlanos()]),
+    Promise.allSettled(termos.map((t) => buscarVitrine(t))),
+  ])
+  const respostas = vitrines.map((r) => valorOuNulo(r))
+  const porTermo = new Map(termos.map((t, i) => [t, respostas[i] ?? null]))
+  const totaisPorTermo: Record<string, number | null> = {}
+  for (const [termo, resposta] of porTermo) totaisPorTermo[termo] = resposta ? resposta.total : null
+
+  const agora = Date.now()
+  const ordemDaLista = [...TERMOS_DO_HERO, ...termos.filter((t) => !TERMOS_DO_HERO.includes(t))]
+  const reais = juntarAmostras(ordemDaLista.map((t) => porTermo.get(t) ?? null), agora)
+  const chegando: ListaChegando = reais.length >= MINIMO_REAL_NA_LISTA ? { itens: reais, ilustrativo: false } : { itens: listaIlustrativa(agora), ilustrativo: true }
+
+  return {
+    estatisticas: valorOuNulo(estatisticas[0]),
+    planos: valorOuNulo(planos[0]),
+    chegando,
+    totaisPorTermo,
+  }
 }
