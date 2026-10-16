@@ -531,12 +531,24 @@ rodar('Cadastro público e recuperação de senha', () => {
       expect(await prisma.monitoredItem.count({ where: { companyId: user.companyId } })).toBe(0)
     })
 
-    it('ao confirmar o e-mail, cria o primeiro item monitorado com o termo e a UF, uma vez só', async () => {
+    it('ao confirmar o e-mail, cria o primeiro item monitorado com o termo e a UF, uma vez só, já com as licitações abertas ligadas', async () => {
+      const daquiAVinteDias = new Date(Date.now() + 20 * 24 * 60 * 60 * 1000)
+      const emGoias = await prisma.tender.create({
+        data: { fonte: 'PNCP', fonteId: `limpeza-go-${sufixo}`, modalidade: 'PREGAO_ELETRONICO', objeto: `Aquisição de material de limpeza ${sufixo}`, objetoNorm: `aquisicao de material de limpeza ${sufixo}`, uf: 'GO', rawJson: {}, encerramentoAt: daquiAVinteDias },
+      })
+      const emSaoPaulo = await prisma.tender.create({
+        data: { fonte: 'PNCP', fonteId: `limpeza-sp-${sufixo}`, modalidade: 'PREGAO_ELETRONICO', objeto: `Aquisição de material de limpeza ${sufixo}`, objetoNorm: `aquisicao de material de limpeza ${sufixo}`, uf: 'SP', rawJson: {}, encerramentoAt: daquiAVinteDias },
+      })
+
       expect((await confirmar(email('origem'))).status).toBe(200)
       const user = await prisma.user.findUnique({ where: { email: email('origem') } })
       const itens = await prisma.monitoredItem.findMany({ where: { companyId: user.companyId } })
       expect(itens).toHaveLength(1)
       expect(itens[0]).toMatchObject({ name: 'Material de limpeza', keywords: ['material de limpeza'], ufs: ['GO'], active: true, userId: user.id })
+      const ligadas = await prisma.tenderMatch.findMany({ where: { monitoredItemId: itens[0].id }, select: { tenderId: true } })
+      const idsLigados = ligadas.map((m: { tenderId: string }) => m.tenderId)
+      expect(idsLigados).toContain(emGoias.id)
+      expect(idsLigados).not.toContain(emSaoPaulo.id)
       const trilha = await prisma.auditLog.findFirst({ where: { companyId: user.companyId, action: 'ITEM_MONITORADO_CRIADO' } })
       expect(trilha.metadata).toMatchObject({ origem: 'cadastro', nome: 'Material de limpeza' })
       expect(trilha.actorUserId).toBe(user.id)
