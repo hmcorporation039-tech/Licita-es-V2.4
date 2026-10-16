@@ -48,7 +48,14 @@ function faixaDe(valor: number, minimoComMargem: number | null, equilibrio: numb
   return 'verde'
 }
 
-export function avaliarLance(valor: number, l: LimitesDoAlvo, regras: RegrasDoPregao, meusLances: number): Avaliacao {
+export function avaliarLance(valor: number, l: LimitesDoAlvo, regras: RegrasDoPregao, meusLances: number, meuMenorLance: number | null = null): Avaliacao {
+  if (meuMenorLance !== null && meuMenorLance < valor) {
+    const meu = avaliarMeuLance(meuMenorLance, l, regras, meusLances)
+    return {
+      ...meu,
+      mensagem: `Melhor lance informado: ${reais(valor)}. Seu lance de ${reais(meuMenorLance)} é menor: você continua na frente, não precisa cobrir.${l.custoComRateio > 0 ? ` Sua margem está em ${pct(meu.margemPct)}.` : ''}`,
+    }
+  }
   const { minimoComMargem, equilibrio } = limitesDoAlvo(l)
   const { lucro, margemPct } = resultadoEm(valor, l)
   const faixa = faixaDe(valor, minimoComMargem, equilibrio)
@@ -90,7 +97,7 @@ export function avaliarMeuLance(valor: number, l: LimitesDoAlvo, regras: RegrasD
   const lancesRestantes = Math.max(0, regras.maxLances - meusLances)
   const frases = [`Seu lance de ${reais(valor)} foi registrado.`]
   if (l.custoComRateio > 0) frases.push(faixa === 'vermelha' ? `Atenção: nesse valor há prejuízo de ${reais(-lucro)}.` : `Margem de ${pct(margemPct)}.`)
-  frases.push(lancesRestantes === 0 ? 'Era o seu último lance combinado.' : `Restam ${lancesRestantes} ${lancesRestantes === 1 ? 'lance' : 'lances'}. Me diga o próximo melhor lance quando ele aparecer.`)
+  frases.push(lancesRestantes === 0 ? 'Era o seu último lance combinado.' : `${lancesRestantes === 1 ? 'Resta 1 lance' : `Restam ${lancesRestantes} lances`}. Me diga o próximo melhor lance quando ele aparecer.`)
   return { valor, lucro, margemPct, faixa: l.custoComRateio > 0 ? faixa : 'verde', minimoComMargem, equilibrio, sugestao: null, lancesRestantes, mensagem: frases.join(' ') }
 }
 

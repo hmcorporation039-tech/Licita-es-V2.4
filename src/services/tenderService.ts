@@ -2,6 +2,7 @@
 // services/tenderService.ts — Persiste licitações no banco
 // ============================================================
 
+import { DESLOCAMENTO_DE_BRASILIA_MS } from '../lib/dataDeBrasilia'
 import { Prisma, PrismaClient } from '@prisma/client'
 import { NormalizedTender, NormalizedTenderItem } from '../types'
 import { normalize } from '../lib/geoService'
@@ -88,6 +89,11 @@ function dadosPersistidos(tender: NormalizedTender) {
 // licitação com frequência — prorrogam a data de encerramento, retificam o
 // valor, trocam o link do edital — e antes disso o registro ficava para
 // sempre com o conteúdo do momento da primeira coleta.
+function ehSoCorrecaoDeFuso(antes: unknown, depois: unknown): boolean {
+  if (!(antes instanceof Date) || !(depois instanceof Date)) return false
+  return Math.abs(depois.getTime() - antes.getTime()) === DESLOCAMENTO_DE_BRASILIA_MS
+}
+
 export async function saveTender(tender: NormalizedTender): Promise<SaveResult> {
   const existing = await prisma.tender.findUnique({
     where: { fonteId: tender.fonteId },
@@ -118,7 +124,9 @@ export async function saveTender(tender: NormalizedTender): Promise<SaveResult> 
       return { isNew: false, tenderId: existing.id, isDupe: true, changed: false, changedFields: [] }
     }
 
-    const changedFields = camposAlterados(snapshotDeTender(existing), snapshotDeTender(tender))
+    const changedFields = camposAlterados(snapshotDeTender(existing), snapshotDeTender(tender)).filter(
+      (campo) => !ehSoCorrecaoDeFuso(existing[campo as keyof typeof existing], tender[campo as keyof NormalizedTender]),
+    )
 
     // Na recoleta só propagamos a situação quando for um estado morto novo
     // (revogada/suspensa/anulada) — ver SITUACOES_MORTAS_NA_COLETA.

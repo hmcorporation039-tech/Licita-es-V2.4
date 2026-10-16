@@ -81,6 +81,17 @@ function temMarcador(texto: string): boolean {
   return texto.includes(MARCADOR)
 }
 
+function marcadoresNoTexto(texto: string): number {
+  return texto.split(MARCADOR).length - 1
+}
+
+function marcadoresDoBloco(bloco: BlocoDoDocumento): number {
+  if (bloco.tipo === 'titulo' || bloco.tipo === 'paragrafo') return marcadoresNoTexto(bloco.texto)
+  if (bloco.tipo === 'assinatura') return marcadoresNoTexto(bloco.local)
+  if (bloco.tipo === 'tabela') return [...bloco.linhas.flat(), ...(bloco.rodape ?? [])].reduce((total, c) => total + marcadoresNoTexto(c), 0)
+  return 0
+}
+
 function blocoTemMarcador(bloco: BlocoDoDocumento): boolean {
   if (bloco.tipo === 'titulo' || bloco.tipo === 'paragrafo') return temMarcador(bloco.texto)
   if (bloco.tipo === 'assinatura') return temMarcador(bloco.local)
@@ -418,7 +429,7 @@ export default function DocumentosDaLicitacaoPage({ params }: { params: Promise<
   }
 
   const blocosAtuais = blocos.map((b) => b.bloco)
-  const pendentes = blocosAtuais.filter(blocoTemMarcador).length
+  const pendentes = blocosAtuais.reduce((total, b) => total + marcadoresDoBloco(b), 0)
   const limiteDeBlocos = blocos.length >= MAX_BLOCOS
   const numero = tender?.numeroControle ? slug(tender.numeroControle) : id.slice(0, 8)
   const base = pedido.tipo === 'proposta' && pedido.readequada ? 'proposta-readequada' : PREFIXO_DO_ARQUIVO[pedido.tipo]
@@ -536,7 +547,7 @@ export default function DocumentosDaLicitacaoPage({ params }: { params: Promise<
           <p className={cx('min-w-0 truncate text-xs', pendentes > 0 ? 'font-medium text-warn' : 'text-muted')}>
             {pendentes > 0 ? (
               <>
-                <span className="font-mono">{pendentes}</span> {pendentes === 1 ? 'trecho' : 'trechos'} a preencher
+                <span className="font-mono">{pendentes}</span> {pendentes === 1 ? 'campo' : 'campos'} a preencher
               </>
             ) : (
               <span className="hidden sm:inline">Cabeçalho, rodapé e assinatura saem do cadastro da empresa.</span>

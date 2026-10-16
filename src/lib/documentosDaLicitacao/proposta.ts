@@ -51,12 +51,12 @@ export function propostaComercial(
     ]
   })
 
-  const sessao = certame.sessao ? `, cuja sessão pública está marcada para ${certame.sessao}` : ''
   const readequada = opcoes.lanceFinal !== undefined
+  const sessao = certame.sessao ? (readequada ? `, cuja sessão pública foi realizada em ${certame.sessao}` : `, cuja sessão pública está marcada para ${certame.sessao}`) : ''
   const blocos: Bloco[] = [
     { tipo: 'titulo', texto: readequada ? 'PROPOSTA COMERCIAL READEQUADA' : 'PROPOSTA COMERCIAL' },
     { tipo: 'paragrafo', texto: `Ao(À) ${certame.orgao}` },
-    { tipo: 'paragrafo', texto: `Referência: ${certame.modalidade} nº ${certame.numero}${sessao}.` },
+    { tipo: 'paragrafo', texto: `Referência: ${certame.referencia}${sessao}.` },
     ...(readequada
       ? [{ tipo: 'paragrafo' as const, texto: `Proposta readequada ao valor final de R$ ${formatarReais(opcoes.lanceFinal!)} (${reaisPorExtenso(opcoes.lanceFinal!)}), ofertado na etapa de lances, com os preços unitários ajustados proporcionalmente.` }]
       : []),
@@ -82,7 +82,7 @@ export function propostaComercial(
         'Declaramos que nos preços propostos estão incluídos todos os custos diretos e indiretos, tributos, encargos sociais, trabalhistas e previdenciários, fretes, seguros e demais despesas necessárias ao cumprimento integral do objeto, e que concordamos com todas as condições do edital.',
     },
   ]
-  if (proponente.dadosBancarios) blocos.push({ tipo: 'paragrafo', texto: `Dados bancários para pagamento: ${proponente.dadosBancarios}.` })
+  if (proponente.dadosBancarios) blocos.push({ tipo: 'paragrafo', texto: `Dados bancários para pagamento: ${proponente.dadosBancarios.replace(/[.\s]+$/, '')}.` })
   blocos.push({ tipo: 'assinatura', local: localEData(proponente, quando) })
 
   return { documento: { tipo: 'proposta', titulo: readequada ? 'Proposta comercial readequada' : 'Proposta comercial', blocos }, pendencias, total }

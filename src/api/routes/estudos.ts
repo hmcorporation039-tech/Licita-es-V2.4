@@ -17,6 +17,8 @@ import {
   dadosIniciais,
   lerPrazoEmDias,
 } from '../../lib/estudoDeCustos'
+import { municipioCitado } from '../../lib/localDeExecucao'
+import { semRepeticao } from '../../lib/semRepeticao'
 import { findMunicipioByNomeUf, haversineKm } from '../../lib/geoService'
 import { PrecosIndisponiveisError, pesquisarPrecos } from '../../services/pesquisaDePrecosService'
 import { gerarPdfDoEstudo } from '../../services/estudoPdf'
@@ -102,7 +104,7 @@ export async function carregar(companyId: string, tenderId: string) {
       ? tender.items.map((it) => ({
           id: it.id,
           numero: it.numeroItem,
-          descricao: it.descricao,
+          descricao: semRepeticao(it.descricao),
           unidade: it.unidadeMedida,
           quantidade: num(it.quantidade) && num(it.quantidade)! > 0 ? num(it.quantidade)! : 1,
           valorEstimadoUnit: num(it.valorUnitario),
@@ -123,20 +125,33 @@ export async function carregar(companyId: string, tenderId: string) {
           },
         ]
 
-  // Distância: base da empresa até o município da licitação (coordenadas do IBGE).
-  let destino: { lat: number; lng: number } | null = null
-  if (tender.municipioLat !== null && tender.municipioLng !== null) destino = { lat: tender.municipioLat, lng: tender.municipioLng }
+  // Distância: base da empresa até o local de execução. Prefere o que o edital diz
+  // (local lido pela IA, depois a cidade citada no objeto); o município do órgão é o último recurso.
+  const resultadoIa = (tender.analysis?.resultado ?? null) as { prazoEntrega?: string; local?: string } | null
+  let destino: { lat: number; lng: number; municipio: string | null; uf: string | null; origem: 'edital' | 'objeto' | 'orgao' } | null = null
+  const doEdital = municipioCitado([resultadoIa?.local], tender.uf)
+  const doObjeto = doEdital ? null : municipioCitado([tender.objeto, tender.objetoResumido], tender.uf)
+  const citado = doEdital ?? doObjeto
+  if (citado) destino = { lat: citado.lat, lng: citado.lng, municipio: citado.nome, uf: citado.uf, origem: doEdital ? 'edital' : 'objeto' }
+  else if (tender.municipioLat !== null && tender.municipioLng !== null) destino = { lat: tender.municipioLat, lng: tender.municipioLng, municipio: tender.municipio, uf: tender.uf, origem: 'orgao' }
   else if (tender.municipio && tender.uf) {
     const m = findMunicipioByNomeUf(tender.municipio, tender.uf)
-    if (m) destino = { lat: m.lat, lng: m.lng }
+    if (m) destino = { lat: m.lat, lng: m.lng, municipio: tender.municipio, uf: tender.uf, origem: 'orgao' }
   }
   const distanciaLinhaRetaKm =
     destino && empresa.baseLat !== null && empresa.baseLng !== null
       ? Math.round(haversineKm(empresa.baseLat, empresa.baseLng, destino.lat, destino.lng))
       : null
 
-  const resultadoIa = (tender.analysis?.resultado ?? null) as { prazoEntrega?: string; local?: string } | null
-  return { tender, empresa, itens, distanciaLinhaRetaKm, prazoDoEdital: resultadoIa?.prazoEntrega ?? null, localDoEdital: resultadoIa?.local ?? null }
+  return {
+    tender,
+    empresa,
+    itens,
+    distanciaLinhaRetaKm,
+    destino: destino ? { municipio: destino.municipio, uf: destino.uf, origem: destino.origem } : null,
+    prazoDoEdital: resultadoIa?.prazoEntrega ?? null,
+    localDoEdital: resultadoIa?.local ?? null,
+  }
 }
 
 type Contexto = Awaited<ReturnType<typeof carregar>>
@@ -176,6 +191,7 @@ function montarResposta(ctx: Contexto, dados: DadosDoEstudo, salvoEm: Date | nul
     dados,
     base: { municipio: empresa.baseMunicipio, uf: empresa.baseUf, definida: empresa.baseLat !== null },
     distanciaLinhaRetaKm: ctx.distanciaLinhaRetaKm,
+    destino: ctx.destino,
     prazoDoEdital: ctx.prazoDoEdital,
     resultado: calcularEstudo(itens, dados, { distanciaLinhaRetaKm: ctx.distanciaLinhaRetaKm, valorEstimadoTotal: num(tender.valorEstimado) }),
     salvoEm,

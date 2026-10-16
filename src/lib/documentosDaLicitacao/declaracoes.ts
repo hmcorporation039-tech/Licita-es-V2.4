@@ -9,7 +9,7 @@ export interface ModeloDeDeclaracao {
 }
 
 const qualificacao = (p: Proponente, c: Certame) =>
-  `${p.qualificacao}, para fins de participação no(a) ${c.modalidade} nº ${c.numero}, promovido(a) por ${c.orgao}`
+  `${p.qualificacao}, para fins de participação ${c.feminino ? 'na' : 'no'} ${c.referencia}, ${c.feminino ? 'promovida' : 'promovido'} por ${c.orgao}`
 
 export const MODELOS_DE_DECLARACAO: ModeloDeDeclaracao[] = [
   {

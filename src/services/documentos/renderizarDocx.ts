@@ -77,7 +77,7 @@ function rodape(t: Timbrado): Footer {
 
 function tabela(t: Tabela): Table {
   const direita = new Set(t.alinharDireita ?? [])
-  const proporcoes = t.colunas.length === 6 ? [6, 44, 7, 9, 16, 18] : t.colunas.map(() => 100 / t.colunas.length)
+  const proporcoes = t.colunas.length === 6 ? [5, 42, 10, 8, 16, 19] : t.colunas.map(() => 100 / t.colunas.length)
   const celula = (valor: string, i: number, destaque: boolean) =>
     new TableCell({
       width: { size: proporcoes[i], type: WidthType.PERCENTAGE },

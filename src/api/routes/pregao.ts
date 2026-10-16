@@ -70,12 +70,14 @@ async function montarPainel(companyId: string, tenderId: string) {
   const painelDosAlvos = alvos.map((a) => {
     const doAlvo = lances.filter((l) => l.alvo === a.id)
     const maisRecente = doAlvo[0]
-    const meus = doAlvo.filter((l) => l.origem === 'MEU_LANCE').length
+    const meusValores = doAlvo.filter((l) => l.origem === 'MEU_LANCE').map((l) => Number(l.valor))
+    const meus = meusValores.length
+    const meuMenor = meus > 0 ? Math.min(...meusValores) : null
     const avaliacao: Avaliacao | null = !maisRecente
       ? null
       : maisRecente.origem === 'MEU_LANCE'
         ? avaliarMeuLance(Number(maisRecente.valor), a.limites, regras, meus)
-        : avaliarLance(Number(maisRecente.valor), a.limites, regras, meus)
+        : avaliarLance(Number(maisRecente.valor), a.limites, regras, meus, meuMenor)
     return {
       id: a.id,
       rotulo: a.rotulo,

@@ -79,6 +79,7 @@ export interface EstudoResposta {
   dados: DadosDoEstudo
   base: { municipio: string | null; uf: string | null; definida: boolean }
   distanciaLinhaRetaKm: number | null
+  destino?: { municipio: string | null; uf: string | null; origem: 'edital' | 'objeto' | 'orgao' } | null
   prazoDoEdital: string | null
   resultado: ResultadoDoEstudo
   salvoEm: string | null

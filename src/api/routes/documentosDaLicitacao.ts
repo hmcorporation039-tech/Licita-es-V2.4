@@ -13,6 +13,8 @@ import { renderizarPdf } from '../../services/documentos/renderizarPdf'
 import { renderizarDocx } from '../../services/documentos/renderizarDocx'
 import type { Timbrado } from '../../services/documentos/papelTimbrado'
 import { carregar, dadosSalvos } from './estudos'
+import { pncpClient } from '../../lib/httpClient'
+import { identificadorCompraPncpValido } from '../../lib/pncpIdentificador'
 import { alertasDaAnalise, type AlertaLegal } from '../../lib/alertasLegais'
 import { calcularPrazosDaSessao, lerDataTexto } from '../../lib/diasUteis'
 import { impugnacao, pedidoDeEsclarecimento } from '../../lib/documentosDaLicitacao/impugnacao'
@@ -41,6 +43,7 @@ async function carregarCertame(tenderId: string) {
     where: { id: tenderId },
     select: {
       orgao: true, numeroControle: true, modalidade: true, objeto: true, fonte: true, aberturaAt: true, encerramentoAt: true, valorEstimado: true,
+      orgaoCnpj: true, rawJson: true,
       analysis: { select: { status: true, resultado: true } },
     },
   })
@@ -49,7 +52,7 @@ async function carregarCertame(tenderId: string) {
   const sessao = dataDaSessao(tender) ?? lerDataTexto(analise?.dataSessao)
   const prazos = sessao ? calcularPrazosDaSessao(sessao) : null
   return {
-    certame: dadosDoCertame({ ...tender, sessao: dataDaSessao(tender) }),
+    certame: dadosDoCertame({ ...tender, sessao: dataDaSessao(tender), ...(await identificacaoNoPncp(tender)) }),
     analise,
     alertas: alertasDaAnalise(analise, tender.valorEstimado != null ? Number(tender.valorEstimado) : null),
     prazo: prazos ? { limite: diaBr(prazos.limiteImpugnacao), passou: prazos.limitePassou } : null,
@@ -57,6 +60,34 @@ async function carregarCertame(tenderId: string) {
 }
 
 const diaBr = (iso: string) => iso.split('-').reverse().join('/')
+
+interface IdentificacaoDoPncp {
+  numeroDoEdital?: string | null
+  processo?: string | null
+  controlePncp?: string | null
+}
+
+async function identificacaoNoPncp(tender: { fonte: string; numeroControle: string | null; orgaoCnpj: string | null; rawJson: unknown }): Promise<IdentificacaoDoPncp> {
+  if (tender.fonte !== 'PNCP') return {}
+  const raw = (tender.rawJson ?? {}) as { numeroCompra?: unknown; processo?: unknown; anoCompra?: unknown; sequencialCompra?: unknown }
+  let numeroCompra = typeof raw.numeroCompra === 'string' ? raw.numeroCompra : null
+  let processo = typeof raw.processo === 'string' ? raw.processo : null
+  const ano = raw.anoCompra !== undefined ? String(raw.anoCompra) : null
+  if (!numeroCompra && ano && raw.sequencialCompra !== undefined && tender.orgaoCnpj && identificadorCompraPncpValido(tender.orgaoCnpj, ano, String(raw.sequencialCompra))) {
+    try {
+      const r = await pncpClient.get<{ numeroCompra?: string; processo?: string }>(`/v1/orgaos/${tender.orgaoCnpj}/compras/${ano}/${raw.sequencialCompra}`, { timeout: 8000 })
+      numeroCompra = r.data.numeroCompra ?? null
+      processo = r.data.processo ?? null
+    } catch {
+      numeroCompra = null
+    }
+  }
+  return {
+    numeroDoEdital: numeroCompra && ano ? `${numeroCompra}/${ano}` : null,
+    processo,
+    controlePncp: tender.numeroControle,
+  }
+}
 
 const MAX_ALERTAS_NO_DOCUMENTO = 20
 
@@ -169,7 +200,12 @@ documentosDaLicitacaoRouter.post(
       condicoesDePagamento: textoCurto(analise?.pagamento),
       ...(readequacao ? { lanceFinal: readequacao.total } : {}),
     })
-    const pendencias = readequacao ? [...readequacao.pendencias, ...r.pendencias.filter((p) => !p.startsWith('preço de venda'))] : r.pendencias
+    const pendencias = readequacao ? [...readequacao.pendencias, ...r.pendencias.filter((p) => !p.startsWith('preço de venda'))] : [...r.pendencias]
+    const estimado = ctx.tender.valorEstimado != null ? Number(ctx.tender.valorEstimado) : null
+    if (estimado !== null && estimado > 0 && r.total > estimado) {
+      const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+      pendencias.push(`valor total (${brl(r.total)}) acima do valor estimado pelo órgão (${brl(estimado)}): proposta acima do estimado costuma ser desclassificada`)
+    }
     res.json({ documento: r.documento, pendencias, total: r.total, temLogo: timbrado.logo !== null })
   })
 )

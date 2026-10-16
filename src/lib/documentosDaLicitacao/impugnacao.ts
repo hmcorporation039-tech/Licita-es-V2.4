@@ -47,7 +47,7 @@ const PERGUNTAS_POR_ALERTA: Record<IdDoAlerta, string> = {
 }
 
 const enderecamento = (c: Certame) => `Ao(À) Agente de Contratação / Pregoeiro(a) do(a) ${c.orgao}`
-const referencia = (c: Certame) => `Referência: ${c.modalidade} nº ${c.numero}${c.sessao ? `, cuja sessão pública está marcada para ${c.sessao}` : ''}.`
+const referencia = (c: Certame) => `Referência: ${c.referencia}${c.sessao ? `, cuja sessão pública está marcada para ${c.sessao}` : ''}.`
 const ondeEsta = (a: AlertaLegal) => (a.local ? ` (${a.local})` : '')
 
 function tempestividade(prazo: PrazoDaImpugnacao | null, pendencias: string[]): string {

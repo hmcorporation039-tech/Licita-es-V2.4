@@ -105,7 +105,7 @@ describe('parsePNCPTender', () => {
   it('não carrega o resto do payload para o banco', () => {
     const t = parsePNCPTender({ ...raw, itens: [{ descricao: 'notebook' }], lixo: 'x'.repeat(5000) })
 
-    expect(Object.keys(t.rawJson)).toHaveLength(3)
+    expect(Object.keys(t.rawJson).sort()).toEqual(['anoCompra', 'numeroCompra', 'orgaoEntidade', 'processo', 'sequencialCompra'])
     expect(JSON.stringify(t.rawJson)).not.toContain('lixo')
   })
 
