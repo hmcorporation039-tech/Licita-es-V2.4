@@ -16,6 +16,10 @@ describe('dataDaSessao', () => {
     expect(dataDaSessao({ fonte: 'SESC_REGIONAL', aberturaAt: null, encerramentoAt: fim })).toBe(fim)
   })
 
+  it('Querido Diário: a sessão lida no aviso vem na abertura', () => {
+    expect(dataDaSessao({ fonte: 'QUERIDO_DIARIO', aberturaAt: inicio, encerramentoAt: fim })).toBe(inicio)
+  })
+
   it('demais fontes: a sessão vem no encerramento', () => {
     expect(dataDaSessao({ fonte: 'SESC_GO', aberturaAt: null, encerramentoAt: fim })).toBe(fim)
     expect(dataDaSessao({ fonte: 'SEST_SENAT', aberturaAt: inicio, encerramentoAt: fim })).toBe(fim)

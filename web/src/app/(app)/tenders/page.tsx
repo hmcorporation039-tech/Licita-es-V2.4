@@ -29,6 +29,7 @@ import {
   THead,
   Tr,
 } from '@/components/ui'
+import { ROTULOS_DE_FONTE } from '@/lib/fontes'
 
 type TenderComEncerramento = Tender & { encerramentoAt?: string | null }
 
@@ -46,7 +47,7 @@ function formatValor(v: string | null) {
 }
 
 function rotuloDaFonte(fonte: string) {
-  return fonte.replace(/_/g, ' ')
+  return ROTULOS_DE_FONTE[fonte] ?? fonte.replace(/_/g, ' ')
 }
 
 function local(t: Tender) {

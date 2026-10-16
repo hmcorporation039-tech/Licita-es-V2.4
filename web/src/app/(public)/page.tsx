@@ -87,7 +87,7 @@ const PASSOS = [
 const RECURSOS = [
   {
     titulo: 'Busca diária nas fontes',
-    texto: 'PNCP, ComprasNet, portais do Sistema S (SESC, SEST SENAT), Novacap e FIEG, filtrados pelos itens, códigos CATMAT/CATSER, UASGs e regiões que você acompanha.',
+    texto: 'PNCP, ComprasNet, portais do Sistema S (SESC, SEST SENAT), Novacap, FIEG e diários oficiais municipais (Querido Diário), filtrados pelos itens, códigos CATMAT/CATSER, UASGs e regiões que você acompanha.',
   },
   {
     titulo: 'Resumo do edital',
@@ -103,7 +103,7 @@ const RECURSOS = [
   },
 ]
 
-const FONTES = ['PNCP', 'ComprasNet', 'SESC', 'SEST SENAT', 'FIEG', 'Novacap']
+const FONTES = ['PNCP', 'ComprasNet', 'SESC', 'SEST SENAT', 'FIEG', 'Novacap', 'Diários oficiais (Querido Diário)']
 
 let instanteDaPrevia: number | null = null
 const assinarNada = () => () => {}

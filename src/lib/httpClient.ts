@@ -119,3 +119,13 @@ export const sestSenatClient = createRateLimitedClient(
 sestSenatClient.defaults.timeout = 300_000
 // Exceção documentada: o payload do SEST SENAT passa de 300 MB (ver acima).
 sestSenatClient.defaults.maxContentLength = 800 * 1024 * 1024
+
+export const queridoDiarioClient = createRateLimitedClient('https://api.queridodiario.org.br', 1500)
+queridoDiarioClient.defaults.timeout = 60_000
+
+export const queridoDiarioArquivosClient = createRateLimitedClient('https://data.queridodiario.ok.org.br', 1000, {
+  Accept: 'text/plain',
+})
+queridoDiarioArquivosClient.defaults.timeout = 60_000
+queridoDiarioArquivosClient.defaults.maxContentLength = 8 * 1024 * 1024
+queridoDiarioArquivosClient.defaults.maxRedirects = 0

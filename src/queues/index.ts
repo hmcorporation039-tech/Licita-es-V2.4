@@ -38,6 +38,7 @@ export const coletorFiegQueue = new Queue('coletor-fieg', defaultQueueOptions)
 export const coletorSescGoQueue = new Queue('coletor-sesc-go', defaultQueueOptions)
 export const coletorSestSenatQueue = new Queue('coletor-sest-senat', defaultQueueOptions)
 export const coletorSescRegionalQueue = new Queue('coletor-sesc-regional', defaultQueueOptions)
+export const coletorQueridoDiarioQueue = new Queue('coletor-querido-diario', defaultQueueOptions)
 
 // Fila de matching (disparada após salvar cada licitação nova)
 export const matcherQueue = new Queue('matcher', defaultQueueOptions)
@@ -127,6 +128,14 @@ export const COLETOR_SCHEDULERS: ColetorScheduler[] = [
     pattern: '0 6 * * *',
     tz: 'America/Sao_Paulo',
     fonte: 'SESC_REGIONAL',
+  },
+  {
+    queue: coletorQueridoDiarioQueue,
+    schedulerId: 'coleta-querido-diario',
+    jobName: 'coleta-querido-diario',
+    pattern: '15 2,8,14,20 * * *',
+    tz: 'America/Sao_Paulo',
+    fonte: 'QUERIDO_DIARIO',
   },
 ]
 
