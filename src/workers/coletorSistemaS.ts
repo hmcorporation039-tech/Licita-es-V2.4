@@ -33,6 +33,16 @@ function mensagemDoErro(err: unknown): string {
   return err instanceof Error ? err.message : String(err)
 }
 
+function motivoCurto(err: unknown): string {
+  const e = err as { code?: unknown; response?: { status?: unknown }; message?: unknown }
+  const partes = [
+    typeof e?.response?.status === 'number' ? `HTTP ${e.response.status}` : '',
+    typeof e?.code === 'string' ? e.code : '',
+    !e?.response && typeof e?.message === 'string' ? e.message.replace(/https?:\/\/\S+/g, '').slice(0, 60) : '',
+  ].filter(Boolean)
+  return partes.length > 0 ? partes.join(' ') : 'erro desconhecido'
+}
+
 function semRepetir(tenders: NormalizedTender[]): NormalizedTender[] {
   return [...new Map(tenders.map((t) => [t.fonteId, t])).values()]
 }
@@ -129,7 +139,7 @@ export function startColetorSistemaSWorker() {
               `${coleta.tenders.length - lote.length} já no PNCP, ${salvos.totalNew} nova(s).`
           )
         } catch (err) {
-          falhas.push(origem)
+          falhas.push(`${origem} (${motivoCurto(err)})`)
           console.error(`[${CONTEXTO}] ${origem} falhou:`, mensagemDoErro(err))
         }
       }
