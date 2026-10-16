@@ -15,7 +15,7 @@ export default function BotaoWhatsApp({ numero }: { numero: string }) {
       rel="noopener noreferrer"
       aria-label="Conversar pelo WhatsApp (abre em nova aba)"
       onClick={() => rastrear('clique_whatsapp')}
-      className="fixed bottom-4 right-4 z-40 inline-flex h-12 items-center gap-2 rounded border border-ok bg-ok px-3.5 text-sm font-medium text-white transition-opacity hover:opacity-90 sm:bottom-6 sm:right-6"
+      className="acima-da-barra-fixa fixed right-4 z-40 inline-flex h-12 items-center gap-2 rounded border border-ok bg-ok px-3.5 text-sm font-medium text-white transition-opacity hover:opacity-90 sm:right-6"
     >
       <MessageCircle size={18} strokeWidth={2} aria-hidden />
       <span className="hidden sm:inline">WhatsApp</span>

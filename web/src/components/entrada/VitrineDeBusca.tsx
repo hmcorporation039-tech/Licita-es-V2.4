@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, type FormEvent } from 'react'
+import { useEffect, useEffectEvent, useState, type FormEvent } from 'react'
 import { Search } from 'lucide-react'
 import { Button, Carregando, Field, Input, Notice, Prazo, Select, StatusTag } from '@/components/ui'
 import { api, ApiRequestError } from '@/lib/api'
@@ -9,11 +9,13 @@ import { paraData } from '@/lib/datas'
 import { rastrear } from '@/lib/rastreamento'
 import type { AmostraDaVitrine, RespostaDaVitrine } from '@/lib/dadosPublicos'
 import LinkDeCadastro from './LinkDeCadastro'
+import { EVENTO_DE_BUSCA, ID_DA_BUSCA, type PedidoDeBusca } from './buscaDaEntrada'
+import { frasePropria, nomeProprio } from '@/lib/textoLegivel'
 
 const MINIMO_DE_LETRAS = 3
 const MAXIMO_DE_LETRAS = 60
 
-const SUGESTOES = ['material de limpeza', 'notebook', 'estrutura metálica']
+const SUGESTOES = ['material de limpeza', 'notebook', 'medicamentos', 'estrutura metálica']
 
 const ESTADOS = [
   { sigla: 'AC', nome: 'Acre', local: 'no Acre' },
@@ -77,9 +79,9 @@ function Amostra({ amostra }: { amostra: AmostraDaVitrine }) {
   return (
     <li className="flex flex-col gap-2 border-b border-line-soft px-4 py-3 last:border-0 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
       <div className="flex min-w-0 flex-col gap-0.5">
-        <p className="line-clamp-2 text-sm font-medium text-ink">{amostra.objeto}</p>
+        <p className="line-clamp-2 text-sm font-medium text-ink">{frasePropria(amostra.objeto)}</p>
         <p className="truncate text-xs text-muted" title={`${amostra.orgao} · ${amostra.local}`}>
-          {amostra.orgao}
+          {nomeProprio(amostra.orgao ?? '')}
           {amostra.local && ` · ${amostra.local}`}
         </p>
       </div>
@@ -141,7 +143,7 @@ export default function VitrineDeBusca() {
   const [erroDoTermo, setErroDoTermo] = useState<string | null>(null)
   const [estado, setEstado] = useState<EstadoDaBusca>({ fase: 'ocioso' })
 
-  async function buscar(termoDesejado: string) {
+  async function buscar(termoDesejado: string, ufDesejada: string = uf) {
     const limpo = termoDesejado.trim().replace(/\s+/g, ' ')
     if (limpo.length < MINIMO_DE_LETRAS) {
       setErroDoTermo(`Digite pelo menos ${MINIMO_DE_LETRAS} letras do que você vende.`)
@@ -149,12 +151,12 @@ export default function VitrineDeBusca() {
     }
     setErroDoTermo(null)
     setEstado({ fase: 'buscando' })
-    rastrear('busca_vitrine', { termo: limpo, uf: uf || 'BR' })
+    rastrear('busca_vitrine', { termo: limpo, uf: ufDesejada || 'BR' })
     const query = new URLSearchParams({ q: limpo })
-    if (uf) query.set('uf', uf)
+    if (ufDesejada) query.set('uf', ufDesejada)
     try {
       const r = await api.get<RespostaDaVitrine>(`/api/public/vitrine?${query.toString()}`)
-      setEstado({ fase: 'resultado', termo: limpo, uf, total: r.total, amostras: r.amostras.slice(0, 3) })
+      setEstado({ fase: 'resultado', termo: limpo, uf: ufDesejada, total: r.total, amostras: r.amostras.slice(0, 3) })
     } catch (err) {
       if (err instanceof ApiRequestError && err.status === 429) setEstado({ fase: 'limite' })
       else if (err instanceof ApiRequestError && err.status === 400) {
@@ -164,36 +166,58 @@ export default function VitrineDeBusca() {
     }
   }
 
+  const buscarPorPedido = useEffectEvent((termoPedido: string, ufPedida?: string) => {
+    const termoLimpo = termoPedido.slice(0, MAXIMO_DE_LETRAS)
+    setTermo(termoLimpo)
+    const ufValida = ufPedida && ESTADOS.some((e) => e.sigla === ufPedida) ? ufPedida : uf
+    if (ufValida !== uf) setUf(ufValida)
+    buscar(termoLimpo, ufValida)
+  })
+
+  useEffect(() => {
+    const parametros = new URLSearchParams(window.location.search)
+    const termoDaUrl = parametros.get('q')?.trim()
+    if (termoDaUrl) buscarPorPedido(termoDaUrl, parametros.get('uf')?.trim().toUpperCase())
+    const aoPedirBusca = (evento: Event) => {
+      const pedido = (evento as CustomEvent<PedidoDeBusca>).detail
+      if (pedido?.termo) buscarPorPedido(pedido.termo)
+    }
+    window.addEventListener(EVENTO_DE_BUSCA, aoPedirBusca)
+    return () => window.removeEventListener(EVENTO_DE_BUSCA, aoPedirBusca)
+  }, [])
+
   return (
-    <section aria-labelledby="vitrine-titulo" className="min-w-0 rounded border border-line-strong bg-surface">
-      <div className="flex flex-col gap-0.5 border-b border-line-soft px-4 py-3">
-        <h2 id="vitrine-titulo" className="text-sm font-semibold text-ink">
-          Veja o que está aberto agora
-        </h2>
-        <p className="text-xs text-muted">Busca real nas licitações abertas que o Monitor acompanha. Sem cadastro.</p>
-      </div>
+    <section id={ID_DA_BUSCA} aria-labelledby="vitrine-titulo" className="min-w-0 scroll-mt-6 rounded border border-line-strong bg-surface">
       <form
         onSubmit={(e: FormEvent) => {
           e.preventDefault()
           buscar(termo)
         }}
-        noValidate className="flex flex-col gap-3 px-4 py-4">
-        <Field label="O que você vende?" error={erroDoTermo}>
-          <Input
-            type="search"
-            name="q"
-            value={termo}
-            onChange={(e) => setTermo(e.target.value)}
-            placeholder="material de limpeza, estrutura metálica, notebook…"
-            maxLength={MAXIMO_DE_LETRAS}
-            autoComplete="off"
-            enterKeyHint="search"
-            className="h-11! sm:h-10!"
-          />
-        </Field>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+        noValidate
+        className="flex flex-col gap-3 p-4"
+      >
+        <div className="flex flex-col gap-0.5">
+          <h2 id="vitrine-titulo" className="text-sm font-semibold text-ink">
+            Veja o que está aberto agora para o que você vende
+          </h2>
+          <p className="text-xs text-muted">Busca real nas licitações abertas que o Monitor acompanha. Sem cadastro.</p>
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_9.5rem] md:grid-cols-[minmax(0,1fr)_9.5rem_auto] md:items-start">
+          <Field label="O que você vende?" error={erroDoTermo}>
+            <Input
+              type="search"
+              name="q"
+              value={termo}
+              onChange={(e) => setTermo(e.target.value)}
+              placeholder="material de limpeza, notebook, medicamentos…"
+              maxLength={MAXIMO_DE_LETRAS}
+              autoComplete="off"
+              enterKeyHint="search"
+              className="h-12! text-base!"
+            />
+          </Field>
           <Field label="Estado">
-            <Select name="uf" value={uf} onChange={(e) => setUf(e.target.value)} className="h-11! sm:h-10!">
+            <Select name="uf" value={uf} onChange={(e) => setUf(e.target.value)} className="h-12! text-base!">
               <option value="">Todo o Brasil</option>
               {ESTADOS.map((e) => (
                 <option key={e.sigla} value={e.sigla}>
@@ -202,9 +226,14 @@ export default function VitrineDeBusca() {
               ))}
             </Select>
           </Field>
-          <Button type="submit" variant="primary" icon={Search} loading={estado.fase === 'buscando'} className="h-11! w-full sm:h-10! sm:w-auto">
-            Ver licitações abertas
-          </Button>
+          <div className="flex flex-col gap-1.5 sm:col-span-2 md:col-span-1">
+            <span aria-hidden className="hidden text-xs font-medium md:block">
+              &nbsp;
+            </span>
+            <Button type="submit" variant="primary" icon={Search} loading={estado.fase === 'buscando'} className="h-12! w-full px-5! text-base! md:w-auto">
+              Ver licitações abertas
+            </Button>
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-x-1 gap-y-1 text-xs text-muted">
           <span className="mr-1">Experimente:</span>
