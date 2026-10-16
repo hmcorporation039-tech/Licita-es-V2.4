@@ -138,7 +138,7 @@ Ver o cabeçalho de `scripts/enxugarRawJson.ts`.
 | O que | Observação |
 |---|---|
 | Cobrança por assinatura (cartão + Pix Automático) | Recomendação: Asaas. Aguarda decisão de planos/preços e a conta de teste |
-| Sistema S restante | SP (HTML), AC/MA/RN (páginas próprias); PR bloqueado por Cloudflare |
+| Sistema S restante | SP, AC, MA e RN cobertos no branch `sistema-s-sp-ac-ma-rn` (falta o PR). Ficam de fora: PR (desafio do Cloudflare) e SESI-RR (só planilhas anuais) |
 | Fuso dos parsers HTML do SESC regional | O Paradigma (SESC DN/SP/RJ/BA/RS e indústria) foi corrigido no #42; os parsers HTML dos demais SESC montam datas com `new Date(ano, mes, dia…)` no fuso do processo — em produção (UTC) saem 3 h adiantadas. Mesma correção: hora de Brasília explícita (a regra de diferença exata de 3 h já evita aviso falso) |
 | `totalNew` dos coletores inflado | Ex.: sesc-go conta ~336 "novos" por rodada com 953 no total — investigar a contagem |
 | Endurecimento | CSP com nonce e token fora do `localStorage`; corrida nas cotas; Actions fixadas por SHA (precisa `gh auth refresh -s workflow`) |

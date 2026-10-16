@@ -1,6 +1,6 @@
 import { Worker } from 'bullmq'
 import { redisConnection } from '../queues'
-import { paradigmaDaIndustriaClient, portalDaIndustriaClient, senacTransparenciaClient } from '../lib/httpClient'
+import { paradigmaDaIndustriaClient, portalDaIndustriaClient, senacTransparenciaClient, sistemaSHtmlClient } from '../lib/httpClient'
 import { saveWorkerLog } from '../services/tenderService'
 import { existeNoPncpSistemaS } from '../services/sistemaS/duplicidade'
 import {
@@ -14,6 +14,11 @@ import {
 } from '../services/sistemaS/portalDaIndustria'
 import { UNIDADES_DA_INDUSTRIA_NO_PARADIGMA, contarProcessosDoParadigma } from '../services/sistemaS/paradigmaDaIndustria'
 import { REGIONAIS_DO_SENAC, RegionalDoSenac, caminhoDaRegional, lerRespostaDoSenac, parseLicitacoesDoSenac } from '../services/sistemaS/senac'
+import { FONTES_DA_TRANSPARENCIA_SP } from '../services/sistemaS/transparenciaSp'
+import { FONTE_DO_AC } from '../services/sistemaS/fieac'
+import { FONTE_DO_MA } from '../services/sistemaS/fiema'
+import { FONTE_DO_RN } from '../services/sistemaS/fiern'
+import { FonteHtmlDoSistemaS } from '../services/sistemaS/comum'
 import { SescUnidade } from '../services/sescRegional/tipos'
 import { NormalizedTender } from '../types'
 import { RedeDeColeta, coletarUnidade, redirectPermitido } from './coletorSescRegional'
@@ -22,6 +27,9 @@ import { salvarLote } from './coletorHtmlShared'
 const CONTEXTO = 'Sistema S Worker'
 const MAX_REDIRECTS = 3
 const REDE_DO_PARADIGMA_DA_INDUSTRIA: RedeDeColeta = { cliente: paradigmaDaIndustriaClient, timeoutMs: 60_000 }
+const REDE_DAS_PAGINAS_HTML: RedeDeColeta = { cliente: sistemaSHtmlClient, timeoutMs: 60_000 }
+
+export const FONTES_HTML_DO_SISTEMA_S: FonteHtmlDoSistemaS[] = [...FONTES_DA_TRANSPARENCIA_SP, FONTE_DO_AC, FONTE_DO_MA, FONTE_DO_RN]
 
 export interface ColetaDaOrigem {
   origem: string
@@ -97,6 +105,19 @@ export async function coletarParadigmaDaIndustria(unidade: SescUnidade, agora = 
   return { origem: `IND-PDG-${unidade.uf}`, lidos, tenders }
 }
 
+export async function coletarPaginasHtml(fonte: FonteHtmlDoSistemaS, agora = new Date()): Promise<ColetaDaOrigem> {
+  let lidos = 0
+  const contada: SescUnidade = {
+    ...fonte.unidade,
+    parse: (html, ctx) => {
+      lidos += fonte.contar(html)
+      return fonte.unidade.parse(html, ctx)
+    },
+  }
+  const tenders = await coletarUnidade(contada, agora, REDE_DAS_PAGINAS_HTML)
+  return { origem: fonte.origem, lidos, tenders }
+}
+
 export function coletasDoSistemaS(agora: Date): { origem: string; coletar: () => Promise<ColetaDaOrigem> }[] {
   return [
     ...REGIONAIS_DO_SENAC.map((regional) => ({ origem: `SENAC-${regional.toUpperCase()}`, coletar: () => coletarSenac(regional, agora) })),
@@ -105,6 +126,7 @@ export function coletasDoSistemaS(agora: Date): { origem: string; coletar: () =>
       origem: `IND-PDG-${unidade.uf}`,
       coletar: () => coletarParadigmaDaIndustria(unidade, agora),
     })),
+    ...FONTES_HTML_DO_SISTEMA_S.map((fonte) => ({ origem: fonte.origem, coletar: () => coletarPaginasHtml(fonte, agora) })),
   ]
 }
 

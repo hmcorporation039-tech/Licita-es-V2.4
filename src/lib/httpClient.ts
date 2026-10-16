@@ -140,3 +140,7 @@ portalDaIndustriaClient.defaults.maxContentLength = 20 * 1024 * 1024
 
 export const paradigmaDaIndustriaClient = createRateLimitedClient('', 1200, { Accept: 'application/json, text/html;q=0.9, */*;q=0.8' })
 paradigmaDaIndustriaClient.defaults.timeout = 60_000
+
+export const sistemaSHtmlClient = createRateLimitedClient('', 1200, HTML_HEADERS)
+sistemaSHtmlClient.defaults.timeout = 60_000
+sistemaSHtmlClient.defaults.maxContentLength = 20 * 1024 * 1024
