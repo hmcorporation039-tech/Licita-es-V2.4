@@ -135,9 +135,40 @@ export function falaDisponivel(): boolean {
   return typeof window !== 'undefined' && 'speechSynthesis' in window && typeof window.SpeechSynthesisUtterance === 'function'
 }
 
-function vozEmPortugues(): SpeechSynthesisVoice | null {
-  const vozes = window.speechSynthesis.getVoices()
-  return vozes.find((v) => v.lang === 'pt-BR') ?? vozes.find((v) => v.lang.toLowerCase().replace('_', '-').startsWith('pt-br')) ?? vozes.find((v) => v.lang.toLowerCase().startsWith('pt')) ?? null
+const VOZES_FEMININAS = /francisca|thalita|maria|luciana|fernanda|vit[oó]ria|leila|yara|manuela|camila|brenda|elza|giovanna|let[ií]cia|raquel|helo[ií]sa|google portugu[eê]s do brasil|female|feminin|mulher/i
+const VOZES_MASCULINAS = /daniel|ant[oô]nio|felipe|f[aá]bio|donato|j[uú]lio|humberto|nicolau|val[eé]rio|ricardo|\bmale\b|masculin/i
+const VOZES_NATURAIS = /natural|online|neural|premium|enhanced/i
+
+const ehPortuguesDoBrasil = (v: SpeechSynthesisVoice) => v.lang.toLowerCase().replace('_', '-').startsWith('pt-br')
+const ehPortugues = (v: SpeechSynthesisVoice) => v.lang.toLowerCase().startsWith('pt')
+const ehFeminina = (v: SpeechSynthesisVoice) => VOZES_FEMININAS.test(v.name)
+const ehMasculina = (v: SpeechSynthesisVoice) => !ehFeminina(v) && VOZES_MASCULINAS.test(v.name)
+
+function pontuacaoDaVoz(v: SpeechSynthesisVoice): number {
+  return (ehPortuguesDoBrasil(v) ? 8 : 0) + (ehFeminina(v) ? 16 : 0) + (ehMasculina(v) ? -32 : 0) + (VOZES_NATURAIS.test(v.name) ? 2 : 0) + (v.localService ? 1 : 0)
+}
+
+export function vozDaBela(vozes: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
+  const emPortugues = vozes.filter(ehPortugues)
+  if (emPortugues.length === 0) return null
+  return [...emPortugues].sort((a, b) => pontuacaoDaVoz(b) - pontuacaoDaVoz(a))[0]
+}
+
+function vozesCarregadas(): Promise<SpeechSynthesisVoice[]> {
+  const sintese = window.speechSynthesis
+  const ja = sintese.getVoices()
+  if (ja.length > 0) return Promise.resolve(ja)
+  return new Promise((resolve) => {
+    const desistir = window.setTimeout(() => resolve(sintese.getVoices()), 1200)
+    sintese.addEventListener(
+      'voiceschanged',
+      () => {
+        window.clearTimeout(desistir)
+        resolve(sintese.getVoices())
+      },
+      { once: true },
+    )
+  })
 }
 
 export function calar(): void {
@@ -152,11 +183,18 @@ export function falar(texto: string): void {
   try {
     const sintese = window.speechSynthesis
     sintese.cancel()
-    const fala = new SpeechSynthesisUtterance(texto)
-    fala.lang = 'pt-BR'
-    const voz = vozEmPortugues()
-    if (voz) fala.voice = voz
-    sintese.speak(fala)
+    void vozesCarregadas()
+      .then((vozes) => {
+        const fala = new SpeechSynthesisUtterance(texto)
+        fala.lang = 'pt-BR'
+        const voz = vozDaBela(vozes)
+        if (voz) {
+          fala.voice = voz
+          if (ehMasculina(voz)) fala.pitch = 1.3
+        }
+        sintese.speak(fala)
+      })
+      .catch(() => {})
   } catch {}
 }
 
