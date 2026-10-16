@@ -1,215 +1,300 @@
-import type { ReactNode } from 'react'
-import { Check, FileText, Mic, TriangleAlert } from 'lucide-react'
-import { buttonClasses, cx, DescriptionList, Panel, Prazo, StatusTag } from '@/components/ui'
+import type { CSSProperties, ReactNode } from 'react'
+import { Check, FileText, FolderLock, Gavel, LayoutList, Mic, Star, TriangleAlert, Building2 } from 'lucide-react'
+import NumeroQueSobe from './NumeroQueSobe'
 
-const HORA = 60 * 60 * 1000
+export function atraso(ms: number): CSSProperties {
+  return { '--atraso': `${ms}ms` } as CSSProperties
+}
 
-function Previa({ children, legenda }: { children: ReactNode; legenda?: string }) {
+export function MolduraDeCelular({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <figure className="flex min-w-0 flex-col gap-2">
-      <div aria-hidden className="flex min-w-0 flex-col gap-3">
+    <div className={`az-celular ${className ?? ''}`}>
+      <div className="az-celular-tela">{children}</div>
+    </div>
+  )
+}
+
+export function MolduraDeNotebook({ children, endereco }: { children: ReactNode; endereco: string }) {
+  return (
+    <div className="az-notebook">
+      <div className="az-notebook-tampa">
+        <div className="az-notebook-barra">
+          <span className="az-notebook-luzes" />
+          <span className="az-notebook-endereco">{endereco}</span>
+        </div>
+        <div className="az-notebook-tela">{children}</div>
+      </div>
+      <div className="az-notebook-base" />
+    </div>
+  )
+}
+
+function Ilustrativo({ children, legenda }: { children: ReactNode; legenda: string }) {
+  return (
+    <figure className="az-previa">
+      <div aria-hidden className="az-previa-palco">
         {children}
       </div>
-      <figcaption className="flex items-center gap-2 text-xs text-muted">
-        <StatusTag>Exemplo ilustrativo</StatusTag>
-        {legenda && <span>{legenda}</span>}
+      <figcaption className="az-previa-legenda">
+        <span className="az-selo-ilustrativo">Exemplo ilustrativo</span>
+        {legenda}
       </figcaption>
     </figure>
   )
 }
 
-function Linha({ rotulo, valor, destaque = false, className }: { rotulo: ReactNode; valor: ReactNode; destaque?: boolean; className?: string }) {
+const LATERAL: Array<{ nome: string; icone: typeof LayoutList }> = [
+  { nome: 'Licitações', icone: LayoutList },
+  { nome: 'Escolhidas', icone: Star },
+  { nome: 'Pregão com a Bela', icone: Gavel },
+  { nome: 'Documentos', icone: FolderLock },
+  { nome: 'Empresa', icone: Building2 },
+]
+
+function Lateral({ ativo }: { ativo: string }) {
   return (
-    <div className={cx('flex items-baseline justify-between gap-4 py-1.5', destaque && 'border-t border-line pt-2.5', className)}>
-      <dt className={cx('text-sm', destaque ? 'font-semibold text-ink' : 'text-ink-2')}>{rotulo}</dt>
-      <dd className={cx('whitespace-nowrap font-mono text-sm', destaque ? 'font-semibold text-ink' : 'text-ink')}>{valor}</dd>
+    <div className="az-app-lateral">
+      <span className="az-app-marca">
+        Monitor <span>de Licitações</span>
+      </span>
+      {LATERAL.map(({ nome, icone: Icone }) => (
+        <span key={nome} className={nome === ativo ? 'az-app-lateral-ativo' : undefined}>
+          <Icone size={13} strokeWidth={2.25} />
+          {nome}
+        </span>
+      ))}
     </div>
   )
 }
 
-function Formatos({ formatos }: { formatos: string[] }) {
-  return (
-    <span className="flex shrink-0 gap-1">
-      {formatos.map((f) => (
-        <StatusTag key={f} mono>
-          {f}
-        </StatusTag>
-      ))}
-    </span>
-  )
-}
+const FALA_DA_BELA = '“Bela, licitação de estrutura metálica no DF”'
+const ATRASO_POR_PALAVRA_MS = 80
+const INICIO_DA_FALA_MS = 400
+const FIM_DA_FALA_MS = INICIO_DA_FALA_MS + FALA_DA_BELA.split(' ').length * ATRASO_POR_PALAVRA_MS
 
 const RESULTADOS_DA_BELA = [
-  { horas: 30, objeto: 'Fornecimento e montagem de estrutura metálica para cobertura de quadra', orgao: 'Órgão distrital · Brasília/DF', fonte: 'PNCP' },
-  { horas: 4 * 24, objeto: 'Galpão em estrutura metálica para depósito de materiais', orgao: 'Empresa pública distrital · Brasília/DF', fonte: 'Novacap' },
-  { horas: 12 * 24, objeto: 'Manutenção de estruturas metálicas e serralheria', orgao: 'Unidade do Sistema S · Taguatinga/DF', fonte: 'Sistema S' },
+  { prazo: 'encerra amanhã', urgente: true, objeto: 'Estrutura metálica para cobertura de quadra', orgao: 'Órgão distrital · Brasília/DF', fonte: 'PNCP' },
+  { prazo: 'encerra em 4 dias', urgente: false, objeto: 'Galpão em estrutura metálica para depósito', orgao: 'Empresa pública · Brasília/DF', fonte: 'Novacap' },
+  { prazo: 'encerra em 12 dias', urgente: false, objeto: 'Manutenção de estruturas e serralheria', orgao: 'Sistema S · Taguatinga/DF', fonte: 'Sistema S' },
 ]
 
 export function PreviaEncontrar() {
-  const agora = Date.now()
   return (
-    <Previa legenda="Busca falada com a Bela.">
-      <Panel padding="none" title="Falar com a Bela" description="Toque no microfone e diga o que procura">
-        <div className="flex items-start gap-3 px-4 py-3">
-          <span className="inline-flex size-9 shrink-0 items-center justify-center rounded border border-accent bg-accent text-white">
-            <Mic size={16} />
-          </span>
-          <div className="flex min-w-0 flex-col gap-2">
-            <p className="text-base text-ink">“Bela, licitação de estrutura metálica no DF”</p>
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-xs text-muted">Entendi:</span>
-              <StatusTag tone="accent">estrutura metálica</StatusTag>
-              <StatusTag tone="accent">DF</StatusTag>
-              <StatusTag tone="accent">abertas</StatusTag>
+    <Ilustrativo legenda="Busca falada com a Bela, no celular.">
+      <MolduraDeCelular className="az-celular-tour">
+        <div className="az-app-celular">
+          <div className="az-app-celular-topo">
+            <small>Falar com a Bela</small>
+            <strong>Diga o que procura</strong>
+          </div>
+          <div className="az-app-celular-corpo">
+            <div className="az-fala">
+              <span className="revela-pop az-fala-microfone" style={atraso(150)}>
+                <Mic size={16} strokeWidth={2.5} />
+              </span>
+              <p>
+                {FALA_DA_BELA.split(' ').map((palavra, i) => (
+                  <span key={i} className="revela-palavra" style={atraso(INICIO_DA_FALA_MS + i * ATRASO_POR_PALAVRA_MS)}>
+                    {palavra}{' '}
+                  </span>
+                ))}
+              </p>
             </div>
+            <div className="az-entendi">
+              <span className="revela-palavra" style={atraso(FIM_DA_FALA_MS)}>
+                Entendi:
+              </span>
+              {['estrutura metálica', 'DF', 'abertas'].map((tag, i) => (
+                <span key={tag} className="revela-pop az-chip-app" style={atraso(FIM_DA_FALA_MS + 120 + i * 110)}>
+                  {tag}
+                </span>
+              ))}
+            </div>
+            <ul className="az-app-cartoes">
+              {RESULTADOS_DA_BELA.map((r, i) => (
+                <li key={r.objeto} className="revela az-app-cartao" style={atraso(FIM_DA_FALA_MS + 500 + i * 160)}>
+                  <b>{r.objeto}</b>
+                  <span>{r.orgao}</span>
+                  <span className="az-app-cartao-rodape">
+                    <em className={r.urgente ? 'az-prazo az-prazo-danger' : 'az-prazo az-prazo-warn'}>{r.prazo}</em>
+                    <span className="az-fonte-tag">{r.fonte}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
-        <ul className="border-t border-line-soft">
-          {RESULTADOS_DA_BELA.map((r) => (
-            <li key={r.objeto} className="flex items-start justify-between gap-4 border-b border-line-soft px-4 py-2.5 last:border-0">
-              <div className="flex min-w-0 flex-col gap-0.5">
-                <p className="line-clamp-2 text-sm text-ink">{r.objeto}</p>
-                <p className="truncate text-xs text-muted">{r.orgao}</p>
-              </div>
-              <div className="flex shrink-0 flex-col items-end gap-1">
-                <Prazo data={new Date(agora + r.horas * HORA)} semHora />
-                <StatusTag mono>{r.fonte}</StatusTag>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </Panel>
-    </Previa>
+      </MolduraDeCelular>
+    </Ilustrativo>
   )
 }
 
 export function PreviaAnalisar() {
   return (
-    <Previa legenda="Resumo do edital e alerta de cláusula.">
-      <Panel title="Resumo do edital" description="Pregão eletrônico · Estrutura metálica para cobertura">
-        <DescriptionList
-          items={[
-            { label: 'Valor estimado', value: 'R$ 412.600,00', mono: true },
-            { label: 'Sessão pública', value: 'em 9 dias úteis' },
-            { label: 'Exigências principais', value: 'Atestado de capacidade técnica, registro no CREA, balanço patrimonial' },
-            { label: 'Habilitação', value: '7 de 9 documentos já no seu cofre' },
-          ]}
-        />
-      </Panel>
-      <div className="flex flex-col gap-2 rounded border border-danger-line bg-danger-soft px-4 py-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <TriangleAlert size={16} className="shrink-0 text-danger" />
-          <p className="text-sm font-semibold text-ink">Atestado com 80% da quantidade</p>
-          <StatusTag tone="danger">Alta</StatusTag>
+    <Ilustrativo legenda="Resumo do edital e alerta de cláusula, no computador.">
+      <MolduraDeNotebook endereco="Monitor de Licitações · Resumo do edital">
+        <div className="az-app-notebook">
+          <Lateral ativo="Escolhidas" />
+          <div className="az-app-principal">
+            <div className="az-app-cabecalho revela">
+              <small>Pregão eletrônico · Estrutura metálica para cobertura</small>
+              <strong>Resumo do edital</strong>
+            </div>
+            <dl className="az-app-indicadores">
+              <div className="revela" style={atraso(120)}>
+                <dt>Valor estimado</dt>
+                <dd>R$ 412.600,00</dd>
+              </div>
+              <div className="revela" style={atraso(200)}>
+                <dt>Sessão pública</dt>
+                <dd>em 9 dias úteis</dd>
+              </div>
+              <div className="revela" style={atraso(280)}>
+                <dt>Habilitação</dt>
+                <dd>7 de 9 no cofre</dd>
+                <span className="az-app-barra">
+                  <span className="revela-traco" style={atraso(700)} />
+                </span>
+              </div>
+            </dl>
+            <p className="revela az-app-exigencias" style={atraso(360)}>
+              <b>Exigências principais:</b> atestado de capacidade técnica, registro no CREA, balanço patrimonial.
+            </p>
+            <div className="revela-direita az-app-alerta" style={atraso(600)}>
+              <div className="az-app-alerta-topo">
+                <TriangleAlert size={16} strokeWidth={2.5} />
+                <b>Atestado com 80% da quantidade</b>
+                <span className="revela-pop az-chip-alta" style={atraso(1150)}>
+                  Alta
+                </span>
+              </div>
+              <p>O edital pede atestado de 80% do quantitativo. A lei admite exigir até 50%.</p>
+              <div className="az-app-alerta-rodape">
+                <span>Lei 14.133/2021, art. 67, §2º</span>
+                <span className="revela az-app-botao" style={atraso(1400)}>
+                  Gerar impugnação
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
-        <p className="text-sm text-ink-2">O edital pede atestado de 80% do quantitativo. A lei admite exigir até 50%.</p>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="font-mono text-xs text-muted">Lei 14.133/2021, art. 67, §2º</span>
-          <span className={buttonClasses('primary', 'sm')}>Gerar impugnação</span>
-        </div>
-      </div>
-    </Previa>
+      </MolduraDeNotebook>
+    </Ilustrativo>
   )
 }
 
-const DOCUMENTOS = [
-  { nome: 'Proposta comercial', formatos: ['PDF', 'DOCX'] },
-  { nome: 'Declarações exigidas no edital', formatos: ['PDF', 'DOCX'] },
-  { nome: 'Pedido de impugnação', formatos: ['PDF', 'DOCX'] },
+const CUSTOS = [
+  { rotulo: 'Material e fabricação', valor: 'R$ 2.180,00' },
+  { rotulo: 'Frete', valor: 'R$ 96,40' },
+  { rotulo: 'Impostos estimados', valor: 'R$ 344,25' },
+  { rotulo: 'Custo por unidade', valor: 'R$ 2.620,65', destaque: true },
+  { rotulo: 'Preço mínimo (margem 15%)', valor: 'R$ 3.013,75' },
+  { rotulo: 'Preço proposto · margem 29%', valor: 'R$ 3.380,00', destaque: true },
 ]
+
+const DOCUMENTOS = ['Proposta comercial', 'Declarações do edital', 'Pedido de impugnação']
+const TRACOS_DA_PAGINA = ['74%', '100%', '100%', '86%', '100%', '62%']
 
 export function PreviaPreparar() {
   return (
-    <Previa legenda="Estudo de custos e documentos no papel timbrado.">
-      <Panel title="Estudo de custos" description="Preço por unidade" actions={<StatusTag mono>Item 1</StatusTag>}>
-        <dl className="flex flex-col">
-          <Linha rotulo="Material e fabricação" valor="R$ 2.180,00" />
-          <Linha rotulo="Frete" valor="R$ 96,40" />
-          <Linha rotulo="Impostos estimados" valor="R$ 344,25" />
-          <Linha rotulo="Custo por unidade" valor="R$ 2.620,65" destaque />
-          <Linha rotulo="Margem desejada" valor="15%" />
-          <Linha rotulo="Preço mínimo" valor="R$ 3.013,75" />
-          <Linha rotulo="Preço proposto · margem 29%" valor="R$ 3.380,00" destaque />
-        </dl>
-      </Panel>
-      <Panel padding="none" title="Documentos prontos" description="No papel timbrado da sua empresa">
-        <div className="grid gap-0 sm:grid-cols-[148px_minmax(0,1fr)]">
-          <div className="hidden border-r border-line-soft p-3 sm:block">
-            <div className="flex aspect-[1/1.3] flex-col gap-1.5 rounded-sm border border-line bg-surface p-2">
-              <div className="flex items-center gap-1.5 border-b border-line-soft pb-1.5">
-                <span className="size-3 rounded-sm bg-accent" />
-                <span className="flex flex-col gap-0.5">
-                  <span className="text-[8px] font-semibold leading-none text-ink">SUA EMPRESA LTDA</span>
-                  <span className="font-mono text-[7px] leading-none text-muted">CNPJ 00.000.000/0001-00</span>
-                </span>
+    <Ilustrativo legenda="Estudo de custos e documentos no papel timbrado.">
+      <MolduraDeNotebook endereco="Monitor de Licitações · Estudo de custos">
+        <div className="az-app-notebook">
+          <Lateral ativo="Documentos" />
+          <div className="az-app-principal az-app-duas-colunas">
+            <div className="az-app-bloco revela">
+              <div className="az-app-cabecalho">
+                <small>Item 1 · preço por unidade</small>
+                <strong>Estudo de custos</strong>
               </div>
-              <span className="h-1 w-3/4 rounded-sm bg-line" />
-              <span className="h-1 w-full rounded-sm bg-line-soft" />
-              <span className="h-1 w-full rounded-sm bg-line-soft" />
-              <span className="h-1 w-5/6 rounded-sm bg-line-soft" />
-              <span className="mt-1 h-1 w-full rounded-sm bg-line-soft" />
-              <span className="h-1 w-2/3 rounded-sm bg-line-soft" />
-              <span className="mt-auto h-px w-1/2 self-center bg-line-strong" />
+              <dl className="az-app-custos">
+                {CUSTOS.map((c, i) => (
+                  <div key={c.rotulo} className={`revela ${c.destaque ? 'az-app-custo-destaque' : ''}`} style={atraso(150 + i * 80)}>
+                    <dt>{c.rotulo}</dt>
+                    <dd>{c.valor}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+            <div className="az-app-bloco revela" style={atraso(250)}>
+              <div className="az-app-cabecalho">
+                <small>No papel timbrado da sua empresa</small>
+                <strong>Documentos prontos</strong>
+              </div>
+              <div className="az-app-documentos">
+                <div className="revela-pagina az-folha" style={atraso(500)}>
+                  <span className="az-folha-timbre">
+                    <span className="revela-pop" style={atraso(900)} />
+                    <span>
+                      <b>SUA EMPRESA LTDA</b>
+                      <small>CNPJ 00.000.000/0001-00</small>
+                    </span>
+                  </span>
+                  {TRACOS_DA_PAGINA.map((largura, i) => (
+                    <span key={i} className="revela-traco az-folha-linha" style={{ ...atraso(1000 + i * 110), width: largura }} />
+                  ))}
+                </div>
+                <ul>
+                  {DOCUMENTOS.map((d, i) => (
+                    <li key={d} className="revela" style={atraso(700 + i * 160)}>
+                      <FileText size={13} strokeWidth={2.25} />
+                      <span>{d}</span>
+                      <em>PDF</em>
+                      <em>DOCX</em>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
           </div>
-          <ul className="flex flex-col">
-            {DOCUMENTOS.map((d) => (
-              <li key={d.nome} className="flex items-center justify-between gap-3 border-b border-line-soft px-4 py-2.5 last:border-0">
-                <span className="flex min-w-0 items-center gap-2">
-                  <FileText size={14} className="shrink-0 text-muted" />
-                  <span className="truncate text-sm text-ink">{d.nome}</span>
-                </span>
-                <Formatos formatos={d.formatos} />
-              </li>
-            ))}
-          </ul>
         </div>
-      </Panel>
-    </Previa>
+      </MolduraDeNotebook>
+    </Ilustrativo>
   )
 }
 
 export function PreviaDisputar() {
   return (
-    <Previa legenda="Pregão com a Bela.">
-      <Panel padding="none" title="Pregão com a Bela" description="Item 1 · estrutura metálica" actions={<StatusTag tone="warn">Disputa aberta</StatusTag>}>
-        <div className="flex flex-col gap-4 p-4">
-          <div className="flex flex-col gap-4 rounded border border-ok-line bg-ok-soft p-4">
-            <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
-              <div className="flex min-w-0 flex-col gap-0.5">
-                <span className="text-xs font-semibold text-ok">Margem dentro do desejado</span>
-                <span className="font-mono text-4xl font-semibold tracking-tight text-ok">17,7%</span>
-                <span className="text-xs text-muted">margem no lance sugerido</span>
-              </div>
-              <dl className="flex flex-wrap gap-x-6 gap-y-2">
-                <div className="flex flex-col">
-                  <dt className="text-xs text-muted">Melhor lance</dt>
-                  <dd className="font-mono text-base font-medium text-ink">R$ 3.112,00</dd>
-                </div>
-                <div className="flex flex-col">
-                  <dt className="text-xs text-muted">Seu mínimo</dt>
-                  <dd className="font-mono text-base font-medium text-ink">R$ 3.013,75</dd>
-                </div>
-              </dl>
+    <Ilustrativo legenda="Pregão com a Bela, no celular.">
+      <MolduraDeCelular className="az-celular-tour">
+        <div className="az-app-celular">
+          <div className="az-app-celular-topo">
+            <small>Item 1 · estrutura metálica</small>
+            <strong>Pregão com a Bela</strong>
+            <span className="az-app-disputa">Disputa aberta</span>
+          </div>
+          <div className="az-app-celular-corpo">
+            <div className="revela az-margem">
+              <small>Margem dentro do desejado</small>
+              <NumeroQueSobe valor={17.7} casas={1} sufixo="%" atrasoMs={250} className="az-margem-numero" />
+              <span>margem no lance sugerido</span>
             </div>
-            <p className="text-base text-ink">
-              Sugiro cobrir com <span className="font-mono font-semibold">R$ 3.084,50</span>.
+            <dl className="az-lances">
+              <div className="revela" style={atraso(200)}>
+                <dt>Melhor lance</dt>
+                <dd>R$ 3.112,00</dd>
+              </div>
+              <div className="revela" style={atraso(320)}>
+                <dt>Seu mínimo</dt>
+                <dd>R$ 3.013,75</dd>
+              </div>
+            </dl>
+            <p className="revela az-sugestao" style={atraso(1200)}>
+              Sugiro cobrir com <b>R$ 3.084,50</b>.
             </p>
-            <span className={buttonClasses('primary', 'md', 'h-12 w-full text-base')}>
-              <Check size={16} />
-              Dei este lance: <span className="font-mono">R$ 3.084,50</span>
+            <span className="revela az-app-botao az-app-botao-cheio" style={atraso(1400)}>
+              <Check size={14} strokeWidth={3} />
+              Dei este lance
+            </span>
+            <p className="az-app-nota">A Bela sugere; quem dá o lance é você.</p>
+            <span className="revela az-app-documento" style={atraso(1650)}>
+              <FileText size={13} strokeWidth={2.25} />
+              Proposta readequada
+              <em>PDF</em>
             </span>
           </div>
-          <p className="text-xs text-muted">A Bela sugere; quem dá o lance é você.</p>
         </div>
-        <div className="flex items-center justify-between gap-3 border-t border-line-soft px-4 py-3">
-          <span className="flex min-w-0 items-center gap-2">
-            <FileText size={14} className="shrink-0 text-muted" />
-            <span className="truncate text-sm text-ink">Proposta readequada ao valor final</span>
-          </span>
-          <Formatos formatos={['PDF', 'DOCX']} />
-        </div>
-      </Panel>
-    </Previa>
+      </MolduraDeCelular>
+    </Ilustrativo>
   )
 }

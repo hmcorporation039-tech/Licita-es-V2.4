@@ -14,10 +14,24 @@ Direção aprovada em 13/10/2026: **azul-tinta**, IBM Plex, neutros quentes, den
 | Texto secundário / terciário | `text-muted` / `text-faint` | `#5B5F66` / `#74777D` (os dois passam AA no branco) |
 | Destaque | `bg-accent`, `text-accent`, `bg-accent-soft`, `border-accent-line`, `hover:bg-accent-hover` | `#1F3A5F` |
 | Risco / atenção / ok | `danger`, `warn`, `ok` (+ `-soft`, `-line`) | `#B42318` / `#A15C07` / `#1E6B3A` |
+| Faixa escura (landing v2, sem uso desde a página azul) | `bg-noite`, `bg-noite-2`, `border-noite-line`, `text-noite-ink`, `text-noite-muted`, `text-noite-accent` + classe `.faixa-noite` | `#0E1B2E` / `#14253D` / `#26395A` / `#EEF2F7` / `#A9B8CB` / `#9CBCE3` |
 
 Escala de texto (redefinida, mais densa): `text-2xs` 11 · `text-xs` 12 · **`text-sm` 13 (padrão de tela)** · `text-base` 14 (corpo de texto corrido) · `text-lg` 16 · `text-xl` 20 · `text-2xl` 24 (título de página) · `text-3xl` 32 · `text-4xl` 40 (só na landing).
 
 As escalas `indigo-*` e `slate-*` foram sobrescritas para o azul-tinta e o neutro quente, como rede de segurança. **Código novo usa os tokens semânticos**, nunca `indigo-*`/`slate-*`/`gray-*`/`blue-*`/`red-*`/`amber-*`/`emerald-*` direto.
+
+## Página de entrada (estilo B · azul vibrante, 16/10/2026)
+
+A página pública `/` (`web/src/app/(entrada)/`) tem identidade própria e **não** usa os tokens acima. Tudo fica isolado no grupo de rotas `(entrada)`: fonte Nunito variável (`fonts/nunito-latin-variable.woff2`, carregada só no `layout.tsx` desse grupo) e as classes `az-*` de `entrada.css`, todas sob `.entrada-azul`. O app logado continua com IBM Plex e o azul-tinta.
+
+| Uso | Valor |
+|---|---|
+| Azul principal / claro / fundo / noite | `#0A4FD6` / `#2469F0` / `#063AA8` / `#052C82` |
+| Azul suave (só texto grande sobre azul) | `#9FD3FF` |
+| Papel / tinta / tinta secundária / linha | `#F4F8FF` / `#0B1F44` / `#51617F` / `#DBE6F7` |
+| Verde dos botões (texto `#04220F`, não branco: branco no verde não passa AA) | `#18C25A` |
+
+Regras: títulos misturam Nunito 300 e 900; botões em pílula (`az-pilula` + `-verde`, `-branca`, `-vazada`, `-azul`, `-contorno`); cartões brancos com raio 24 px sobre o papel; telas do produto sempre com o selo "Exemplo ilustrativo". Logotipos das fontes ficam em `web/public/fontes/`, baixados só dos sites oficiais e exibidos em branco monocromático.
 
 ## Componentes (`web/src/components/ui`, importar de `@/components/ui`)
 
@@ -53,7 +67,7 @@ Moldura: `AppShell` (sidebar, já aplicado pelo `app/(app)/layout.tsx`, que entr
 2. **"OK" não tem cor.** Estado normal fica neutro; só o que pede ação ganha `warn`/`danger`.
 3. **Números, datas, CNPJ, nº de processo, valores em R$: `font-mono`**, alinhados à direita em tabela (`Td numeric`).
 4. **Raio**: `rounded` (4 px) em tudo; `rounded-sm` (2 px) em tag. Nada de `rounded-full` em botão ou card, nem `rounded-lg`/`xl`.
-5. **Sem sombra, sem gradiente**, sem emoji, sem glifo Unicode como ícone (`←`, `✓`, `★`, `⚠`): usar `lucide-react` em 14–16 px, traço 1.75–2, inline com o texto, **nunca dentro de círculo colorido**.
+5. **Sem sombra, sem gradiente** (exceção única: a `.faixa-noite` da landing, com grade de linhas e um brilho radial discreto), sem emoji, sem glifo Unicode como ícone (`←`, `✓`, `★`, `⚠`): usar `lucide-react` em 14–16 px, traço 1.75–2, inline com o texto, **nunca dentro de círculo colorido**.
 6. **Hierarquia por tipografia**: título de página `text-2xl font-semibold`, título de painel `text-sm font-semibold`, rótulo `text-xs font-medium text-muted`, conteúdo `text-sm`.
 7. **Acessibilidade**: todo controle com `<label>` associado (via `Field`), botão de ícone com `aria-label`, `role`/`aria-selected` nas abas, foco visível (já global).
 8. **Estados**: toda tela que busca dados tem carregando (`Carregando`), erro (`ErrorState`, com `.catch`) e vazio (`EmptyState`).

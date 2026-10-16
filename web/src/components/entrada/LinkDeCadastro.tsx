@@ -1,29 +1,33 @@
 'use client'
 
+import Link from 'next/link'
 import type { ComponentProps } from 'react'
 import { ArrowRight } from 'lucide-react'
-import { LinkButton } from '@/components/ui'
 import { rastrear } from '@/lib/rastreamento'
 
-export type OrigemDoCadastro = 'hero' | 'vitrine' | 'final'
+export type OrigemDoCadastro = 'topo' | 'hero' | 'vitrine' | 'ramo' | 'bela' | 'tour' | 'planos' | 'barra' | 'final'
 
-type PropsDoLink = ComponentProps<typeof LinkButton>
+type PropsDoLink = ComponentProps<typeof Link>
 
 export default function LinkDeCadastro({
   origem,
   href = '/cadastro',
   onClick,
+  comSeta = true,
+  children,
   ...rest
-}: Omit<PropsDoLink, 'href' | 'icon' | 'iconRight'> & { origem: OrigemDoCadastro; href?: PropsDoLink['href'] }) {
+}: Omit<PropsDoLink, 'href'> & { origem: OrigemDoCadastro; href?: PropsDoLink['href']; comSeta?: boolean }) {
   return (
-    <LinkButton
+    <Link
       href={href}
-      iconRight={ArrowRight}
       onClick={(e) => {
         rastrear('clique_cadastro', { origem })
         onClick?.(e)
       }}
       {...rest}
-    />
+    >
+      {children}
+      {comSeta && <ArrowRight size={18} strokeWidth={2.5} aria-hidden className="shrink-0" />}
+    </Link>
   )
 }
