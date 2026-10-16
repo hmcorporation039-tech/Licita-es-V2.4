@@ -37,6 +37,9 @@ const HOSTS_PERMITIDOS = [
   'lsa.fies.org.br',
   'www.portaldaindustria.com.br',
   'static.portaldaindustria.com.br',
+  'transparencia.sp.senai.br',
+  'transparencia.sesisp.org.br',
+  'transparencia.fieac.org',
 ]
 
 export function hostPermitido(hostname: string): boolean {

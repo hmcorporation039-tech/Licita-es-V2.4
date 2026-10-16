@@ -1,10 +1,16 @@
 import { ModalidadeEnum } from '../../types'
-import { detectarModalidade } from '../sescRegional/tipos'
+import { SescUnidade, detectarModalidade } from '../sescRegional/tipos'
 
 const HORAS_DE_BRASILIA_PARA_UTC = 3
 const DIA_MS = 86_400_000
 
 export type EntidadeDoSistemaS = 'SESI' | 'SENAI' | 'IEL' | 'SENAC' | 'FEDERACAO' | 'SISTEMA'
+
+export interface FonteHtmlDoSistemaS {
+  origem: string
+  unidade: SescUnidade
+  contar: (html: string) => number
+}
 
 export function horarioDeBrasilia(ano: number, mes: number, dia: number, hora = 0, minuto = 0): Date | undefined {
   if (![ano, mes, dia, hora, minuto].every(Number.isInteger)) return undefined

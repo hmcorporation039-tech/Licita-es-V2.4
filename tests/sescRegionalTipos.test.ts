@@ -8,7 +8,7 @@ import {
   urlAbsoluta,
 } from '../src/services/sescRegional/tipos'
 
-const AGORA = new Date(2026, 8, 30, 15, 0) // 30/09/2026 15:00
+const AGORA = new Date('2026-09-30T15:00:00-03:00')
 
 describe('ehLicitacaoAtual', () => {
   it('descarta situação de estado final', () => {
@@ -23,16 +23,16 @@ describe('ehLicitacaoAtual', () => {
   })
 
   it('descarta quando a data de encerramento já passou', () => {
-    expect(ehLicitacaoAtual({ encerramentoAt: new Date(2026, 8, 29, 10, 0) }, AGORA)).toBe(false)
+    expect(ehLicitacaoAtual({ encerramentoAt: new Date('2026-09-29T10:00:00-03:00') }, AGORA)).toBe(false)
   })
 
   it('mantém a sessão marcada para hoje, mesmo com o horário já passado', () => {
-    expect(ehLicitacaoAtual({ encerramentoAt: new Date(2026, 8, 30, 9, 0) }, AGORA)).toBe(true)
+    expect(ehLicitacaoAtual({ encerramentoAt: new Date('2026-09-30T09:00:00-03:00') }, AGORA)).toBe(true)
   })
 
   it('usa a data de abertura quando não há encerramento', () => {
-    expect(ehLicitacaoAtual({ aberturaAt: new Date(2026, 9, 10) }, AGORA)).toBe(true)
-    expect(ehLicitacaoAtual({ aberturaAt: new Date(2026, 7, 1) }, AGORA)).toBe(false)
+    expect(ehLicitacaoAtual({ aberturaAt: new Date('2026-10-10T00:00:00-03:00') }, AGORA)).toBe(true)
+    expect(ehLicitacaoAtual({ aberturaAt: new Date('2026-08-01T00:00:00-03:00') }, AGORA)).toBe(false)
   })
 })
 
