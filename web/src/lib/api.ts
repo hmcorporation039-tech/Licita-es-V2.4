@@ -4,7 +4,7 @@
 
 import { clearSessionUser, getSessionToken } from './session'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3333'
+export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3333'
 
 export class ApiRequestError extends Error {
   status: number

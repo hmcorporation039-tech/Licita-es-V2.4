@@ -12,6 +12,7 @@ import { TERMOS_VERSAO } from '../../lib/legal'
 import { z } from 'zod'
 import { normalize } from '../../lib/geoService'
 import { whereLicitacaoAberta } from '../../lib/licitacaoAberta'
+import { dataDaSessao } from '../../lib/dataDaSessao'
 import { vitrineLimiter } from '../rateLimit'
 
 export const publicRouter = Router()
@@ -113,7 +114,7 @@ publicRouter.get(
           objeto: objeto.length > 140 ? `${objeto.slice(0, 137)}...` : objeto,
           orgao: t.orgao,
           local: [t.municipio, t.uf].filter(Boolean).join('/'),
-          prazo: t.encerramentoAt ?? t.aberturaAt,
+          prazo: dataDaSessao(t),
           fonte: t.fonte,
         }
       }),

@@ -50,7 +50,7 @@ rodar('Vitrine pública da página de entrada', () => {
   it('mostra o total e até 3 amostras sem expor dados internos', async () => {
     const r = await fetch(`${base}/api/public/vitrine?q=${encodeURIComponent(`vassouras especiais ${sufixo}`)}&uf=go`)
     expect(r.status).toBe(200)
-    const corpo = await r.json()
+    const corpo = (await r.json()) as { total: number; amostras: Array<Record<string, unknown>> }
     expect(corpo.total).toBe(1)
     expect(corpo.amostras[0]).toMatchObject({ orgao: 'Prefeitura de Teste', local: 'Anápolis/GO', fonte: 'PNCP' })
     expect(Object.keys(corpo.amostras[0]).sort()).toEqual(['fonte', 'local', 'objeto', 'orgao', 'prazo'])
@@ -58,7 +58,7 @@ rodar('Vitrine pública da página de entrada', () => {
 
   it('recusa busca curta demais e informa as estatísticas', async () => {
     expect((await fetch(`${base}/api/public/vitrine?q=ab`)).status).toBe(400)
-    const e = await (await fetch(`${base}/api/public/estatisticas`)).json()
+    const e = (await (await fetch(`${base}/api/public/estatisticas`)).json()) as { abertas: number; fontes: number }
     expect(e.abertas).toBeGreaterThanOrEqual(1)
     expect(e.fontes).toBeGreaterThanOrEqual(1)
   })
