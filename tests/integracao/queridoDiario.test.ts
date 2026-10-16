@@ -70,9 +70,11 @@ rodar('Querido Diário — duplicidade com o PNCP e republicação', () => {
     expect(await servico.existeNoPncp(doDiario(), agora)).toBe(true)
   })
 
-  it('reconhece pelo mesmo dia da sessão mesmo com objeto diferente', async () => {
-    const aviso = doDiario({ objeto: 'Contratação de serviço de transporte escolar', aberturaAt: dias(20) })
-    expect(await servico.existeNoPncp(aviso, agora)).toBe(true)
+  it('no mesmo dia da sessão, reconhece objeto resumido de outro jeito, mas não descarta licitação diferente', async () => {
+    const resumido = doDiario({ objeto: 'Kits de materiais para professores', aberturaAt: dias(20) })
+    expect(await servico.existeNoPncp(resumido, agora)).toBe(true)
+    const outra = doDiario({ objeto: 'Contratação de serviço de transporte escolar', aberturaAt: dias(20) })
+    expect(await servico.existeNoPncp(outra, agora)).toBe(false)
   })
 
   it('não confunde com outra licitação do município, de outra modalidade ou de outro lugar', async () => {

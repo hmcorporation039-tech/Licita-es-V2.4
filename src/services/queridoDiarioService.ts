@@ -15,6 +15,7 @@ const DIAS_DE_SOBREPOSICAO = 2
 const DIAS_SEM_CURSOR = 5
 const JANELA_MAXIMA_DIAS = 30
 const SIMILARIDADE_MINIMA_COM_O_PNCP = 0.45
+const SIMILARIDADE_MINIMA_NO_MESMO_DIA = 0.2
 const SEMELHANCA_MINIMA_ENTRE_REPUBLICACOES = 0.3
 const DIAS_DE_HISTORICO_DO_PNCP = 180
 const ESPERA_ANTES_DE_REPETIR_MS = 5_000
@@ -109,7 +110,7 @@ export function modalidadesEquivalentes(modalidade: ModalidadeEnum): ModalidadeE
 
 export function ehMesmaLicitacaoDoPncp(tender: Pick<NormalizedTender, 'aberturaAt'>, candidato: CandidatoDoPncp): boolean {
   if (Number(candidato.similaridade) >= SIMILARIDADE_MINIMA_COM_O_PNCP) return true
-  if (!tender.aberturaAt) return false
+  if (!tender.aberturaAt || Number(candidato.similaridade) < SIMILARIDADE_MINIMA_NO_MESMO_DIA) return false
   const dia = diaEmBrasilia(tender.aberturaAt)
   return [candidato.aberturaAt, candidato.encerramentoAt].some((data) => data !== null && diaEmBrasilia(new Date(data)) === dia)
 }

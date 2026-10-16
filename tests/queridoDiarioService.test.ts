@@ -52,15 +52,20 @@ describe('Querido Diário — duplicidade com o PNCP', () => {
     expect(ehMesmaLicitacaoDoPncp(tender(), { aberturaAt: null, encerramentoAt: null, similaridade: 0.62 })).toBe(true)
   })
 
-  it('é duplicada quando a sessão cai no mesmo dia do PNCP', () => {
-    const candidato = { aberturaAt: new Date('2026-10-14T13:00:00Z'), encerramentoAt: new Date('2026-10-23T11:00:00Z'), similaridade: 0.1 }
+  it('é duplicada quando a sessão cai no mesmo dia do PNCP e o objeto tem alguma semelhança', () => {
+    const candidato = { aberturaAt: new Date('2026-10-14T13:00:00Z'), encerramentoAt: new Date('2026-10-23T11:00:00Z'), similaridade: 0.25 }
     expect(ehMesmaLicitacaoDoPncp(tender(), candidato)).toBe(true)
   })
 
+  it('outra licitação do mesmo município no mesmo dia, com objeto diferente, não é descartada', () => {
+    const candidato = { aberturaAt: new Date('2026-10-14T13:00:00Z'), encerramentoAt: new Date('2026-10-23T11:00:00Z'), similaridade: 0.08 }
+    expect(ehMesmaLicitacaoDoPncp(tender(), candidato)).toBe(false)
+  })
+
   it('compara o dia no fuso de Brasília', () => {
-    const candidato = { aberturaAt: null, encerramentoAt: new Date('2026-10-24T02:00:00Z'), similaridade: 0.1 }
+    const candidato = { aberturaAt: null, encerramentoAt: new Date('2026-10-24T02:00:00Z'), similaridade: 0.3 }
     expect(ehMesmaLicitacaoDoPncp(tender(), candidato)).toBe(true)
-    const diaSeguinte = { aberturaAt: null, encerramentoAt: new Date('2026-10-24T03:30:00Z'), similaridade: 0.1 }
+    const diaSeguinte = { aberturaAt: null, encerramentoAt: new Date('2026-10-24T03:30:00Z'), similaridade: 0.3 }
     expect(ehMesmaLicitacaoDoPncp(tender(), diaSeguinte)).toBe(false)
   })
 
