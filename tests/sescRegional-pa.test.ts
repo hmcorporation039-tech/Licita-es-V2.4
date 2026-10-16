@@ -2,12 +2,13 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { sescPA } from '../src/services/sescRegional/pa'
+import { horaDeBrasilia } from '../src/lib/dataDeBrasilia'
 
 // Recorte do HTML real de www.sesc-pa.com.br/licitacao (2026-09-30).
 const html = readFileSync(join(__dirname, 'fixtures/sesc/pa.html'), 'utf8')
 const ctx = {
   url: 'https://www.sesc-pa.com.br/licitacao?view=table&pageSize=12',
-  agora: new Date(2026, 8, 22, 10, 0),
+  agora: horaDeBrasilia(2026, 8, 22, 10, 0),
 }
 
 describe('sescPA', () => {
@@ -31,7 +32,7 @@ describe('sescPA', () => {
       expect(t.orgao).toBe('Sesc Pará')
       expect(t.modalidade).toBe('PREGAO_ELETRONICO')
     }
-    expect(r[0].aberturaAt).toEqual(new Date(2026, 8, 25))
+    expect(r[0].aberturaAt).toEqual(horaDeBrasilia(2026, 8, 25))
     expect(r[0].objeto).toMatch(/mureta com gradil/)
   })
 

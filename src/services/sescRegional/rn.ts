@@ -59,8 +59,7 @@ function dataHora(trecho: string): Date | undefined {
   const base = parseDataBr(trecho)
   if (!base) return undefined
   const h = trecho.match(/\d{2}\/\d{2}\/\d{4}\D{0,8}?(\d{1,2})\s*(?:h|:)\s*(\d{2})?/i)
-  if (h) base.setHours(Number(h[1]), Number(h[2] ?? 0))
-  return base
+  return h ? new Date(base.getTime() + (Number(h[1]) * 60 + Number(h[2] ?? 0)) * 60_000) : base
 }
 
 function parse(html: string, ctx: ContextoDeParse): NormalizedTender[] {

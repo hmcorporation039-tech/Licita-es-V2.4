@@ -12,6 +12,7 @@
 // ============================================================
 
 import { FonteEnum, ModalidadeEnum, NormalizedTender } from '../../types'
+import { inicioDoDiaEmBrasilia } from '../../lib/dataDeBrasilia'
 
 export interface ContextoDeParse {
   // URL da página de onde veio o HTML (base para resolver links relativos).
@@ -98,7 +99,7 @@ export function urlAbsoluta(href: string | null | undefined, base: string): stri
 // Início do dia de `agora` (00:00 local) — uma sessão marcada para hoje ainda é
 // atual, mesmo que o horário já tenha passado.
 function inicioDoDia(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate())
+  return inicioDoDiaEmBrasilia(d)
 }
 
 // Regra única de "licitação atual":

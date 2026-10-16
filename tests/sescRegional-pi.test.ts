@@ -2,12 +2,13 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { sescPI } from '../src/services/sescRegional/pi'
+import { horaDeBrasilia } from '../src/lib/dataDeBrasilia'
 
 // Recorte do HTML real de www.sescpiaui.com.br/licitao-2026/ (2026-09-30): 4 painéis
 // (26/000001 Deserta, 26/000003 Cancelada, 26/000020 e 26/000021 "Em andamento").
 const html = readFileSync(join(__dirname, 'fixtures/sesc/pi.html'), 'utf8')
 const url = 'http://www.sescpiaui.com.br/licitao-2026/'
-const ctx = { url, agora: new Date(2026, 7, 10, 10, 0) }
+const ctx = { url, agora: horaDeBrasilia(2026, 7, 10, 10, 0) }
 
 // Recorte do índice real http://www.sescpiaui.com.br/licitacao/ (só botões por ano).
 const box = (ano: string, href: string) =>
@@ -24,7 +25,7 @@ describe('sescPI', () => {
   it('descarta Deserta e Cancelada, e passada a sessão descarta também as em andamento', () => {
     expect(r.map((t) => t.numeroControle)).not.toContain('26/000001-CC')
     expect(r.map((t) => t.numeroControle)).not.toContain('26/000003-CC')
-    const tarde = sescPI.parse(html, { ...ctx, agora: new Date(2026, 8, 30) })
+    const tarde = sescPI.parse(html, { ...ctx, agora: horaDeBrasilia(2026, 8, 30) })
     expect(tarde).toHaveLength(0)
   })
 
@@ -44,7 +45,7 @@ describe('sescPI', () => {
     const t = r.find((x) => x.numeroControle === '26/000021-CC')!
     expect(t.modalidade).toBe('CONCORRENCIA')
     expect(t.objeto).toContain('veículo tipo ônibus')
-    expect(t.aberturaAt).toEqual(new Date(2026, 8, 3, 9, 30))
+    expect(t.aberturaAt).toEqual(horaDeBrasilia(2026, 8, 3, 9, 30))
   })
 
   it('descobre, no índice, só a página do ano corrente', () => {
@@ -54,7 +55,7 @@ describe('sescPI', () => {
     ])
     // em janeiro/fevereiro inclui também o ano anterior
     expect(
-      sescPI.proximasPaginas!(indice, { url: 'https://www.sescpiaui.com.br/licitacao/', agora: new Date(2026, 1, 10) })
+      sescPI.proximasPaginas!(indice, { url: 'https://www.sescpiaui.com.br/licitacao/', agora: horaDeBrasilia(2026, 1, 10) })
     ).toHaveLength(2)
     // nas páginas de ano não segue nada
     expect(sescPI.proximasPaginas!(html, ctx)).toEqual([])

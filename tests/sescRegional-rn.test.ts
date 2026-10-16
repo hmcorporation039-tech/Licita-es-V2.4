@@ -2,10 +2,11 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { sescRN } from '../src/services/sescRegional/rn'
+import { horaDeBrasilia } from '../src/lib/dataDeBrasilia'
 
 // Recorte do HTML real de sescrn.com.br/pagina-licitacoes/ (páginas 1 e 2, 2026-09-30).
 const html = readFileSync(join(__dirname, 'fixtures/sesc/rn.html'), 'utf8')
-const ctx = { url: 'https://sescrn.com.br/pagina-licitacoes/', agora: new Date(2026, 8, 30, 10, 0) }
+const ctx = { url: 'https://sescrn.com.br/pagina-licitacoes/', agora: horaDeBrasilia(2026, 8, 30, 10, 0) }
 
 describe('sescRN', () => {
   const r = sescRN.parse(html, ctx)
@@ -32,13 +33,13 @@ describe('sescRN', () => {
     const t = r.find((x) => x.numeroControle === '022/2026')!
     expect(t.modalidade).toBe('PREGAO_PRESENCIAL')
     expect(t.objeto.startsWith('CONTRATAÇÃO DE EMPRESA ESPECIALIZADA')).toBe(true)
-    expect(t.aberturaAt).toEqual(new Date(2026, 8, 30, 9, 0))
+    expect(t.aberturaAt).toEqual(horaDeBrasilia(2026, 8, 30, 9, 0))
     const t2 = r.find((x) => x.numeroControle === '024/2026')!
-    expect(t2.aberturaAt).toEqual(new Date(2026, 9, 6, 9, 0))
+    expect(t2.aberturaAt).toEqual(horaDeBrasilia(2026, 9, 6, 9, 0))
   })
 
   it('volta a incluir a sessão republicada se o relógio recuar', () => {
-    const recuado = sescRN.parse(html, { ...ctx, agora: new Date(2026, 7, 10) })
+    const recuado = sescRN.parse(html, { ...ctx, agora: horaDeBrasilia(2026, 7, 10) })
     const nums = recuado.map((t) => t.numeroControle)
     expect(nums).toContain('007/2026')
     expect(recuado.find((t) => t.numeroControle === '007/2026')!.modalidade).toBe('PREGAO_ELETRONICO')

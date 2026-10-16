@@ -2,10 +2,11 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { sescAM } from '../src/services/sescRegional/am'
+import { horaDeBrasilia } from '../src/lib/dataDeBrasilia'
 
 // Recorte do HTML real de www.sesc-am.com.br/licitacao/ (2026-09-30).
 const html = readFileSync(join(__dirname, 'fixtures/sesc/am.html'), 'utf8')
-const ctx = { url: 'https://www.sesc-am.com.br/licitacao/', agora: new Date(2026, 8, 30, 10, 0) }
+const ctx = { url: 'https://www.sesc-am.com.br/licitacao/', agora: horaDeBrasilia(2026, 8, 30, 10, 0) }
 
 describe('sescAM', () => {
   const r = sescAM.parse(html, ctx)
@@ -34,8 +35,8 @@ describe('sescAM', () => {
     const t = r.find((x) => x.numeroControle === '26/065PGE')!
     expect(t.objeto).toMatch(/^CONTRATAÇÃO DE SERVIÇO DE RECEPTIVO TURISTICO/)
     expect(t.modalidade).toBe('PREGAO_PRESENCIAL')
-    expect(t.publicadoAt).toEqual(new Date(2026, 8, 23))
-    expect(t.aberturaAt).toEqual(new Date(2026, 9, 8))
+    expect(t.publicadoAt).toEqual(horaDeBrasilia(2026, 8, 23))
+    expect(t.aberturaAt).toEqual(horaDeBrasilia(2026, 9, 8))
     const cred = r.find((x) => x.numeroControle === '26/002-CP')!
     expect(cred.modalidade).toBe('CREDENCIAMENTO') // coluna Modalidade vazia -> objeto
   })

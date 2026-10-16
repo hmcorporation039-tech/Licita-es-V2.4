@@ -1,12 +1,13 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { sescMA } from '../src/services/sescRegional/ma'
+import { horaDeBrasilia } from '../src/lib/dataDeBrasilia'
 
 const html = readFileSync('tests/fixtures/sesc/ma.html', 'utf8')
 const url = 'https://sescma.com.br/licitacao_new/'
 
 describe('sescMA.parse', () => {
-  const agora = new Date(2026, 8, 30, 10, 0)
+  const agora = horaDeBrasilia(2026, 8, 30, 10, 0)
   const r = sescMA.parse(html, { url, agora })
 
   it('devolve só atuais (aberta e sessão hoje/futura)', () => {
@@ -19,8 +20,8 @@ describe('sescMA.parse', () => {
     expect(t.uf).toBe('MA')
     expect(t.orgao).toBe('Sesc Maranhão')
     expect(t.modalidade).toBe('PREGAO_ELETRONICO')
-    expect(t.aberturaAt).toEqual(new Date(2026, 9, 7, 14, 30))
-    expect(t.publicadoAt).toEqual(new Date(2026, 8, 28))
+    expect(t.aberturaAt).toEqual(horaDeBrasilia(2026, 9, 7, 14, 30))
+    expect(t.publicadoAt).toEqual(horaDeBrasilia(2026, 8, 28))
     expect(t.linkEdital).toBe('https://sescma.com.br/licitacao_new/g/gerenciador/arquivos/editais/6aba9fd9cc466.pdf')
   })
   it('fonteIds únicos', () => {
@@ -31,6 +32,6 @@ describe('sescMA.parse', () => {
     expect(r.some((t) => t.numeroControle === '0012/26-PG')).toBe(false)
   })
   it('em data posterior nada resta', () => {
-    expect(sescMA.parse(html, { url, agora: new Date(2026, 11, 1) })).toHaveLength(0)
+    expect(sescMA.parse(html, { url, agora: horaDeBrasilia(2026, 11, 1) })).toHaveLength(0)
   })
 })

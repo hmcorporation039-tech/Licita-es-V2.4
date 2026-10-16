@@ -2,10 +2,11 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { sescTO } from '../src/services/sescRegional/to'
+import { horaDeBrasilia } from '../src/lib/dataDeBrasilia'
 
 // Recorte do HTML real de www.sescto.com.br/licitacao (2026-09-30).
 const html = readFileSync(join(__dirname, 'fixtures/sesc/to.html'), 'utf8')
-const ctx = { url: 'https://www.sescto.com.br/licitacao', agora: new Date(2026, 8, 30, 10, 0) }
+const ctx = { url: 'https://www.sescto.com.br/licitacao', agora: horaDeBrasilia(2026, 8, 30, 10, 0) }
 
 describe('sescTO', () => {
   const r = sescTO.parse(html, ctx)
@@ -28,11 +29,11 @@ describe('sescTO', () => {
     const t = r[1]
     expect(t.modalidade).toBe('PREGAO_PRESENCIAL')
     expect(t.objeto).toContain('carnes bovinas')
-    expect(t.publicadoAt).toEqual(new Date(2026, 8, 18))
-    expect(t.aberturaAt).toEqual(new Date(2026, 8, 29, 9, 0))
+    expect(t.publicadoAt).toEqual(horaDeBrasilia(2026, 8, 18))
+    expect(t.aberturaAt).toEqual(horaDeBrasilia(2026, 8, 29, 9, 0))
   })
 
   it('descarta "Aberto" publicado há mais de 60 dias', () => {
-    expect(sescTO.parse(html, { ...ctx, agora: new Date(2026, 11, 31) })).toHaveLength(0)
+    expect(sescTO.parse(html, { ...ctx, agora: horaDeBrasilia(2026, 11, 31) })).toHaveLength(0)
   })
 })

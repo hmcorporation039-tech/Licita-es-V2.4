@@ -23,6 +23,7 @@ import {
   montarTender,
   urlAbsoluta,
 } from './tipos'
+import { horaDeBrasilia } from '../../lib/dataDeBrasilia'
 
 const INDICE = 'https://www.sescpiaui.com.br/licitacao/'
 
@@ -40,7 +41,7 @@ function dataPorExtenso(texto: string): Date | undefined {
   const hora = texto.slice(0, m.index).match(/(\d{1,2})\s*h\s*(\d{2})?/i)
   const h = hora ? Number(hora[1]) : 0
   const min = hora?.[2] ? Number(hora[2]) : 0
-  return new Date(Number(m[3]), mes, Number(m[1]), h, min)
+  return horaDeBrasilia(Number(m[3]), mes, Number(m[1]), h, min)
 }
 
 function parse(html: string, ctx: ContextoDeParse): NormalizedTender[] {

@@ -22,6 +22,7 @@
 import { NormalizedTender } from '../../types'
 import { SECTIGO_DV_R36_CA } from './certificados'
 import { ContextoDeParse, SescUnidade, ehLicitacaoAtual, limparTexto, montarTender } from './tipos'
+import { horaDeBrasilia } from '../../lib/dataDeBrasilia'
 
 const BASE = 'https://licitacao.sescrr.com.br'
 const POR_PAGINA = 50
@@ -60,7 +61,7 @@ function lerResposta(texto: string): RespostaRR {
 function dataIso(valor?: string | null): Date | undefined {
   const m = valor?.match(/^(\d{4})-(\d{2})-(\d{2})/)
   if (!m) return undefined
-  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
+  const d = horaDeBrasilia(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
   return Number.isNaN(d.getTime()) ? undefined : d
 }
 

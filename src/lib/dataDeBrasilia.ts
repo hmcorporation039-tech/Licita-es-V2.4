@@ -10,3 +10,12 @@ export function dataDeBrasilia(valor: string | null | undefined): Date | undefin
   const data = new Date(comFuso)
   return Number.isNaN(data.getTime()) ? undefined : data
 }
+
+export function horaDeBrasilia(ano: number, mesBaseZero: number, dia: number, hora = 0, minuto = 0): Date {
+  return new Date(Date.UTC(ano, mesBaseZero, dia, hora, minuto) + DESLOCAMENTO_DE_BRASILIA_MS)
+}
+
+export function inicioDoDiaEmBrasilia(d: Date): Date {
+  const local = new Date(d.getTime() - DESLOCAMENTO_DE_BRASILIA_MS)
+  return horaDeBrasilia(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate())
+}

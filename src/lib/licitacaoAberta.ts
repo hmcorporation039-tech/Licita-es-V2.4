@@ -15,6 +15,7 @@
 // ============================================================
 
 import { FonteEnum, Prisma, SituacaoEnum } from '@prisma/client'
+import { inicioDoDiaEmBrasilia } from './dataDeBrasilia'
 
 export const DIAS_SEM_PRAZO = 30
 
@@ -23,9 +24,7 @@ export const DIAS_SEM_PRAZO = 30
 const FONTES_ABERTURA_E_INICIO: FonteEnum[] = ['PNCP', 'COMPRASNET']
 
 function inicioDoDia(agora: Date): Date {
-  const d = new Date(agora)
-  d.setHours(0, 0, 0, 0)
-  return d
+  return inicioDoDiaEmBrasilia(agora)
 }
 
 export function whereLicitacaoAberta(agora: Date = new Date()): Prisma.TenderWhereInput {

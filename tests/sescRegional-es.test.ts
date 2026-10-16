@@ -2,10 +2,11 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { sescES } from '../src/services/sescRegional/es'
+import { horaDeBrasilia } from '../src/lib/dataDeBrasilia'
 
 // Recorte do HTML real de sesc-es.com.br/licitacoes-e-editais/ (2026-09-30).
 const html = readFileSync(join(__dirname, 'fixtures/sesc/es.html'), 'utf8')
-const ctx = { url: 'https://sesc-es.com.br/licitacoes-e-editais/', agora: new Date(2026, 8, 30, 10, 0) }
+const ctx = { url: 'https://sesc-es.com.br/licitacoes-e-editais/', agora: horaDeBrasilia(2026, 8, 30, 10, 0) }
 
 describe('sescES', () => {
   const r = sescES.parse(html, ctx)
@@ -33,7 +34,7 @@ describe('sescES', () => {
     const t = r[0]
     expect(t.modalidade).toBe('PREGAO_ELETRONICO')
     expect(t.objeto).toContain('Aquisição de pneus')
-    expect(t.publicadoAt).toEqual(new Date(2026, 8, 17))
+    expect(t.publicadoAt).toEqual(horaDeBrasilia(2026, 8, 17))
     expect(t.linkEdital).toBe('https://sesc-es.com.br/wp-content/uploads/2026/09/EDITAL-3.pdf')
     const anexos = (t.rawJson as { anexos: { uri: string }[] }).anexos
     expect(anexos).toHaveLength(2)
@@ -41,14 +42,14 @@ describe('sescES', () => {
   })
 
   it('recuando o relógio, a concorrência antiga volta a ser recente', () => {
-    const recuado = sescES.parse(html, { ...ctx, agora: new Date(2026, 7, 10) })
+    const recuado = sescES.parse(html, { ...ctx, agora: horaDeBrasilia(2026, 7, 10) })
     expect(recuado.map((t) => t.numeroControle)).toContain('007/2026')
     expect(recuado.find((t) => t.numeroControle === '007/2026')!.modalidade).toBe('CONCORRENCIA')
   })
 
   it('só segue a paginação enquanto a última publicação é recente', () => {
     expect(sescES.proximasPaginas!(html, ctx)).toEqual([])
-    const recuado = { ...ctx, agora: new Date(2026, 7, 10) }
+    const recuado = { ...ctx, agora: horaDeBrasilia(2026, 7, 10) }
     expect(sescES.proximasPaginas!(html, recuado)).toEqual(['https://sesc-es.com.br/licitacoes-e-editais/?paged=2'])
   })
 

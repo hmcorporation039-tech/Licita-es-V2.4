@@ -2,12 +2,13 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { sescCE } from '../src/services/sescRegional/ce'
+import { horaDeBrasilia } from '../src/lib/dataDeBrasilia'
 
 // Recorte do HTML real de sistemas.sesc-ce.com.br/LICITASESC/download/licitacaoList.seam (2026-09-30).
 const html = readFileSync(join(__dirname, 'fixtures/sesc/ce.html'), 'utf8')
 const ctx = {
   url: 'https://sistemas.sesc-ce.com.br/LICITASESC/download/licitacaoList.seam',
-  agora: new Date(2026, 8, 30, 10, 0),
+  agora: horaDeBrasilia(2026, 8, 30, 10, 0),
 }
 
 describe('sescCE', () => {
@@ -33,7 +34,7 @@ describe('sescCE', () => {
   it('extrai objeto, modalidade, data e número', () => {
     const t = r.find((x) => x.fonteId === 'SESC-CE-9017')!
     expect(t.modalidade).toBe('PREGAO_ELETRONICO')
-    expect(t.aberturaAt).toEqual(new Date(2026, 9, 2))
+    expect(t.aberturaAt).toEqual(horaDeBrasilia(2026, 9, 2))
     expect(t.numeroControle).toBe('Proc. 120987 - Instr. 47')
     expect(t.objeto).toContain('SEGURO VEICULAR')
     expect(r.find((x) => x.fonteId === 'SESC-CE-7289')!.modalidade).toBe('CREDENCIAMENTO')

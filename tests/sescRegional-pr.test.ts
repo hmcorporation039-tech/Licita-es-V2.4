@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { sescPR } from '../src/services/sescRegional/pr'
+import { horaDeBrasilia } from '../src/lib/dataDeBrasilia'
 
 // Recorte da resposta real da API do Sesc PR (POST /wp-json/sclc-view/v1/dados,
 // action get-editais) em 30/09/2026: 66/26 e 77/26 aguardando abertura, 68/26
@@ -9,7 +10,7 @@ import { sescPR } from '../src/services/sescRegional/pr'
 // 54/26 finalizado.
 const json = readFileSync(join(__dirname, 'fixtures/sesc/pr.json'), 'utf8')
 const URL1 = 'https://www.sescpr.com.br/wp-json/sclc-view/v1/dados#pagina=1'
-const ctx = { url: URL1, agora: new Date(2026, 8, 30, 12, 0) }
+const ctx = { url: URL1, agora: horaDeBrasilia(2026, 8, 30, 12, 0) }
 
 describe('sescPR', () => {
   const r = sescPR.parse(json, ctx)
@@ -36,8 +37,8 @@ describe('sescPR', () => {
     expect(t.orgao).toBe('Sesc Paraná')
     expect(t.modalidade).toBe('CONCORRENCIA')
     expect(t.objeto).toContain('REFORMA DAS PISCINAS')
-    expect(t.aberturaAt).toEqual(new Date(2026, 9, 28, 14, 30))
-    expect(t.publicadoAt).toEqual(new Date(2026, 8, 25))
+    expect(t.aberturaAt).toEqual(horaDeBrasilia(2026, 9, 28, 14, 30))
+    expect(t.publicadoAt).toEqual(horaDeBrasilia(2026, 8, 25))
     expect(t.linkEdital).toBe('https://www.sescpr.com.br/licitacoes/')
     expect(t.valorEstimado).toBeUndefined()
   })

@@ -21,13 +21,14 @@ import {
   publicadaRecentemente,
   urlAbsoluta,
 } from './tipos'
+import { horaDeBrasilia } from '../../lib/dataDeBrasilia'
 
 // "25/09/26 11:07" (ano com 2 dígitos) ou "25/09/2026 11:07".
 function parseReuniao(texto: string): Date | undefined {
   const m = limparTexto(texto).match(/(\d{2})\/(\d{2})\/(\d{2,4})(?:\s+(\d{2}):(\d{2}))?/)
   if (!m) return undefined
   const ano = m[3].length === 2 ? 2000 + Number(m[3]) : Number(m[3])
-  const d = new Date(ano, Number(m[2]) - 1, Number(m[1]), Number(m[4] ?? 0), Number(m[5] ?? 0))
+  const d = horaDeBrasilia(ano, Number(m[2]) - 1, Number(m[1]), Number(m[4] ?? 0), Number(m[5] ?? 0))
   return Number.isNaN(d.getTime()) ? undefined : d
 }
 
