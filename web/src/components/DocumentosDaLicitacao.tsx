@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Calculator, CheckCircle2, FileSignature, FileText } from 'lucide-react'
+import { Calculator, CheckCircle2, FileQuestion, FileSignature, FileText, Gavel } from 'lucide-react'
 import { api, ApiRequestError } from '@/lib/api'
 import type { ModelosDeDocumento } from '@/lib/types'
-import { Button, Carregando, Checkbox, ErrorState, LinkButton, Notice, Panel } from '@/components/ui'
+import { Button, Carregando, Checkbox, ErrorState, LinkButton, Notice, Panel, StatusTag } from '@/components/ui'
 
 const DECLARACOES_DESMARCADAS = new Set(['me-epp'])
 
@@ -25,6 +25,7 @@ export default function DocumentosDaLicitacao({
   const [erro, setErro] = useState<string | null>(null)
   const [tentativa, setTentativa] = useState(0)
   const [marcadas, setMarcadas] = useState<Set<string>>(new Set())
+  const [clausulas, setClausulas] = useState<Set<string> | null>(null)
 
   useEffect(() => {
     let cancelado = false
@@ -35,6 +36,7 @@ export default function DocumentosDaLicitacao({
         if (cancelado) return
         setModelos(m)
         setMarcadas((atuais) => (atuais.size > 0 ? atuais : new Set(m.declaracoes.filter((d) => !DECLARACOES_DESMARCADAS.has(d.id)).map((d) => d.id))))
+        setClausulas((atuais) => atuais ?? new Set(m.impugnacao.alertas.map((a) => a.chave)))
       })
       .catch((err) => {
         if (!cancelado) setErro(err instanceof ApiRequestError ? err.message : 'Não foi possível carregar os modelos de documento.')
@@ -57,6 +59,19 @@ export default function DocumentosDaLicitacao({
   }
 
   const selecionadas = modelos.declaracoes.filter((d) => marcadas.has(d.id)).map((d) => d.id)
+  const clausulasMarcadas = modelos.impugnacao.alertas.filter((a) => clausulas?.has(a.chave)).map((a) => a.chave)
+  const listaDeClausulas = clausulasMarcadas.map(encodeURIComponent).join(',')
+
+  function alternarClausula(chave: string) {
+    setClausulas((atuais) => {
+      const proximas = new Set(atuais ?? [])
+      if (proximas.has(chave)) proximas.delete(chave)
+      else proximas.add(chave)
+      return proximas
+    })
+  }
+
+  const { prazo } = modelos.impugnacao
 
   return (
     <div className="flex flex-col gap-4">
@@ -127,6 +142,57 @@ export default function DocumentosDaLicitacao({
               onClick={() => router.push(`/tenders/${tenderId}/documentos?tipo=declaracoes&ids=${selecionadas.map(encodeURIComponent).join(',')}`)}
             >
               Gerar declarações
+            </Button>
+          </div>
+        </Panel>
+
+        <Panel
+          title="Impugnação e esclarecimento"
+          description="Rascunho no papel timbrado, montado a partir das cláusulas que o sistema achou no edital. Revise com advogado antes de protocolar."
+          padding="none"
+          className="lg:col-span-2"
+        >
+          {prazo && (
+            <p className="border-b border-line-soft px-4 py-2.5 text-sm text-ink-2">
+              {prazo.passou ? (
+                <>O prazo para impugnar ou pedir esclarecimento terminou em <strong className="font-mono font-semibold text-ink">{prazo.limite}</strong>.</>
+              ) : (
+                <>Prazo para protocolar: até <strong className="font-mono font-semibold text-ink">{prazo.limite}</strong> (3 dias úteis antes da sessão).</>
+              )}
+            </p>
+          )}
+          {!modelos.impugnacao.analiseFeita ? (
+            <p className="px-4 py-3 text-sm text-ink-2">A impugnação usa as cláusulas encontradas na análise do edital. Faça a análise na aba Análise para habilitá-la. O pedido de esclarecimento você pode gerar e escrever suas perguntas.</p>
+          ) : modelos.impugnacao.alertas.length === 0 ? (
+            <p className="px-4 py-3 text-sm text-ink-2">A análise não encontrou cláusulas fora dos limites da lei. Se quiser perguntar algo ao órgão, gere um pedido de esclarecimento.</p>
+          ) : (
+            <fieldset className="flex flex-col">
+              <legend className="sr-only">Cláusulas a contestar</legend>
+              <ul className="flex flex-col divide-y divide-line-soft">
+                {modelos.impugnacao.alertas.map((a) => (
+                  <li key={a.chave} className="flex items-start justify-between gap-3 px-4 py-2.5">
+                    <Checkbox checked={clausulas?.has(a.chave) ?? false} onChange={() => alternarClausula(a.chave)} label={a.titulo} hint={a.local ?? undefined} />
+                    <StatusTag tone={a.gravidade === 'alta' ? 'danger' : 'warn'}>{a.gravidade === 'alta' ? 'alta' : 'média'}</StatusTag>
+                  </li>
+                ))}
+              </ul>
+            </fieldset>
+          )}
+          <div className="flex flex-wrap items-center justify-end gap-2 border-t border-line-soft px-4 py-3">
+            <Button
+              variant="secondary"
+              icon={FileQuestion}
+              onClick={() => router.push(`/tenders/${tenderId}/documentos?tipo=esclarecimento&alertas=${listaDeClausulas}`)}
+            >
+              Pedido de esclarecimento
+            </Button>
+            <Button
+              variant="primary"
+              icon={Gavel}
+              disabled={clausulasMarcadas.length === 0}
+              onClick={() => router.push(`/tenders/${tenderId}/documentos?tipo=impugnacao&alertas=${listaDeClausulas}`)}
+            >
+              Gerar impugnação
             </Button>
           </div>
         </Panel>

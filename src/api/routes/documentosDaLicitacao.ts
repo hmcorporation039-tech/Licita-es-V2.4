@@ -13,6 +13,9 @@ import { renderizarPdf } from '../../services/documentos/renderizarPdf'
 import { renderizarDocx } from '../../services/documentos/renderizarDocx'
 import type { Timbrado } from '../../services/documentos/papelTimbrado'
 import { carregar, dadosSalvos } from './estudos'
+import { alertasDaAnalise, type AlertaLegal } from '../../lib/alertasLegais'
+import { calcularPrazosDaSessao, lerDataTexto } from '../../lib/diasUteis'
+import { impugnacao, pedidoDeEsclarecimento } from '../../lib/documentosDaLicitacao/impugnacao'
 import { readequarPrecos, type LancesFinais } from '../../lib/documentosDaLicitacao/readequacao'
 
 export const documentosDaLicitacaoRouter = Router({ mergeParams: true })
@@ -36,14 +39,31 @@ async function carregarTimbrado(companyId: string): Promise<Timbrado> {
 async function carregarCertame(tenderId: string) {
   const tender = await prisma.tender.findUnique({
     where: { id: tenderId },
-    select: { orgao: true, numeroControle: true, modalidade: true, objeto: true, fonte: true, aberturaAt: true, encerramentoAt: true, analysis: { select: { status: true, resultado: true } } },
+    select: {
+      orgao: true, numeroControle: true, modalidade: true, objeto: true, fonte: true, aberturaAt: true, encerramentoAt: true, valorEstimado: true,
+      analysis: { select: { status: true, resultado: true } },
+    },
   })
   if (!tender) throw new ApiError(404, 'Licitação não encontrada')
-  const analise = tender.analysis?.status === 'DONE' ? (tender.analysis.resultado as { pagamento?: string; prazoEntrega?: string } | null) : null
+  const analise = tender.analysis?.status === 'DONE' ? (tender.analysis.resultado as ({ pagamento?: string; prazoEntrega?: string; dataSessao?: string } & Parameters<typeof alertasDaAnalise>[0]) | null) : null
+  const sessao = dataDaSessao(tender) ?? lerDataTexto(analise?.dataSessao)
+  const prazos = sessao ? calcularPrazosDaSessao(sessao) : null
   return {
     certame: dadosDoCertame({ ...tender, sessao: dataDaSessao(tender) }),
     analise,
+    alertas: alertasDaAnalise(analise, tender.valorEstimado != null ? Number(tender.valorEstimado) : null),
+    prazo: prazos ? { limite: diaBr(prazos.limiteImpugnacao), passou: prazos.limitePassou } : null,
   }
+}
+
+const diaBr = (iso: string) => iso.split('-').reverse().join('/')
+
+const MAX_ALERTAS_NO_DOCUMENTO = 20
+
+function alertasEscolhidos(todos: AlertaLegal[], chaves: string[]): AlertaLegal[] {
+  const escolhidos = todos.filter((a) => chaves.includes(a.chave))
+  if (escolhidos.length !== new Set(chaves).size) throw new ApiError(400, 'Algum alerta escolhido não existe mais nesta licitação. Recarregue a página.')
+  return escolhidos
 }
 
 async function lancesFinais(companyId: string, tenderId: string, itens: Array<{ id: string; quantidade: number }>): Promise<LancesFinais> {
@@ -78,7 +98,13 @@ documentosDaLicitacaoRouter.get(
       where: { companyId_tenderId: { companyId: req.companyId!, tenderId: req.params.id } },
       select: { status: true },
     })
+    const { alertas, prazo } = await carregarCertame(req.params.id)
     res.json({
+      impugnacao: {
+        analiseFeita: alertas.disponivel,
+        prazo,
+        alertas: alertas.itens.map((a) => ({ chave: a.chave, titulo: a.titulo, gravidade: a.gravidade, local: a.local ?? null })),
+      },
       proposta: plano?.status === 'VOU_PARTICIPAR'
         ? { disponivel: true }
         : { disponivel: false, motivo: 'Escolha a licitação e preencha o preço de venda no estudo de custos para gerar a proposta.' },
@@ -90,13 +116,30 @@ documentosDaLicitacaoRouter.get(
 const previaSchema = z.discriminatedUnion('tipo', [
   z.object({ tipo: z.literal('proposta'), validadeDias: z.number().int().min(1).max(365).default(60), readequada: z.boolean().default(false) }),
   z.object({ tipo: z.literal('declaracoes'), declaracoes: z.array(z.enum(IDS_DE_DECLARACAO as [string, ...string[]])).min(1).max(IDS_DE_DECLARACAO.length) }),
+  z.object({ tipo: z.literal('impugnacao'), alertas: z.array(z.string().min(1).max(200)).min(1).max(MAX_ALERTAS_NO_DOCUMENTO) }),
+  z.object({
+    tipo: z.literal('esclarecimento'),
+    alertas: z.array(z.string().min(1).max(200)).max(MAX_ALERTAS_NO_DOCUMENTO).default([]),
+    perguntas: z.array(z.string().max(1000)).max(10).default([]),
+  }),
 ])
 
 documentosDaLicitacaoRouter.post(
   '/previa',
   asyncHandler(async (req, res) => {
     const pedido = previaSchema.parse(req.body)
-    const [timbrado, { certame, analise }] = await Promise.all([carregarTimbrado(req.companyId!), carregarCertame(req.params.id)])
+    const [timbrado, { certame, analise, alertas, prazo }] = await Promise.all([carregarTimbrado(req.companyId!), carregarCertame(req.params.id)])
+
+    if (pedido.tipo === 'impugnacao' || pedido.tipo === 'esclarecimento') {
+      if (!alertas.disponivel && pedido.tipo === 'impugnacao') throw new ApiError(409, 'A impugnação usa os alertas da análise do edital. Faça a análise do edital primeiro.')
+      const escolhidos = alertasEscolhidos(alertas.itens, pedido.alertas)
+      const r =
+        pedido.tipo === 'impugnacao'
+          ? impugnacao(timbrado.proponente, certame, escolhidos, prazo)
+          : pedidoDeEsclarecimento(timbrado.proponente, certame, escolhidos, pedido.perguntas, prazo)
+      res.json({ ...r, temLogo: timbrado.logo !== null })
+      return
+    }
 
     if (pedido.tipo === 'declaracoes') {
       const r = declaracoes(timbrado.proponente, certame, pedido.declaracoes)
@@ -134,7 +177,17 @@ documentosDaLicitacaoRouter.post(
 const arquivoSchema = z.object({ formato: z.enum(['pdf', 'docx']), documento: documentoSchema })
 
 const nomeDoArquivo = (doc: DocumentoDaLicitacao, numero: string, extensao: string) => {
-  const base = `${doc.tipo === 'proposta' ? (doc.titulo.toLowerCase().includes('readequada') ? 'proposta-readequada' : 'proposta-comercial') : 'declaracoes'}-${numero}`
+  const prefixo =
+    doc.tipo === 'proposta'
+      ? doc.titulo.toLowerCase().includes('readequada')
+        ? 'proposta-readequada'
+        : 'proposta-comercial'
+      : doc.tipo === 'impugnacao'
+        ? 'impugnacao'
+        : doc.tipo === 'esclarecimento'
+          ? 'pedido-de-esclarecimento'
+          : 'declaracoes'
+  const base = `${prefixo}-${numero}`
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
     .replace(/[^a-zA-Z0-9-]+/g, '-')

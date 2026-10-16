@@ -576,7 +576,7 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
         />
       </Panel>
 
-      <AvisoDeClausulas tenderId={id} onVerDetalhes={() => setActiveTab('habilitacao')} />
+      <AvisoDeClausulas tenderId={id} onVerDetalhes={() => setActiveTab('habilitacao')} onImpugnar={() => setActiveTab('documentos')} />
 
       <div className="flex flex-col gap-5">
         <Tabs tabs={abas} value={activeTab} onChange={setActiveTab} label="Seções da licitação" />

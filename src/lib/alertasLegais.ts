@@ -322,6 +322,30 @@ interface AnaliseComExigencias {
   documentosExigidos?: string[]
 }
 
+interface AnaliseParaAlertas extends AnaliseComExigencias {
+  garantiaProposta?: unknown
+  garantiaContratual?: string
+  patrimonioLiquidoMinimo?: string
+  visitaTecnica?: string
+  valorEstimado?: string
+}
+
+export function alertasDaAnalise(analise: AnaliseParaAlertas | null, valorEstimadoCadastrado: number | null): { disponivel: boolean; itens: AlertaLegal[] } {
+  if (!analise || typeof analise.garantiaProposta !== 'string') return { disponivel: false, itens: [] }
+  const valorEstimado = valorEstimadoCadastrado ?? lerValoresEmReais(analise.valorEstimado ?? '')[0] ?? null
+  return {
+    disponivel: true,
+    itens: calcularAlertasLegais({
+      garantiaProposta: analise.garantiaProposta,
+      garantiaContratual: analise.garantiaContratual,
+      patrimonioLiquidoMinimo: analise.patrimonioLiquidoMinimo,
+      visitaTecnica: analise.visitaTecnica,
+      exigencias: exigenciasDaAnalise(analise),
+      valorEstimado,
+    }),
+  }
+}
+
 export function exigenciasDaAnalise(a: AnaliseComExigencias): ExigenciaParaAlertas[] {
   const daMatriz = (Array.isArray(a.matrizExigencias) ? a.matrizExigencias : []).map((m) => {
     const local = [m.documento?.trim(), m.pagina?.trim() ? `p. ${m.pagina.trim()}` : '', m.item?.trim() ? `item ${m.item.trim()}` : ''].filter(Boolean).join(', ')

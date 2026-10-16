@@ -10,7 +10,7 @@ function dia(iso: string) {
   return `${d}/${m}/${y}`
 }
 
-export default function AvisoDeClausulas({ tenderId, onVerDetalhes }: { tenderId: string; onVerDetalhes: () => void }) {
+export default function AvisoDeClausulas({ tenderId, onVerDetalhes, onImpugnar }: { tenderId: string; onVerDetalhes: () => void; onImpugnar: () => void }) {
   const [dados, setDados] = useState<Pick<PainelDoFiscal, 'alertas' | 'prazos'> | null>(null)
 
   useEffect(() => {
@@ -41,9 +41,14 @@ export default function AvisoDeClausulas({ tenderId, onVerDetalhes }: { tenderId
       tone={altas > 0 ? 'danger' : 'warn'}
       title={itens.length === 1 ? '1 exigência do edital parece passar dos limites da lei' : `${itens.length} exigências do edital parecem passar dos limites da lei`}
       action={
-        <Button size="sm" onClick={onVerDetalhes} className="h-11! sm:h-8!">
-          Ver detalhes
-        </Button>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button size="sm" onClick={onVerDetalhes} className="h-11! sm:h-8!">
+            Ver detalhes
+          </Button>
+          <Button size="sm" variant="primary" onClick={onImpugnar} className="h-11! sm:h-8!">
+            Gerar impugnação
+          </Button>
+        </div>
       }
     >
       <ul className="mt-1 flex list-disc flex-col gap-0.5 pl-5">
