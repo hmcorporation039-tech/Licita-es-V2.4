@@ -10,6 +10,7 @@ import {
   resolvePNCPModalidade,
 } from '../types'
 import { getMunicipioByIbge, findMunicipioByNomeUf } from '../lib/geoService'
+import { dataDeBrasilia } from '../lib/dataDeBrasilia'
 
 // Trunca string longa para resumo
 function truncate(str: string, max = 500): string {
@@ -28,6 +29,8 @@ export function rawJsonEssencial(raw: Record<string, any>): Record<string, unkno
     anoCompra: raw.anoCompra,
     sequencialCompra: raw.sequencialCompra,
     orgaoEntidade: { cnpj: raw.orgaoEntidade?.cnpj },
+    numeroCompra: raw.numeroCompra,
+    processo: raw.processo,
   }
 }
 
@@ -86,15 +89,9 @@ export function parsePNCPTender(raw: Record<string, any>): NormalizedTender {
     orgao: raw.orgaoEntidade?.razaoSocial ?? raw.nomeOrgao,
     orgaoCnpj: raw.orgaoEntidade?.cnpj,
     unidade: raw.unidadeOrgao?.nomeUnidade,
-    aberturaAt: raw.dataAberturaProposta
-      ? new Date(raw.dataAberturaProposta)
-      : undefined,
-    encerramentoAt: raw.dataEncerramentoProposta
-      ? new Date(raw.dataEncerramentoProposta)
-      : undefined,
-    publicadoAt: raw.dataPublicacaoPncp
-      ? new Date(raw.dataPublicacaoPncp)
-      : undefined,
+    aberturaAt: dataDeBrasilia(raw.dataAberturaProposta),
+    encerramentoAt: dataDeBrasilia(raw.dataEncerramentoProposta),
+    publicadoAt: dataDeBrasilia(raw.dataPublicacaoPncp),
     linkEdital: raw.linkSistemaOrigem ?? raw.linkEdital,
     numeroControle: raw.numeroControlePNCP,
     rawJson: rawJsonEssencial(raw),

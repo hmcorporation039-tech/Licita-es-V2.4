@@ -9,6 +9,7 @@
 // fonte é ComprasNet. Guardar o registro bruto aqui era peso morto no banco.
 // ============================================================
 
+import { dataDeBrasilia } from '../lib/dataDeBrasilia'
 import {
   NormalizedTender,
   COMPRASNET_MODALIDADE_MAP,
@@ -47,9 +48,9 @@ export function parseComprasnetTender(raw: Record<string, any>): NormalizedTende
     // uf/orgao não vêm nesse endpoint — só o código da UASG (unidade compradora).
     // Cruzar com /modulo-uasg para obter nome/UF fica para uma próxima fase.
     unidade: raw.uasg !== undefined && raw.uasg !== null ? String(raw.uasg) : undefined,
-    aberturaAt: raw.data_abertura_proposta ? new Date(raw.data_abertura_proposta) : undefined,
-    encerramentoAt: raw.data_entrega_proposta ? new Date(raw.data_entrega_proposta) : undefined,
-    publicadoAt: raw.data_publicacao ? new Date(raw.data_publicacao) : undefined,
+    aberturaAt: dataDeBrasilia(raw.data_abertura_proposta),
+    encerramentoAt: dataDeBrasilia(raw.data_entrega_proposta),
+    publicadoAt: dataDeBrasilia(raw.data_publicacao),
     numeroControle: raw.numero_processo,
     rawJson: {},
     // Itens exigem uma chamada separada a /modulo-legado/2_consultarItemLicitacao

@@ -213,8 +213,19 @@ export function calcularEstudo(itens: ItemDaLicitacao[], dados: DadosDoEstudo, c
     }
     return t
   }
+  const estimadoPeloOrgao = somaOuNull((it) => it.valorEstimadoUnit) ?? ctx.valorEstimadoTotal
+  const reaisBr = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+  if (estimadoPeloOrgao !== null && estimadoPeloOrgao > 0) {
+    if (receitaMinima !== null && receitaMinima > estimadoPeloOrgao) {
+      avisos.push(
+        `O preço mínimo para a sua margem (${reaisBr(receitaMinima)}) está acima do valor estimado pelo órgão (${reaisBr(estimadoPeloOrgao)}). Proposta acima do estimado costuma ser desclassificada: reveja custos ou margem.`,
+      )
+    } else if (receita > estimadoPeloOrgao) {
+      avisos.push(`Seu preço de venda (${reaisBr(receita)}) está acima do valor estimado pelo órgão (${reaisBr(estimadoPeloOrgao)}).`)
+    }
+  }
   add('Com os seus preços de venda', receita > 0 ? receita : null)
-  add('No valor estimado pelo órgão', somaOuNull((it) => it.valorEstimadoUnit) ?? ctx.valorEstimadoTotal)
+  add('No valor estimado pelo órgão', estimadoPeloOrgao)
   add('Na mediana de mercado', somaOuNull((it) => it.medianaDeMercado ?? dados.mercado[it.id]?.mediana ?? null))
   add('No preço mínimo (margem desejada)', receitaMinima)
   if (base === 0) avisos.push('Informe os custos para calcular o lucro: sem custos, qualquer receita parece lucro.')

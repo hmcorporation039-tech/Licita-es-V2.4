@@ -67,7 +67,9 @@ export interface Proponente {
 export interface Certame {
   orgao: string
   numero: string
+  referencia: string
   modalidade: string
+  feminino: boolean
   objeto: string
   sessao: string
 }

@@ -27,6 +27,9 @@ export interface LicitacaoParaDocumento {
   modalidade: string | null
   objeto: string
   sessao: Date | null
+  numeroDoEdital?: string | null
+  processo?: string | null
+  controlePncp?: string | null
 }
 
 const MODALIDADES: Record<string, string> = {
@@ -42,6 +45,15 @@ const MODALIDADES: Record<string, string> = {
   CREDENCIAMENTO: 'Credenciamento',
   DIALOGO_COMPETITIVO: 'Diálogo Competitivo',
   OUTROS: 'Licitação',
+}
+
+const MODALIDADES_FEMININAS = new Set(['CONCORRENCIA', 'DISPENSA_COM_DISPUTA', 'DISPENSA_SEM_DISPUTA', 'INEXIGIBILIDADE', 'TOMADA_DE_PRECOS', 'OUTROS'])
+
+export function formatarTelefone(valor: string): string {
+  const d = somenteDigitos(valor)
+  if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`
+  if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`
+  return valor
 }
 
 export function formatarCnpj(valor: string): string {
@@ -99,7 +111,7 @@ export function dadosDoProponente(e: EmpresaParaDocumento): Proponente {
         qualificacao: `${qualificacaoPropria}, neste ato representado(a) por ${representante}, portador(a) do CPF nº ${cpfDoRepresentante}`,
         endereco,
         cidadeUf: cidade,
-        telefone: limpo(e.telefone),
+        telefone: formatarTelefone(limpo(e.telefone)),
         email: limpo(e.email),
         responsavel: representante,
         responsavelCpf: cpfDoRepresentante,
@@ -114,7 +126,7 @@ export function dadosDoProponente(e: EmpresaParaDocumento): Proponente {
       qualificacao: qualificacaoPropria,
       endereco,
       cidadeUf: cidade,
-      telefone: limpo(e.telefone),
+      telefone: formatarTelefone(limpo(e.telefone)),
       email: limpo(e.email),
       responsavel: razaoSocial,
       responsavelCpf: numeroDoDocumento ? formatarCpf(numeroDoDocumento) : documento,
@@ -132,7 +144,7 @@ export function dadosDoProponente(e: EmpresaParaDocumento): Proponente {
     qualificacao: `${razaoSocial}, inscrita no ${documento}, com sede em ${endereco}, por intermédio de seu representante legal, ${responsavel}, portador(a) do CPF nº ${responsavelCpf}`,
     endereco,
     cidadeUf: cidade,
-    telefone: limpo(e.telefone),
+    telefone: formatarTelefone(limpo(e.telefone)),
     email: limpo(e.email),
     responsavel,
     responsavelCpf,
@@ -145,11 +157,19 @@ export function dadosDoProponente(e: EmpresaParaDocumento): Proponente {
 const formatoDaData = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
 
 export function dadosDoCertame(t: LicitacaoParaDocumento): Certame {
+  const modalidade = (t.modalidade && MODALIDADES[t.modalidade]) || 'Licitação'
+  const numeroDoEdital = limpo(t.numeroDoEdital)
+  const controlePncp = limpo(t.controlePncp)
+  const processo = limpo(t.processo)
+  const numero = numeroDoEdital || (controlePncp ? '' : limpo(t.numeroControle)) || marcador('número do edital')
+  const complementos = [processo ? `Processo nº ${processo}` : '', controlePncp ? `controle PNCP nº ${controlePncp}` : ''].filter(Boolean)
   return {
     orgao: limpo(t.orgao) || marcador('órgão licitante'),
-    numero: limpo(t.numeroControle) || marcador('número do processo/edital'),
-    modalidade: (t.modalidade && MODALIDADES[t.modalidade]) || 'Licitação',
-    objeto: limpo(t.objeto),
+    numero: numeroDoEdital || limpo(t.numeroControle) || marcador('número do edital'),
+    referencia: `${modalidade} nº ${numero}${complementos.length ? ` (${complementos.join('; ')})` : ''}`,
+    modalidade,
+    feminino: !t.modalidade || MODALIDADES_FEMININAS.has(t.modalidade) || !MODALIDADES[t.modalidade],
+    objeto: limpo(t.objeto).replace(/\s+/g, ' '),
     sessao: t.sessao ? formatoDaData.format(t.sessao).replace(',', ' às') : '',
   }
 }

@@ -12,7 +12,7 @@ type DocumentoComImagem = PDFKit.PDFDocument & { openImage(src: Buffer): object 
 
 function larguras(tabela: Tabela, total: number): number[] {
   if (tabela.colunas.length === 6) {
-    const fixas = [34, 0, 40, 52, 82, 88]
+    const fixas = [30, 0, 56, 46, 80, 86]
     const resto = total - fixas.reduce((a, b) => a + b, 0)
     return fixas.map((l) => (l === 0 ? resto : l))
   }

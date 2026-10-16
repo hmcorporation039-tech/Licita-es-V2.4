@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { ArrowRight, FileDown, FileSignature, FolderArchive, Gavel, Plus, RefreshCw, Save, Search, Trash2 } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
 import { api, ApiRequestError, baixarArquivo } from '@/lib/api'
+import { useAvisoDeAlteracoesNaoSalvas } from '@/hooks/useAvisoDeAlteracoesNaoSalvas'
 import { DadosDoEstudo, EstudoResposta, PesquisaDePrecosResposta, ResultadoDoEstudo } from '@/lib/estudoTypes'
 import {
   Button,
@@ -130,6 +131,7 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
   const [salvando, setSalvando] = useState(false)
   const [gerandoPacote, setGerandoPacote] = useState(false)
   const [sujo, setSujo] = useState(false)
+  useAvisoDeAlteracoesNaoSalvas(sujo)
   const [pesquisando, setPesquisando] = useState<string | null>(null)
   const [escopoUf, setEscopoUf] = useState<'BR' | 'UF'>('BR')
   const [meses, setMeses] = useState(12)
@@ -191,6 +193,7 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
     if (sujo && !(await salvar())) return
     try {
       await baixarArquivo(`/api/estudos/${id}/pdf`, `dossie-da-licitacao-${id.slice(0, 8)}.pdf`)
+      setAviso('Dossiê em PDF baixado. Confira na pasta de downloads.')
     } catch (e) {
       setErro(e instanceof ApiRequestError ? e.message : 'Erro ao gerar o PDF')
     }
@@ -201,6 +204,7 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
     setGerandoPacote(true)
     try {
       await baixarArquivo(`/api/estudos/${id}/pacote`, `pacote-de-habilitacao-${id.slice(0, 8)}.zip`)
+      setAviso('Pacote de habilitação (ZIP) baixado. Confira na pasta de downloads.')
     } catch (e) {
       setErro(e instanceof ApiRequestError ? e.message : 'Erro ao gerar o pacote')
     } finally {
@@ -269,8 +273,10 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
   const linhaPorItem = new Map(resultado.itens.map((l) => [l.id, l]))
   const temCatalogo = estudo.itens.some((i) => i.codigoCatalogo)
   const custosAcimaDoEstimado = t.valorEstimado !== null && t.valorEstimado !== undefined && t.valorEstimado > 0 && resultado.custoTotal > t.valorEstimado
-  const local = [t.municipio, t.uf].filter(Boolean).join('/')
-  const destino = local || 'local n/d'
+  const destinoDoEstudo = estudo.destino
+  const local = destinoDoEstudo ? [destinoDoEstudo.municipio, destinoDoEstudo.uf].filter(Boolean).join('/') : [t.municipio, t.uf].filter(Boolean).join('/')
+  const origemDoDestino = destinoDoEstudo?.origem === 'edital' ? ' (local de execução lido do edital)' : destinoDoEstudo?.origem === 'objeto' ? ' (cidade citada no objeto)' : destinoDoEstudo?.origem === 'orgao' ? ' (cidade do órgão: confira o local de execução no edital)' : ''
+  const destino = local ? `${local}${origemDoDestino}` : 'local n/d'
   const dataDaSessao = t.encerramentoAt ?? t.aberturaAt
   const situacao = resultado.prazo.situacao ? SITUACAO_DO_PRAZO[resultado.prazo.situacao] : null
 
@@ -598,7 +604,15 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
                   {situacao.rotulo}
                 </StatusTag>
                 <span>
-                  folga de <Valor>{resultado.prazo.folgaDias}</Valor> dia(s).
+                  {resultado.prazo.folgaDias !== null && resultado.prazo.folgaDias < 0 ? (
+                    <>
+                      atraso de <Valor>{Math.abs(resultado.prazo.folgaDias)}</Valor> {Math.abs(resultado.prazo.folgaDias) === 1 ? 'dia' : 'dias'}.
+                    </>
+                  ) : (
+                    <>
+                      folga de <Valor>{resultado.prazo.folgaDias}</Valor> {resultado.prazo.folgaDias === 1 ? 'dia' : 'dias'}.
+                    </>
+                  )}
                 </span>
               </p>
             )}

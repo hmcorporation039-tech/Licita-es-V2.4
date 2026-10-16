@@ -88,8 +88,16 @@ describe('Bela: copiloto do lance', () => {
     const a = avaliarMeuLance(1393, limites, regras, 1)
     expect(a.sugestao).toBeNull()
     expect(a.mensagem).toContain('Seu lance de R$')
-    expect(a.mensagem).toContain('Restam 1 lance')
+    expect(a.mensagem).toContain('Resta 1 lance')
     expect(avaliarMeuLance(1300, limites, regras, 2).mensagem).toContain('último lance combinado')
+  })
+
+  it('melhor lance informado acima do meu lance: estou na frente e não preciso cobrir', () => {
+    const a = avaliarLance(1450, limites, regras, 1, 1393)
+    expect(a.sugestao).toBeNull()
+    expect(a.valor).toBe(1393)
+    expect(a.mensagem).toContain('você continua na frente')
+    expect(avaliarLance(1380, limites, regras, 1, 1393).sugestao).not.toBeNull()
   })
 
   it('sem custos, não inventa margem', () => {
