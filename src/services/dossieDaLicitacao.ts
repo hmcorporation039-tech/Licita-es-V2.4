@@ -7,7 +7,7 @@
 import { prisma } from './tenderService'
 import { buildChecklistTemplate } from '../lib/checklistTemplate'
 import { avaliarHabilitacao, ResultadoHabilitacao } from '../lib/habilitacao'
-import { AlertaLegal, calcularAlertasLegais, lerValoresEmReais } from '../lib/alertasLegais'
+import { AlertaLegal, calcularAlertasLegais, exigenciasDaAnalise, lerValoresEmReais } from '../lib/alertasLegais'
 import { lerDataTexto } from '../lib/diasUteis'
 import { chaveDaExigencia, ExigenciaVerificada } from '../lib/matrizExigencias'
 import type { EditalAnalysisResult, EditalAnalysisRisco } from './llm/types'
@@ -78,6 +78,7 @@ export async function carregarDossie(companyId: string, tenderId: string): Promi
           garantiaContratual: a.garantiaContratual,
           patrimonioLiquidoMinimo: a.patrimonioLiquidoMinimo,
           visitaTecnica: a.visitaTecnica,
+          exigencias: exigenciasDaAnalise(a),
           valorEstimado,
         })
       : []

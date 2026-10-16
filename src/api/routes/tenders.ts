@@ -18,7 +18,7 @@ import { calcularPrazosDaSessao, lerDataTexto } from '../../lib/diasUteis'
 import { exigirCotaDaRequisicao } from '../cotas'
 import { registrarAuditoria } from '../../services/auditService'
 import { avaliarHabilitacao } from '../../lib/habilitacao'
-import { calcularAlertasLegais, lerValoresEmReais } from '../../lib/alertasLegais'
+import { calcularAlertasLegais, exigenciasDaAnalise, lerValoresEmReais } from '../../lib/alertasLegais'
 import type { EditalAnalysisResult } from '../../services/llm/types'
 import { chaveDaExigencia, ExigenciaVerificada, resumoDaVerificacao } from '../../lib/matrizExigencias'
 import { analiseParaResposta } from '../../lib/analiseParaResposta'
@@ -527,6 +527,7 @@ tendersRouter.get(
           garantiaContratual: analise.garantiaContratual,
           patrimonioLiquidoMinimo: analise.patrimonioLiquidoMinimo,
           visitaTecnica: analise.visitaTecnica,
+          exigencias: exigenciasDaAnalise(analise),
           valorEstimado,
         })
       : []

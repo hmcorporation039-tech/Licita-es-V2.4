@@ -22,6 +22,7 @@ import { SITUACAO_OPTIONS } from '@/lib/situacoes'
 import { safeHttpUrl } from '@/lib/safeUrl'
 import type { PrazosDaSessao } from '@/lib/adminTypes'
 import PainelDoFiscal from '@/components/PainelDoFiscal'
+import AvisoDeClausulas from '@/components/AvisoDeClausulas'
 import MatrizDeExigencias from '@/components/MatrizDeExigencias'
 import RelatorioDaRevisao from '@/components/RelatorioDaRevisao'
 import DocumentosDaLicitacao from '@/components/DocumentosDaLicitacao'
@@ -574,6 +575,8 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
           ]}
         />
       </Panel>
+
+      <AvisoDeClausulas tenderId={id} onVerDetalhes={() => setActiveTab('habilitacao')} />
 
       <div className="flex flex-col gap-5">
         <Tabs tabs={abas} value={activeTab} onChange={setActiveTab} label="Seções da licitação" />

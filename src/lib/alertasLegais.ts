@@ -13,13 +13,32 @@ import { normalize } from './geoService'
 
 export type GravidadeDoAlerta = 'alta' | 'media'
 
+export type IdDoAlerta =
+  | 'garantia-proposta'
+  | 'garantia-contratual'
+  | 'patrimonio-liquido'
+  | 'visita-tecnica'
+  | 'indice-contabil'
+  | 'faturamento-minimo'
+  | 'atestado-quantitativo'
+  | 'atestado-tempo-local'
+  | 'propriedade-ou-sede'
+  | 'documento-fora-do-rol'
+
 export interface AlertaLegal {
-  id: 'garantia-proposta' | 'garantia-contratual' | 'patrimonio-liquido' | 'visita-tecnica'
+  id: IdDoAlerta
+  chave: string
   titulo: string
   gravidade: GravidadeDoAlerta
   detalhe: string
   fundamento: string
   trecho: string
+  local?: string
+}
+
+export interface ExigenciaParaAlertas {
+  texto: string
+  local?: string
 }
 
 export interface EntradaDeAlertas {
@@ -29,6 +48,7 @@ export interface EntradaDeAlertas {
   visitaTecnica?: string
   // Valor estimado da contratação, em reais, quando conhecido.
   valorEstimado: number | null
+  exigencias?: ExigenciaParaAlertas[]
 }
 
 const NUMEROS_POR_EXTENSO: Record<string, number> = {
@@ -101,6 +121,7 @@ export function calcularAlertasLegais(e: EntradaDeAlertas): AlertaLegal[] {
     if (p !== null && p > 1.0001) {
       alertas.push({
         id: 'garantia-proposta',
+        chave: 'garantia-proposta',
         titulo: 'Garantia de proposta acima de 1%',
         gravidade: 'alta',
         detalhe: `O edital parece exigir garantia de proposta de cerca de ${f(p)}% do valor estimado. A lei limita a 1%.`,
@@ -116,6 +137,7 @@ export function calcularAlertasLegais(e: EntradaDeAlertas): AlertaLegal[] {
     if (p !== null && p > 10.0001) {
       alertas.push({
         id: 'garantia-contratual',
+        chave: 'garantia-contratual',
         titulo: 'Garantia contratual acima de 10%',
         gravidade: 'alta',
         detalhe: `O edital parece exigir garantia contratual de cerca de ${f(p)}% do valor do contrato, acima do máximo de 10% previsto para obras e serviços de engenharia.`,
@@ -125,6 +147,7 @@ export function calcularAlertasLegais(e: EntradaDeAlertas): AlertaLegal[] {
     } else if (p !== null && p > 5.0001) {
       alertas.push({
         id: 'garantia-contratual',
+        chave: 'garantia-contratual',
         titulo: 'Garantia contratual acima de 5%',
         gravidade: 'media',
         detalhe: `O edital parece exigir garantia contratual de cerca de ${f(p)}%. Acima de 5% só é admitido, até 10%, com justificativa de complexidade e riscos: confira se o edital a apresenta.`,
@@ -140,6 +163,7 @@ export function calcularAlertasLegais(e: EntradaDeAlertas): AlertaLegal[] {
     if (p !== null && p > 10.0001) {
       alertas.push({
         id: 'patrimonio-liquido',
+        chave: 'patrimonio-liquido',
         titulo: 'Patrimônio líquido ou capital mínimo acima de 10%',
         gravidade: 'alta',
         detalhe: `O edital parece exigir patrimônio líquido ou capital mínimo de cerca de ${f(p)}% do valor estimado. O limite legal é 10%.`,
@@ -157,6 +181,7 @@ export function calcularAlertasLegais(e: EntradaDeAlertas): AlertaLegal[] {
     if (obrigatoria && !temAlternativa) {
       alertas.push({
         id: 'visita-tecnica',
+        chave: 'visita-tecnica',
         titulo: 'Visita técnica obrigatória sem alternativa de declaração',
         gravidade: 'media',
         detalhe:
@@ -167,5 +192,161 @@ export function calcularAlertasLegais(e: EntradaDeAlertas): AlertaLegal[] {
     }
   }
 
+  return [...alertas, ...alertasDasExigencias(e.exigencias ?? [])]
+}
+
+const FUNDAMENTO_DO_ROL = 'Lei 14.133/2021, arts. 62 a 70 (rol de documentos de habilitação) e jurisprudência do TCU'
+
+type AchadoDaRegra = Pick<AlertaLegal, 'titulo' | 'gravidade' | 'detalhe' | 'fundamento'>
+
+interface RegraDeExigencia {
+  id: IdDoAlerta
+  avaliar: (t: string) => AchadoDaRegra | null
+}
+
+const mencionaAtestado = (t: string) => /atestad|capacidade tecnica|capacitacao tecnic|acervo tecnico/.test(t)
+
+function maiorIndiceExigido(t: string): number | null {
+  const padrao =
+    /\b(ilg|ilc|isg|lg|lc|sg|liquidez geral|liquidez corrente|solvencia geral)\b[^.;]{0,60}?(?:>=|=>|>|igua(?:l|is) ou superior(?:es)? a|igua(?:l|is) ou maior(?:es)? (?:que|a|do que)|superior(?:es)? a|maior(?:es)? (?:ou igua(?:l|is) )?(?:que|a|do que)|minimo de|no minimo|nao inferior(?:es)? a)\s*(\d+(?:[.,]\d+)?)(?![\d.,]*\s*(?:%|por\s*cento))/g
+  let maior: number | null = null
+  for (const m of t.matchAll(padrao)) {
+    const v = Number(m[2].replace(',', '.'))
+    if (Number.isFinite(v) && v <= 5 && (maior === null || v > maior)) maior = v
+  }
+  return maior
+}
+
+const DOCUMENTOS_FORA_DO_ROL: Array<[RegExp, string]> = [
+  [/certidao\s+(?:negativa\s+)?de\s+protestos?/, 'Certidão negativa de protesto'],
+  [/(?:quitacao|adimplencia|em dia)\b[^.;]{0,50}(?:anuidade|crea|cau|cra|crc|crq|conselho regional)|anuidades?[^.;]{0,30}(?:quitad|paga|em dia)/, 'Prova de quitação de anuidade com conselho profissional'],
+  [/\biso\s?-?\s?(?:9001|14001|45001|27001)|certificac\w*\s+(?:de\s+)?(?:qualidade\s+)?iso\b/, 'Certificação ISO como requisito de habilitação'],
+  [/carta\s+de\s+(?:solidariedade|credenciamento)|declaracao\s+(?:do|de)\s+fabricante|(?:revendedor|distribuidor|representante)\s+autorizad/, 'Carta ou declaração do fabricante'],
+  [/alvara\s+de\s+(?:funcionamento|localizacao)/, 'Alvará de funcionamento'],
+]
+
+const REGRAS_DE_EXIGENCIA: RegraDeExigencia[] = [
+  {
+    id: 'indice-contabil',
+    avaliar: (t) => {
+      const v = maiorIndiceExigido(t)
+      if (v === null || v <= 1.0001) return null
+      return {
+        titulo: `Índice contábil exigido acima do usual (${f(v)})`,
+        gravidade: v >= 2 ? 'alta' : 'media',
+        detalhe: `O edital parece exigir índice de liquidez ou solvência de ${f(v)}. O usual é 1,0; acima disso o processo precisa justificar o valor com parâmetros de mercado e as características do objeto.`,
+        fundamento: 'Lei 14.133/2021, art. 69, e Súmula 289 do TCU',
+      }
+    },
+  },
+  {
+    id: 'faturamento-minimo',
+    avaliar: (t) => {
+      const faturamento = /faturamento\s+(?:bruto\s+|anual\s+|medio\s+)*(?:minimo|igual ou superior|de no minimo|nao inferior|superior a)/.test(t)
+      const rentabilidade = /indices?\s+de\s+(?:rentabilidade|lucratividade)|margem\s+de\s+lucro\s+minima/.test(t)
+      if (!faturamento && !rentabilidade) return null
+      return {
+        titulo: faturamento ? 'Exigência de faturamento mínimo' : 'Exigência de índice de rentabilidade ou lucratividade',
+        gravidade: 'alta',
+        detalhe: 'A lei veda exigir valores mínimos de faturamento anterior e índices de rentabilidade ou lucratividade na habilitação econômico-financeira.',
+        fundamento: 'Lei 14.133/2021, art. 69, e Súmula 289 do TCU',
+      }
+    },
+  },
+  {
+    id: 'atestado-quantitativo',
+    avaliar: (t) => {
+      if (!mencionaAtestado(t)) return null
+      const pcts = lerPercentuais(t).filter((p) => p > 50.0001 && p <= 100)
+      if (pcts.length === 0) return null
+      const p = Math.max(...pcts)
+      return {
+        titulo: `Atestado com ${f(p)}% da quantidade`,
+        gravidade: 'alta',
+        detalhe: `O edital parece exigir atestado de capacidade técnica com ${f(p)}% do quantitativo. A lei admite no máximo 50% das parcelas de maior relevância.`,
+        fundamento: 'Lei 14.133/2021, art. 67, §2º',
+      }
+    },
+  },
+  {
+    id: 'atestado-tempo-local',
+    avaliar: (t) => {
+      if (!mencionaAtestado(t)) return null
+      const tempo = /\b(?:nos|dos)\s+ultimos\s+\d+\s*(?:\([^)]*\)\s*)?(?:anos|meses)|emitid[oa]s?\s+(?:a partir|apos|nos ultimos)/.test(t)
+      const local = /executad[oa]s?\s+(?:no|na|em)\s+(?:estado|municipio|regiao|cidade)|\b(?:no|na|deste|desta)\s+(?:mesmo\s+)?(?:estado|regiao|municipio)\s+(?:de|do|da)\b/.test(t)
+      if (!tempo && !local) return null
+      return {
+        titulo: `Atestado limitado por ${tempo && local ? 'tempo e local' : tempo ? 'tempo' : 'local'}`,
+        gravidade: 'media',
+        detalhe: 'O edital parece aceitar só atestados de um período ou de um local específico. A lei veda limitações de tempo e de locais específicos para os atestados.',
+        fundamento: 'Lei 14.133/2021, art. 67, §2º',
+      }
+    },
+  },
+  {
+    id: 'propriedade-ou-sede',
+    avaliar: (t) => {
+      const propriedade = /(?:propriedade|posse)\s+(?:previa\s+)?(?:de|do|da|dos|das)\s+(?:\w+\s+){0,2}(?:equipamento|veiculo|maquin|usina|caminh|frota|imove|instalac)/.test(t)
+      const sede = /(?:possuir|manter|dispor de|ter)\s+(?:sede|escritorio|filial|estabelecimento|deposito|loja)\s+(?:\w+\s+){0,3}(?:no|na|em|dentro)\s+(?:o\s+|a\s+)?(?:municipio|cidade|estado|raio|regiao)/.test(t)
+      const depoisDoContrato = /(?:apos|depois)\s+(?:a\s+)?(?:assinatura|contratacao|homologacao)|contad[oa]s?\s+da\s+assinatura/.test(t)
+      if ((!propriedade && !sede) || depoisDoContrato) return null
+      return {
+        titulo: propriedade ? 'Exigência de propriedade de equipamentos ou instalações' : 'Exigência de sede ou escritório no local',
+        gravidade: 'media',
+        detalhe: 'Se exigido já na habilitação, obriga o licitante a ter custos antes de saber se vai contratar. O correto é pedir declaração de disponibilidade e cobrar só de quem for contratado.',
+        fundamento: 'Súmula 272 do TCU e Lei 14.133/2021, art. 67',
+      }
+    },
+  },
+  {
+    id: 'documento-fora-do-rol',
+    avaliar: (t) => {
+      const achado = DOCUMENTOS_FORA_DO_ROL.find(([re]) => re.test(t))
+      if (!achado) return null
+      const alvara = achado[1] === 'Alvará de funcionamento'
+      return {
+        titulo: `${achado[1]} fora do rol da lei`,
+        gravidade: 'media',
+        detalhe: alvara
+          ? 'O alvará de funcionamento não está no rol de documentos de habilitação. Só cabe quando lei especial exigir para a atividade do objeto (ex.: vigilância sanitária).'
+          : 'O documento não está no rol de documentos de habilitação da lei, que é taxativo. Exigências fora do rol restringem a competição sem amparo legal.',
+        fundamento: FUNDAMENTO_DO_ROL,
+      }
+    },
+  },
+]
+
+interface AnaliseComExigencias {
+  matrizExigencias?: Array<{ texto: string; documento?: string; pagina?: string; item?: string }>
+  exigenciasTecnicas?: string[]
+  documentosExigidos?: string[]
+}
+
+export function exigenciasDaAnalise(a: AnaliseComExigencias): ExigenciaParaAlertas[] {
+  const daMatriz = (Array.isArray(a.matrizExigencias) ? a.matrizExigencias : []).map((m) => {
+    const local = [m.documento?.trim(), m.pagina?.trim() ? `p. ${m.pagina.trim()}` : '', m.item?.trim() ? `item ${m.item.trim()}` : ''].filter(Boolean).join(', ')
+    return { texto: m.texto, ...(local ? { local } : {}) }
+  })
+  const soltas = [...(Array.isArray(a.exigenciasTecnicas) ? a.exigenciasTecnicas : []), ...(Array.isArray(a.documentosExigidos) ? a.documentosExigidos : [])]
+    .filter((t): t is string => typeof t === 'string')
+    .map((texto) => ({ texto }))
+  return [...daMatriz, ...soltas]
+}
+
+export function alertasDasExigencias(exigencias: ExigenciaParaAlertas[]): AlertaLegal[] {
+  const alertas: AlertaLegal[] = []
+  const vistos = new Set<string>()
+  for (const exigencia of exigencias.slice(0, 500)) {
+    if (!exigencia.texto) continue
+    const t = normalize(exigencia.texto.replace(/≥/g, ' >= ').slice(0, 4000))
+    for (const regra of REGRAS_DE_EXIGENCIA) {
+      const achado = regra.avaliar(t)
+      if (!achado) continue
+      const chave = `${regra.id}:${normalize(achado.titulo).replace(/[^a-z0-9]+/g, '-')}`
+      if (vistos.has(chave)) continue
+      vistos.add(chave)
+      alertas.push({ id: regra.id, chave, ...achado, trecho: recorte(exigencia.texto), ...(exigencia.local ? { local: exigencia.local } : {}) })
+    }
+  }
   return alertas
 }

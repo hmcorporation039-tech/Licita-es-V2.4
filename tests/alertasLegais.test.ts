@@ -126,3 +126,60 @@ describe('combinações', () => {
     expect(a[0].detalhe).toMatch(/parece/)
   })
 })
+
+describe('cláusulas que podem ser impugnadas, lidas das exigências do edital', () => {
+  const alertas = (...textos: string[]) => calcularAlertasLegais({ valorEstimado: null, exigencias: textos.map((texto) => ({ texto, local: 'Edital, p. 12, item 9.3' })) })
+  const idsDe = (...textos: string[]) => ids(alertas(...textos))
+
+  it('índice de liquidez acima do usual', () => {
+    const a = alertas('Comprovação de boa situação financeira: Liquidez Geral (LG), Solvência Geral (SG) e Liquidez Corrente (LC) iguais ou superiores a 1,5')
+    expect(a).toHaveLength(1)
+    expect(a[0]).toMatchObject({ id: 'indice-contabil', gravidade: 'media', local: 'Edital, p. 12, item 9.3' })
+    expect(alertas('ILC ≥ 2,0')[0].gravidade).toBe('alta')
+    expect(idsDe('LG, SG e LC maiores que 1 (um)')).toEqual([])
+  })
+
+  it('faturamento mínimo e índice de rentabilidade', () => {
+    expect(idsDe('Comprovar faturamento bruto anual igual ou superior a R$ 2.000.000,00')).toEqual(['faturamento-minimo'])
+    expect(idsDe('apresentar índices de rentabilidade positivos')).toEqual(['faturamento-minimo'])
+  })
+
+  it('atestado acima de 50% e limitado por tempo ou local', () => {
+    expect(idsDe('Atestado de capacidade técnica que comprove a execução de no mínimo 70% do quantitativo')).toEqual(['atestado-quantitativo'])
+    expect(idsDe('Atestado de capacidade técnica de no mínimo 50% das parcelas de maior relevância')).toEqual([])
+    expect(idsDe('Atestados emitidos nos últimos 2 (dois) anos')).toEqual(['atestado-tempo-local'])
+    expect(idsDe('atestado de serviços executados no Estado de Goiás')).toEqual(['atestado-tempo-local'])
+  })
+
+  it('propriedade de equipamentos e sede no local, mas não quando é depois do contrato', () => {
+    expect(idsDe('comprovação de propriedade dos equipamentos relacionados no anexo')).toEqual(['propriedade-ou-sede'])
+    expect(idsDe('A licitante deverá possuir escritório no município de Anápolis')).toEqual(['propriedade-ou-sede'])
+    expect(idsDe('A contratada deverá manter escritório no município no prazo de 30 dias contados da assinatura do contrato')).toEqual([])
+  })
+
+  it('documentos fora do rol da lei', () => {
+    expect(alertas('Certidão negativa de protesto de títulos')[0].titulo).toBe('Certidão negativa de protesto fora do rol da lei')
+    expect(idsDe('Prova de quitação da anuidade junto ao CREA')).toEqual(['documento-fora-do-rol'])
+    expect(idsDe('Certificado ISO 9001 vigente')).toEqual(['documento-fora-do-rol'])
+    expect(idsDe('Carta de solidariedade do fabricante')).toEqual(['documento-fora-do-rol'])
+    expect(idsDe('Certidão de registro da empresa no CREA')).toEqual([])
+  })
+
+  it('não repete o mesmo alerta e mantém os alertas antigos', () => {
+    const a = calcularAlertasLegais({
+      garantiaProposta: 'garantia de proposta de 2% do valor estimado',
+      valorEstimado: null,
+      exigencias: [{ texto: 'Certidão negativa de protesto' }, { texto: 'certidao negativa de protestos' }],
+    })
+    expect(ids(a)).toEqual(['garantia-proposta', 'documento-fora-do-rol'])
+    expect(new Set(a.map((x) => x.chave)).size).toBe(a.length)
+  })
+})
+
+describe('casos reais que não são problema', () => {
+  it('patrimônio líquido de 10% para quem tem índice menor que 1 não vira índice contábil 10', () => {
+    const texto =
+      'As empresas, cadastradas ou não no SICAF, que apresentarem resultado inferior ou igual a 1(um) em qualquer dos índices de liquidez geral (LG), liquidez corrente (LC) e solvência geral (SG), deverão comprovar patrimônio líquido mínimo de 10% do valor estimado'
+    expect(ids(calcularAlertasLegais({ valorEstimado: null, exigencias: [{ texto }] }))).toEqual([])
+  })
+})
