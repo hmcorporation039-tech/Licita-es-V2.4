@@ -49,12 +49,12 @@ export function useDialogo() {
         fechar(false)
       }}
       aria-labelledby="dialogo-titulo"
-      className="m-auto w-[min(440px,calc(100vw-2rem))] rounded border border-line bg-surface p-0 text-ink shadow-[0_8px_24px_rgb(26_28_31/0.12)]"
+      className="m-auto w-[min(440px,calc(100vw-2rem))] rounded-2xl border border-line bg-surface p-0 text-ink shadow-cartao-alto"
     >
       {pedido && (
         <div className="flex flex-col gap-4 p-5">
           <div className="flex flex-col gap-1.5">
-            <h2 id="dialogo-titulo" className="text-lg font-semibold">
+            <h2 id="dialogo-titulo" className="text-lg font-bold">
               {pedido.titulo}
             </h2>
             {pedido.mensagem && <div className="text-sm text-ink-2">{pedido.mensagem}</div>}

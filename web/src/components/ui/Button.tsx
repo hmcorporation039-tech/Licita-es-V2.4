@@ -7,12 +7,12 @@ export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger'
 export type ButtonSize = 'sm' | 'md'
 
 const BASE =
-  'inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded border font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50'
+  'inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg border font-semibold transition-[background-color,border-color,color,box-shadow] disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50'
 
 const VARIANTES: Record<ButtonVariant, string> = {
-  primary: 'border-accent bg-accent text-white hover:border-accent-hover hover:bg-accent-hover',
-  secondary: 'border-line-strong bg-surface text-ink hover:border-faint hover:bg-sunken',
-  ghost: 'border-transparent bg-transparent text-ink-2 hover:bg-line-soft hover:text-ink',
+  primary: 'border-accent bg-accent text-white shadow-botao hover:border-accent-hover hover:bg-accent-hover',
+  secondary: 'border-line-strong bg-surface text-ink hover:border-accent-line hover:bg-accent-soft hover:text-accent',
+  ghost: 'border-transparent bg-transparent text-ink-2 hover:bg-accent-soft hover:text-accent',
   danger: 'border-danger-line bg-surface text-danger hover:border-danger hover:bg-danger-soft',
 }
 
@@ -85,5 +85,5 @@ export function LinkButton({
 }
 
 export function TextLink({ className, ...rest }: ComponentProps<typeof Link>) {
-  return <Link className={cx('font-medium text-accent underline decoration-accent-line underline-offset-[3px] hover:decoration-accent', className)} {...rest} />
+  return <Link className={cx('font-semibold text-accent underline decoration-accent-line underline-offset-[3px] hover:decoration-accent', className)} {...rest} />
 }

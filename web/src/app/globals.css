@@ -3,6 +3,7 @@
 @theme {
   --font-sans: var(--font-plex-sans), "IBM Plex Sans", system-ui, sans-serif;
   --font-mono: var(--font-plex-mono), "IBM Plex Mono", ui-monospace, monospace;
+  --font-display: var(--font-nunito), "Nunito", "Segoe UI", system-ui, sans-serif;
 
   --text-2xs: 0.6875rem;
   --text-2xs--line-height: 1rem;
@@ -23,31 +24,42 @@
   --text-4xl: 2.5rem;
   --text-4xl--line-height: 3rem;
 
-  --color-canvas: #f7f6f2;
+  --color-canvas: #f2f6fc;
   --color-surface: #ffffff;
-  --color-sunken: #fbfaf7;
-  --color-line: #e4e2dc;
-  --color-line-soft: #eeece6;
-  --color-line-strong: #d3d0c7;
-  --color-ink: #1a1c1f;
-  --color-ink-2: #3d4046;
-  --color-muted: #5b5f66;
-  --color-faint: #74777d;
+  --color-sunken: #f7f9fd;
+  --color-line: #dfe6f1;
+  --color-line-soft: #ebf0f7;
+  --color-line-strong: #bfcbdd;
+  --color-ink: #0b1f44;
+  --color-ink-2: #2a3b5c;
+  --color-muted: #51617f;
+  --color-faint: #5f6e89;
 
-  --color-accent: #1f3a5f;
-  --color-accent-hover: #172c49;
-  --color-accent-soft: #e9eef4;
-  --color-accent-line: #9fb3cd;
+  --color-accent: #0a4fd6;
+  --color-accent-hover: #0843b8;
+  --color-accent-soft: #e8f0ff;
+  --color-accent-line: #a8c3f4;
 
   --color-danger: #b42318;
-  --color-danger-soft: #fdf1ef;
-  --color-danger-line: #f1c4be;
+  --color-danger-soft: #fff1f0;
+  --color-danger-line: #f3c4bf;
   --color-warn: #a15c07;
-  --color-warn-soft: #fdf6e9;
-  --color-warn-line: #ecd3a5;
+  --color-warn-soft: #fff7e8;
+  --color-warn-line: #f0d39e;
   --color-ok: #1e6b3a;
-  --color-ok-soft: #eef6f0;
-  --color-ok-line: #bcd9c4;
+  --color-ok-soft: #ebf7ef;
+  --color-ok-line: #b5dcc2;
+
+  --color-ceu: #0369a1;
+  --color-ceu-soft: #e6f4fb;
+  --color-violeta: #6d3fd1;
+  --color-violeta-soft: #f1ecfd;
+
+  --color-nav: #063aa8;
+  --color-nav-2: #0843b8;
+  --color-nav-ink: #ffffff;
+  --color-nav-muted: #cfe0ff;
+  --color-nav-suave: #9fd3ff;
 
   --color-noite: #0e1b2e;
   --color-noite-2: #14253d;
@@ -56,29 +68,35 @@
   --color-noite-muted: #a9b8cb;
   --color-noite-accent: #9cbce3;
 
-  --color-indigo-50: #f2f5f9;
-  --color-indigo-100: #e3e9f1;
-  --color-indigo-200: #c7d3e3;
-  --color-indigo-300: #9fb3cd;
-  --color-indigo-400: #6f8aae;
-  --color-indigo-500: #4a6890;
-  --color-indigo-600: #2f4e78;
-  --color-indigo-700: #1f3a5f;
-  --color-indigo-800: #172c49;
-  --color-indigo-900: #112136;
-  --color-indigo-950: #0a1522;
+  --color-indigo-50: #f2f6fe;
+  --color-indigo-100: #e8f0ff;
+  --color-indigo-200: #cfe0ff;
+  --color-indigo-300: #a8c3f4;
+  --color-indigo-400: #6f97eb;
+  --color-indigo-500: #2469f0;
+  --color-indigo-600: #0a4fd6;
+  --color-indigo-700: #0843b8;
+  --color-indigo-800: #063aa8;
+  --color-indigo-900: #052c82;
+  --color-indigo-950: #031c55;
 
-  --color-slate-50: #fbfaf7;
-  --color-slate-100: #f3f1ec;
-  --color-slate-200: #e4e2dc;
-  --color-slate-300: #d3d0c7;
-  --color-slate-400: #74777d;
-  --color-slate-500: #5b5f66;
-  --color-slate-600: #4a4d52;
-  --color-slate-700: #3d4046;
-  --color-slate-800: #2a2c30;
-  --color-slate-900: #1a1c1f;
-  --color-slate-950: #0f1012;
+  --color-slate-50: #f7f9fd;
+  --color-slate-100: #ebf0f7;
+  --color-slate-200: #dfe6f1;
+  --color-slate-300: #bfcbdd;
+  --color-slate-400: #5f6e89;
+  --color-slate-500: #51617f;
+  --color-slate-600: #3d4d6c;
+  --color-slate-700: #2a3b5c;
+  --color-slate-800: #182a4d;
+  --color-slate-900: #0b1f44;
+  --color-slate-950: #06132c;
+
+  --radius: 0.5rem;
+
+  --shadow-cartao: 0 1px 2px rgb(11 31 68 / 0.05), 0 2px 8px rgb(11 31 68 / 0.04);
+  --shadow-cartao-alto: 0 2px 4px rgb(11 31 68 / 0.06), 0 10px 24px rgb(10 60 160 / 0.1);
+  --shadow-botao: 0 1px 2px rgb(10 79 214 / 0.25);
 }
 
 :root {
@@ -110,11 +128,25 @@ body {
 }
 
 ::selection {
-  background: var(--color-accent-soft);
+  background: #cfe0ff;
 }
 
 dialog::backdrop {
-  background: rgb(26 28 31 / 0.4);
+  background: rgb(5 28 80 / 0.45);
+}
+
+@layer base {
+  :where(h1, h2, h3) {
+    font-family: var(--font-display);
+  }
+
+  :where(.tabela > tbody > tr:nth-child(even)) {
+    background-color: var(--color-sunken);
+  }
+
+  :where(.tabela > tbody > tr:hover) {
+    background-color: #eef4ff;
+  }
 }
 
 @keyframes map-blink {

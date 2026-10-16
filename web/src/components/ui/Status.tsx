@@ -6,7 +6,7 @@ import { ehDataPura, fimDoDiaEmBrasilia, formatarData, paraData } from '@/lib/da
 export type Tom = 'neutral' | 'accent' | 'ok' | 'warn' | 'danger'
 
 const TAG: Record<Tom, string> = {
-  neutral: 'border-line-strong bg-surface text-ink-2',
+  neutral: 'border-line bg-sunken text-ink-2',
   accent: 'border-accent-line bg-accent-soft text-accent',
   ok: 'border-ok-line bg-ok-soft text-ok',
   warn: 'border-warn-line bg-warn-soft text-warn',
@@ -38,7 +38,7 @@ export function StatusTag({ tone = 'neutral', children, dot = false, mono = fals
     <span
       title={title}
       className={cx(
-        'inline-flex max-w-full items-center gap-1.5 whitespace-nowrap rounded-sm border px-1.5 py-px text-xs font-medium',
+        'inline-flex max-w-full items-center gap-1.5 whitespace-nowrap rounded-full border px-2 py-px text-xs font-semibold',
         mono && 'font-mono text-2xs',
         TAG[tone],
         className,
