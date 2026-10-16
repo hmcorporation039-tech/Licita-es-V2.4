@@ -84,3 +84,9 @@ Quem tenta cadastrar o CNPJ/CPF de uma empresa já cadastrada, com **outro e-mai
 - O e-mail do cadastro existente aparece **com parte oculta** (ex.: `h***@gmail.com`; a resposta traz também `emailMascarado`), para a pessoa saber qual usar; o e-mail completo nunca é mostrado. O dono da conta recebe um e-mail "Tentativa de cadastro com o CNPJ da sua empresa"
   (no máximo 1 por hora por destinatário). Nenhuma conta nova é criada e nenhum teste grátis extra é concedido.
 - **Custo conhecido:** a resposta permite descobrir se um CNPJ/CPF é cliente. Mitigações: limite por IP, captcha opcional, teto global por hora.
+
+## Origem do anúncio e busca da página inicial
+- `/cadastro?q=<termo>&uf=<UF>` mostra "Você vai monitorar: **termo** em **UF**" (trocar/remover) e envia `interesse: { termo, uf }` no `POST /api/auth/register`, junto com `origem` (UTMs guardadas por `guardarUtm()`).
+- Validação no servidor (`src/lib/origemDoCadastro.ts`): só as cinco chaves `utm_*` (texto até 200), termo de 2 a 120 letras e UF real. Dado inválido é descartado sem barrar o cadastro.
+- Tudo fica em `companies.origem_do_cadastro` (JSONB, migration `00000000000029_origem_do_cadastro`, só `ADD COLUMN`) e aparece no detalhe da empresa no admin.
+- O primeiro item monitorado é criado **ao confirmar o e-mail** (`POST /api/auth/verify-email`), com o mesmo schema e a mesma cota da criação normal, só se a empresa ainda não tem item. Conta não confirmada nunca tem item (não gera matches nem e-mails para quem não provou o endereço).

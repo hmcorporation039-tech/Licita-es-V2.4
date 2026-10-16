@@ -87,12 +87,12 @@ function vitrineValida(dados: RespostaDaVitrine | null): RespostaDaVitrine | nul
   return dados
 }
 
-export async function buscarEstatisticas(): Promise<EstatisticasPublicas | null> {
-  return estatisticasValidas(await buscarPublico<EstatisticasPublicas>('/api/public/estatisticas', ESPERA_DAS_ESTATISTICAS_MS))
+export async function buscarEstatisticas(esperaMaximaMs: number = ESPERA_DAS_ESTATISTICAS_MS): Promise<EstatisticasPublicas | null> {
+  return estatisticasValidas(await buscarPublico<EstatisticasPublicas>('/api/public/estatisticas', esperaMaximaMs))
 }
 
-export async function buscarPlanos(): Promise<PlanosResposta | null> {
-  return planosValidos(await buscarPublico<PlanosResposta>('/api/public/plans', ESPERA_DOS_PLANOS_MS))
+export async function buscarPlanos(esperaMaximaMs: number = ESPERA_DOS_PLANOS_MS): Promise<PlanosResposta | null> {
+  return planosValidos(await buscarPublico<PlanosResposta>('/api/public/plans', esperaMaximaMs))
 }
 
 export async function buscarVitrine(termo: string): Promise<RespostaDaVitrine | null> {

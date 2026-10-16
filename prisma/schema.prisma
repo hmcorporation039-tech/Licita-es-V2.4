@@ -115,6 +115,7 @@ model Company {
   baseUf              String?     @map("base_uf") @db.Char(2)
   baseLat             Float?      @map("base_lat")
   baseLng             Float?      @map("base_lng")
+  origemDoCadastro    Json?       @map("origem_do_cadastro")
   createdAt           DateTime    @default(now()) @map("created_at")
   updatedAt           DateTime    @updatedAt @map("updated_at")
 

@@ -8,12 +8,13 @@ import { Button, Carregando, Field, Input } from '@/components/ui'
 
 const TITULO = 'Confirmar acesso'
 const DESCRICAO = 'Informe o e-mail do cadastro para digitar o código que você recebeu.'
+const FALA = 'Falta pouco. O código de 6 dígitos chegou no seu e-mail.'
 
 export default function VerificarEmailPage() {
   return (
     <Suspense
       fallback={
-        <PublicCard title={TITULO} description={DESCRICAO}>
+        <PublicCard title={TITULO} description={DESCRICAO} fala={FALA}>
           <Carregando linhas={2} />
         </PublicCard>
       }
@@ -31,7 +32,7 @@ function Conteudo() {
   if (pronto) return <ConfirmarCodigo email={email.trim()} />
 
   return (
-    <PublicCard title={TITULO} description={DESCRICAO}>
+    <PublicCard title={TITULO} description={DESCRICAO} fala={FALA}>
       <form
         onSubmit={(e) => {
           e.preventDefault()
@@ -42,7 +43,7 @@ function Conteudo() {
         <Field label="E-mail" required>
           <Input type="email" autoComplete="email" placeholder="voce@empresa.com.br" value={email} onChange={(e) => setEmail(e.target.value)} />
         </Field>
-        <Button type="submit" variant="primary" className="w-full">
+        <Button type="submit" variant="primary" className="pb-cta w-full">
           Continuar
         </Button>
       </form>

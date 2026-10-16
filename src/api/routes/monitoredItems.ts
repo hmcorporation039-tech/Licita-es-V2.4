@@ -2,7 +2,7 @@
 // api/routes/monitoredItems.ts — CRUD de itens monitorados + rematch
 // ============================================================
 
-import { Router } from 'express'
+import { Router, type Request } from 'express'
 import { z } from 'zod'
 import { prisma } from '../../services/tenderService'
 import { findMatchingTendersForItem } from '../../services/matcherService'
@@ -13,6 +13,8 @@ import { asyncHandler, ApiError } from '../asyncHandler'
 import { exigirCotaDaRequisicao } from '../cotas'
 import { rematchLimiter } from '../rateLimit'
 import { registrarAuditoria } from '../../services/auditService'
+import { exigirCota } from '../../services/quotaService'
+import { interesseDaOrigem, nomeDoItemDoInteresse } from '../../lib/origemDoCadastro'
 
 export const monitoredItemsRouter = Router()
 
@@ -87,6 +89,34 @@ async function assertOwnership(itemId: string, companyId: string) {
   if (!item) throw new ApiError(404, 'Item monitorado não encontrado')
   if (item.companyId !== companyId) throw new ApiError(403, 'Este item não pertence a você')
   return item
+}
+
+export async function criarItemDoCadastro(req: Request, userId: string, companyId: string): Promise<{ id: string; name: string } | null> {
+  const empresa = await prisma.company.findUnique({
+    where: { id: companyId },
+    select: { origemDoCadastro: true, _count: { select: { monitoredItems: true } } },
+  })
+  const interesse = interesseDaOrigem(empresa?.origemDoCadastro)
+  if (!empresa || !interesse || empresa._count.monitoredItems > 0) return null
+
+  const body = createSchema.parse({ name: nomeDoItemDoInteresse(interesse), keywords: [interesse.termo], ufs: interesse.uf ? [interesse.uf] : [] })
+  await exigirCota(companyId, 'itensMonitorados')
+
+  const item = await prisma.monitoredItem.create({
+    data: { ...body, companyId, userId, origemLat: null, origemLng: null },
+  })
+  await registrarAuditoria(
+    req,
+    {
+      action: 'ITEM_MONITORADO_CRIADO',
+      entityType: 'item-monitorado',
+      entityId: item.id,
+      companyId,
+      metadata: { nome: item.name, origem: 'cadastro' },
+    },
+    { userId }
+  )
+  return { id: item.id, name: item.name }
 }
 
 monitoredItemsRouter.post(

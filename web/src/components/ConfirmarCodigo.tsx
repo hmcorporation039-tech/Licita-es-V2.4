@@ -63,8 +63,8 @@ export default function ConfirmarCodigo({ email, senha }: { email: string; senha
 
   if (confirmado) {
     return (
-      <PublicCard title="Acesso confirmado" description="Seu e-mail foi confirmado e o período de teste começou.">
-        <LinkButton href="/login" variant="primary" className="w-full">
+      <PublicCard title="Acesso confirmado" description="Seu e-mail foi confirmado e o período de teste começou." fala="Tudo certo! Seu teste começou e eu já estou procurando licitações para você.">
+        <LinkButton href="/login" variant="primary" className="pb-cta w-full">
           Entrar
         </LinkButton>
       </PublicCard>
@@ -74,6 +74,7 @@ export default function ConfirmarCodigo({ email, senha }: { email: string; senha
   return (
     <PublicCard
       title="Digite o código"
+      fala="Falta pouco. O código de 6 dígitos chegou no seu e-mail."
       description={
         <>
           Enviamos um código de 6 dígitos para <strong className="font-medium text-ink">{email}</strong>. Digite-o abaixo para confirmar o seu
@@ -97,7 +98,7 @@ export default function ConfirmarCodigo({ email, senha }: { email: string; senha
         </Field>
         <FormError>{erro}</FormError>
         {info && <Notice tone="ok">{info}</Notice>}
-        <Button type="submit" variant="primary" loading={enviando} disabled={codigo.length !== 6} className="w-full">
+        <Button type="submit" variant="primary" loading={enviando} disabled={codigo.length !== 6} className="pb-cta w-full">
           {enviando ? 'Confirmando…' : 'Confirmar acesso'}
         </Button>
         <div className="flex flex-col items-start gap-1.5 border-t border-line-soft pt-4">

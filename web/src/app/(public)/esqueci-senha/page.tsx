@@ -27,7 +27,11 @@ export default function EsqueciSenhaPage() {
   }
 
   return (
-    <PublicCard title="Esqueci minha senha" description="Informe o e-mail da conta e enviaremos um link para escolher uma nova senha.">
+    <PublicCard
+      title="Esqueci minha senha"
+      description="Informe o e-mail da conta e enviaremos um link para escolher uma nova senha."
+      fala="Acontece com todo mundo. Em um minuto você volta a acompanhar suas licitações."
+    >
       <div className="flex flex-col gap-4">
         {mensagem ? (
           <Notice tone="ok">{mensagem}</Notice>
@@ -37,7 +41,7 @@ export default function EsqueciSenhaPage() {
               <Input type="email" autoComplete="email" placeholder="voce@empresa.com.br" value={email} onChange={(e) => setEmail(e.target.value)} />
             </Field>
             <FormError>{erro}</FormError>
-            <Button type="submit" variant="primary" loading={enviando} className="w-full">
+            <Button type="submit" variant="primary" loading={enviando} className="pb-cta w-full">
               {enviando ? 'Enviando…' : 'Enviar link'}
             </Button>
           </form>

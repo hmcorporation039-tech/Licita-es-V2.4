@@ -26,6 +26,7 @@ import {
 } from './emailTransacional'
 import { somenteDigitos } from '../lib/documentos'
 import { TERMOS_VERSAO } from '../lib/legal'
+import type { OrigemDoCadastro } from '../lib/origemDoCadastro'
 import {
   INTERVALO_ENTRE_ENVIOS_MS,
   MAX_TENTATIVAS_DO_CODIGO,
@@ -113,6 +114,7 @@ export interface DadosDeCadastro {
   documento: string // CPF ou CNPJ, já validado
   empresaNome?: string
   telefone?: string
+  origem?: OrigemDoCadastro
 }
 
 export interface ResultadoDoCadastro {
@@ -224,6 +226,7 @@ export async function cadastrar(dados: DadosDeCadastro): Promise<ResultadoDoCada
             telefone: dados.telefone,
             responsavel: dados.nome,
             planCode: 'TESTE',
+            origemDoCadastro: dados.origem ? { ...dados.origem } : undefined,
           },
         },
       },
