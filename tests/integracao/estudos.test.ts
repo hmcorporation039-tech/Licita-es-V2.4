@@ -346,4 +346,47 @@ rodar('Estudo de custos', () => {
     expect(limpa.status).toBe(200)
     expect((await http('GET', `/api/estudos/${tenderId}`, undefined, tokenA)).body.base.definida).toBe(false)
   })
+  it('pregão de item único disputado pelo preço unitário: compara com o custo unitário e readequa no unitário certo', async () => {
+    const unico = await prisma.tender.create({
+      data: {
+        fonte: 'FIEG', fonteId: `estudo-unico-${sufixo}`, modalidade: 'PREGAO_ELETRONICO', situacao: 'ABERTA',
+        objeto: `Aquisição de cadeiras ${sufixo}`, objetoNorm: `aquisicao de cadeiras ${sufixo}`,
+        valorEstimado: 6000, municipio: 'Anápolis', uf: 'GO', encerramentoAt: futuro, rawJson: {},
+        items: { create: [{ numeroItem: 1, descricao: 'Cadeira', quantidade: 100, valorUnitario: 60, valorTotal: 6000, unidadeMedida: 'UN' }] },
+      },
+      include: { items: true },
+    })
+    const itemId = unico.items[0].id as string
+    expect((await marcar('VOU_PARTICIPAR', tokenA, unico.id)).status).toBe(200)
+    const semDeslocamento = { ...dadosBase({}).deslocamento, valorPorKm: 0, pedagioPorViagem: 0 }
+    const dados = { ...dadosBase({ [itemId]: { custoUnit: 40, precoVendaUnit: 50 } }), deslocamento: semDeslocamento }
+    expect((await http('PUT', `/api/estudos/${unico.id}`, { dados }, tokenA)).status).toBe(200)
+
+    const painel = await http('GET', `/api/tenders/${unico.id}/pregao`, undefined, tokenA)
+    expect(painel.body.config.criterio).toBe('UNITARIO')
+    expect(painel.body.alvos.map((a: { id: string }) => a.id)).toEqual(['global', itemId])
+    const doItem = painel.body.alvos.find((a: { id: string }) => a.id === itemId)
+    expect(doItem).toMatchObject({ quantidade: 100, precoProposto: 50, custo: 40 })
+
+    const melhor = await http('POST', `/api/tenders/${unico.id}/pregao/lances`, { alvo: itemId, origem: 'MELHOR_LANCE', valor: 45.9 }, tokenA)
+    expect(melhor.status).toBe(201)
+    const avaliacao = melhor.body.alvos.find((a: { id: string }) => a.id === itemId).avaliacao
+    expect(avaliacao.faixa).not.toBe('vermelha')
+    expect(avaliacao.mensagem).not.toContain('prejuízo')
+
+    expect((await http('POST', `/api/tenders/${unico.id}/pregao/lances`, { alvo: itemId, origem: 'MEU_LANCE', valor: 45.9 }, tokenA)).status).toBe(201)
+    expect((await http('PUT', `/api/tenders/${unico.id}/pregao/resultado`, { resultado: 'GANHOU', valorFinal: null }, tokenA)).status).toBe(200)
+
+    const readequada = await http('POST', `/api/tenders/${unico.id}/documentos/previa`, { tipo: 'proposta', readequada: true }, tokenA)
+    expect(readequada.status).toBe(200)
+    expect(readequada.body.total).toBe(4590)
+    const tabela = readequada.body.documento.blocos.find((b: { tipo: string }) => b.tipo === 'tabela')
+    expect(tabela.linhas[0][4]).toBe('45,90')
+    expect(JSON.stringify(readequada.body.documento)).toContain('valor final de R$ 4.590,00')
+
+    const comValorFinal = await http('PUT', `/api/tenders/${unico.id}/pregao/resultado`, { resultado: 'GANHOU', valorFinal: 4590 }, tokenA)
+    expect(comValorFinal.status).toBe(200)
+    const deNovo = await http('POST', `/api/tenders/${unico.id}/documentos/previa`, { tipo: 'proposta', readequada: true }, tokenA)
+    expect(deNovo.body.documento.blocos.find((b: { tipo: string }) => b.tipo === 'tabela').linhas[0][4]).toBe('45,90')
+  })
 })

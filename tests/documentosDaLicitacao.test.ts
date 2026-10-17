@@ -224,6 +224,37 @@ describe('proposta readequada', () => {
     const { documento } = propostaComercial(dadosDoProponente(empresa), certame, [{ numero: 1, descricao: 'Item', unidade: 'un', quantidade: 2, precoUnitario: 49.5 }], { validadeDias: 60, prazoDeEntrega: '', condicoesDePagamento: '', lanceFinal: 99 }, quando)
     expect(documento.titulo).toBe('Proposta comercial readequada')
     expect(JSON.stringify(documento.blocos)).toContain('readequada ao valor final de R$ 99,00 (noventa e nove reais)')
+    expect(JSON.stringify(documento.blocos)).not.toContain('arredondados para centavos')
+  })
+
+  it('informa o lance real ofertado, não o total readequado', () => {
+    expect(readequarPrecos([{ id: 'x', quantidade: 3, precoBase: 400 }], { global: 1000, porItem: {} }).lanceOfertado).toBe(1000)
+    expect(readequarPrecos(itens, { global: null, porItem: { a: 35_000, b: 8_000 } }).lanceOfertado).toBe(43_000)
+    expect(readequarPrecos(itens, { global: null, porItem: {} }).lanceOfertado).toBeNull()
+  })
+
+  it('o texto cita o lance de R$ 1.000,00 e mostra à parte o total readequado com o arredondamento', () => {
+    const r = readequarPrecos([{ id: 'x', quantidade: 3, precoBase: 400 }], { global: 1000, porItem: {} })
+    expect(r.total).toBe(999.99)
+    const { documento, total } = propostaComercial(dadosDoProponente(empresa), certame, [{ numero: 1, descricao: 'Item', unidade: 'un', quantidade: 3, precoUnitario: r.precos.x }], { validadeDias: 60, prazoDeEntrega: '', condicoesDePagamento: '', lanceFinal: r.lanceOfertado! }, quando)
+    const texto = JSON.stringify(documento.blocos)
+    expect(total).toBe(999.99)
+    expect(texto).toContain('readequada ao valor final de R$ 1.000,00 (mil reais), ofertado na etapa de lances')
+    expect(texto).toContain('o valor global readequado é de R$ 999,99')
+    expect(texto).toContain('R$ 0,01 abaixo do lance ofertado')
+    expect(texto).not.toContain('valor final de R$ 999,99')
+  })
+
+  it('disputa unitária de item único: o lance unitário vezes a quantidade dá o preço unitário certo', () => {
+    const r = readequarPrecos([{ id: 'x', quantidade: 100, precoBase: 50 }], { global: null, porItem: { x: 4590 } })
+    expect(r.precos.x).toBe(45.9)
+    expect(r.total).toBe(4590)
+    expect(r.pendencias).toEqual([])
+  })
+
+  it('avisa quando o lance global parece ser o preço unitário', () => {
+    const r = readequarPrecos([{ id: 'x', quantidade: 100, precoBase: 50 }], { global: 45.9, porItem: {} })
+    expect(r.pendencias.join(' ')).toContain('Se você informou o preço unitário')
   })
 })
 

@@ -66,12 +66,48 @@ describe('Bela: valor falado no pregão', () => {
     ['R$ 1.234.567,89', 1_234_567.89],
     ['3450,75', 3_450.75],
     ['450 reais e 50 centavos', 450.5],
+    ['180 mil', 180_000],
+    ['1,5 milhão', 1_500_000],
+    ['3.112 reais', 3_112],
+    ['180 mil e 500', 180_500],
+    ['1.234.567,89', 1_234_567.89],
+    ['R$ 3.084,50', 3_084.5],
+    ['99 centavos', 0.99],
+    ['o lance está em 85 centavos', 0.85],
+    ['3 reais e 50', 3.5],
+    ['3 reais e 5', 3.05],
+    ['1 milhão 250 mil', 1_250_000],
+    ['1 milhão e 250 mil', 1_250_000],
+    ['2 mil 500', 2_500],
+    ['450 e 50 centavos', 450.5],
+    ['o melhor lance do item 3 está em 1.250', 1_250],
+    ['item número 2 caiu para 3 mil', 3_000],
   ])('%s', (frase, valor) => {
     expect(lerValorFalado(frase)).toBe(valor)
   })
 
+  it.each([
+    '180 mil 300 200',
+    '500 2 mil',
+    '2 milhões e 300',
+    '1 milhão 250',
+    '3 reais e 50 e 2',
+    '3 reais e 150',
+    '3,50 reais e 20 centavos',
+    'o lance está em 180 mil e o meu em 190 mil',
+    '50 centavos e 3 reais',
+    'mil reais',
+  ])('não chuta quando sobra número sem sentido claro: %s', (frase) => {
+    expect(lerValorFalado(frase)).toBeNull()
+  })
+
   it('separa o número do item do valor do lance', () => {
     expect(interpretarPedido('item 3 caiu para 450 reais e 50 centavos', 'pregao')).toMatchObject({ acao: 'lance', item: 3, valor: 450.5 })
+    expect(interpretarPedido('item 3 … 1.250', 'pregao')).toMatchObject({ acao: 'lance', item: 3, valor: 1_250 })
+  })
+
+  it('pede de novo em vez de truncar o valor', () => {
+    expect(interpretarPedido('o lance está em 2 milhões e 300', 'pregao').acao).toBe('desconhecida')
   })
 })
 
@@ -90,9 +126,29 @@ describe('Bela: copiloto do lance', () => {
     expect(a.mensagem).toContain('Sugiro cobrir com R$')
   })
 
-  it('perto do limite, sugere um último lance exatamente no limite', () => {
+  it('perto do limite, não sugere lance que não cabe no intervalo mínimo', () => {
     const a = avaliarLance(1255, limites, regras, 0)
-    expect(a.sugestao).toMatchObject({ valor: 1250, ultimo: true })
+    expect(a.sugestao).toBeNull()
+    expect(a.mensagem).toContain('não cabe no intervalo mínimo')
+    expect(avaliarLance(1256.29, limites, regras, 0).sugestao).toMatchObject({ valor: 1250 })
+  })
+
+  it('limite a só 0,5% do melhor lance com decremento de 1%: não sugere o limite', () => {
+    const custo = { custoComRateio: 995 * 0.8, impostosPct: 10, margemDesejadaPct: 10 }
+    expect(limitesDoAlvo(custo).minimoComMargem).toBe(995)
+    const a = avaliarLance(1000, custo, { decrementoPct: 1, maxLances: 3 }, 0)
+    expect(a.sugestao).toBeNull()
+    expect(a.mensagem).not.toContain('Dá para um último lance')
+    expect(a.mensagem).toMatch(/no máximo R\$\s990,00/)
+    expect(a.mensagem).toContain('não cabe no intervalo mínimo')
+    expect(avaliarLance(1005.06, custo, { decrementoPct: 1, maxLances: 3 }, 0).sugestao).toMatchObject({ valor: 995 })
+  })
+
+  it('melhor lance igual ao limite: não diz que está abaixo', () => {
+    const a = avaliarLance(1250, limites, regras, 0)
+    expect(a.sugestao).toBeNull()
+    expect(a.mensagem).not.toContain('Abaixo do seu limite')
+    expect(a.mensagem).toContain('já está no seu limite de R$')
   })
 
   it('abaixo do limite não sugere lance; abaixo do custo avisa prejuízo', () => {

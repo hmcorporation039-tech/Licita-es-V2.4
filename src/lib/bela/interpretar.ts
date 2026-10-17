@@ -65,7 +65,8 @@ export function normalizar(texto: string): string {
   return texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 }
 
-const MULTIPLICADORES: Record<string, number> = { mil: 1_000, milhao: 1_000_000, milhoes: 1_000_000, bilhao: 1_000_000_000, bilhoes: 1_000_000_000 }
+const MIL = 1_000
+const MULTIPLICADORES = new Map<string, number>([['mil', MIL], ['milhao', 1_000_000], ['milhoes', 1_000_000], ['bilhao', 1_000_000_000], ['bilhoes', 1_000_000_000]])
 
 function numeroEscrito(bruto: string): number | null {
   const s = bruto.replace(/\s/g, '')
@@ -87,24 +88,102 @@ function numeroEscrito(bruto: string): number | null {
   return Number.isFinite(n) ? n : null
 }
 
+const PALAVRAS_DE_REAIS = new Set(['real', 'reais'])
+const PALAVRAS_DE_CENTAVOS = new Set(['centavo', 'centavos'])
+const PALAVRAS_ANTES_DO_NUMERO_DO_ITEM = new Set(['numero', 'n'])
+
+const ehNumero = (token: string) => /^\d/.test(token)
+const ehParteDoValor = (token: string) => ehNumero(token) || MULTIPLICADORES.has(token) || PALAVRAS_DE_REAIS.has(token) || PALAVRAS_DE_CENTAVOS.has(token)
+
+function ehNumeroDoItem(tokens: string[], i: number): boolean {
+  if (tokens[i - 1] === 'item') return true
+  return PALAVRAS_ANTES_DO_NUMERO_DO_ITEM.has(tokens[i - 1] ?? '') && tokens[i - 2] === 'item'
+}
+
+function gruposDeValor(t: string): string[][] {
+  const tokens = t.match(/\d[\d.,]*\d|\d|[a-z]+|[^\s\da-z]/g) ?? []
+  const grupos: string[][] = []
+  let i = 0
+  while (i < tokens.length) {
+    if (!ehNumero(tokens[i]) || ehNumeroDoItem(tokens, i)) {
+      i++
+      continue
+    }
+    const grupo = [tokens[i++]]
+    while (i < tokens.length) {
+      if (ehParteDoValor(tokens[i])) grupo.push(tokens[i++])
+      else if (tokens[i] === 'e' && ehNumero(tokens[i + 1] ?? '')) i++
+      else break
+    }
+    grupos.push(grupo)
+  }
+  return grupos
+}
+
+function somarTermos(partes: string[]): number | null {
+  const termos: Array<{ numero: number; multiplicador: number }> = []
+  for (const parte of partes) {
+    if (ehNumero(parte)) {
+      const numero = numeroEscrito(parte)
+      if (numero === null) return null
+      termos.push({ numero, multiplicador: 1 })
+    } else if (MULTIPLICADORES.has(parte)) {
+      const ultimo = termos[termos.length - 1]
+      if (!ultimo || ultimo.multiplicador !== 1) return null
+      ultimo.multiplicador = MULTIPLICADORES.get(parte)!
+    } else {
+      return null
+    }
+  }
+  if (termos.length === 0) return null
+  let soma = 0
+  for (let i = 0; i < termos.length; i++) {
+    const { numero, multiplicador } = termos[i]
+    if (i < termos.length - 1 && !Number.isInteger(numero)) return null
+    if (i > 0) {
+      const anterior = termos[i - 1].multiplicador
+      if (multiplicador >= anterior || numero * multiplicador >= anterior) return null
+      if (multiplicador === 1 && anterior > MIL) return null
+    }
+    soma += numero * multiplicador
+  }
+  return soma
+}
+
+function valorDoGrupo(grupo: string[]): number | null {
+  const posicaoDosReais = grupo.findIndex((p) => PALAVRAS_DE_REAIS.has(p))
+  const posicaoDosCentavos = grupo.findIndex((p) => PALAVRAS_DE_CENTAVOS.has(p))
+  if (grupo.filter((p) => PALAVRAS_DE_REAIS.has(p)).length > 1 || grupo.filter((p) => PALAVRAS_DE_CENTAVOS.has(p)).length > 1) return null
+
+  let partesDosReais: string[]
+  let centavos: string | null = null
+  if (posicaoDosCentavos > -1) {
+    if (posicaoDosCentavos !== grupo.length - 1) return null
+    centavos = grupo[posicaoDosCentavos - 1]
+    if (!/^\d+$/.test(centavos)) return null
+    const fimDosReais = posicaoDosReais > -1 ? posicaoDosReais : posicaoDosCentavos - 1
+    if (posicaoDosReais > -1 && posicaoDosReais !== posicaoDosCentavos - 2) return null
+    partesDosReais = grupo.slice(0, fimDosReais)
+  } else if (posicaoDosReais > -1) {
+    const depois = grupo.slice(posicaoDosReais + 1)
+    if (depois.length > 1 || (depois.length === 1 && !/^\d{1,2}$/.test(depois[0]))) return null
+    centavos = depois[0] ?? null
+    partesDosReais = grupo.slice(0, posicaoDosReais)
+  } else {
+    partesDosReais = grupo
+  }
+
+  const reais = partesDosReais.length > 0 ? somarTermos(partesDosReais) : 0
+  if (reais === null) return null
+  if (centavos !== null && partesDosReais.length > 0 && (!/^\d{1,2}$/.test(centavos) || !Number.isInteger(reais))) return null
+  const valor = Math.round((reais + (centavos !== null ? Number(centavos) / 100 : 0)) * 100) / 100
+  return valor > 0 ? valor : null
+}
+
 export function lerValorFalado(texto: string): number | null {
   const t = normalizar(texto).replace(/r\$\s*/g, '')
-  const padrao = /(\d[\d.,]*\d|\d)\s*(bilhoes|bilhao|milhoes|milhao|mil\b)?(?:\s+e\s+(\d[\d.,]*)\s*(mil\b)?)?(?:\s*reais)?(?:\s+e\s+(\d{1,2})\s*centavos?)?/g
-  for (const m of t.matchAll(padrao)) {
-    const antes = t.slice(Math.max(0, (m.index ?? 0) - 6), m.index ?? 0)
-    if (/\bitem\s*$/.test(antes)) continue
-    const base = numeroEscrito(m[1])
-    if (base === null) continue
-    let valor = base * (m[2] ? MULTIPLICADORES[m[2]] : 1)
-    if (m[3]) {
-      const extra = numeroEscrito(m[3])
-      if (extra !== null) valor += extra * (m[4] ? 1_000 : m[2] && MULTIPLICADORES[m[2]] > 1_000 ? 1_000 : 1)
-    }
-    if (m[5]) valor += Number(m[5]) / 100
-    valor = Math.round(valor * 100) / 100
-    if (valor > 0) return valor
-  }
-  return null
+  const grupos = gruposDeValor(t)
+  return grupos.length === 1 ? valorDoGrupo(grupos[0]) : null
 }
 
 function lerItem(t: string): number | null {
