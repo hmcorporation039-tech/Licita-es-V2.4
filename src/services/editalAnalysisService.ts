@@ -110,7 +110,8 @@ async function listarDocumentosDisponiveis(tender: Tender): Promise<DocumentoDis
       const raw = tender.rawJson as { anexos?: DocumentoDisponivel[] }
       return ordenarPorPrioridade(raw.anexos ?? [])
     }
-    case 'SISTEMA_S': {
+    case 'SISTEMA_S':
+    case 'INFRAERO': {
       const raw = tender.rawJson as { anexos?: unknown }
       return ordenarPorPrioridade(anexosBaixaveis(raw.anexos))
     }

@@ -18,6 +18,7 @@ export const FONTES_OFICIAIS: FonteOficial[] = [
   { nome: 'Querido Diário', descricao: 'Diários oficiais dos municípios', logo: { src: '/fontes/querido-diario.svg', largura: 119, altura: 36, alturaNaFaixa: 30 } },
   { nome: 'Novacap', descricao: 'Companhia Urbanizadora da Nova Capital, Brasília/DF' },
   { nome: 'FIEG', descricao: 'Federação das Indústrias do Estado de Goiás' },
+  { nome: 'Infraero', descricao: 'Empresa Brasileira de Infraestrutura Aeroportuária' },
 ]
 
 const ID_DO_LETREIRO = 'letreiro-das-fontes'
