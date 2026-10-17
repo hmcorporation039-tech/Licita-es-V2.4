@@ -3,6 +3,8 @@ export type ModalidadeFalada = 'PREGAO_ELETRONICO' | 'PREGAO_PRESENCIAL' | 'CONC
 export interface FiltrosDaBusca {
   q?: string
   uf?: string
+  ufs?: string[]
+  rotuloDoLocal?: string
   municipio?: string
   modalidade?: ModalidadeFalada
   situacao?: 'ABERTA'
@@ -28,6 +30,14 @@ const CAPITAIS: Array<[string, string, string]> = [
   ['campo grande', 'Campo Grande', 'MS'], ['palmas', 'Palmas', 'TO'], ['teresina', 'Teresina', 'PI'], ['sao luis', 'São Luís', 'MA'],
   ['natal', 'Natal', 'RN'], ['joao pessoa', 'João Pessoa', 'PB'], ['maceio', 'Maceió', 'AL'], ['aracaju', 'Aracaju', 'SE'],
   ['porto velho', 'Porto Velho', 'RO'], ['rio branco', 'Rio Branco', 'AC'], ['boa vista', 'Boa Vista', 'RR'], ['macapa', 'Macapá', 'AP'],
+]
+
+const REGIOES: Array<[RegExp, string, string[]]> = [
+  [/^centro[- ]?oeste$/, 'Centro-Oeste', ['DF', 'GO', 'MT', 'MS']],
+  [/^nordeste$/, 'Nordeste', ['AL', 'BA', 'CE', 'MA', 'PB', 'PE', 'PI', 'RN', 'SE']],
+  [/^sudeste$/, 'Sudeste', ['ES', 'MG', 'RJ', 'SP']],
+  [/^norte$/, 'Norte', ['AC', 'AP', 'AM', 'PA', 'RO', 'RR', 'TO']],
+  [/^sul$/, 'Sul', ['PR', 'RS', 'SC']],
 ]
 
 const SIGLAS = new Set(['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'])
@@ -102,19 +112,86 @@ function lerItem(t: string): number | null {
   return m ? Number(m[1]) : null
 }
 
-function acharEstado(t: string, original: string): { uf: string; trecho: RegExp } | null {
-  for (const [nome, uf] of ESTADOS) {
-    const re = new RegExp(`\\b(?:no|na|em|do|da|de|pro|pra|para o|para a)\\s+(?:estado (?:de |do |da )?)?${nome}\\b`)
-    if (re.test(t)) return { uf, trecho: re }
+const PREPOSICAO = '(?:no|na|nos|nas|em|do|da|dos|das|de|pro|pra|para o|para a|para)'
+const PREPOSICOES_DE_REGIAO = new Set(['no', 'na', 'nos', 'nas', 'em', 'pro', 'pra', 'para o', 'para a', 'para'])
+const NOMES_DE_LUGAR = [...ESTADOS.map(([nome]) => nome), 'centro[- ]?oeste', 'nordeste', 'sudeste', 'norte', 'sul']
+  .sort((a, b) => b.length - a.length)
+  .join('|')
+const UNIDADE = `(?:regiao\\s+)?(?:estado (?:de |do |da )?)?(?:${NOMES_DE_LUGAR}|[a-z]{2})`
+const PRIMEIRO_LUGAR = new RegExp(`\\b(${PREPOSICAO})\\s+(${UNIDADE})\\b`, 'g')
+const PROXIMO_LUGAR = new RegExp(`^\\s*(?:,|\\be\\b|\\bou\\b)\\s*(?:(${PREPOSICAO})\\s+)?(${UNIDADE})\\b`)
+const PARA_COM_ACENTO = /(^|[^\p{L}])pará($|[^\p{L}])/iu
+
+interface LugarFalado {
+  ufs: string[]
+  regiao?: string
+}
+
+function lerLugar(unidade: string, preposicao: string | undefined, continuacao: boolean, original: string): LugarFalado | null {
+  const comRegiao = /^regiao\s+/.test(unidade)
+  const nome = unidade.replace(/^regiao\s+/, '').replace(/^estado (?:de |do |da )?/, '')
+  const regiao = REGIOES.find(([re]) => re.test(nome))
+  if (regiao) {
+    const preposicaoAceita = comRegiao || continuacao || (preposicao !== undefined && PREPOSICOES_DE_REGIAO.has(preposicao))
+    return preposicaoAceita ? { ufs: regiao[2], regiao: regiao[1] } : null
   }
-  const sigla = t.match(/\b(?:no|na|em|do|da|de)\s+([a-z]{2})\b/g) ?? []
-  for (const trecho of sigla) {
-    const s = trecho.slice(-2).toUpperCase()
-    if (!SIGLAS.has(s)) continue
-    if (SIGLAS_QUE_SAO_PALAVRAS.has(s) && !new RegExp(`\\b${s}\\b`).test(original)) continue
-    return { uf: s, trecho: new RegExp(`\\b${trecho.replace(/\s+/g, '\\s+')}\\b`) }
+  if (comRegiao) return null
+  const estado = ESTADOS.find(([n]) => n === nome)
+  if (estado) {
+    if (estado[1] === 'PA' && !PARA_COM_ACENTO.test(original)) return null
+    return { ufs: [estado[1]] }
   }
-  return null
+  const sigla = nome.toUpperCase()
+  if (nome.length !== 2 || !SIGLAS.has(sigla)) return null
+  if (SIGLAS_QUE_SAO_PALAVRAS.has(sigla) && !new RegExp(`\\b${sigla}\\b`).test(original)) return null
+  return { ufs: [sigla] }
+}
+
+function escaparParaRegex(texto: string): string {
+  return texto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function acharLugares(t: string, original: string): { ufs: string[]; regioes: string[]; trechos: RegExp[] } {
+  const ufs: string[] = []
+  const regioes: string[] = []
+  const trechos: RegExp[] = []
+  const somar = (lugar: LugarFalado) => {
+    for (const uf of lugar.ufs) if (!ufs.includes(uf)) ufs.push(uf)
+    if (lugar.regiao && !regioes.includes(lugar.regiao)) regioes.push(lugar.regiao)
+  }
+  const procura = new RegExp(PRIMEIRO_LUGAR.source, 'g')
+  let encontrado: RegExpExecArray | null
+  while ((encontrado = procura.exec(t)) !== null) {
+    const primeiro = lerLugar(encontrado[2], encontrado[1], false, original)
+    if (!primeiro) {
+      procura.lastIndex = encontrado.index + 1
+      continue
+    }
+    somar(primeiro)
+    let fim = encontrado.index + encontrado[0].length
+    for (;;) {
+      const proximo = PROXIMO_LUGAR.exec(t.slice(fim))
+      if (!proximo) break
+      const lugar = lerLugar(proximo[2], proximo[1], true, original)
+      if (!lugar) break
+      somar(lugar)
+      fim += proximo[0].length
+    }
+    trechos.push(new RegExp(`\\b${escaparParaRegex(t.slice(encontrado.index, fim))}\\b`))
+    procura.lastIndex = fim
+  }
+  return { ufs, regioes, trechos }
+}
+
+function juntarComE(itens: string[]): string {
+  return itens.length <= 1 ? (itens[0] ?? '') : `${itens.slice(0, -1).join(', ')} e ${itens[itens.length - 1]}`
+}
+
+function rotuloDoLugar(ufs: string[], regioes: string[]): string {
+  const ufsDasRegioes = new Set(REGIOES.filter(([, nome]) => regioes.includes(nome)).flatMap(([, , siglas]) => siglas))
+  const avulsas = ufs.filter((uf) => !ufsDasRegioes.has(uf))
+  const partes = [regioes.length ? `no ${juntarComE(regioes)}` : '', avulsas.length ? `em ${juntarComE(avulsas)}` : ''].filter(Boolean)
+  return partes.join(' e ')
 }
 
 function palavrasDoObjeto(original: string, removidos: RegExp[]): string {
@@ -164,10 +241,12 @@ export function interpretarPedido(texto: string, contexto: 'busca' | 'pregao' = 
     }
   }
   if (!filtros.uf) {
-    const estado = acharEstado(t, original)
-    if (estado) {
-      filtros.uf = estado.uf
-      removidos.push(estado.trecho)
+    const lugares = acharLugares(t, original)
+    removidos.push(...lugares.trechos)
+    if (lugares.ufs.length === 1 && lugares.regioes.length === 0) filtros.uf = lugares.ufs[0]
+    if (lugares.ufs.length > 1 || lugares.regioes.length > 0) {
+      filtros.ufs = lugares.ufs
+      filtros.rotuloDoLocal = rotuloDoLugar(lugares.ufs, lugares.regioes)
     }
   }
 
@@ -189,14 +268,14 @@ export function interpretarPedido(texto: string, contexto: 'busca' | 'pregao' = 
   const objeto = palavrasDoObjeto(original, removidos)
   if (objeto) filtros.q = objeto
 
-  if (!filtros.q && !filtros.uf && !filtros.modalidade) {
+  if (!filtros.q && !filtros.uf && !filtros.ufs && !filtros.modalidade) {
     return { acao: 'desconhecida', resumo: 'Não entendi o que buscar. Diga, por exemplo: "licitação de estrutura metálica no DF".' }
   }
 
   const descricao = [
     filtros.q ? `"${filtros.q}"` : 'licitações',
     partes.length ? `em ${partes.join(', ')}` : '',
-    filtros.municipio ? `em ${filtros.municipio}/${filtros.uf}` : filtros.uf ? `na UF ${filtros.uf}` : '',
+    filtros.municipio ? `em ${filtros.municipio}/${filtros.uf}` : filtros.rotuloDoLocal ? filtros.rotuloDoLocal : filtros.uf ? `na UF ${filtros.uf}` : '',
     filtros.situacao ? 'abertas' : '',
   ]
     .filter(Boolean)

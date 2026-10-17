@@ -314,6 +314,8 @@ export type ModalidadeFalada = 'PREGAO_ELETRONICO' | 'PREGAO_PRESENCIAL' | 'CONC
 export interface FiltrosDaBela {
   q?: string
   uf?: string
+  ufs?: string[]
+  rotuloDoLocal?: string
   municipio?: string
   modalidade?: ModalidadeFalada
   situacao?: 'ABERTA'
