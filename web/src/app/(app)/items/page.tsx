@@ -49,7 +49,7 @@ type Par<T> = readonly [T, Dispatch<SetStateAction<T>>]
 
 type ErrosDosCampos = Record<string, string>
 
-const CAMPOS_COM_ERRO_PROPRIO = ['name', 'keywords', 'catmatCodes', 'catserCodes', 'ufs', 'valorMin', 'valorMax', 'orgaos', 'uasgCodes', 'modalidades', 'raioKm', 'origemMunicipio', 'origemUf']
+const CAMPOS_COM_ERRO_PROPRIO = ['name', 'keywords', 'palavrasDeExclusao', 'catmatCodes', 'catserCodes', 'ufs', 'valorMin', 'valorMax', 'orgaos', 'uasgCodes', 'modalidades', 'raioKm', 'origemMunicipio', 'origemUf']
 
 const MIN_TAM_PALAVRA_CHAVE = 2
 
@@ -109,6 +109,7 @@ function semCampo(erros: ErrosDosCampos, campo: string): ErrosDosCampos {
 interface CamposDoItem {
   name: Par<string>
   keywords: Par<string>
+  palavrasDeExclusao: Par<string>
   catmatCodes: Par<string>
   catserCodes: Par<string>
   modalidades: Par<string[]>
@@ -147,6 +148,7 @@ function FormularioDoItem({
 }) {
   const [name, setName] = campos.name
   const [keywords, setKeywords] = campos.keywords
+  const [palavrasDeExclusao, setPalavrasDeExclusao] = campos.palavrasDeExclusao
   const [catmatCodes, setCatmatCodes] = campos.catmatCodes
   const [catserCodes, setCatserCodes] = campos.catserCodes
   const [modalidades, setModalidades] = campos.modalidades
@@ -174,6 +176,14 @@ function FormularioDoItem({
       <Field label="Palavras-chave" hint="Separadas por vírgula, com ao menos 2 letras cada. Ex.: notebook, computador portátil." error={erros.keywords} className="sm:col-span-2">
         <Input placeholder="notebook, computador" value={keywords} onChange={aoMudar('keywords', setKeywords)} />
       </Field>
+      <Field
+        label="Não mostrar quando aparecer"
+        hint="Opcional. Palavras que tiram o resultado, separadas por vírgula. Ex.: para esquadria, use serra; para aeroporto, use passagem aérea."
+        error={erros.palavrasDeExclusao}
+        className="sm:col-span-2"
+      >
+        <Input placeholder="serra, passagem aérea" value={palavrasDeExclusao} onChange={aoMudar('palavrasDeExclusao', setPalavrasDeExclusao)} />
+      </Field>
 
       <div className="flex min-w-0 flex-col gap-2">
         <Field label="Buscar no catálogo CATMAT" hint="Digite parte da descrição (ex.: cimento) e escolha na lista.">
@@ -192,7 +202,7 @@ function FormularioDoItem({
         </Field>
       </div>
 
-      <Field label="UFs" hint="Siglas de 2 letras separadas por vírgula. Vazio = nacional." error={erros.ufs} className="sm:col-span-2">
+      <Field label="Estados (UF)" hint="Siglas separadas por vírgula, ex.: DF, GO. Deixe vazio para buscar no Brasil todo." error={erros.ufs} className="sm:col-span-2">
         <Input placeholder="DF, SP" value={ufs} onChange={aoMudar('ufs', setUfs)} />
       </Field>
       <Field
@@ -263,6 +273,8 @@ export default function ItemsPage() {
 
   const [name, setName] = useState('')
   const [keywords, setKeywords] = useState('')
+  const [palavrasDeExclusao, setPalavrasDeExclusao] = useState('')
+  const [ufDaEmpresa, setUfDaEmpresa] = useState<string | null>(null)
   const [catmatCodes, setCatmatCodes] = useState('')
   const [catserCodes, setCatserCodes] = useState('')
   const [modalidades, setModalidades] = useState<string[]>([])
@@ -286,6 +298,7 @@ export default function ItemsPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [editKeywords, setEditKeywords] = useState('')
+  const [editPalavrasDeExclusao, setEditPalavrasDeExclusao] = useState('')
   const [editCatmatCodes, setEditCatmatCodes] = useState('')
   const [editCatserCodes, setEditCatserCodes] = useState('')
   const [editModalidades, setEditModalidades] = useState<string[]>([])
@@ -318,6 +331,18 @@ export default function ItemsPage() {
     if (user) loadItems()
   }, [user])
 
+  useEffect(() => {
+    if (!user) return
+    api
+      .get<{ baseUf: string | null }>('/api/company')
+      .then((empresa) => {
+        const uf = empresa.baseUf?.trim().toUpperCase() || null
+        setUfDaEmpresa(uf)
+        if (uf) setUfs((atual) => atual || uf)
+      })
+      .catch(() => setUfDaEmpresa(null))
+  }, [user])
+
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
     if (!user) return
@@ -330,6 +355,7 @@ export default function ItemsPage() {
       await api.post('/api/monitored-items', {
         name,
         keywords: separarLista(keywords),
+        palavrasDeExclusao: separarLista(palavrasDeExclusao),
         catmatCodes: catmatCodes.split(',').map((c) => c.trim()).filter(Boolean),
         catserCodes: catserCodes.split(',').map((c) => c.trim()).filter(Boolean),
         modalidades,
@@ -344,12 +370,13 @@ export default function ItemsPage() {
       })
       setName('')
       setKeywords('')
+      setPalavrasDeExclusao('')
       setCatmatCodes('')
       setCatserCodes('')
       setModalidades([])
       setOrgaos('')
       setUasgSelected([])
-      setUfs('')
+      setUfs(ufDaEmpresa ?? '')
       setValorMin('')
       setValorMax('')
       setRaioKm('')
@@ -371,6 +398,7 @@ export default function ItemsPage() {
     setErrosEditados({})
     setEditName(item.name)
     setEditKeywords(item.keywords.join(', '))
+    setEditPalavrasDeExclusao((item.palavrasDeExclusao ?? []).join(', '))
     setEditCatmatCodes(item.catmatCodes.join(', '))
     setEditCatserCodes(item.catserCodes.join(', '))
     setEditModalidades(item.modalidades)
@@ -407,6 +435,7 @@ export default function ItemsPage() {
       await api.patch(`/api/monitored-items/${itemId}`, {
         name: editName,
         keywords: separarLista(editKeywords),
+        palavrasDeExclusao: separarLista(editPalavrasDeExclusao),
         catmatCodes: editCatmatCodes.split(',').map((c) => c.trim()).filter(Boolean),
         catserCodes: editCatserCodes.split(',').map((c) => c.trim()).filter(Boolean),
         modalidades: editModalidades,
@@ -465,6 +494,7 @@ export default function ItemsPage() {
   const camposNovos: CamposDoItem = {
     name: [name, setName],
     keywords: [keywords, setKeywords],
+    palavrasDeExclusao: [palavrasDeExclusao, setPalavrasDeExclusao],
     catmatCodes: [catmatCodes, setCatmatCodes],
     catserCodes: [catserCodes, setCatserCodes],
     modalidades: [modalidades, setModalidades],
@@ -481,6 +511,7 @@ export default function ItemsPage() {
   const camposEditados: CamposDoItem = {
     name: [editName, setEditName],
     keywords: [editKeywords, setEditKeywords],
+    palavrasDeExclusao: [editPalavrasDeExclusao, setEditPalavrasDeExclusao],
     catmatCodes: [editCatmatCodes, setEditCatmatCodes],
     catserCodes: [editCatserCodes, setEditCatserCodes],
     modalidades: [editModalidades, setEditModalidades],
@@ -564,6 +595,13 @@ export default function ItemsPage() {
                           ))}
                         </Linha>
                       )}
+                      {(item.palavrasDeExclusao ?? []).length > 0 && (
+                        <Linha rotulo="Não mostrar">
+                          {(item.palavrasDeExclusao ?? []).map((k) => (
+                            <StatusTag key={k}>{k}</StatusTag>
+                          ))}
+                        </Linha>
+                      )}
                       {item.catmatCodes.length > 0 && (
                         <Linha rotulo="CATMAT">
                           {item.catmatCodes.map((c) => (
@@ -593,16 +631,20 @@ export default function ItemsPage() {
                             <span className="font-mono">{item.raioKm} km</span> de {item.origemMunicipio}/{item.origemUf}
                           </span>
                         </Linha>
+                      ) : item.ufs.length > 0 ? (
+                        <Linha rotulo="Estados">
+                          {item.ufs.map((u) => (
+                            <StatusTag key={u} mono>
+                              {u}
+                            </StatusTag>
+                          ))}
+                        </Linha>
                       ) : (
-                        item.ufs.length > 0 && (
-                          <Linha rotulo="UFs">
-                            {item.ufs.map((u) => (
-                              <StatusTag key={u} mono>
-                                {u}
-                              </StatusTag>
-                            ))}
-                          </Linha>
-                        )
+                        <Linha rotulo="Estados">
+                          <StatusTag tone="warn" title="Este item busca em todos os estados. Use Editar para escolher os estados.">
+                            Brasil todo
+                          </StatusTag>
+                        </Linha>
                       )}
                       {item.orgaos.length > 0 && <Linha rotulo="Órgãos">{item.orgaos.join(', ')}</Linha>}
                       {faixaDeValorBr(item.valorMin, item.valorMax) && (
