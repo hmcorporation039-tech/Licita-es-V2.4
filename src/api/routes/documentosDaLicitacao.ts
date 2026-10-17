@@ -107,13 +107,18 @@ async function lancesFinais(companyId: string, tenderId: string, itens: Array<{ 
   const porItem: Record<string, number> = {}
   for (const it of itens) {
     const lance = ultimoDe(it.id)
-    if (lance) porItem[it.id] = acompanhamento.criterio === 'UNITARIO' ? Number(lance.valor) * it.quantidade : Number(lance.valor)
+    if (lance) porItem[it.id] = acompanhamento.criterio === 'UNITARIO' ? Math.round(Number(lance.valor) * it.quantidade * 100) / 100 : Number(lance.valor)
   }
-  const global = acompanhamento.valorFinal !== null ? Number(acompanhamento.valorFinal) : ultimoDe('global') ? Number(ultimoDe('global')!.valor) : null
+  const valorFinal = acompanhamento.valorFinal !== null ? Number(acompanhamento.valorFinal) : null
+  const ultimoGlobal = ultimoDe('global')
+  const global = valorFinal ?? (ultimoGlobal ? Number(ultimoGlobal.valor) : null)
   if (global === null && Object.keys(porItem).length === 0) {
     throw new ApiError(409, 'Registre seus lances ou o resultado em "Pregão com a Bela" para gerar a proposta readequada.')
   }
-  return itens.length === 1 && global !== null ? { global, porItem: {} } : { global, porItem }
+  if (itens.length !== 1) return { global, porItem }
+  const maisRecente = acompanhamento.lances.find((l) => l.alvo === 'global' || l.alvo === itens[0].id)
+  const usarGlobal = valorFinal !== null || (global !== null && maisRecente?.alvo === 'global')
+  return usarGlobal ? { global, porItem: {} } : { global: null, porItem }
 }
 
 const textoCurto = (v: string | undefined) => {
@@ -198,7 +203,7 @@ documentosDaLicitacaoRouter.post(
       validadeDias: pedido.validadeDias,
       prazoDeEntrega: prazoDoEstudo || textoCurto(analise?.prazoEntrega),
       condicoesDePagamento: textoCurto(analise?.pagamento),
-      ...(readequacao ? { lanceFinal: readequacao.total } : {}),
+      ...(readequacao ? { lanceFinal: readequacao.lanceOfertado ?? readequacao.total } : {}),
     })
     const pendencias = readequacao ? [...readequacao.pendencias, ...r.pendencias.filter((p) => !p.startsWith('preço de venda'))] : [...r.pendencias]
     const estimado = ctx.tender.valorEstimado != null ? Number(ctx.tender.valorEstimado) : null

@@ -58,7 +58,7 @@ export function propostaComercial(
     { tipo: 'paragrafo', texto: `Ao(À) ${certame.orgao}` },
     { tipo: 'paragrafo', texto: `Referência: ${certame.referencia}${sessao}.` },
     ...(readequada
-      ? [{ tipo: 'paragrafo' as const, texto: `Proposta readequada ao valor final de R$ ${formatarReais(opcoes.lanceFinal!)} (${reaisPorExtenso(opcoes.lanceFinal!)}), ofertado na etapa de lances, com os preços unitários ajustados proporcionalmente.` }]
+      ? [{ tipo: 'paragrafo' as const, texto: `Proposta readequada ao valor final de R$ ${formatarReais(opcoes.lanceFinal!)} (${reaisPorExtenso(opcoes.lanceFinal!)}), ofertado na etapa de lances, com os preços unitários ajustados proporcionalmente.${total < opcoes.lanceFinal! ? ` Como os preços unitários são arredondados para centavos, o valor global readequado é de R$ ${formatarReais(total)} (${reaisPorExtenso(total)}), R$ ${formatarReais(arred(opcoes.lanceFinal! - total))} abaixo do lance ofertado, sem ultrapassá-lo.` : ''}` }]
       : []),
     { tipo: 'paragrafo', texto: `Objeto: ${certame.objeto}` },
     {

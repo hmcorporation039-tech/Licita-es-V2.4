@@ -144,6 +144,32 @@ function rotuloCurto(alvo: AlvoDoPregao): string {
   return `Item ${alvo.numero ?? "?"}`;
 }
 
+function baseDoValor(alvo: AlvoDoPregao, criterio: CriterioDoPregao): string {
+  if (alvo.id === ALVO_GLOBAL) return "total da proposta, todos os itens";
+  const quantidade = alvo.quantidade.toLocaleString("pt-BR");
+  return criterio === "UNITARIO"
+    ? `por unidade · ${quantidade} un`
+    : `total do item · ${quantidade} un`;
+}
+
+function valorFinalSugerido(painel: PainelDoPregao): number | null {
+  const meus = painel.lances.filter((l) => l.origem === "MEU_LANCE");
+  const ultimo = meus[0];
+  if (!ultimo) return null;
+  if (ultimo.alvo === ALVO_GLOBAL) return ultimo.valor;
+  const itens = painel.alvos.filter((a) => a.id !== ALVO_GLOBAL);
+  let total = 0;
+  for (const item of itens) {
+    const lance = meus.find((l) => l.alvo === item.id);
+    if (!lance) return null;
+    total +=
+      painel.config.criterio === "UNITARIO"
+        ? lance.valor * item.quantidade
+        : lance.valor;
+  }
+  return Math.round(total * 100) / 100;
+}
+
 function mensagemDeErro(e: unknown, padrao: string): string {
   return e instanceof ApiRequestError ? e.message : padrao;
 }
@@ -253,11 +279,7 @@ function ResumoDoAlvo({
         <Indicador
           rotulo="Preço proposto"
           valor={alvo.precoProposto !== null ? brl(alvo.precoProposto) : "—"}
-          detalhe={
-            alvo.id !== ALVO_GLOBAL && painel.config.criterio === "UNITARIO"
-              ? "por unidade"
-              : undefined
-          }
+          detalhe={baseDoValor(alvo, painel.config.criterio)}
         />
         <Indicador
           rotulo="Mínimo com margem"
@@ -526,15 +548,48 @@ function Historico({
   );
 }
 
+function CriterioDoLance({
+  alvo,
+  criterio,
+  salvando,
+  desabilitado,
+  onMudar,
+}: {
+  alvo: AlvoDoPregao;
+  criterio: CriterioDoPregao;
+  salvando: boolean;
+  desabilitado: boolean;
+  onMudar: (criterio: CriterioDoPregao) => void;
+}) {
+  return (
+    <div className="-mt-2 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+      <p className="min-w-0 break-words text-xs text-muted">{alvo.rotulo}</p>
+      <Field
+        label="O portal mostra o lance deste item"
+        hint={`Quantidade: ${alvo.quantidade.toLocaleString("pt-BR")} un`}
+      >
+        <Select
+          value={criterio}
+          onChange={(e) => onMudar(e.target.value as CriterioDoPregao)}
+          disabled={desabilitado || salvando}
+          aria-label="Critério do lance por item"
+          className="h-11! sm:h-10!"
+        >
+          <option value="UNITARIO">Por unidade (unitário)</option>
+          <option value="TOTAL_DO_ITEM">Total do item (unitário × quantidade)</option>
+        </Select>
+      </Field>
+    </div>
+  );
+}
+
 function Configuracao({
   config,
-  temItens,
   salvando,
   desabilitado,
   onSalvar,
 }: {
   config: ConfigDoPregao;
-  temItens: boolean;
   salvando: boolean;
   desabilitado: boolean;
   onSalvar: (c: {
@@ -547,7 +602,6 @@ function Configuracao({
     String(config.decrementoPct).replace(".", ","),
   );
   const [maxLances, setMaxLances] = useState(String(config.maxLances));
-  const [criterio, setCriterio] = useState<CriterioDoPregao>(config.criterio);
   const [erro, setErro] = useState<string | null>(null);
 
   function salvar(e: FormEvent) {
@@ -567,7 +621,7 @@ function Configuracao({
       return;
     }
     setErro(null);
-    onSalvar({ decrementoPct, maxLances: maximo, criterio });
+    onSalvar({ decrementoPct, maxLances: maximo, criterio: config.criterio });
   }
 
   return (
@@ -610,22 +664,6 @@ function Configuracao({
             />
           </Field>
         </div>
-        {temItens && (
-          <Field
-            label="Critério do lance por item"
-            hint="Como o portal mostra o valor de cada item"
-          >
-            <Select
-              value={criterio}
-              onChange={(e) => setCriterio(e.target.value as CriterioDoPregao)}
-              disabled={desabilitado}
-              className="h-11! sm:h-10!"
-            >
-              <option value="UNITARIO">Unitário</option>
-              <option value="TOTAL_DO_ITEM">Total do item</option>
-            </Select>
-          </Field>
-        )}
         <FormError className="text-xs">{erro}</FormError>
         <Button
           type="submit"
@@ -698,7 +736,10 @@ function Encerramento({
               )}
             </Select>
           </Field>
-          <Field label="Valor final" hint="Sugerido: seu último lance">
+          <Field
+            label="Valor final global (total)"
+            hint="Total da proposta, não o preço unitário. Sugerido a partir dos seus últimos lances."
+          >
             <Input
               inputMode="decimal"
               value={valor}
@@ -739,7 +780,7 @@ export default function PregaoComABelaPage({
     null,
   );
   const [tentativa, setTentativa] = useState(0);
-  const [alvoId, setAlvoId] = useState(ALVO_GLOBAL);
+  const [alvoId, setAlvoId] = useState<string | null>(null);
   const [lanceDigitado, setLanceDigitado] = useState("");
   const [enviando, setEnviando] = useState<Acao | null>(null);
   const [erroDaAcao, setErroDaAcao] = useState<string | null>(null);
@@ -811,16 +852,18 @@ export default function PregaoComABelaPage({
   }
 
   const painelAtual = painel;
+  const alvosDosItens = painelAtual.alvos.filter((a) => a.id !== ALVO_GLOBAL);
+  const alvoPadrao =
+    alvosDosItens.length === 1 ? alvosDosItens[0] : painelAtual.alvos[0];
   const alvo =
-    painelAtual.alvos.find((a) => a.id === alvoId) ?? painelAtual.alvos[0];
+    painelAtual.alvos.find((a) => a.id === alvoId) ?? alvoPadrao;
   const encerrado = Boolean(painelAtual.config.encerradoEm);
   const lancesDoAlvo = painelAtual.lances.filter((l) => l.alvo === alvo.id);
   const meuLanceAnotado =
     lancesDoAlvo[0]?.origem === "MEU_LANCE" ? lancesDoAlvo[0].valor : null;
-  const meuUltimoLance =
-    painelAtual.lances.find(
-      (l) => l.origem === "MEU_LANCE" && l.alvo === ALVO_GLOBAL,
-    ) ?? painelAtual.lances.find((l) => l.origem === "MEU_LANCE");
+  const meuUltimoLance = painelAtual.lances.find(
+    (l) => l.origem === "MEU_LANCE",
+  );
   const ocupado = enviando !== null;
 
   async function executar(
@@ -1076,16 +1119,26 @@ export default function PregaoComABelaPage({
             desabilitado={ocupado}
           />
           {alvo.id !== ALVO_GLOBAL && (
-            <p className="-mt-2 break-words text-xs text-muted">
-              {alvo.rotulo}
-            </p>
+            <CriterioDoLance
+              alvo={alvo}
+              criterio={config.criterio}
+              salvando={enviando === "config"}
+              desabilitado={encerrado || ocupado}
+              onMudar={(criterio) =>
+                void salvarConfig({
+                  decrementoPct: config.decrementoPct,
+                  maxLances: config.maxLances,
+                  criterio,
+                })
+              }
+            />
           )}
 
           <ResumoDoAlvo alvo={alvo} painel={painelAtual} />
 
           <Panel
             title="Melhor lance agora"
-            description="Digite o valor que aparece no portal ou fale com a Bela."
+            description={`Digite o valor que aparece no portal (${baseDoValor(alvo, config.criterio)}) ou fale com a Bela.`}
           >
             <form
               onSubmit={aoEnviarLance}
@@ -1179,7 +1232,6 @@ export default function PregaoComABelaPage({
           <Configuracao
             key={`${config.decrementoPct}-${config.maxLances}-${config.criterio}`}
             config={config}
-            temItens={painelAtual.alvos.length > 1}
             salvando={enviando === "config"}
             desabilitado={encerrado}
             onSalvar={salvarConfig}
@@ -1187,7 +1239,7 @@ export default function PregaoComABelaPage({
           {!encerrado && (
             <Encerramento
               key={meuUltimoLance?.id ?? "sem-lance"}
-              sugestaoDeValor={meuUltimoLance?.valor ?? null}
+              sugestaoDeValor={valorFinalSugerido(painelAtual)}
               salvando={enviando === "resultado"}
               onEncerrar={encerrar}
             />
