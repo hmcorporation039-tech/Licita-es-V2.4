@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import type { NormalizedTender } from '../../src/types'
 
 const URL_BANCO = process.env.TEST_DATABASE_URL
@@ -104,5 +104,66 @@ rodar('Querido Diário — duplicidade com o PNCP e republicação', () => {
     const separado = (await servico.prepararRepublicacao(outroObjeto))!
     expect(separado.fonteId).not.toBe(original.fonteId)
     expect((await tenders.saveTender(separado)).isNew).toBe(true)
+  })
+
+  it('a coleta por UF descarta o que o PNCP já trouxe, grava o aviso novo e não relê o diário', async () => {
+    const coleta = await import('../../src/services/queridoDiarioColeta')
+    const txtUrl = `https://data.queridodiario.ok.org.br/${ibge}/2026-10-16/${sufixo}.txt`
+    const texto = `AVISO DE LICITAÇÃO
+PREGÃO PRESENCIAL Nº 065/2026
+OBJETO: Aquisição de kits de materiais de uso pessoal destinados aos professores ${sufixo}.
+DATA DA SESSÃO: ${dias(10).toISOString().slice(8, 10)}/${dias(10).toISOString().slice(5, 7)}/${dias(10).getUTCFullYear()} às 09h00.
+...........................................................................................................
+AVISO DE LICITAÇÃO
+PREGÃO ELETRÔNICO Nº 077/2026
+OBJETO: Contratação de empresa para pavimentação asfáltica de vias urbanas ${sufixo}.
+...........................................................................................................
+`
+    const lidos = new Set<string>()
+    const baixarTexto = vi.fn(async () => texto)
+    const dep: import('../../src/services/queridoDiarioColeta').DependenciasDaColeta = {
+      buscarCidades: async () => [{ territory_id: ibge, territory_name: `Cidade ${sufixo}`, state_code: 'BA' }],
+      buscarDiarios: async () => ({
+        total_gazettes: 1,
+        gazettes: [{ territory_id: ibge, territory_name: `Cidade ${sufixo}`, state_code: 'BA', date: dias(-1).toISOString().slice(0, 10), url: txtUrl.replace('.txt', '.pdf'), txt_url: txtUrl }],
+      }),
+      baixarTexto,
+      existeNoPncp: servico.existeNoPncp,
+      prepararRepublicacao: servico.prepararRepublicacao,
+      salvarLote: async (lote) => {
+        let totalNew = 0
+        let totalDupes = 0
+        let totalUpdated = 0
+        for (const t of lote) {
+          const salvo = await tenders.saveTender(t)
+          if (salvo.isNew) totalNew++
+          else {
+            totalDupes++
+            if (salvo.changed) totalUpdated++
+          }
+        }
+        return { totalNew, totalDupes, totalUpdated }
+      },
+      memoria: {
+        jaLidos: async (urls) => new Set(urls.filter((u) => lidos.has(u))),
+        marcarLido: async (url) => {
+          lidos.add(url)
+        },
+      },
+      esperar: async () => undefined,
+      agora: () => agora.getTime(),
+    }
+    const janela = { publicadoDesde: dias(-5).toISOString().slice(0, 10), publicadoAte: agora.toISOString().slice(0, 10) }
+
+    const primeira = await coleta.coletarQueridoDiario(dep, janela)
+    expect(primeira.porUf).toEqual([expect.objectContaining({ uf: 'BA', diariosLidos: 1, avisos: 2, novos: 1, duplicadosDoPncp: 1 })])
+    const gravado = await tenders.prisma.tender.findUnique({ where: { fonteId: `QD-${ibge}:PREGAO:77-2026` } })
+    expect(gravado?.fonte).toBe('QUERIDO_DIARIO')
+    expect(await tenders.prisma.tender.findUnique({ where: { fonteId: `QD-${ibge}:PREGAO:65-2026` } })).toBeNull()
+
+    const segunda = await coleta.coletarQueridoDiario(dep, janela)
+    expect(baixarTexto).toHaveBeenCalledTimes(1)
+    expect(segunda.jaLidosAntes).toBe(1)
+    expect(segunda.totalNew).toBe(0)
   })
 })

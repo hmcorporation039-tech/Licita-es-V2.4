@@ -1,6 +1,7 @@
 import { ModalidadeEnum, NormalizedTender } from '../types'
 import { safeHttpUrl } from '../lib/html'
 import { getMunicipioByIbge } from '../lib/geoService'
+import { horaDeBrasilia } from '../lib/dataDeBrasilia'
 
 export interface GazetaQueridoDiario {
   territory_id: string
@@ -53,7 +54,6 @@ const TAMANHO_MAXIMO_DE_LINHA_REPETIDA = 150
 const REPETICOES_DE_LINHA_DE_PAGINA = 3
 const LINHAS_OLHADAS_ANTES_DO_AVISO = 8
 const DIAS_MAXIMOS_ATE_A_SESSAO = 400
-const HORAS_DE_BRASILIA_PARA_UTC = 3
 const DIA_MS = 86_400_000
 
 const MESES: Record<string, number> = {
@@ -71,8 +71,10 @@ const MESES: Record<string, number> = {
   DEZEMBRO: 12,
 }
 
-const INICIO_DE_AVISO =
-  /^AVISO DE (?:(?:ABERTURA|PUBLICACAO|REABERTURA|REPUBLICACAO) DE )?(?:LICITACAO|PREGAO|EDITAL|CHAMAMENTO|CONTRATACAO DIRETA|DISPENSA|CREDENCIAMENTO|CONCORRENCIA|TOMADA DE PRECOS?|LEILAO)\b/
+const MODALIDADES_DO_TITULO = String.raw`(?:LICITACAO|PREGAO|EDITAL|CHAMAMENTO|CHAMADA PUBLICA|CONTRATACAO DIRETA|DISPENSA|CREDENCIAMENTO|CONCORRENCIA|TOMADA DE PRECOS?|LEILAO|COTACAO)`
+const INICIO_DE_AVISO = new RegExp(
+  String.raw`^(?:(?:EXTRATO\s*(?:[-–—:]\s*|D[OE]\s+)?)?AVISO DE (?:(?:ABERTURA|PUBLICACAO|REABERTURA|REPUBLICACAO|RETOMADA) DE )?${MODALIDADES_DO_TITULO}\b|EXTRATO D[OE] EDITAL D[EO] ${MODALIDADES_DO_TITULO}\b|TERMO DE ABERTURA(?: D[EO] ${MODALIDADES_DO_TITULO}\b)?$)`
+)
 
 const COMPLEMENTO_ACEITO_EM_TITULO_MISTO = /^(?:$|\s*[-–—:(]|\s*N\s*[º°O.]|\.\s+(?:A|O|AS|OS)\s)/
 
@@ -82,6 +84,8 @@ const FIM_DE_BLOCO_EM_MAIUSCULAS =
 const ROTULO_DE_SECAO =
   /^(?:AVISOS? DE [A-Z ]{3,40}|EXTRATOS?(?: DE [A-Z ]{0,40})?|SUSPENSAO|SUSPENSOES|REVOGACAO|ANULACAO|HOMOLOGACAO.*|ADJUDICACAO.*|RESULTADOS?.*|RATIFICACAO|RATIFICACOES|PORTARIAS?|DECRETOS?|LEIS?|RESOLUCOES?|EDITAIS|ATOS OFICIAIS|OUTROS ATOS OFICIAIS|LICITACOES E CONTRATOS|LICITACOES|CONTRATOS?|TERMOS? ADITIVOS?|ERRATAS?|CONVOCACOES|ATAS?(?: DE [A-Z ]{0,40})?|DIVERSOS)$/
 
+const CONTRATACAO_JA_DEFINIDA = /\bRATIFIC|\bEM PROL D[AO] EMPRESA\b|\bCONTRATAD[AO]\s*:/
+
 const SITUACAO_QUE_DESCARTA =
   /SUSPENS|REVOGA|ANULA(?:CAO|DA|DO)|ADIAMENTO|ADIAD|RESULTADO|HOMOLOGA|ADJUDICA|RETIFICA|ERRATA|DESERT|FRACASSAD|CANCELAMENTO|CANCELAD|PRORROGACAO|PRORROGAD|IMPUGNACAO|RATIFICA/
 
@@ -89,6 +93,9 @@ const ROTULO_DO_OBJETO = /\bOBJETO(?: DA LICITACAO| DO CERTAME| DA CONTRATACAO| 
 const OBJETO_IMPLICITO =
   /\b(?:O OBJETO D[AE] PRESENTE [A-Z ]{3,30}? E|CUJO OBJETO(?: E| SERA| CONSISTE EM)?|TENDO (?:COMO|POR) OBJETO|COM O OBJETIVO DE|QUE OBJETIVA|OBJETIVANDO|VISANDO)\s*(?:[:\-–]\s*)?(?:(?:A|O|AS|OS|AO|AOS)\s+)?/
 const OBJETO_LOGO_APOS_O_NUMERO = /^\s*(?:[:\-–—]\s*(?=\p{Lu})|(?=[“"]))/u
+const OBJETO_PELA_FINALIDADE =
+  /\b(?:PARA|CONVENIENCIA\s+E\s+NECESSIDADE\s+D[AEO])\s+(?:(?:O|A)\s+)?(?=(?:CREDENCIAMENTO|CONTRATACAO|AQUISICAO|PRESTACAO|EXECUCAO|FORNECIMENTO|LOCACAO|REGISTRO\s+DE\s+PRECOS?|SELECAO)\b)/
+const FIM_DO_OBJETO_PELA_FINALIDADE = /,\s*(?:CONFORME|MEDIANTE|NOS TERMOS|SOLICITANDO|EM CONFORMIDADE)\b/
 
 const ROTULOS_QUE_ENCERRAM_O_OBJETO = [
   'DATA',
@@ -160,7 +167,7 @@ const PALAVRAS_DO_QUALIFICADOR = [
   'PARA REGISTRO DE PRECOS?',
   'REGISTRO DE PRECOS?',
   'DE LICITACAO',
-  'PUBLICO',
+  'PUBLIC[OA]',
   'NA FORMA ELETRONICA',
   'FORMA ELETRONICA',
   'MODALIDADE',
@@ -168,7 +175,7 @@ const PALAVRAS_DO_QUALIFICADOR = [
 const QUALIFICADOR = String.raw`((?:\s*[-–,]?\s*\(?\s*(?:${PALAVRAS_DO_QUALIFICADOR.join('|')})\s*\)?)*)`
 
 const MODALIDADE_POR_EXTENSO = new RegExp(
-  String.raw`\b(PREGAO|CONCORRENCIA|DISPENSA|TOMADA\s+DE\s+PRECOS?|CREDENCIAMENTO|CHAMAMENTO\s+PUBLICO|LEILAO|CONVITE)\b${QUALIFICADOR}\s*[-–,]?\s*${MARCADOR_DE_NUMERO}${NUMERO_COM_ANO}`,
+  String.raw`\b(PREGAO|CONCORRENCIA|DISPENSA|TOMADA\s+DE\s+PRECOS?|CREDENCIAMENTO|CHAMAMENTO\s+PUBLICO|CHAMADA\s+PUBLICA|COTACAO(?:\s+DE\s+PRECOS?)?|LEILAO|CONVITE)\b${QUALIFICADOR}\s*[-–,]?\s*${MARCADOR_DE_NUMERO}${NUMERO_COM_ANO}`,
   'g'
 )
 const MODALIDADE_ABREVIADA = new RegExp(String.raw`\b(PE|PP)\s*${MARCADOR_DE_NUMERO}${NUMERO_COM_ANO}`, 'g')
@@ -268,7 +275,7 @@ function linhasDePagina(linhas: { original: string; chave: string }[]): Set<stri
 }
 
 const LINHA_DE_PAGINA =
-  /^(?:\d{1,4}|P[AÁ]GINA \d+(?: DE \d+)?|ANO [IVXLC]+\b.{0,40}|EDI[CÇ][AÃ]O N.{0,40}|(?:SEGUNDA|TER[CÇ]A|QUARTA|QUINTA|SEXTA)-FEIRA,? \d{1,2} DE \p{L}+ DE \d{4}|S[AÁ]BADO,? \d{1,2} DE \p{L}+ DE \d{4}|DOMINGO,? \d{1,2} DE \p{L}+ DE \d{4})$/iu
+  /^(?:\d{1,4}|(?:https?:\/\/)?[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,}(?:\/\S*)?\s+\d{1,4}|P[AÁ]GINA \d+(?: DE \d+)?|ANO [IVXLC]+\b.{0,40}|EDI[CÇ][AÃ]O N.{0,40}|(?:SEGUNDA|TER[CÇ]A|QUARTA|QUINTA|SEXTA)-FEIRA,? \d{1,2} DE \p{L}+ DE \d{4}|S[AÁ]BADO,? \d{1,2} DE \p{L}+ DE \d{4}|DOMINGO,? \d{1,2} DE \p{L}+ DE \d{4})$/iu
 
 function ehLinhaDePagina(original: string, chave: string, repetidas: Set<string>): boolean {
   if (LINHA_DE_PAGINA.test(original)) return true
@@ -357,10 +364,10 @@ function normalizarNumero(sequencia: string, ano: string, sufixo?: string): stri
 function familiaPorPalavra(palavra: string): FamiliaDeModalidade {
   if (palavra === 'PREGAO' || palavra === 'PE' || palavra === 'PP') return 'PREGAO'
   if (palavra === 'CONCORRENCIA') return 'CONCORRENCIA'
-  if (palavra === 'DISPENSA') return 'DISPENSA'
+  if (palavra === 'DISPENSA' || palavra.startsWith('COTACAO')) return 'DISPENSA'
   if (palavra.startsWith('TOMADA')) return 'TOMADA'
   if (palavra === 'CREDENCIAMENTO') return 'CREDENCIAMENTO'
-  if (palavra.startsWith('CHAMAMENTO')) return 'CHAMAMENTO'
+  if (palavra.startsWith('CHAMAMENTO') || palavra.startsWith('CHAMADA')) return 'CHAMAMENTO'
   if (palavra === 'LEILAO') return 'LEILAO'
   return 'CONVITE'
 }
@@ -437,15 +444,22 @@ function ehFimDeFrase(original: string, indicePonto: number): boolean {
   return true
 }
 
-function localizarInicioDoObjeto(chave: string, inicioForcado?: number): { rotulo: number; texto: number } | null {
+interface InicioDoObjeto {
+  rotulo: number
+  texto: number
+  pelaFinalidade?: boolean
+}
+
+function localizarInicioDoObjeto(chave: string, inicioForcado?: number): InicioDoObjeto | null {
   const explicito = ROTULO_DO_OBJETO.exec(chave)
   if (explicito) return { rotulo: explicito.index, texto: explicito.index + explicito[0].length }
   const implicito = OBJETO_IMPLICITO.exec(chave)
   if (implicito) return { rotulo: implicito.index, texto: implicito.index + implicito[0].length }
-  if (inicioForcado === undefined) return null
-  const aposNumero = OBJETO_LOGO_APOS_O_NUMERO.exec(chave.slice(inicioForcado))
-  if (!aposNumero) return null
-  return { rotulo: inicioForcado, texto: inicioForcado + aposNumero[0].length }
+  const aposNumero = inicioForcado === undefined ? null : OBJETO_LOGO_APOS_O_NUMERO.exec(chave.slice(inicioForcado))
+  if (aposNumero && inicioForcado !== undefined) return { rotulo: inicioForcado, texto: inicioForcado + aposNumero[0].length }
+  const finalidade = OBJETO_PELA_FINALIDADE.exec(chave)
+  if (finalidade) return { rotulo: finalidade.index, texto: finalidade.index + finalidade[0].length, pelaFinalidade: true }
+  return null
 }
 
 function primeiroFimPorRegex(regex: RegExp, chave: string, plano: string, inicio: number, limite: number): number {
@@ -495,6 +509,8 @@ export function extrairObjeto(
   }
 
   if (fim === -1) return null
+  const corteDaFinalidade = inicioDoObjeto.pelaFinalidade ? FIM_DO_OBJETO_PELA_FINALIDADE.exec(chave.slice(inicio, fim)) : null
+  if (corteDaFinalidade) fim = inicio + corteDaFinalidade.index
 
   let objeto = plano
     .slice(inicio, fim)
@@ -523,7 +539,7 @@ function dataLocalParaUtc(ano: number, mes: number, dia: number, hora = 0, minut
   if (dataSemHora.getUTCFullYear() !== ano || dataSemHora.getUTCMonth() !== mes - 1 || dataSemHora.getUTCDate() !== dia) {
     return null
   }
-  return new Date(Date.UTC(ano, mes - 1, dia, hora + HORAS_DE_BRASILIA_PARA_UTC, minuto))
+  return horaDeBrasilia(ano, mes - 1, dia, hora, minuto)
 }
 
 const DATA_POR_EXTENSO = new RegExp(
@@ -655,7 +671,7 @@ export function temIdDoPncp(plano: string): boolean {
 
 export function dataDoDiario(data: string): Date {
   const [ano, mes, dia] = data.split('-').map(Number)
-  return new Date(Date.UTC(ano, mes - 1, dia, 12 + HORAS_DE_BRASILIA_PARA_UTC))
+  return horaDeBrasilia(ano, mes - 1, dia, 12)
 }
 
 export function cabecalhoDescarta(chaveDoCabecalho: string): boolean {
@@ -688,6 +704,7 @@ function avaliarBloco(bloco: BlocoDeAviso, gazeta: GazetaQueridoDiario, agora: D
     (objeto.inicio === modalidadeNoInicio?.fim ? modalidadeNoInicio : null) ??
     identificarModalidade(chave.slice(objeto.fim, objeto.fim + TAMANHO_DO_CABECALHO_SEM_OBJETO), chave)
   if (!modalidade) return { tipo: 'descartado' }
+  if (modalidade.familia === 'DISPENSA' && CONTRATACAO_JA_DEFINIDA.test(chave)) return { tipo: 'descartado' }
 
   const { orgao, tipo } = extrairOrgao(
     plano.slice(0, fimDoCabecalho),

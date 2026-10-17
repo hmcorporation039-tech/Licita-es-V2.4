@@ -6,9 +6,25 @@ import { normalize } from '../lib/geoService'
 import { queridoDiarioArquivosClient, queridoDiarioClient } from '../lib/httpClient'
 import { GazetaQueridoDiario } from './queridoDiarioParser'
 
-export const CONSULTA_DE_AVISOS = '"aviso de licitação" | "aviso de abertura" | "aviso de pregão" | "aviso de edital"'
-export const TAMANHO_DA_PAGINA = 25
-export const MAXIMO_DE_PAGINAS = 20
+export const TERMOS_DE_BUSCA = [
+  'aviso de licitação',
+  'aviso de abertura',
+  'aviso de pregão',
+  'aviso de edital',
+  'aviso de dispensa',
+  'aviso de credenciamento',
+  'pregão eletrônico',
+  'pregão presencial',
+  'dispensa eletrônica',
+  'concorrência',
+  'concorrência eletrônica',
+  'tomada de preços',
+  'chamamento público',
+  'credenciamento',
+]
+export const CONSULTA_DE_AVISOS = TERMOS_DE_BUSCA.map((termo) => `"${termo}"`).join(' | ')
+export const TAMANHO_DA_PAGINA = 50
+export const NIVEIS_DE_CIDADE_COM_DIARIOS = ['1', '2', '3']
 export const HOST_DOS_ARQUIVOS_DO_QUERIDO_DIARIO = 'data.queridodiario.ok.org.br'
 
 const DIAS_DE_SOBREPOSICAO = 2
@@ -18,7 +34,6 @@ const SIMILARIDADE_MINIMA_COM_O_PNCP = 0.45
 const SIMILARIDADE_MINIMA_NO_MESMO_DIA = 0.2
 const SEMELHANCA_MINIMA_ENTRE_REPUBLICACOES = 0.3
 const DIAS_DE_HISTORICO_DO_PNCP = 180
-const ESPERA_ANTES_DE_REPETIR_MS = 5_000
 const HORAS_DE_BRASILIA_PARA_UTC = 3
 const DIA_MS = 86_400_000
 
@@ -30,6 +45,13 @@ export interface JanelaDoQueridoDiario {
 export interface PaginaDoQueridoDiario {
   total_gazettes: number
   gazettes: GazetaQueridoDiario[]
+}
+
+export interface CidadeDoQueridoDiario {
+  territory_id: string
+  territory_name: string
+  state_code: string
+  level?: string
 }
 
 export interface CandidatoDoPncp {
@@ -57,12 +79,32 @@ export function janelaDoQueridoDiario(agora: Date, ultimaPublicacao: Date | null
   return { publicadoDesde: diaEmBrasilia(new Date(inicio)), publicadoAte: diaEmBrasilia(agora) }
 }
 
-function esperar(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
+export function statusDaResposta(err: unknown): number | undefined {
+  if (!err || typeof err !== 'object') return undefined
+  const status = (err as { response?: { status?: unknown } }).response?.status
+  return typeof status === 'number' ? status : undefined
 }
 
-export async function buscarDiarios(janela: JanelaDoQueridoDiario, offset: number): Promise<PaginaDoQueridoDiario> {
+export function ehBloqueioDoQueridoDiario(err: unknown): boolean {
+  const status = statusDaResposta(err)
+  return status === 403 || status === 429
+}
+
+export async function buscarCidadesDoQueridoDiario(): Promise<CidadeDoQueridoDiario[]> {
+  const resposta = await queridoDiarioClient.get<{ cities?: CidadeDoQueridoDiario[] }>('/cities', {
+    params: { levels: NIVEIS_DE_CIDADE_COM_DIARIOS },
+    paramsSerializer: { indexes: null },
+  })
+  return resposta.data.cities ?? []
+}
+
+export async function buscarDiarios(
+  janela: JanelaDoQueridoDiario,
+  offset: number,
+  territorios: string[] = []
+): Promise<PaginaDoQueridoDiario> {
   const params = {
+    territory_ids: territorios,
     querystring: CONSULTA_DE_AVISOS,
     published_since: janela.publicadoDesde,
     published_until: janela.publicadoAte,
@@ -72,12 +114,11 @@ export async function buscarDiarios(janela: JanelaDoQueridoDiario, offset: numbe
     number_of_excerpts: 1,
     sort_by: 'descending_date',
   }
-  try {
-    return (await queridoDiarioClient.get<PaginaDoQueridoDiario>('/gazettes', { params })).data
-  } catch {
-    await esperar(ESPERA_ANTES_DE_REPETIR_MS)
-    return (await queridoDiarioClient.get<PaginaDoQueridoDiario>('/gazettes', { params })).data
-  }
+  const resposta = await queridoDiarioClient.get<PaginaDoQueridoDiario>('/gazettes', {
+    params,
+    paramsSerializer: { indexes: null },
+  })
+  return resposta.data
 }
 
 export function caminhoDoArquivoDoDiario(url: string): string | null {
