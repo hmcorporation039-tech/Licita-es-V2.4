@@ -5,6 +5,7 @@ import { Circle, CornerDownRight, Paperclip, TriangleAlert } from 'lucide-react'
 import { abrirArquivo, api, ApiRequestError } from '@/lib/api'
 import type { PainelDoFiscal as Painel, RequisitoDeHabilitacao, StatusHabilitacao } from '@/lib/adminTypes'
 import { Carregando, ErrorState, Notice, Panel, StatusTag, TextLink, cx, toneText, type Tom } from '@/components/ui'
+import AnexarDocumentoPendente from '@/components/AnexarDocumentoPendente'
 
 const STATUS: Record<StatusHabilitacao, { tom: Tom; rotulo: string }> = {
   verde: { tom: 'ok', rotulo: 'Em dia' },
@@ -171,6 +172,7 @@ export default function PainelDoFiscal({ tenderId }: { tenderId: string }) {
                       Ver arquivo de “{r.documento.nome}”
                     </button>
                   )}
+                  {(r.status === 'vermelho' || r.status === 'amarelo') && <AnexarDocumentoPendente requisito={r} aoConcluir={() => setTentativa((n) => n + 1)} />}
                 </div>
                 <StatusTag tone={STATUS[r.status].tom} dot className="shrink-0">
                   {STATUS[r.status].rotulo}
