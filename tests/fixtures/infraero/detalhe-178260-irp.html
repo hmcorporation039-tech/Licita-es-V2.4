@@ -1,0 +1,287 @@
+
+
+
+
+
+
+
+
+<html>
+<head>
+<title>INFRAERO</title>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+<link href="/portal_licitacao/scripts/licita.css" rel="stylesheet" type="text/css" />
+<SCRIPT language="javascript" src="/portal_licitacao/scripts/FormCheck.js"></SCRIPT>
+<SCRIPT language="javascript" src="/portal_licitacao/scripts/CNPJValidation.js"></SCRIPT>
+<SCRIPT language="javascript" src="/portal_licitacao/scripts/DateTimeValidation.js"></SCRIPT>
+<SCRIPT language="javascript" src="/portal_licitacao/scripts/isValidDate.js"></SCRIPT>
+<SCRIPT language="javascript" src="/portal_licitacao/scripts/validacao.js"></SCRIPT>
+
+<script language="JavaScript">
+<!--
+function showHideLayers(Layer, menutopo) { //v3.0
+var newURL='', verStr=navigator.appVersion, app=navigator.appName, version = parseFloat(verStr);
+if (app.indexOf('Netscape') != -1) {
+        if (menutopo == "0") {
+                for (r=0; r < document.all.length; r++) {
+                        if (document.layers[r].id.substring(0,4) == "subm" && document.all[r].id != Layer)
+                                document.layers[r].style.display = 'none';
+                }
+        }
+        if (eval("document.layers." + Layer + ".style.display == ''")){
+                eval("document.layers." + Layer + ".style.display = 'none'");
+        }
+        else{
+                eval("document.layers." + Layer + ".style.display = ''");
+        }
+        } else if (app.indexOf('Microsoft') != -1) {
+        if (menutopo == "0") {
+                for (r=0; r < document.all.length; r++) {
+                        if (document.all[r].id.substring(0,4) == "subm" && document.all[r].id != Layer)
+                                document.all[r].style.display = 'none';
+                }
+        }
+        if (eval("document.all." + Layer + ".style.display == ''")){
+                eval("document.all." + Layer + ".style.display = 'none'");
+        }
+        else{
+                eval("document.all." + Layer + ".style.display = ''");
+        }
+        }
+//	conteudo.height = '100%';
+}
+function MM_openBrWindow(theURL,winName,features) { //v2.0
+  window.open(theURL,winName,features);
+}
+//-->
+</script>
+</head>
+<body leftmargin="0" topmargin="0" marginwidth="0" marginheight="0">
+<table border="0" cellspacing="0" cellpadding="0" width="98%">
+<STYLE>
+	.pr {
+		FONT-WEIGHT: normal; FONT-SIZE: 8pt; LIST-STYLE-IMAGE: none; FONT-STYLE: normal; FONT-FAMILY: Arial, Helvetica, sans-serif; BACKGROUND-COLOR: #f8c400
+	}
+</STYLE>
+
+<SCRIPT language=JavaScript>
+	function nova_jan(newwindow) {
+	    var desktop = window.open(newwindow,'new_window','toolbar=yes,location=yes,directories=yes,status=yes,scrollbars=yes,menubar=yes,resizable=yes');
+   }
+</SCRIPT>
+
+
+
+<table border="0" cellpadding="0" cellspacing="0" width="100%" height="52">
+    <tr> 
+        <td background="/portal_licitacao/layout/imagens/ban_bg_testa.jpg" height="52" width="100%">&nbsp;</td>
+
+    </tr>
+</table>
+<tr>
+ <td colspan="6">
+    <table width="100%" align="center" background="Formato//portal_licitacao/layout/imagens/bg_faixa3.jpg" height="30" cellspacing="0">
+  <tbody> 
+  <tr background="/portal_licitacao/layout/imagens/bg_faixa3.jpg"> 
+    <td width="33%" height="26" background="/portal_licitacao/layout/imagens/bg_faixa3.jpg"> 
+      <div align="center"> <b><a class="texto1" href="/portal_licitacao/details/licitacao/pesquisa_licitacao.jsp">Pesquisa 
+        de Licitações</a> </b> </div>
+    </td>
+    <td width="25%" height="26" background="/portal_licitacao/layout/imagens/bg_faixa3.jpg"> 
+      <div align="center"> <b><a class="texto1" href="/portal_licitacao/details/licitacao/pesquisa_reg_preco.jsp">Psq. Registro 
+        de Preços</a> </b> </div>
+    </td>
+<!--    <td width="20%" height="26" background="/portal_licitacao/layout/imagens/bg_faixa3.jpg"> 
+      <div align="center"> <a class="texto1" href="/portal_licitacao/details/fornecedor/pesquisa_fornecedor.jsp?tpCadastro=SIMPLES"><b>Cadastre 
+        sua Empresa</b></a> </div>
+    </td> -->
+<!--    <td width="33%" height="26" background="/portal_licitacao/layout/imagens/bg_faixa3.jpg"> 
+      <div align="center"> <a class="texto1" href="https://www.licitacoes-e.com.br/aop/index.jsp;url=www.infraero.gov.br" target="blank"><b>Licitações
+       Eletrônicas</b></a> </div>
+    </td> -->
+    <td width="33%" height="26" background="/portal_licitacao/layout/imagens/bg_faixa3.jpg"> 
+      <div align="center"> 
+        <p align="center"><a class="texto1" href="/portal_licitacao/details/normas/normas.jsp"><b>Normas 
+          e Regulamentos&nbsp;&nbsp;&nbsp;</b></a> 
+      </div>
+    </td>
+  </tr>
+  </tbody> 
+</table>
+
+ </td>
+</tr>
+<tr>
+ <td colspan="6"><img src="/portal_licitacao/layout/imagens/spacer.gif" width="1" height="10" /></td>
+</tr>
+<tr>
+ <td colspan="6" valign="top">
+
+
+
+<script language='javascript'>
+
+    function novaPesquisa() {
+       window.location = '/portal_licitacao/details/licitacao/pesquisa_licitacao.jsp';
+    }
+ 
+    function mensagemOperacao(existe_int) {
+        if (existe_int == "S") {
+            alert("Alteração efetuada com sucesso.");
+        }
+        else
+          if (existe_int == "N") {
+            alert("Inclusão efetuada com sucesso.");
+        }
+    }
+
+    function mensagemErroEmail(msg_erro) {
+        alert("Problema Inexperado."+msg_erro);
+    }
+               
+    
+ 
+    
+
+</script>
+
+<div align="center">
+  <table width="96%" border="0" cellspacing="0" cellpadding="3">
+    <tr>
+      <td width="100%" colspan="2"><img src="/portal_licitacao/details/licitacao/imagens/cbc_secao_licita_v2.gif" alt="Bem-vindo ao site da Infraero" ></td>
+    </tr>
+    
+    <tr>
+      <td colspan="2" valign="top">
+        <table width="95%" border="0" align="center" cellpadding="4" cellspacing="2">
+          <tr>
+            <td width="25%" bgcolor="#F0F0F0" class="bas_texto_corpo">Respons&aacute;vel</td>
+            <td width="75%" class="bas_texto_corpo"> CENTRO CORPORATIVO
+            </td>
+          </tr>
+          <tr>
+            <td width="25%" bgcolor="#F0F0F0" class="bas_texto_corpo">UF</td>
+            <td width="75%" class="bas_texto_corpo"> DF
+            </td>
+          </tr>
+          <tr>
+            <td width="25%" bgcolor="#F0F0F0" class="bas_texto_corpo">Processo</td>
+            <td width="75%" class="bas_texto_corpo"> Intenção de Registro de Preço
+            </td>
+          </tr>
+          <tr>
+            <td width="25%" bgcolor="#F0F0F0" class="bas_texto_corpo">N&uacute;mero</td>
+            <td width="75%" class="bas_texto_corpo">023/ADLI-1/SEDE/2026</td>
+          </tr>
+          <tr>
+           
+            <td width="25%" bgcolor="#F0F0F0" class="bas_texto_corpo">Data/Hora
+              Limite da IRP</td> 
+            <td width="75%" class="bas_texto_corpo"> 23/10/2026 18:00
+            </td>
+          </tr>
+          
+          <tr>
+            <td width="25%" bgcolor="#F0F0F0" class="bas_texto_corpo">Objeto</td>
+            <td width="75%" class="bas_texto_corpo"> CONTRATAÇÃO DE EMPRESA PARA FORNECIMENTO DE PNEUS PARA VEÍCULOS DA INFRAERO, PELO SISTEMA DE REGISTRO DE PREÇOS.<br>
+            </td>
+          </tr>
+          <tr>
+            <td width="25%" bgcolor="#F0F0F0" class="bas_texto_corpo">Contrato</td>
+            <td width="75%" class="bas_texto_corpo"> 
+            </td>
+          </tr>
+          <tr>
+            <td width="25%" bgcolor="#F0F0F0" class="bas_texto_corpo">Observação</td>
+            <td width="75%" class="bas_texto_corpo"> <p style="text-align: justify"><br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="background-color: #ffd700">AVISO: </span>a publica&ccedil;&atilde;o desta IRP visa atender a determina&ccedil;&atilde;o de legisla&ccedil;&atilde;o pertinente e se destina exclusivamente &agrave; divulga&ccedil;&atilde;o dos itens a serem licitados a outros &Oacute;rg&atilde;os da Administra&ccedil;&atilde;o P&uacute;blica para conveni&ecirc;ncia de participa&ccedil;&atilde;o na contrata&ccedil;&atilde;o. A licita&ccedil;&atilde;o com a contrata&ccedil;&atilde;o propriamente dita ser&aacute; publicada oportunamente neste Portal, no Banco do Brasil, e na Imprensa Oficial.</p><br><p style="text-align: justify"><br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>OR&Ccedil;AMENTO SIGILOSO NOS TERMOS DO ARTIGO 34 DA LEI 13.303/2016 </strong></p><br>
+            </td>
+          </tr>
+          <tr>
+            <td width="25%" bgcolor="#F0F0F0" class="bas_texto_corpo">Contato</td>
+            <td width="75%" class="bas_texto_corpo"> <a href="mailto:licitabr@infraero.gov.br?subject=Intenção de Registro de Preço 023/ADLI-1/SEDE/2026"> licitabr@infraero.gov.br</a>
+            </td>
+          </tr>
+          <tr>
+            <td width="25%" bgcolor="#F0F0F0" class="bas_texto_corpo">Situação</td>
+            <td width="75%" class="bas_texto_corpo"> Em Andamento
+            </td>
+          </tr>
+           
+          <tr>
+           <td width="25%" bgcolor="#F0F0F0" class="bas_texto_corpo">Cadastre Intenção de Registro de Preço</td>
+           <td width="49%" align="left" class="bas_texto_corpo"><a href="/portal_licitacao/details/licitacao/cadastra_intencao_rp.jsp?idLicitacao=178260">Clique Aqui<hspace="8" vspace="10" border="0" /></a></td>
+            </td>
+          </tr>
+           
+        </table>
+        <br>
+        <!-- thelmo -->
+        
+        <table width="95%" border="0" align="center" cellpadding="4" cellspacing="2">
+          <tr>
+            <td bgcolor="#F0F0F0" class="bas_texto_corpo" valign="top">Tipo</td>
+            <td bgcolor="#F0F0F0" class="bas_texto_corpo" valign="top">Descri&ccedil;&atilde;o</td>
+            <td bgcolor="#F0F0F0" class="bas_texto_corpo" valign="top">Data de Referência</td>
+            <td bgcolor="#F0F0F0" class="bas_texto_corpo" valign="top">Observação</td>
+            <td bgcolor="#F0F0F0" class="bas_texto_corpo" valign="top">Arquivo(s)</td>
+          </tr>
+          
+          <tr>
+            <td class="bas_texto_corpo" valign="top">Anexo do Edital</td>
+            <td class="bas_texto_corpo" valign="top">TERMO DE REFERENCIA E ANEXO</td>
+            <td class="bas_texto_corpo" valign="top">13/10/2026</td>
+            <td class="bas_texto_corpo" valign="top"></td>
+            
+            <td>
+              <table>
+           
+                <tr>
+                  <td class="bas_texto_corpo" valign="top"> <a href="/arquivos_licitacao/2026/SEDE/023_ADLI-1_SEDE_2026_IRP/AN_II_locais de entrega.pdf">
+                    AN_II_locais de entrega.pdf </a> </td>
+                </tr>
+         
+                <tr>
+                  <td class="bas_texto_corpo" valign="top"> <a href="/arquivos_licitacao/2026/SEDE/023_ADLI-1_SEDE_2026_IRP/Termo_referencia.pdf">
+                    Termo_referencia.pdf </a> </td>
+                </tr>
+         
+                <tr>
+                  <td class="bas_texto_corpo" valign="top"> <a href="/arquivos_licitacao/2026/SEDE/023_ADLI-1_SEDE_2026_IRP/AN_I_planilha_branco.pdf">
+                    AN_I_planilha_branco.pdf </a> </td>
+                </tr>
+         
+              </table>
+            </td>
+          </tr>
+        
+        </table>
+    
+      </td>
+    </tr>
+
+    <!-- /thelmo -->
+ //    
+    <tr>
+      <td colspan="2" valign="top">&nbsp;</td>
+    </tr>
+    <tr class="bas_texto_corpo">
+            <td colspan="2" valign="top">Arquivos PDF podem ser abertos com o
+                <font color="#FF0000">Adobe Acrobat Reader</font>. Para obt&ecirc;-lo,
+                <a href="http://www.adobe.com" target="_blank">clique aqui</a>.</td>
+    </tr>
+  </table>
+
+</div>
+
+</td>
+<td align="center" valign="top">
+</td>
+<td><img src="/portal_licitacao/layout/imagens/spacer.gif" width="1" height="1" /></td>
+</tr>
+<tr>
+<td><img src="/portal_licitacao/layout/imagens/spacer.gif" width="1" height="15" /></td>
+</tr>
+</table>
+</body>
+</html>
+

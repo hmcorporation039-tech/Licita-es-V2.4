@@ -281,6 +281,7 @@ enum FonteEnum {
   SESC_REGIONAL
   QUERIDO_DIARIO
   SISTEMA_S
+  INFRAERO
 }
 
 // ============================================================

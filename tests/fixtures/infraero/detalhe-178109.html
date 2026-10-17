@@ -1,0 +1,371 @@
+
+
+
+
+
+
+
+
+<html>
+<head>
+<title>INFRAERO</title>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+<link href="/portal_licitacao/scripts/licita.css" rel="stylesheet" type="text/css" />
+<SCRIPT language="javascript" src="/portal_licitacao/scripts/FormCheck.js"></SCRIPT>
+<SCRIPT language="javascript" src="/portal_licitacao/scripts/CNPJValidation.js"></SCRIPT>
+<SCRIPT language="javascript" src="/portal_licitacao/scripts/DateTimeValidation.js"></SCRIPT>
+<SCRIPT language="javascript" src="/portal_licitacao/scripts/isValidDate.js"></SCRIPT>
+<SCRIPT language="javascript" src="/portal_licitacao/scripts/validacao.js"></SCRIPT>
+
+<script language="JavaScript">
+<!--
+function showHideLayers(Layer, menutopo) { //v3.0
+var newURL='', verStr=navigator.appVersion, app=navigator.appName, version = parseFloat(verStr);
+if (app.indexOf('Netscape') != -1) {
+        if (menutopo == "0") {
+                for (r=0; r < document.all.length; r++) {
+                        if (document.layers[r].id.substring(0,4) == "subm" && document.all[r].id != Layer)
+                                document.layers[r].style.display = 'none';
+                }
+        }
+        if (eval("document.layers." + Layer + ".style.display == ''")){
+                eval("document.layers." + Layer + ".style.display = 'none'");
+        }
+        else{
+                eval("document.layers." + Layer + ".style.display = ''");
+        }
+        } else if (app.indexOf('Microsoft') != -1) {
+        if (menutopo == "0") {
+                for (r=0; r < document.all.length; r++) {
+                        if (document.all[r].id.substring(0,4) == "subm" && document.all[r].id != Layer)
+                                document.all[r].style.display = 'none';
+                }
+        }
+        if (eval("document.all." + Layer + ".style.display == ''")){
+                eval("document.all." + Layer + ".style.display = 'none'");
+        }
+        else{
+                eval("document.all." + Layer + ".style.display = ''");
+        }
+        }
+//	conteudo.height = '100%';
+}
+function MM_openBrWindow(theURL,winName,features) { //v2.0
+  window.open(theURL,winName,features);
+}
+//-->
+</script>
+</head>
+<body leftmargin="0" topmargin="0" marginwidth="0" marginheight="0">
+<table border="0" cellspacing="0" cellpadding="0" width="98%">
+<STYLE>
+	.pr {
+		FONT-WEIGHT: normal; FONT-SIZE: 8pt; LIST-STYLE-IMAGE: none; FONT-STYLE: normal; FONT-FAMILY: Arial, Helvetica, sans-serif; BACKGROUND-COLOR: #f8c400
+	}
+</STYLE>
+
+<SCRIPT language=JavaScript>
+	function nova_jan(newwindow) {
+	    var desktop = window.open(newwindow,'new_window','toolbar=yes,location=yes,directories=yes,status=yes,scrollbars=yes,menubar=yes,resizable=yes');
+   }
+</SCRIPT>
+
+
+
+<table border="0" cellpadding="0" cellspacing="0" width="100%" height="52">
+    <tr> 
+        <td background="/portal_licitacao/layout/imagens/ban_bg_testa.jpg" height="52" width="100%">&nbsp;</td>
+
+    </tr>
+</table>
+<tr>
+ <td colspan="6">
+    <table width="100%" align="center" background="Formato//portal_licitacao/layout/imagens/bg_faixa3.jpg" height="30" cellspacing="0">
+  <tbody> 
+  <tr background="/portal_licitacao/layout/imagens/bg_faixa3.jpg"> 
+    <td width="33%" height="26" background="/portal_licitacao/layout/imagens/bg_faixa3.jpg"> 
+      <div align="center"> <b><a class="texto1" href="/portal_licitacao/details/licitacao/pesquisa_licitacao.jsp">Pesquisa 
+        de Licitações</a> </b> </div>
+    </td>
+    <td width="25%" height="26" background="/portal_licitacao/layout/imagens/bg_faixa3.jpg"> 
+      <div align="center"> <b><a class="texto1" href="/portal_licitacao/details/licitacao/pesquisa_reg_preco.jsp">Psq. Registro 
+        de Preços</a> </b> </div>
+    </td>
+<!--    <td width="20%" height="26" background="/portal_licitacao/layout/imagens/bg_faixa3.jpg"> 
+      <div align="center"> <a class="texto1" href="/portal_licitacao/details/fornecedor/pesquisa_fornecedor.jsp?tpCadastro=SIMPLES"><b>Cadastre 
+        sua Empresa</b></a> </div>
+    </td> -->
+<!--    <td width="33%" height="26" background="/portal_licitacao/layout/imagens/bg_faixa3.jpg"> 
+      <div align="center"> <a class="texto1" href="https://www.licitacoes-e.com.br/aop/index.jsp;url=www.infraero.gov.br" target="blank"><b>Licitações
+       Eletrônicas</b></a> </div>
+    </td> -->
+    <td width="33%" height="26" background="/portal_licitacao/layout/imagens/bg_faixa3.jpg"> 
+      <div align="center"> 
+        <p align="center"><a class="texto1" href="/portal_licitacao/details/normas/normas.jsp"><b>Normas 
+          e Regulamentos&nbsp;&nbsp;&nbsp;</b></a> 
+      </div>
+    </td>
+  </tr>
+  </tbody> 
+</table>
+
+ </td>
+</tr>
+<tr>
+ <td colspan="6"><img src="/portal_licitacao/layout/imagens/spacer.gif" width="1" height="10" /></td>
+</tr>
+<tr>
+ <td colspan="6" valign="top">
+
+
+
+<script language='javascript'>
+
+    function novaPesquisa() {
+       window.location = '/portal_licitacao/details/licitacao/pesquisa_licitacao.jsp';
+    }
+ 
+    function mensagemOperacao(existe_int) {
+        if (existe_int == "S") {
+            alert("Alteração efetuada com sucesso.");
+        }
+        else
+          if (existe_int == "N") {
+            alert("Inclusão efetuada com sucesso.");
+        }
+    }
+
+    function mensagemErroEmail(msg_erro) {
+        alert("Problema Inexperado."+msg_erro);
+    }
+               
+    
+ 
+    
+
+</script>
+
+<div align="center">
+  <table width="96%" border="0" cellspacing="0" cellpadding="3">
+    <tr>
+      <td width="100%" colspan="2"><img src="/portal_licitacao/details/licitacao/imagens/cbc_secao_licita_v2.gif" alt="Bem-vindo ao site da Infraero" ></td>
+    </tr>
+    
+    <tr>
+      <td colspan="2" valign="top">
+        <table width="95%" border="0" align="center" cellpadding="4" cellspacing="2">
+          <tr>
+            <td width="25%" bgcolor="#F0F0F0" class="bas_texto_corpo">Respons&aacute;vel</td>
+            <td width="75%" class="bas_texto_corpo"> CENTRO CORPORATIVO
+            </td>
+          </tr>
+          <tr>
+            <td width="25%" bgcolor="#F0F0F0" class="bas_texto_corpo">UF</td>
+            <td width="75%" class="bas_texto_corpo"> DF
+            </td>
+          </tr>
+          <tr>
+            <td width="25%" bgcolor="#F0F0F0" class="bas_texto_corpo">Processo</td>
+            <td width="75%" class="bas_texto_corpo"> Licitação
+            </td>
+          </tr>
+          <tr>
+            <td width="25%" bgcolor="#F0F0F0" class="bas_texto_corpo">N&uacute;mero</td>
+            <td width="75%" class="bas_texto_corpo">098/ADLI-2/SEDE/2026</td>
+          </tr>
+          <tr>
+           
+            <td width="25%" bgcolor="#F0F0F0" class="bas_texto_corpo">Data/Hora
+              de Abertura</td> 
+            <td width="75%" class="bas_texto_corpo"> 08/10/2026 09:00
+            </td>
+          </tr>
+           
+          <tr>
+            <td width="25%" height="20" bgcolor="#F0F0F0" class="bas_texto_corpo">Local
+              de Abertura</td>
+            <td width="75%" height="20" class="bas_texto_corpo"> WWW.LICITACOES-E.COM.BR (Licitação nº 1100869) 
+            </td>
+          </tr>
+          
+          <tr>
+            <td width="25%" bgcolor="#F0F0F0" class="bas_texto_corpo">Objeto</td>
+            <td width="75%" class="bas_texto_corpo"> CONCESSÃO DE ÁREAS, COM INVESTIMENTO, PARA IMPLANTAÇÃO, OPERAÇÃO E EXPLORAÇÃO DE GALPÕES LOGÍSTICOS ALFANDEGADOS, ESTRUTURADA EM 5 (CINCO) LOTES INDEPENDENTES, LOCALIZADOS NOS AEROPORTOS DE ANÁPOLIS-GO, FLORES-AM, IPATINGA-MG, MOSSORÓ-RN E SORRISO-MT<br>
+            </td>
+          </tr>
+          <tr>
+            <td width="25%" bgcolor="#F0F0F0" class="bas_texto_corpo">Contrato</td>
+            <td width="75%" class="bas_texto_corpo"> 
+            </td>
+          </tr>
+          <tr>
+            <td width="25%" bgcolor="#F0F0F0" class="bas_texto_corpo">Observação</td>
+            <td width="75%" class="bas_texto_corpo"> <p style="text-align: justify"><br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="font-size: 16px"><strong><span style="background-color: #ffff00">ATEN&Ccedil;&Atilde;O: NOS TERMOS DO SUBITEM 3.1 DO EDITAL, A LICITANTE DEVER&Aacute;, QUANDO DO CADASTRAMENTO DE SUA PROPOSTA NO SISTEMA DE LICITA&Ccedil;&Otilde;ES DO BANCO DO BRASIL, REGISTRAR O VALOR MENSAL DO LOTE</span></strong></span></p><br><p><br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="font-size: 16px"><strong><span style="background-color: #ffff00">EM 06/10/2026:&nbsp;LICITA&Ccedil;&Atilde;O&nbsp;ADIADA&nbsp;</span><em><span style="background-color: #ffff00">SINE&nbsp;DIE</span></em><span style="background-color: #ffff00">, CONFORME&nbsp;RAZ&Otilde;ES EXPOSTAS NO&nbsp;OF&Iacute;CIO CIRCULAR N&ordm; SEDE-OFC-2026/00374, DATADO DE 6/10/2026.</span></strong></span></p><br>
+            </td>
+          </tr>
+          <tr>
+            <td width="25%" bgcolor="#F0F0F0" class="bas_texto_corpo">Contato</td>
+            <td width="75%" class="bas_texto_corpo"> <a href="mailto:LICITABR@INFRAERO.GOV.BR?subject=Licitação 098/ADLI-2/SEDE/2026"> LICITABR@INFRAERO.GOV.BR</a>
+            </td>
+          </tr>
+          <tr>
+            <td width="25%" bgcolor="#F0F0F0" class="bas_texto_corpo">Situação</td>
+            <td width="75%" class="bas_texto_corpo"> Adiada sine die
+            </td>
+          </tr>
+           
+        </table>
+        <br>
+        <!-- thelmo -->
+        
+        <table width="95%" border="0" align="center" cellpadding="4" cellspacing="2">
+          <tr>
+            <td bgcolor="#F0F0F0" class="bas_texto_corpo" valign="top">Tipo</td>
+            <td bgcolor="#F0F0F0" class="bas_texto_corpo" valign="top">Descri&ccedil;&atilde;o</td>
+            <td bgcolor="#F0F0F0" class="bas_texto_corpo" valign="top">Data de Referência</td>
+            <td bgcolor="#F0F0F0" class="bas_texto_corpo" valign="top">Observação</td>
+            <td bgcolor="#F0F0F0" class="bas_texto_corpo" valign="top">Arquivo(s)</td>
+          </tr>
+          
+          <tr>
+            <td class="bas_texto_corpo" valign="top">Edital e Anexos</td>
+            <td class="bas_texto_corpo" valign="top">EDITAL E ANEXOS</td>
+            <td class="bas_texto_corpo" valign="top">15/09/2026</td>
+            <td class="bas_texto_corpo" valign="top"></td>
+            
+            <td>
+              <table>
+           
+                <tr>
+                  <td class="bas_texto_corpo" valign="top"> <a href="/arquivos_licitacao/2026/SEDE/098_ADLI-2_SEDE_2026_LI/V.2_SIT_FIS_AREA_LT2-SWFN.pdf">
+                    V.2_SIT_FIS_AREA_LT2-SWFN.pdf </a> </td>
+                </tr>
+         
+                <tr>
+                  <td class="bas_texto_corpo" valign="top"> <a href="/arquivos_licitacao/2026/SEDE/098_ADLI-2_SEDE_2026_LI/V_TERMO_DE_REFERENCIA.pdf">
+                    V_TERMO_DE_REFERENCIA.pdf </a> </td>
+                </tr>
+         
+                <tr>
+                  <td class="bas_texto_corpo" valign="top"> <a href="/arquivos_licitacao/2026/SEDE/098_ADLI-2_SEDE_2026_LI/IX_REQ_ENGENHARIA_LT2-SWFN.pdf">
+                    IX_REQ_ENGENHARIA_LT2-SWFN.pdf </a> </td>
+                </tr>
+         
+                <tr>
+                  <td class="bas_texto_corpo" valign="top"> <a href="/arquivos_licitacao/2026/SEDE/098_ADLI-2_SEDE_2026_LI/IX_REQ_ENGENHARIA_LT1-SWNS.pdf">
+                    IX_REQ_ENGENHARIA_LT1-SWNS.pdf </a> </td>
+                </tr>
+         
+                <tr>
+                  <td class="bas_texto_corpo" valign="top"> <a href="/arquivos_licitacao/2026/SEDE/098_ADLI-2_SEDE_2026_LI/IX_REQ_ENGENHARIA_LT5-SBSO.pdf">
+                    IX_REQ_ENGENHARIA_LT5-SBSO.pdf </a> </td>
+                </tr>
+         
+                <tr>
+                  <td class="bas_texto_corpo" valign="top"> <a href="/arquivos_licitacao/2026/SEDE/098_ADLI-2_SEDE_2026_LI/V.1_CROQUIS_LOCALIZ_AREAS.pdf">
+                    V.1_CROQUIS_LOCALIZ_AREAS.pdf </a> </td>
+                </tr>
+         
+                <tr>
+                  <td class="bas_texto_corpo" valign="top"> <a href="/arquivos_licitacao/2026/SEDE/098_ADLI-2_SEDE_2026_LI/V.2_SIT_FIS_AREA_LT5-SBSO.pdf">
+                    V.2_SIT_FIS_AREA_LT5-SBSO.pdf </a> </td>
+                </tr>
+         
+                <tr>
+                  <td class="bas_texto_corpo" valign="top"> <a href="/arquivos_licitacao/2026/SEDE/098_ADLI-2_SEDE_2026_LI/EDITAL_LICITACAO_098-2026.pdf">
+                    EDITAL_LICITACAO_098-2026.pdf </a> </td>
+                </tr>
+         
+                <tr>
+                  <td class="bas_texto_corpo" valign="top"> <a href="/arquivos_licitacao/2026/SEDE/098_ADLI-2_SEDE_2026_LI/IX_REQ_ENGENHARIA_LT3-SBIP.pdf">
+                    IX_REQ_ENGENHARIA_LT3-SBIP.pdf </a> </td>
+                </tr>
+         
+                <tr>
+                  <td class="bas_texto_corpo" valign="top"> <a href="/arquivos_licitacao/2026/SEDE/098_ADLI-2_SEDE_2026_LI/V.2_SIT_FIS_AREA_LT1-SWNS.pdf">
+                    V.2_SIT_FIS_AREA_LT1-SWNS.pdf </a> </td>
+                </tr>
+         
+                <tr>
+                  <td class="bas_texto_corpo" valign="top"> <a href="/arquivos_licitacao/2026/SEDE/098_ADLI-2_SEDE_2026_LI/IV_MINUTA_CONTRATUAL.pdf">
+                    IV_MINUTA_CONTRATUAL.pdf </a> </td>
+                </tr>
+         
+                <tr>
+                  <td class="bas_texto_corpo" valign="top"> <a href="/arquivos_licitacao/2026/SEDE/098_ADLI-2_SEDE_2026_LI/IX_REQ_ENGENHARIA_LT4-SBMS.pdf">
+                    IX_REQ_ENGENHARIA_LT4-SBMS.pdf </a> </td>
+                </tr>
+         
+                <tr>
+                  <td class="bas_texto_corpo" valign="top"> <a href="/arquivos_licitacao/2026/SEDE/098_ADLI-2_SEDE_2026_LI/V.2_SIT_FIS_AREA_LT4-SBMS.pdf">
+                    V.2_SIT_FIS_AREA_LT4-SBMS.pdf </a> </td>
+                </tr>
+         
+                <tr>
+                  <td class="bas_texto_corpo" valign="top"> <a href="/arquivos_licitacao/2026/SEDE/098_ADLI-2_SEDE_2026_LI/V.2_SIT_FIS_AREA_LT3-SBIP.pdf">
+                    V.2_SIT_FIS_AREA_LT3-SBIP.pdf </a> </td>
+                </tr>
+         
+              </table>
+            </td>
+          </tr>
+        
+          <tr>
+            <td class="bas_texto_corpo" valign="top">Aviso de Adiamento</td>
+            <td class="bas_texto_corpo" valign="top">ADIAMENTO SINE DIE</td>
+            <td class="bas_texto_corpo" valign="top">06/10/2026</td>
+            <td class="bas_texto_corpo" valign="top">CONFORME OFÍCIO CIRCULAR Nº SEDE-OFC-2026/00374, DE 06/10/2026</td>
+            
+            <td>
+              <table>
+           
+                <tr>
+                  <td class="bas_texto_corpo" valign="top"> <a href="/arquivos_licitacao/2026/SEDE/098_ADLI-2_SEDE_2026_LI/OFC_ADIAMENTO_098.pdf">
+                    OFC_ADIAMENTO_098.pdf </a> </td>
+                </tr>
+         
+              </table>
+            </td>
+          </tr>
+        
+        </table>
+    
+      </td>
+    </tr>
+
+    <!-- /thelmo -->
+ //    
+<!--    <tr>
+      <td colspan="2" valign="top">
+        <table width="80%" border="0" cellspacing="2" cellpadding="2">
+          <tr valign="top">
+            <td width="49%" align="left" class="bas_texto_corpo"><a href="/portal_licitacao/details/participante/pesquisa_participante.jsp?idLicitacao=178109"><img src="/portal_licitacao/details/licitacao/imagens/cbc_chamada_interessadalic.gif" alt="Cadastre sua empresa como interessada nessa licitação"  hspace="8" vspace="10" border="0" /></a></td>
+          </tr>
+        </table>
+      </td>
+    </tr>  -->
+ //    
+    <tr>
+      <td colspan="2" valign="top">&nbsp;</td>
+    </tr>
+    <tr class="bas_texto_corpo">
+            <td colspan="2" valign="top">Arquivos PDF podem ser abertos com o
+                <font color="#FF0000">Adobe Acrobat Reader</font>. Para obt&ecirc;-lo,
+                <a href="http://www.adobe.com" target="_blank">clique aqui</a>.</td>
+    </tr>
+  </table>
+
+</div>
+
+</td>
+<td align="center" valign="top">
+</td>
+<td><img src="/portal_licitacao/layout/imagens/spacer.gif" width="1" height="1" /></td>
+</tr>
+<tr>
+<td><img src="/portal_licitacao/layout/imagens/spacer.gif" width="1" height="15" /></td>
+</tr>
+</table>
+</body>
+</html>
+

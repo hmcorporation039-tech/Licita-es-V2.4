@@ -132,6 +132,7 @@ Ver o cabeçalho de `scripts/enxugarRawJson.ts`.
 | Gerador de impugnação e de pedido de esclarecimento | #40 | ✅ |
 | Correções do teste de ponta a ponta: **fuso do PNCP** (horários 3 h adiantados; migration 27 corrige 47.966 registros), deslocamento até o local de execução, número real do edital, avisos de preço acima do estimado, alterações não salvas | #41 | ✅ |
 | Fonte nova: Sistema S — SENAC (API nacional, 28 unidades), SESI/SENAI/federações (Portal de Licitações da indústria, 13 portais; Paradigma, 9 federações) | #42 | 🟡 |
+| Fonte nova: **Infraero** (fora do PNCP) — varredura por id do portal próprio, revisita das abertas, aeroporto → município — `docs/MAPA_INFRAERO.md` | branch `fonte-infraero` | 🟡 |
 
 ### Pendente (próxima sessão)
 

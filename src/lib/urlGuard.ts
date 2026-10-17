@@ -40,6 +40,7 @@ const HOSTS_PERMITIDOS = [
   'transparencia.sp.senai.br',
   'transparencia.sesisp.org.br',
   'transparencia.fieac.org',
+  'licitacao.infraero.gov.br',
 ]
 
 export function hostPermitido(hostname: string): boolean {

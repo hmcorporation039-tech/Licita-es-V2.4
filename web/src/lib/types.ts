@@ -161,7 +161,7 @@ export interface TenderMatchInfo {
 
 export interface Tender {
   id: string
-  fonte: 'PNCP' | 'COMPRASNET' | 'NOVACAP' | 'FIEG' | 'SESC_GO' | 'SEST_SENAT' | 'SESC_REGIONAL' | 'QUERIDO_DIARIO' | 'SISTEMA_S'
+  fonte: 'PNCP' | 'COMPRASNET' | 'NOVACAP' | 'FIEG' | 'SESC_GO' | 'SEST_SENAT' | 'SESC_REGIONAL' | 'QUERIDO_DIARIO' | 'SISTEMA_S' | 'INFRAERO'
   modalidade: string
   situacao: string
   objeto: string
