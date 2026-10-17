@@ -105,6 +105,32 @@ describe('calcularEstudo: deslocamento', () => {
     expect(r.custoDeslocamento).toBe(150)
     expect(r.avisos.join(' ')).toMatch(/base da empresa/)
   })
+
+  it('combustível: km de ida e volta dividido pelo consumo, vezes o preço do litro', () => {
+    const r = com({ kmIdaInformado: 1112, precoLitro: 6, consumoKmPorLitro: 10 })
+    expect(r.deslocamento).toMatchObject({ kmIdaEVolta: 2224, litrosPorViagem: 222.4, combustivelPorViagem: 1334.4, custoPorViagem: 1334.4 })
+    expect(r.custoDeslocamento).toBe(1334.4)
+    expect(r.avisos.join(' ')).not.toMatch(/outro custo por km/)
+  })
+
+  it('combustível soma com pedágio, hospedagem e outro custo por km, vezes as viagens', () => {
+    const r = com({ kmIdaInformado: 100, precoLitro: 5, consumoKmPorLitro: 8, valorPorKm: 0.5, pedagioPorViagem: 20, hospedagemPorViagem: 150, viagens: 2 })
+    expect(r.deslocamento.combustivelPorViagem).toBe(125)
+    expect(r.deslocamento.custoPorViagem).toBe(125 + 100 + 20 + 150)
+    expect(r.custoDeslocamento).toBe(790)
+  })
+
+  it('preço do litro sem consumo não inventa combustível e pede o consumo', () => {
+    const r = com({ kmIdaInformado: 100, precoLitro: 6 })
+    expect(r.deslocamento).toMatchObject({ litrosPorViagem: null, combustivelPorViagem: 0 })
+    expect(r.avisos.join(' ')).toMatch(/consumo do veículo/)
+  })
+
+  it('avisa quando o custo por km parece ser o preço do litro', () => {
+    const r = com({ kmIdaInformado: 1112, valorPorKm: 6 })
+    expect(r.custoDeslocamento).toBe(13344)
+    expect(r.avisos.join(' ')).toMatch(/preço do litro/)
+  })
 })
 
 describe('calcularEstudo: prazo', () => {
@@ -230,7 +256,7 @@ describe('PDF do estudo', () => {
       itens: Object.fromEntries(itens.map((it) => [it.id, { custoUnit: 50, precoVendaUnit: 90 }])),
       impostosPct: 8,
       outrosCustos: [{ descricao: 'Instalação', valor: 1500 }],
-      deslocamento: { kmIdaInformado: 300, viagens: 2, valorPorKm: 1.8, pedagioPorViagem: 40, hospedagemPorViagem: 0 },
+      deslocamento: { kmIdaInformado: 300, viagens: 2, valorPorKm: 1.8, precoLitro: 0, consumoKmPorLitro: 0, pedagioPorViagem: 40, hospedagemPorViagem: 0 },
       prazo: { exigidoDias: 30, exigidoEmDiasUteis: false, preparoDias: 10, assinatura: '2026-10-20' },
       mercado: { i0: { mediana: 95, minimo: 70, maximo: 140, amostras: 12, uf: 'GO', meses: 12, consultadoEm: '2026-10-05T10:00:00Z' } },
     })

@@ -15,6 +15,7 @@ export const FATOR_ESTRADA = 1.3
 export const KM_POR_DIA = 500
 // Folga (em dias) abaixo da qual o prazo é considerado apertado.
 export const FOLGA_APERTADA_DIAS = 2
+export const LIMITE_DE_CUSTO_POR_KM_PLAUSIVEL = 3
 
 export interface ItemDaLicitacao {
   id: string
@@ -47,6 +48,8 @@ export interface DadosDoEstudo {
     kmIdaInformado: number | null
     viagens: number
     valorPorKm: number
+    precoLitro: number
+    consumoKmPorLitro: number
     pedagioPorViagem: number
     hospedagemPorViagem: number
   }
@@ -67,7 +70,7 @@ export function dadosIniciais(): DadosDoEstudo {
     versao: 1,
     itens: {},
     mercado: {},
-    deslocamento: { kmIdaInformado: null, viagens: 1, valorPorKm: 0, pedagioPorViagem: 0, hospedagemPorViagem: 0 },
+    deslocamento: { kmIdaInformado: null, viagens: 1, valorPorKm: 0, precoLitro: 0, consumoKmPorLitro: 0, pedagioPorViagem: 0, hospedagemPorViagem: 0 },
     impostosPct: 0,
     margemDesejadaPct: 10,
     outrosCustos: [],
@@ -116,6 +119,8 @@ export interface ResultadoDoEstudo {
     origem: 'estimado' | 'informado' | 'indisponivel'
     kmIda: number | null
     kmIdaEVolta: number | null
+    litrosPorViagem: number | null
+    combustivelPorViagem: number
     custoPorViagem: number
   }
   cenarios: Cenario[]
@@ -153,10 +158,22 @@ export function calcularEstudo(itens: ItemDaLicitacao[], dados: DadosDoEstudo, c
     kmIda = Math.round(ctx.distanciaLinhaRetaKm * FATOR_ESTRADA)
     origemKm = 'estimado'
   }
-  const custoPorViagem = (kmIda !== null ? 2 * kmIda * num(d.valorPorKm) : 0) + num(d.pedagioPorViagem) + num(d.hospedagemPorViagem)
+  const kmIdaEVolta = kmIda !== null ? 2 * kmIda : null
+  const consumo = num(d.consumoKmPorLitro)
+  const litrosPorViagem = kmIdaEVolta !== null && consumo > 0 ? kmIdaEVolta / consumo : null
+  const combustivelPorViagem = litrosPorViagem !== null ? litrosPorViagem * num(d.precoLitro) : 0
+  const custoPorViagem = combustivelPorViagem + (kmIdaEVolta !== null ? kmIdaEVolta * num(d.valorPorKm) : 0) + num(d.pedagioPorViagem) + num(d.hospedagemPorViagem)
   const custoDeslocamento = arred(num(d.viagens) * custoPorViagem)
-  if (kmIda === null && num(d.valorPorKm) > 0) {
+  if (kmIda === null && (num(d.valorPorKm) > 0 || num(d.precoLitro) > 0)) {
     avisos.push('Sem distância: cadastre a base da empresa (Empresa → Base de entregas) ou informe os quilômetros à mão.')
+  }
+  if (num(d.precoLitro) > 0 && consumo === 0) {
+    avisos.push('Informe o consumo do veículo (km por litro) para calcular o combustível.')
+  }
+  if (num(d.valorPorKm) > LIMITE_DE_CUSTO_POR_KM_PLAUSIVEL) {
+    avisos.push(
+      `Confira o "outro custo por km": ${num(d.valorPorKm).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} por km dá ${(num(d.valorPorKm) * 2 * (kmIda ?? 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} por viagem. Se for o preço do litro do combustível, use os campos de combustível.`,
+    )
   }
 
   // ---- Itens ----
@@ -260,7 +277,14 @@ export function calcularEstudo(itens: ItemDaLicitacao[], dados: DadosDoEstudo, c
     margemPct: margem(lucro, receita),
     receitaMinima,
     itens: linhas,
-    deslocamento: { origem: origemKm, kmIda, kmIdaEVolta: kmIda !== null ? kmIda * 2 : null, custoPorViagem: arred(custoPorViagem) },
+    deslocamento: {
+      origem: origemKm,
+      kmIda,
+      kmIdaEVolta,
+      litrosPorViagem: litrosPorViagem !== null ? Math.round(litrosPorViagem * 10) / 10 : null,
+      combustivelPorViagem: arred(combustivelPorViagem),
+      custoPorViagem: arred(custoPorViagem),
+    },
     cenarios,
     prazo: { situacao, diasNecessarios, diasDeTransporte, folgaDias, dataLimite, dataEntregaPrevista },
     avisos,

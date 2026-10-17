@@ -51,6 +51,8 @@ const dadosSchema = z.object({
     kmIdaInformado: z.number().finite().min(0).max(20_000).nullable(),
     viagens: z.number().int().min(0).max(1000),
     valorPorKm: dinheiro,
+    precoLitro: dinheiro.default(0),
+    consumoKmPorLitro: z.number().finite().min(0).max(200).default(0),
     pedagioPorViagem: dinheiro,
     hospedagemPorViagem: dinheiro,
   }),

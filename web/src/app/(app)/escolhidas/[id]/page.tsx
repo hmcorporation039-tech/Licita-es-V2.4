@@ -345,7 +345,7 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
             </div>
           )}
 
-          <TableWrap minWidth={940}>
+          <TableWrap minWidth={1180}>
             <Table>
               <THead>
                 <tr>
@@ -355,6 +355,8 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
                   <Th>Mercado (pago)</Th>
                   <Th>Seu custo un.</Th>
                   <Th>Seu preço un.</Th>
+                  <Th align="right">Custo total</Th>
+                  <Th align="right">Venda total</Th>
                   <Th align="right">Mínimo un.</Th>
                 </tr>
               </THead>
@@ -447,12 +449,32 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
                         </div>
                       </Td>
                       <Td numeric className="text-ink-2">
+                        {e.custoUnit === null ? '—' : brl(l?.custo ?? 0)}
+                      </Td>
+                      <Td numeric className="font-medium text-ink">
+                        {e.precoVendaUnit === null ? '—' : brl(l?.venda ?? 0)}
+                      </Td>
+                      <Td numeric className="text-ink-2">
                         {brl(l?.precoMinimoUnit ?? null)}
                       </Td>
                     </Tr>
                   )
                 })}
               </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-line-strong bg-sunken">
+                  <Td colSpan={6} className="text-right text-sm font-semibold text-ink">
+                    Total dos itens
+                  </Td>
+                  <Td numeric className="font-semibold text-ink">
+                    {brl(resultado.custoItens)}
+                  </Td>
+                  <Td numeric className="font-semibold text-ink">
+                    {brl(resultado.receita)}
+                  </Td>
+                  <Td />
+                </tr>
+              </tfoot>
             </Table>
           </TableWrap>
         </div>
@@ -479,14 +501,24 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
         }
       >
         <div className="flex flex-col gap-4">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Field label="Km de ida (se souber)">
               <Numero valor={dados.deslocamento.kmIdaInformado} aoMudar={(v) => alterar((d) => ({ ...d, deslocamento: { ...d.deslocamento, kmIdaInformado: v } }))} passo="1" placeholder="automático" />
             </Field>
             <Field label="Viagens">
               <Numero valor={dados.deslocamento.viagens} aoMudar={(v) => alterar((d) => ({ ...d, deslocamento: { ...d.deslocamento, viagens: Math.round(v ?? 0) } }))} passo="1" />
             </Field>
-            <Field label="R$ por km">
+            <Field label="Preço do litro do combustível">
+              <Numero moeda valor={dados.deslocamento.precoLitro} aoMudar={(v) => alterar((d) => ({ ...d, deslocamento: { ...d.deslocamento, precoLitro: v ?? 0 } }))} />
+            </Field>
+            <Field label="Consumo do veículo (km por litro)">
+              <Numero
+                valor={dados.deslocamento.consumoKmPorLitro}
+                aoMudar={(v) => alterar((d) => ({ ...d, deslocamento: { ...d.deslocamento, consumoKmPorLitro: v ?? 0 } }))}
+                placeholder="ex.: 10"
+              />
+            </Field>
+            <Field label="Outro custo por km (frete, desgaste)" hint="Opcional. Não é o preço do litro.">
               <Numero moeda valor={dados.deslocamento.valorPorKm} aoMudar={(v) => alterar((d) => ({ ...d, deslocamento: { ...d.deslocamento, valorPorKm: v ?? 0 } }))} />
             </Field>
             <Field label="Pedágio por viagem">
@@ -499,7 +531,13 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
           <p className="border-t border-line-soft pt-3 text-sm text-ink-2">
             {resultado.deslocamento.kmIda !== null && (
               <>
-                Ida e volta: <Valor>{resultado.deslocamento.kmIdaEVolta} km</Valor> ·{' '}
+                Ida e volta: <Valor>{resultado.deslocamento.kmIdaEVolta?.toLocaleString('pt-BR')} km</Valor> ·{' '}
+              </>
+            )}
+            {resultado.deslocamento.litrosPorViagem !== null && (
+              <>
+                combustível <Valor>{resultado.deslocamento.litrosPorViagem.toLocaleString('pt-BR')} litros</Valor> ={' '}
+                <Valor>{brl(resultado.deslocamento.combustivelPorViagem)}</Valor> ·{' '}
               </>
             )}
             custo por viagem <Valor>{brl(resultado.deslocamento.custoPorViagem)}</Valor> · total <Valor forte>{brl(resultado.custoDeslocamento)}</Valor>
