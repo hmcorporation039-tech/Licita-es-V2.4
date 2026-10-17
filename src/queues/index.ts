@@ -4,7 +4,7 @@
 
 import { Queue, QueueOptions } from 'bullmq'
 import IORedis from 'ioredis'
-import { FonteEnum } from '../types'
+import { ColetorJobPayload, FonteEnum } from '../types'
 
 // Conexão Redis compartilhada
 export const redisConnection = new IORedis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
@@ -64,6 +64,8 @@ interface ColetorScheduler {
   // então '0 6 * * *' dispararia às 03:00 de Brasília.
   tz?: string
   fonte: FonteEnum
+  dados?: Omit<ColetorJobPayload, 'fonte'>
+  disparaNaPartida?: boolean
 }
 
 // A janela de datas NÃO entra no payload: o BullMQ reaproveita o mesmo
@@ -84,6 +86,16 @@ export const COLETOR_SCHEDULERS: ColetorScheduler[] = [
     jobName: 'coleta-pncp',
     pattern: '0 6,18 * * *',
     fonte: 'PNCP',
+  },
+  {
+    queue: coletorPNCPQueue,
+    schedulerId: 'varredura-propostas-pncp',
+    jobName: 'varredura-propostas-pncp',
+    pattern: '30 0 * * *',
+    tz: 'America/Sao_Paulo',
+    fonte: 'PNCP',
+    dados: { varredura: 'propostas' },
+    disparaNaPartida: false,
   },
   {
     queue: coletorComprasnetQueue,
@@ -162,10 +174,11 @@ export const COLETOR_SCHEDULERS: ColetorScheduler[] = [
 // tinham — corrigir o código não basta, o agendador velho precisa sair.
 async function removerAgendadoresLegados(scheduler: ColetorScheduler): Promise<number> {
   const existentes = await scheduler.queue.getRepeatableJobs()
+  const atuaisDaFila = COLETOR_SCHEDULERS.filter((s) => s.queue === scheduler.queue).map((s) => s.schedulerId)
   let removidos = 0
 
   for (const repetivel of existentes) {
-    if (repetivel.key === scheduler.schedulerId) continue
+    if (atuaisDaFila.includes(repetivel.key)) continue
     await scheduler.queue.removeRepeatableByKey(repetivel.key)
     removidos++
   }
@@ -183,7 +196,7 @@ export async function scheduleColetorJobs() {
     await scheduler.queue.upsertJobScheduler(
       scheduler.schedulerId,
       { pattern: scheduler.pattern, ...(scheduler.tz ? { tz: scheduler.tz } : {}) },
-      { name: scheduler.jobName, data: { fonte: scheduler.fonte } }
+      { name: scheduler.jobName, data: { ...scheduler.dados, fonte: scheduler.fonte } }
     )
   }
 
@@ -194,6 +207,7 @@ export async function scheduleColetorJobs() {
 // resolve o período a partir do relógio e do que já foi coletado.
 export async function dispararColetaInicial() {
   for (const scheduler of COLETOR_SCHEDULERS) {
+    if (scheduler.disparaNaPartida === false) continue
     await scheduler.queue.add(`${scheduler.jobName}-inicial`, { fonte: scheduler.fonte })
   }
 }

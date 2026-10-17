@@ -210,6 +210,7 @@ export interface ColetorJobPayload {
   uf?: string
   pagina?: number
   modalidadeCodigo?: number
+  varredura?: 'propostas'
 }
 
 export interface MatcherJobPayload {

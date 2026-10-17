@@ -28,7 +28,7 @@ export function rawJsonEssencial(raw: Record<string, any>): Record<string, unkno
   return {
     anoCompra: raw.anoCompra,
     sequencialCompra: raw.sequencialCompra,
-    orgaoEntidade: { cnpj: raw.orgaoEntidade?.cnpj },
+    orgaoEntidade: { cnpj: raw.orgaoEntidade?.cnpj, esferaId: raw.orgaoEntidade?.esferaId },
     numeroCompra: raw.numeroCompra,
     processo: raw.processo,
   }

@@ -13,6 +13,7 @@ import {
   snapshotDeTender,
   tenderContentHash,
 } from '../lib/tenderContentHash'
+import { retencaoApagariaAoChegar } from '../lib/retencao'
 
 const prisma = new PrismaClient()
 
@@ -164,6 +165,12 @@ export async function saveTender(tender: NormalizedTender): Promise<SaveResult> 
   })
 
   return { isNew: true, tenderId: created.id, isDupe: false, changed: false, changedFields: [] }
+}
+
+export async function saveTenderSeAindaServir(tender: NormalizedTender, agora: Date = new Date()): Promise<SaveResult | null> {
+  if (!retencaoApagariaAoChegar(tender, agora)) return saveTender(tender)
+  const existente = await prisma.tender.findUnique({ where: { fonteId: tender.fonteId }, select: { id: true } })
+  return existente ? saveTender(tender) : null
 }
 
 // Salva os itens de uma licitação já existente (busca sob demanda, feita

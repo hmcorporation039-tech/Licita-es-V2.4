@@ -17,6 +17,23 @@ const ESPERA_MAXIMA_MS = 60_000
 
 type ConfigComTentativas = InternalAxiosRequestConfig & { tentativasExtras?: number }
 
+const PAGINA_DE_LIMITE = /limite\s+de\s+requisi/i
+
+export class LimiteDeRequisicoesExcedido extends Error {
+  constructor(origem: string) {
+    super(`${origem} devolveu a página de "Limite de requisições excedido"`)
+    this.name = 'LimiteDeRequisicoesExcedido'
+  }
+}
+
+export function ehPaginaDeLimiteDeRequisicoes(corpo: unknown): boolean {
+  return typeof corpo === 'string' && PAGINA_DE_LIMITE.test(corpo.slice(0, 20_000))
+}
+
+interface OpcoesDoCliente {
+  detectarPaginaDeLimite?: boolean
+}
+
 export function esperaAntesDeTentarDeNovo(tentativa: number, retryAfter?: string | null): number {
   const segundos = Number(retryAfter)
   if (Number.isFinite(segundos) && segundos > 0) return Math.min(segundos * 1000, ESPERA_MAXIMA_MS)
@@ -24,12 +41,13 @@ export function esperaAntesDeTentarDeNovo(tentativa: number, retryAfter?: string
 }
 
 // Cria um cliente axios com delay entre requisições
-function createRateLimitedClient(
+export function createRateLimitedClient(
   baseURL: string,
   delayMs = 1200,
   // Os coletores de HTML (Novacap/FIEG/SESC GO) sobrescrevem o Accept —
   // os de API (PNCP/ComprasNet) continuam pedindo JSON.
-  headers: Record<string, string> = { Accept: 'application/json' }
+  headers: Record<string, string> = { Accept: 'application/json' },
+  opcoes: OpcoesDoCliente = {}
 ): AxiosInstance {
   const client = axios.create({
     baseURL,
@@ -56,20 +74,29 @@ function createRateLimitedClient(
     return config
   })
 
+  async function tentarDeNovo(config: ConfigComTentativas, motivo: string, retryAfter?: string) {
+    const tentativa = (config.tentativasExtras ?? 0) + 1
+    if (tentativa > MAX_TENTATIVAS_EXTRAS) return undefined
+    const espera = esperaAntesDeTentarDeNovo(tentativa, retryAfter)
+    console.warn(`[httpClient] ${motivo} — nova tentativa ${tentativa}/${MAX_TENTATIVAS_EXTRAS} em ${Math.round(espera / 1000)}s...`)
+    await sleep(espera)
+    config.tentativasExtras = tentativa
+    return client.request(config)
+  }
+
   client.interceptors.response.use(
-    (res) => res,
+    async (res) => {
+      if (!opcoes.detectarPaginaDeLimite || !ehPaginaDeLimiteDeRequisicoes(res.data)) return res
+      const repetida = await tentarDeNovo(res.config as ConfigComTentativas, 'Página de limite de requisições')
+      if (repetida) return repetida
+      return Promise.reject(new LimiteDeRequisicoesExcedido(baseURL || String(res.config.url ?? 'servidor')))
+    },
     async (err: AxiosError) => {
       const config = err.config as ConfigComTentativas | undefined
       const status = err.response?.status
       if (config && (status === 429 || status === 503)) {
-        const tentativa = (config.tentativasExtras ?? 0) + 1
-        if (tentativa <= MAX_TENTATIVAS_EXTRAS) {
-          const espera = esperaAntesDeTentarDeNovo(tentativa, err.response?.headers?.['retry-after'] as string | undefined)
-          console.warn(`[httpClient] HTTP ${status} — nova tentativa ${tentativa}/${MAX_TENTATIVAS_EXTRAS} em ${Math.round(espera / 1000)}s...`)
-          await sleep(espera)
-          config.tentativasExtras = tentativa
-          return client.request(config)
-        }
+        const repetida = await tentarDeNovo(config, `HTTP ${status}`, err.response?.headers?.['retry-after'] as string | undefined)
+        if (repetida) return repetida
       }
       return Promise.reject(err)
     }
@@ -79,7 +106,7 @@ function createRateLimitedClient(
 }
 
 // Clientes pré-configurados para cada fonte
-export const pncpClient = createRateLimitedClient('https://pncp.gov.br/api/consulta')
+export const pncpClient = createRateLimitedClient('https://pncp.gov.br/api/consulta', 1200, undefined, { detectarPaginaDeLimite: true })
 export const comprasnetClient = createRateLimitedClient('https://dadosabertos.compras.gov.br')
 export const comprasLegacyClient = createRateLimitedClient('https://compras.dados.gov.br')
 

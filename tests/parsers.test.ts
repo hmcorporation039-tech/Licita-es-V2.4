@@ -109,6 +109,17 @@ describe('parsePNCPTender', () => {
     expect(JSON.stringify(t.rawJson)).not.toContain('lixo')
   })
 
+  it('guarda a esfera do órgão (F/E/M/D) e o IBGE do município vai para a coluna', () => {
+    const t = parsePNCPTender({
+      ...raw,
+      orgaoEntidade: { ...raw.orgaoEntidade, esferaId: 'M', poderId: 'E' },
+      unidadeOrgao: { ufSigla: 'MG', municipioNome: 'Uberlândia', codigoIbge: '3170206' },
+    })
+    expect(t.rawJson).toMatchObject({ orgaoEntidade: { cnpj: '00000000000191', esferaId: 'M' } })
+    expect(JSON.stringify(t.rawJson)).not.toContain('poderId')
+    expect(t.municipioIbge).toBe('3170206')
+  })
+
   it('sobrevive a payload sem orgaoEntidade', () => {
     const { orgaoEntidade, ...semOrgao } = raw
     expect(parsePNCPTender(semOrgao).rawJson).toMatchObject({ orgaoEntidade: { cnpj: undefined } })
