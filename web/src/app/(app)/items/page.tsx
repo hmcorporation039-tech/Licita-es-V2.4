@@ -4,6 +4,7 @@ import { useEffect, useState, type Dispatch, type ReactNode, type SetStateAction
 import { Pause, Pencil, Play, Plus, RefreshCw, Save, Trash2 } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
 import { api, ApiRequestError } from '@/lib/api'
+import { MODELOS_DE_ITEM, type ModeloDeItem } from '@/lib/modelosDeItem'
 import { MonitoredItem, UasgResult } from '@/lib/types'
 import { MODALIDADE_OPTIONS } from '@/lib/modalidades'
 import { dinheiroBrParaEdicao, faixaDeValorBr, lerDinheiroBr } from '@/lib/dinheiroBr'
@@ -274,6 +275,7 @@ export default function ItemsPage() {
   const [name, setName] = useState('')
   const [keywords, setKeywords] = useState('')
   const [palavrasDeExclusao, setPalavrasDeExclusao] = useState('')
+  const [modeloAplicado, setModeloAplicado] = useState<string | null>(null)
   const [ufDaEmpresa, setUfDaEmpresa] = useState<string | null>(null)
   const [catmatCodes, setCatmatCodes] = useState('')
   const [catserCodes, setCatserCodes] = useState('')
@@ -343,6 +345,14 @@ export default function ItemsPage() {
       .catch(() => setUfDaEmpresa(null))
   }, [user])
 
+  function aplicarModelo(modelo: ModeloDeItem) {
+    setName((atual) => atual || modelo.nome)
+    setKeywords(modelo.palavrasChave.join(', '))
+    setPalavrasDeExclusao(modelo.palavrasDeExclusao.join(', '))
+    setModeloAplicado(modelo.nome)
+    setErrosNovos({})
+  }
+
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
     if (!user) return
@@ -371,6 +381,7 @@ export default function ItemsPage() {
       setName('')
       setKeywords('')
       setPalavrasDeExclusao('')
+      setModeloAplicado(null)
       setCatmatCodes('')
       setCatserCodes('')
       setModalidades([])
@@ -538,6 +549,15 @@ export default function ItemsPage() {
 
       <Panel title="Cadastrar item" description="Descreva o que você vende; as licitações que casarem aparecem em Meus matches.">
         <form onSubmit={handleCreate} className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-line-soft bg-sunken p-3">
+            <span className="text-sm font-medium text-ink-2">Começar de um modelo pronto:</span>
+            {MODELOS_DE_ITEM.map((modelo) => (
+              <Button key={modelo.id} type="button" size="sm" variant="secondary" title={modelo.descricao} onClick={() => aplicarModelo(modelo)}>
+                {modelo.nome}
+              </Button>
+            ))}
+            {modeloAplicado && <span className="text-xs text-muted">Modelo “{modeloAplicado}” aplicado: revise as palavras e o estado antes de cadastrar.</span>}
+          </div>
           <FormularioDoItem
             campos={camposNovos}
             erros={errosNovos}
