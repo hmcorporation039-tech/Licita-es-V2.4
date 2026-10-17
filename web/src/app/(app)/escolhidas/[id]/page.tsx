@@ -271,6 +271,11 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
 
   const t = estudo.tender
   const linhaPorItem = new Map(resultado.itens.map((l) => [l.id, l]))
+  const estimadoDosItens =
+    estudo.itens.length > 0 && estudo.itens.every((it) => it.valorEstimadoUnit !== null)
+      ? estudo.itens.reduce((soma, it) => soma + it.quantidade * (it.valorEstimadoUnit ?? 0), 0)
+      : (t.valorEstimado ?? null)
+  const vendaAcimaDoEstimado = estimadoDosItens !== null && estimadoDosItens > 0 && resultado.receita > estimadoDosItens
   const temCatalogo = estudo.itens.some((i) => i.codigoCatalogo)
   const custosAcimaDoEstimado = t.valorEstimado !== null && t.valorEstimado !== undefined && t.valorEstimado > 0 && resultado.custoTotal > t.valorEstimado
   const destinoDoEstudo = estudo.destino
@@ -357,7 +362,6 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
                   <Th>Seu preço un.</Th>
                   <Th align="right">Custo total</Th>
                   <Th align="right">Venda total</Th>
-                  <Th align="right">Mínimo un.</Th>
                 </tr>
               </THead>
               <tbody>
@@ -367,6 +371,10 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
                   const l = linhaPorItem.get(it.id)
                   const amostra = amostras[it.id]
                   const nomeDoItem = it.numero ? `item ${it.numero}` : it.descricao.slice(0, 40)
+                  const estimadoUnit = it.valorEstimadoUnit ?? null
+                  const minimo = l?.precoMinimoUnit ?? null
+                  const precoAcimaDoEstimado = estimadoUnit !== null && estimadoUnit > 0 && e.precoVendaUnit !== null && e.precoVendaUnit > estimadoUnit
+                  const minimoAcimaDoEstimado = estimadoUnit !== null && estimadoUnit > 0 && minimo !== null && minimo > estimadoUnit
                   return (
                     <Tr key={it.id}>
                       <Td className="max-w-[260px]">
@@ -439,23 +447,36 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
                         </div>
                       </Td>
                       <Td>
-                        <div className="w-36">
+                        <div className="flex w-40 flex-col gap-1">
                           <Numero
                             moeda
                             aria-label={`Seu preço unitário, ${nomeDoItem}`}
+                            aria-invalid={precoAcimaDoEstimado || undefined}
                             valor={e.precoVendaUnit}
                             aoMudar={(v) => alterar((d) => ({ ...d, itens: { ...d.itens, [it.id]: { custoUnit: e.custoUnit, precoVendaUnit: v } } }))}
                           />
+                          {precoAcimaDoEstimado && <span className="text-xs font-medium text-danger">Acima do estimado ({brl(it.valorEstimadoUnit)})</span>}
+                          {minimo !== null && (
+                            <span className={cx('flex flex-wrap items-center gap-x-1.5 text-xs', minimoAcimaDoEstimado ? 'text-danger' : 'text-muted')}>
+                              <span>
+                                mínimo p/ margem: <span className="font-mono">{brl(minimo)}</span>
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => alterar((d) => ({ ...d, itens: { ...d.itens, [it.id]: { custoUnit: e.custoUnit, precoVendaUnit: minimo } } }))}
+                                className="font-medium text-accent hover:underline"
+                              >
+                                usar
+                              </button>
+                            </span>
+                          )}
                         </div>
                       </Td>
                       <Td numeric className="text-ink-2">
                         {e.custoUnit === null ? '—' : brl(l?.custo ?? 0)}
                       </Td>
-                      <Td numeric className="font-medium text-ink">
+                      <Td numeric className={cx('font-medium', precoAcimaDoEstimado ? 'text-danger' : 'text-ink')}>
                         {e.precoVendaUnit === null ? '—' : brl(l?.venda ?? 0)}
-                      </Td>
-                      <Td numeric className="text-ink-2">
-                        {brl(l?.precoMinimoUnit ?? null)}
                       </Td>
                     </Tr>
                   )
@@ -469,10 +490,10 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
                   <Td numeric className="font-semibold text-ink">
                     {brl(resultado.custoItens)}
                   </Td>
-                  <Td numeric className="font-semibold text-ink">
+                  <Td numeric className={cx('font-semibold', vendaAcimaDoEstimado ? 'text-danger' : 'text-ink')}>
                     {brl(resultado.receita)}
+                    {vendaAcimaDoEstimado && <span className="block text-xs font-medium">acima do estimado ({brl(estimadoDosItens)})</span>}
                   </Td>
-                  <Td />
                 </tr>
               </tfoot>
             </Table>
