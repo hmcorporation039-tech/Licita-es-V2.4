@@ -18,6 +18,8 @@ export interface DadosDoEstudo {
     kmIdaInformado: number | null
     viagens: number
     valorPorKm: number
+    precoLitro: number
+    consumoKmPorLitro: number
     pedagioPorViagem: number
     hospedagemPorViagem: number
   }
@@ -49,7 +51,14 @@ export interface ResultadoDoEstudo {
   margemPct: number | null
   receitaMinima: number | null
   itens: { id: string; custo: number; venda: number; precoMinimoUnit: number | null }[]
-  deslocamento: { origem: 'estimado' | 'informado' | 'indisponivel'; kmIda: number | null; kmIdaEVolta: number | null; custoPorViagem: number }
+  deslocamento: {
+    origem: 'estimado' | 'informado' | 'indisponivel'
+    kmIda: number | null
+    kmIdaEVolta: number | null
+    litrosPorViagem: number | null
+    combustivelPorViagem: number
+    custoPorViagem: number
+  }
   cenarios: { nome: string; receita: number; lucro: number; margemPct: number | null }[]
   prazo: {
     situacao: 'ok' | 'apertado' | 'inviavel' | null

@@ -277,7 +277,10 @@ export function gerarPdfDoEstudo(e: EntradaDoPdf): Promise<Buffer> {
       par('Ida e volta', `${(dl.kmIdaEVolta ?? 0).toLocaleString('pt-BR')} km`)
     }
     par('Viagens', String(e.dados.deslocamento.viagens))
-    par('Valor por km / pedágio / hospedagem', `${brl(e.dados.deslocamento.valorPorKm)} / ${brl(e.dados.deslocamento.pedagioPorViagem)} / ${brl(e.dados.deslocamento.hospedagemPorViagem)}`)
+    if (dl.litrosPorViagem !== null) {
+      par('Combustível por viagem', `${dl.litrosPorViagem.toLocaleString('pt-BR')} litros x ${brl(e.dados.deslocamento.precoLitro)} = ${brl(dl.combustivelPorViagem)} (${e.dados.deslocamento.consumoKmPorLitro.toLocaleString('pt-BR')} km/l)`)
+    }
+    par('Outro custo por km / pedágio / hospedagem', `${brl(e.dados.deslocamento.valorPorKm)} / ${brl(e.dados.deslocamento.pedagioPorViagem)} / ${brl(e.dados.deslocamento.hospedagemPorViagem)}`)
     par('Custo por viagem', brl(dl.custoPorViagem))
     par('Custo total de deslocamento', brl(r.custoDeslocamento))
 
