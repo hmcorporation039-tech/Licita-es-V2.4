@@ -21,13 +21,13 @@ rodar('Somente licitações abertas', () => {
   let token = ''
 
   const casos: Record<string, Record<string, unknown>> = {
-    prazoFuturo: { encerramentoAt: dias(5), publicadoAt: dias(-400) },
+    prazoFuturo: { encerramentoAt: dias(5), publicadoAt: dias(-400), uf: 'GO' },
     prazoVencido: { encerramentoAt: dias(-1) },
     homologada: { encerramentoAt: dias(5), valorHomologado: 1000 },
     revogada: { encerramentoAt: dias(5), situacao: 'REVOGADA' },
-    dispensaRecente: { publicadoAt: dias(-3), aberturaAt: dias(-3) },
+    dispensaRecente: { publicadoAt: dias(-3), aberturaAt: dias(-3), uf: 'DF' },
     dispensaDeAnoPassado: { publicadoAt: dias(-500), aberturaAt: dias(-500) },
-    sessaoFiegFutura: { fonte: 'FIEG', aberturaAt: dias(2), publicadoAt: dias(-60) },
+    sessaoFiegFutura: { fonte: 'FIEG', aberturaAt: dias(2), publicadoAt: dias(-60), uf: 'SP' },
     sessaoFiegPassada: { fonte: 'FIEG', aberturaAt: dias(-2), publicadoAt: dias(-3) },
   }
   const abertas = ['prazoFuturo', 'dispensaRecente', 'sessaoFiegFutura']
@@ -77,5 +77,14 @@ rodar('Somente licitações abertas', () => {
     const r = (await (await fetch(`${base}/api/tenders?q=${sufixo}&pageSize=50`, { headers: { Authorization: `Bearer ${token}` } })).json()) as { items: { fonteId: string }[] }
     const nomes = r.items.map((t: { fonteId: string }) => t.fonteId.replace(`-${sufixo}`, '')).sort()
     expect(nomes).toEqual([...abertas].sort())
+  })
+
+  it('GET /api/tenders filtra por um ou vários estados e recusa sigla que não existe', async () => {
+    const buscar = async (uf: string) => fetch(`${base}/api/tenders?q=${sufixo}&pageSize=50&uf=${encodeURIComponent(uf)}`, { headers: { Authorization: `Bearer ${token}` } })
+    const nomes = async (uf: string) => ((await (await buscar(uf)).json()) as { items: { fonteId: string }[] }).items.map((t) => t.fonteId.replace(`-${sufixo}`, '')).sort()
+    expect(await nomes('go')).toEqual(['prazoFuturo'])
+    expect(await nomes('GO,DF')).toEqual(['dispensaRecente', 'prazoFuturo'])
+    expect(await nomes('GO, DF, SP')).toEqual([...abertas].sort())
+    expect((await buscar('GO,XX')).status).toBe(400)
   })
 })

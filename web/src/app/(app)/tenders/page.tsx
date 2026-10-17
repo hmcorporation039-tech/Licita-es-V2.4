@@ -30,6 +30,7 @@ import {
   Tr,
 } from '@/components/ui'
 import { ROTULOS_DE_FONTE } from '@/lib/fontes'
+import { ESTADOS } from '@/lib/estados'
 
 type TenderComEncerramento = Tender & { encerramentoAt?: string | null }
 
@@ -113,6 +114,12 @@ function TenderRow({ t, somenteRelacionadas }: { t: TenderComEncerramento; somen
   )
 }
 
+const SIGLAS_DAS_UFS = new Set(ESTADOS.map((estado) => estado.sigla))
+
+function siglasValidas(texto: string): string[] {
+  return [...new Set(texto.toUpperCase().split(/[\s,;]+/).filter((sigla) => SIGLAS_DAS_UFS.has(sigla)))]
+}
+
 export default function TendersPage() {
   const user = useRequireSession()
   const [data, setData] = useState<Paginated<Tender> | null>(null)
@@ -139,12 +146,12 @@ export default function TendersPage() {
     const params = new URLSearchParams(window.location.search)
     const daUrl = (nome: string) => (params.get(nome) ?? '').trim().slice(0, 200)
     const qInicial = daUrl('q')
-    const ufInicial = daUrl('uf').toUpperCase()
+    const ufsIniciais = siglasValidas(daUrl('uf'))
     const municipioInicial = daUrl('municipio')
     const modalidadeInicial = daUrl('modalidade')
-    const ufValida = /^[A-Z]{2}$/.test(ufInicial)
+    const ufValida = ufsIniciais.length > 0
     if (qInicial) setQ(qInicial)
-    if (ufValida) setUf(ufInicial)
+    if (ufValida) setUf(ufsIniciais.join(', '))
     if (municipioInicial) setMunicipio(municipioInicial)
     if (MODALIDADE_OPTIONS.some((o) => o.value === modalidadeInicial)) setModalidade(modalidadeInicial)
     if (params.get('relacionadas') === '0') setSomenteRelacionadas(false)
@@ -161,7 +168,8 @@ export default function TendersPage() {
       if (numero) qs.set('numero', numero)
       if (modalidade) qs.set('modalidade', modalidade)
       if (municipio) qs.set('municipio', municipio)
-      if (uf) qs.set('uf', uf)
+      const ufs = siglasValidas(uf)
+      if (ufs.length) qs.set('uf', ufs.join(','))
       if (publicacaoInicio) qs.set('publicacaoInicio', publicacaoInicio)
       if (publicacaoFim) qs.set('publicacaoFim', publicacaoFim)
       if (q) qs.set('q', q)
@@ -291,9 +299,9 @@ export default function TendersPage() {
                 }}
               />
             </Field>
-            <Field label="UF">
+            <Field label="UF" hint="Um ou mais estados: GO, DF, MG">
               <Input
-                maxLength={2}
+                maxLength={90}
                 value={uf}
                 onChange={(e) => {
                   setPage(1)

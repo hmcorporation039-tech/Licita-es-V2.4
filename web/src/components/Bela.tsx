@@ -38,7 +38,8 @@ function rotuloDaModalidade(valor: string): string {
 function parametrosDosFiltros(filtros: FiltrosDaBela): URLSearchParams {
   const qs = new URLSearchParams()
   if (filtros.q) qs.set('q', filtros.q)
-  if (filtros.uf) qs.set('uf', filtros.uf)
+  if (filtros.ufs?.length) qs.set('uf', filtros.ufs.join(','))
+  else if (filtros.uf) qs.set('uf', filtros.uf)
   if (filtros.municipio) qs.set('municipio', filtros.municipio)
   if (filtros.modalidade) qs.set('modalidade', filtros.modalidade)
   if (filtros.situacao) qs.set('situacao', filtros.situacao)
@@ -53,6 +54,7 @@ function linkDaLista(filtros: FiltrosDaBela): string {
 
 function localDoFiltro(filtros: FiltrosDaBela): string | null {
   if (filtros.municipio) return `em ${filtros.municipio}`
+  if (filtros.rotuloDoLocal) return filtros.rotuloDoLocal
   if (filtros.uf === 'DF') return 'no DF'
   if (filtros.uf) return `na UF ${filtros.uf}`
   return null
@@ -71,7 +73,7 @@ function fraseDoResultado(filtros: FiltrosDaBela, total: number, primeira: Tende
 function FiltrosAplicados({ filtros }: { filtros: FiltrosDaBela }) {
   const chips = [
     filtros.q ? `Objeto: “${filtros.q}”` : null,
-    filtros.municipio ? `${filtros.municipio}/${filtros.uf ?? ''}` : filtros.uf ? `UF ${filtros.uf}` : null,
+    filtros.municipio ? `${filtros.municipio}/${filtros.uf ?? ''}` : filtros.rotuloDoLocal ? `Local: ${filtros.rotuloDoLocal.replace(/^(no|em) /, '')}` : filtros.uf ? `UF ${filtros.uf}` : null,
     filtros.modalidade ? rotuloDaModalidade(filtros.modalidade) : null,
     filtros.situacao === 'ABERTA' ? 'Abertas' : null,
   ].filter((c): c is string => Boolean(c))

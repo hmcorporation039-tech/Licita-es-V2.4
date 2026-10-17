@@ -29,12 +29,19 @@ import { desfazerReserva, reservarAnalise } from '../../services/reservaDeAnalis
 import { falhouHaPouco } from '../../lib/esperaDeReanalise'
 import { dataDaSessao } from '../../lib/dataDaSessao'
 
+import { SIGLAS_DAS_UFS } from '../../lib/origemDoCadastro'
+
 export const tendersRouter = Router()
 
 const SITUACAO_VALUES = ['ABERTA', 'ENCERRADA', 'SUSPENSA', 'CANCELADA', 'ANULADA', 'HOMOLOGADA', 'REVOGADA'] as const
 
 const querySchema = z.object({
-  uf: z.string().length(2).optional(),
+  uf: z
+    .string()
+    .max(120)
+    .transform((v) => [...new Set(v.toUpperCase().split(/[\s,;]+/).filter(Boolean))])
+    .pipe(z.array(z.enum(SIGLAS_DAS_UFS)).max(SIGLAS_DAS_UFS.length))
+    .optional(),
   modalidade: z.enum(MODALIDADE_VALUES).optional(),
   situacao: z.enum(SITUACAO_VALUES).optional(),
   orgao: z.string().trim().min(1).max(200).optional(),
@@ -88,7 +95,7 @@ tendersRouter.get(
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: Record<string, any> = {}
-    if (uf) where.uf = uf
+    if (uf?.length) where.uf = uf.length === 1 ? uf[0] : { in: uf }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if (modalidade) where.modalidade = modalidade as any
     // Só licitações abertas para concorrência (ver lib/licitacaoAberta.ts). O filtro

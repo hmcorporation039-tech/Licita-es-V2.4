@@ -24,6 +24,32 @@ describe('Bela: pedido de busca falado', () => {
     expect(r.acao === 'buscar' && r.filtros.uf).toBeFalsy()
   })
 
+  it('entende vários estados no mesmo pedido, por extenso, por sigla e com "ou"', () => {
+    expect(interpretarPedido('Bela, licitação de material de limpeza em Goiás, DF e Minas Gerais')).toMatchObject({
+      acao: 'buscar',
+      filtros: { q: 'material de limpeza', ufs: ['GO', 'DF', 'MG'], rotuloDoLocal: 'em GO, DF e MG' },
+    })
+    expect(interpretarPedido('consultoria de TI em São Paulo e no Rio de Janeiro')).toMatchObject({ filtros: { q: 'consultoria de ti', ufs: ['SP', 'RJ'] } })
+    expect(interpretarPedido('notebook em GO ou SP')).toMatchObject({ filtros: { q: 'notebook', ufs: ['GO', 'SP'] } })
+  })
+
+  it('entende regiões do país', () => {
+    expect(interpretarPedido('pregão de notebook no Nordeste')).toMatchObject({
+      filtros: { q: 'notebook', modalidade: 'PREGAO_ELETRONICO', ufs: ['AL', 'BA', 'CE', 'MA', 'PB', 'PE', 'PI', 'RN', 'SE'], rotuloDoLocal: 'no Nordeste' },
+    })
+    expect(interpretarPedido('estrutura metálica na região sul')).toMatchObject({ filtros: { q: 'estrutura metálica', ufs: ['PR', 'RS', 'SC'] } })
+    expect(interpretarPedido('limpeza no norte e nordeste')).toMatchObject({ filtros: { q: 'limpeza', rotuloDoLocal: 'no Norte e Nordeste' } })
+    expect(interpretarPedido('limpeza no centro-oeste')).toMatchObject({ filtros: { ufs: ['DF', 'GO', 'MT', 'MS'] } })
+  })
+
+  it('não confunde estado com região nem a preposição "para" com o Pará', () => {
+    expect(interpretarPedido('obras no Rio Grande do Sul')).toMatchObject({ filtros: { q: 'obras', uf: 'RS' } })
+    const paraEscolas = interpretarPedido('material para escolas em Goiás')
+    expect(paraEscolas).toMatchObject({ filtros: { q: 'material para escolas', uf: 'GO' } })
+    expect(paraEscolas.acao === 'buscar' && paraEscolas.filtros.ufs).toBeFalsy()
+    expect(interpretarPedido('ar condicionado no Pará')).toMatchObject({ filtros: { q: 'ar condicionado', uf: 'PA' } })
+  })
+
   it('pede de novo quando não há o que buscar', () => {
     expect(interpretarPedido('Bela').acao).toBe('desconhecida')
     expect(interpretarPedido('   ').acao).toBe('desconhecida')
