@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { DadosDoEstudo, FATOR_ESTRADA, ItemDaLicitacao, calcularEstudo, dadosIniciais, lerPrazoEmDias } from '../src/lib/estudoDeCustos'
-import { estatisticasDePrecos, normalizarRegistroDePreco } from '../src/lib/precosDeMercado'
+import { estatisticasDePrecos, estatisticasPorUnidade, normalizarRegistroDePreco, normalizarUnidade } from '../src/lib/precosDeMercado'
 import { limparCachePrecos, pesquisarPrecos, PrecosIndisponiveisError } from '../src/services/pesquisaDePrecosService'
 import { gerarPdfDoEstudo } from '../src/services/estudoPdf'
 
@@ -79,6 +79,71 @@ describe('calcularEstudo: lucro, impostos e preço mínimo', () => {
     const r = calcularEstudo(its, d, ctx)
     expect(r.cenarios.find((c) => c.nome.includes('estimado'))).toMatchObject({ receita: 2000, lucro: 1000 })
     expect(r.cenarios.find((c) => c.nome.includes('mediana'))).toMatchObject({ receita: 1800, lucro: 800 })
+  })
+})
+
+describe('calcularEstudo: resultado no valor estimado pelo órgão', () => {
+  it('custo + impostos acima do estimado NÃO é prejuízo se no estimado ainda sobra lucro', () => {
+    const r = calcularEstudo(
+      [item('a', 1, 1000)],
+      dados({ itens: { a: { custoUnit: 900, precoVendaUnit: 2000 } }, impostosPct: 6 }),
+      ctx
+    )
+    expect(r.custoTotal).toBe(1020)
+    expect(r.custosSemImpostos).toBe(900)
+    expect(r.estimadoPeloOrgao).toBe(1000)
+    expect(r.resultadoNoEstimado).toBe(40)
+    expect(r.cenarios.find((c) => c.nome.includes('estimado'))!.lucro).toBe(r.resultadoNoEstimado)
+  })
+
+  it('custo + impostos abaixo do estimado, mas prejuízo no estimado: alerta (antes passava despercebido)', () => {
+    const r = calcularEstudo(
+      [item('a', 1, 1000)],
+      dados({ itens: { a: { custoUnit: 950, precoVendaUnit: 400 } }, impostosPct: 10 }),
+      ctx
+    )
+    expect(r.custoTotal).toBe(990)
+    expect(r.resultadoNoEstimado).toBe(-50)
+  })
+
+  it('sem estimado nos itens usa o valor total da licitação; sem nenhum, não há resultado no estimado', () => {
+    const semUnit = calcularEstudo([item('a', 2)], dados({ itens: { a: { custoUnit: 100, precoVendaUnit: null } } }), { ...ctx, valorEstimadoTotal: 150 })
+    expect(semUnit).toMatchObject({ estimadoPeloOrgao: 150, resultadoNoEstimado: -50 })
+    const nada = calcularEstudo([item('a', 2)], dados({ itens: { a: { custoUnit: 100, precoVendaUnit: null } } }), ctx)
+    expect(nada).toMatchObject({ estimadoPeloOrgao: null, resultadoNoEstimado: null })
+  })
+
+  it('custos sem impostos não mudam quando o preço de venda sobe; só os impostos sobem', () => {
+    const com = (preco: number) => calcularEstudo([item('a', 10)], dados({ itens: { a: { custoUnit: 100, precoVendaUnit: preco } }, impostosPct: 10 }), ctx)
+    expect(com(150).custosSemImpostos).toBe(com(300).custosSemImpostos)
+    expect(com(300).impostos).toBeGreaterThan(com(150).impostos)
+  })
+})
+
+describe('calcularEstudo: preço mínimo por item e avisos', () => {
+  it('mínimo unitário arredonda para cima: unidades x quantidade cobrem a receita mínima', () => {
+    const its = [item('a', 3), item('b', 7)]
+    const r = calcularEstudo(its, dados({ itens: { a: { custoUnit: 10, precoVendaUnit: null }, b: { custoUnit: 3.33, precoVendaUnit: null } }, margemDesejadaPct: 7 }), ctx)
+    expect(r.itens[0].precoMinimoUnit).toBe(10.76)
+    expect(r.itens[1].precoMinimoUnit).toBe(3.59)
+    const somaDosMinimos = 3 * r.itens[0].precoMinimoUnit! + 7 * r.itens[1].precoMinimoUnit!
+    expect(somaDosMinimos).toBeGreaterThanOrEqual(r.receitaMinima!)
+  })
+
+  it('valor exato não sobe um centavo à toa', () => {
+    const r = calcularEstudo([item('a', 10)], dados({ itens: { a: { custoUnit: 100, precoVendaUnit: null } }, outrosCustos: [{ descricao: 'frete', valor: 200 }], impostosPct: 10 }), ctx)
+    expect(r.itens[0].precoMinimoUnit).toBe(150)
+  })
+
+  it('avisa quando a quantidade não veio do edital e foi considerada 1', () => {
+    const r = calcularEstudo([{ ...item('a', 1), quantidadeAssumida: true }], dados({ itens: { a: { custoUnit: 10, precoVendaUnit: 20 } } }), ctx)
+    expect(r.avisos.join(' ')).toMatch(/sem quantidade no edital/)
+  })
+
+  it('avisa quando o preço de mercado está em unidade diferente da licitação', () => {
+    const mercado = { mediana: 31, minimo: 30, maximo: 35, amostras: 4, uf: null, meses: 12, consultadoEm: '2026-10-05T10:00:00Z', unidade: 'CX', unidadeConfere: false }
+    const r = calcularEstudo([item('a', 1)], dados({ itens: { a: { custoUnit: 10, precoVendaUnit: 20 } }, mercado: { a: mercado } }), ctx)
+    expect(r.avisos.join(' ')).toMatch(/unidade diferente/)
   })
 })
 
@@ -177,6 +242,52 @@ describe('lerPrazoEmDias', () => {
     expect(lerPrazoEmDias('imediato')).toBeNull()
     expect(lerPrazoEmDias(null)).toBeNull()
   })
+
+  it('"N dias" vale mais que a vigência em meses (antes: 360 dias)', () => {
+    expect(lerPrazoEmDias('5 dias úteis após o pedido, durante a vigência de 12 meses')).toEqual({ dias: 5, uteis: true })
+    expect(lerPrazoEmDias('Vigência de 12 (doze) meses; entrega em até 30 (trinta) dias corridos')).toEqual({ dias: 30, uteis: false })
+  })
+
+  it('prazos diferentes no mesmo texto são ambíguos: devolve null', () => {
+    expect(lerPrazoEmDias('Entrega em 5 dias úteis, prorrogáveis por mais 10 dias')).toBeNull()
+    expect(lerPrazoEmDias('Vigência de 12 meses, podendo chegar a 60 meses')).toBeNull()
+  })
+
+  it('o mesmo prazo repetido não é ambíguo', () => {
+    expect(lerPrazoEmDias('Prazo de 10 (dez) dias úteis. A entrega deve ocorrer em até 10 dias.')).toEqual({ dias: 10, uteis: true })
+  })
+})
+
+describe('preços de mercado por unidade de fornecimento', () => {
+  const compra = (precoUnitario: number, unidade: string | null) => ({ precoUnitario, quantidade: 1, data: '2026-01-10', orgao: 'O', uf: 'GO', fornecedor: 'F', unidade })
+  const misturado = [compra(0.3, 'UN'), compra(0.32, 'UNIDADE'), compra(0.35, 'UNID'), compra(0.31, 'UN'), compra(30, 'CX'), compra(32, 'CAIXA'), compra(35, 'CAIXA 100,00 UN'), compra(31, 'CX')]
+
+  it('normaliza sinônimos de unidade', () => {
+    expect(['UN', 'UNID', 'Unidade', 'und'].map(normalizarUnidade)).toEqual(['UN', 'UN', 'UN', 'UN'])
+    expect(['CX', 'CAIXA', 'Caixa 100,00 UN'].map(normalizarUnidade)).toEqual(['CX', 'CX', 'CX'])
+    expect(['PCT', 'PACOTE', 'KG', 'QUILOGRAMA', 'L', 'LITRO', 'M', 'METRO', 'M²'].map(normalizarUnidade)).toEqual(['PCT', 'PCT', 'KG', 'KG', 'L', 'L', 'M', 'M', 'M2'])
+    expect(normalizarUnidade(null)).toBeNull()
+  })
+
+  it('não mistura unidade e caixa: mediana 0,32 por UN (antes: 15,18)', () => {
+    expect(estatisticasDePrecos(misturado.map((c) => c.precoUnitario))!.mediana).toBe(15.18)
+    const r = estatisticasPorUnidade(misturado, 'UNIDADE')
+    expect(r).toMatchObject({ unidade: 'UN', unidadeConfere: true })
+    expect(r.estatisticas).toMatchObject({ amostras: 4, mediana: 0.32, minimo: 0.3, maximo: 0.35 })
+    expect(estatisticasPorUnidade(misturado, 'Caixa').estatisticas).toMatchObject({ mediana: 31.5, amostras: 4 })
+  })
+
+  it('sem grupo compatível usa o maior grupo e sinaliza', () => {
+    const r = estatisticasPorUnidade([...misturado, compra(33, 'CX')], 'KG')
+    expect(r).toMatchObject({ unidade: 'CX', unidadeConfere: false })
+    expect(r.estatisticas!.amostras).toBe(5)
+    expect(r.unidades[0]).toEqual({ unidade: 'CX', amostras: 5 })
+  })
+
+  it('item sem unidade: maior grupo, sem afirmar que confere', () => {
+    expect(estatisticasPorUnidade(misturado.slice(0, 5), null)).toMatchObject({ unidade: 'UN', unidadeConfere: null })
+    expect(estatisticasPorUnidade([], 'UN')).toMatchObject({ estatisticas: null, unidade: null })
+  })
 })
 
 describe('preços de mercado', () => {
@@ -231,6 +342,21 @@ describe('pesquisarPrecos (API falsa)', () => {
     expect(chamadas[1].p).not.toHaveProperty('estado')
     await pesquisarPrecos({ tipo: 'MATERIAL', codigo: '150227', uf: 'GO', meses: 12 }, { buscar, agora })
     expect(chamadas).toHaveLength(2) // a repetição veio do cache
+  })
+
+  it('agrupa por unidade de fornecimento e devolve a unidade junto da mediana', async () => {
+    const comUnidade = (p: number, siglaUnidadeFornecimento: string) => ({ ...registro(p), siglaUnidadeFornecimento })
+    const buscar = async () => ({
+      resultado: [comUnidade(0.3, 'UN'), comUnidade(0.32, 'UN'), comUnidade(0.35, 'UNIDADE'), comUnidade(0.31, 'UN'), comUnidade(30, 'CX'), comUnidade(32, 'CX'), comUnidade(35, 'CAIXA'), comUnidade(31, 'CX')],
+      totalRegistros: 8,
+      totalPaginas: 1,
+    })
+    const r = await pesquisarPrecos({ tipo: 'MATERIAL', codigo: '999', unidade: 'Unidade' }, { buscar })
+    expect(r).toMatchObject({ unidade: 'UN', unidadeConfere: true, totalDeCompras: 8 })
+    expect(r.estatisticas?.mediana).toBe(0.32)
+    expect(r.recentes.every((c) => c.precoUnitario < 1)).toBe(true)
+    const emCaixa = await pesquisarPrecos({ tipo: 'MATERIAL', codigo: '999', unidade: 'CX' }, { buscar })
+    expect(emCaixa.estatisticas?.mediana).toBe(31.5)
   })
 
   it('tenta de novo uma vez e depois dá erro claro', async () => {

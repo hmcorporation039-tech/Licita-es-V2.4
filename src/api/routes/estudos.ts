@@ -32,7 +32,12 @@ const pctSchema = z.number().finite().min(0).max(100)
 
 const dadosSchema = z.object({
   versao: z.literal(1),
-  itens: z.record(z.string().max(80), z.object({ custoUnit: dinheiro.nullable(), precoVendaUnit: dinheiro.nullable() })).refine((o) => Object.keys(o).length <= 500),
+  itens: z
+    .record(
+      z.string().max(80),
+      z.object({ custoUnit: dinheiro.nullable(), precoVendaUnit: dinheiro.nullable().transform((v) => (v === null ? null : Math.round(v * 100) / 100)) })
+    )
+    .refine((o) => Object.keys(o).length <= 500),
   mercado: z
     .record(
       z.string().max(80),
@@ -44,6 +49,8 @@ const dadosSchema = z.object({
         uf: z.string().length(2).nullable(),
         meses: z.number().int().min(1).max(120),
         consultadoEm: z.string().max(40),
+        unidade: z.string().max(40).nullable().optional(),
+        unidadeConfere: z.boolean().nullable().optional(),
       })
     )
     .refine((o) => Object.keys(o).length <= 500),
@@ -109,6 +116,7 @@ export async function carregar(companyId: string, tenderId: string) {
           descricao: semRepeticao(it.descricao),
           unidade: it.unidadeMedida,
           quantidade: num(it.quantidade) && num(it.quantidade)! > 0 ? num(it.quantidade)! : 1,
+          quantidadeAssumida: !(num(it.quantidade) && num(it.quantidade)! > 0),
           valorEstimadoUnit: num(it.valorUnitario),
           codigoCatalogo: it.catmatCode ?? it.catserCode,
           tipoCatalogo: it.catmatCode ? 'MATERIAL' : it.catserCode ? 'SERVICO' : null,
@@ -256,7 +264,7 @@ estudosRouter.post(
       throw new ApiError(422, 'Este item não tem código CATMAT/CATSER, então não há pesquisa automática. Informe o preço à mão.')
     }
     try {
-      const pesquisa = await pesquisarPrecos({ tipo: item.tipoCatalogo, codigo: item.codigoCatalogo, uf: uf ?? null, meses })
+      const pesquisa = await pesquisarPrecos({ tipo: item.tipoCatalogo, codigo: item.codigoCatalogo, uf: uf ?? null, meses, unidade: item.unidade })
       res.json({ itemId, ...pesquisa, consultadoEm: new Date().toISOString() })
     } catch (err) {
       if (err instanceof PrecosIndisponiveisError) throw new ApiError(502, err.message)

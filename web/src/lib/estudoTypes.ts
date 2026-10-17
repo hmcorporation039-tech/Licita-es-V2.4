@@ -8,6 +8,8 @@ export interface MercadoDoItem {
   uf: string | null
   meses: number
   consultadoEm: string
+  unidade?: string | null
+  unidadeConfere?: boolean | null
 }
 
 export interface DadosDoEstudo {
@@ -38,6 +40,7 @@ export interface ItemDoEstudo {
   valorEstimadoUnit: number | null
   codigoCatalogo: string | null
   tipoCatalogo: 'MATERIAL' | 'SERVICO' | null
+  quantidadeAssumida?: boolean
 }
 
 export interface ResultadoDoEstudo {
@@ -46,10 +49,13 @@ export interface ResultadoDoEstudo {
   custoDeslocamento: number
   custoOutros: number
   impostos: number
+  custosSemImpostos: number
   custoTotal: number
   lucro: number
   margemPct: number | null
   receitaMinima: number | null
+  estimadoPeloOrgao: number | null
+  resultadoNoEstimado: number | null
   itens: { id: string; custo: number; venda: number; precoMinimoUnit: number | null }[]
   deslocamento: {
     origem: 'estimado' | 'informado' | 'indisponivel'
@@ -98,7 +104,10 @@ export interface PesquisaDePrecosResposta {
   itemId: string
   totalDeCompras: number
   estatisticas: { amostras: number; descartados: number; minimo: number; p25: number; mediana: number; p75: number; maximo: number; media: number } | null
-  recentes: { precoUnitario: number; data: string | null; orgao: string | null; uf: string | null; fornecedor: string | null }[]
+  unidade: string | null
+  unidadeConfere: boolean | null
+  unidades: { unidade: string | null; amostras: number }[]
+  recentes: { precoUnitario: number; data: string | null; orgao: string | null; uf: string | null; fornecedor: string | null; unidade: string | null }[]
   consultadoEm: string
   filtro: { uf: string | null; meses: number }
 }

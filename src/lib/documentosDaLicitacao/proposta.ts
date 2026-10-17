@@ -1,4 +1,4 @@
-import { formatarReais, reaisPorExtenso } from './extenso'
+import { formatarReais, inteiroPorExtenso, reaisPorExtenso } from './extenso'
 import { localEData } from './proponente'
 import { marcador, type Bloco, type Certame, type DocumentoDaLicitacao, type Proponente } from './modelo'
 
@@ -33,20 +33,21 @@ export function propostaComercial(
   quando: Date = new Date(),
 ): PropostaGerada {
   const pendencias = [...proponente.pendencias]
-  const semPreco = itens.filter((i) => i.precoUnitario === null || i.precoUnitario <= 0)
+  const semPreco = itens.filter((i) => i.precoUnitario === null || arred(i.precoUnitario) <= 0)
   if (semPreco.length > 0) pendencias.push(`preço de venda de ${semPreco.length} item(ns) no estudo de custos`)
 
   let total = 0
   const linhas = itens.map((item, i) => {
-    const temPreco = item.precoUnitario !== null && item.precoUnitario > 0
-    const subtotal = temPreco ? arred(item.precoUnitario! * item.quantidade) : 0
+    const unitario = item.precoUnitario !== null ? arred(item.precoUnitario) : 0
+    const temPreco = unitario > 0
+    const subtotal = temPreco ? arred(unitario * item.quantidade) : 0
     total = arred(total + subtotal)
     return [
       String(item.numero ?? i + 1),
       item.descricao,
       item.unidade ?? 'un',
       item.quantidade.toLocaleString('pt-BR'),
-      temPreco ? formatarReais(item.precoUnitario!) : marcador('preço'),
+      temPreco ? formatarReais(unitario) : marcador('preço'),
       temPreco ? formatarReais(subtotal) : marcador('total'),
     ]
   })
@@ -73,7 +74,7 @@ export function propostaComercial(
       alinharDireita: [3, 4, 5],
     },
     { tipo: 'paragrafo', texto: `Valor global da proposta: R$ ${formatarReais(total)} (${reaisPorExtenso(total)}).` },
-    { tipo: 'paragrafo', texto: `Validade da proposta: ${opcoes.validadeDias} (${validadePorExtenso(opcoes.validadeDias)}) dias, contados da data da sessão pública.` },
+    { tipo: 'paragrafo', texto: `Validade da proposta: ${opcoes.validadeDias} (${inteiroPorExtenso(opcoes.validadeDias)}) dias, contados da data da sessão pública.` },
     { tipo: 'paragrafo', texto: `Prazo de entrega/execução: ${opcoes.prazoDeEntrega || 'conforme o edital e o termo de referência'}.` },
     { tipo: 'paragrafo', texto: `Condições de pagamento: ${opcoes.condicoesDePagamento || 'conforme o edital'}.` },
     {
@@ -88,7 +89,54 @@ export function propostaComercial(
   return { documento: { tipo: 'proposta', titulo: readequada ? 'Proposta comercial readequada' : 'Proposta comercial', blocos }, pendencias, total }
 }
 
-function validadePorExtenso(dias: number): string {
-  const nomes: Record<number, string> = { 30: 'trinta', 60: 'sessenta', 90: 'noventa', 120: 'cento e vinte', 180: 'cento e oitenta' }
-  return nomes[dias] ?? String(dias)
+const COLUNA_QUANTIDADE = 'Qtd.'
+const COLUNA_UNITARIO = 'Valor unitário (R$)'
+const COLUNA_TOTAL = 'Valor total (R$)'
+const PARAGRAFO_DO_VALOR_GLOBAL = /^Valor global da proposta: R\$ [\d.,]+ \([^)]*\)\.$/
+
+export function lerValorDaCelula(texto: string): number | null {
+  let t = texto.replace(/R\$/g, '').replace(/\s/g, '')
+  if (!/^\d[\d.,]*$/.test(t)) return null
+  if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.')
+  else if (!/^\d+\.\d{1,2}$/.test(t) && !/^0\.\d+$/.test(t)) t = t.replace(/\./g, '')
+  const n = Number(t)
+  return Number.isFinite(n) ? n : null
+}
+
+export function recalcularProposta(documento: DocumentoDaLicitacao, opcoes: { normalizarUnitarios: boolean }): { documento: DocumentoDaLicitacao; total: number | null } {
+  if (documento.tipo !== 'proposta') return { documento, total: null }
+  const somas: number[] = []
+  const blocos = documento.blocos.map((bloco): Bloco => {
+    if (bloco.tipo !== 'tabela') return bloco
+    const iQtd = bloco.colunas.indexOf(COLUNA_QUANTIDADE)
+    const iUnit = bloco.colunas.indexOf(COLUNA_UNITARIO)
+    const iTotal = bloco.colunas.indexOf(COLUNA_TOTAL)
+    if (iQtd < 0 || iUnit < 0 || iTotal < 0) return bloco
+    let soma = 0
+    const linhas = bloco.linhas.map((linha) => {
+      const quantidade = lerValorDaCelula(linha[iQtd] ?? '')
+      const unitario = lerValorDaCelula(linha[iUnit] ?? '')
+      const nova = [...linha]
+      if (quantidade === null || unitario === null || arred(unitario) <= 0) {
+        nova[iTotal] = marcador('total')
+        return nova
+      }
+      const subtotal = arred(arred(unitario) * quantidade)
+      soma = arred(soma + subtotal)
+      nova[iTotal] = formatarReais(subtotal)
+      if (opcoes.normalizarUnitarios) nova[iUnit] = formatarReais(arred(unitario))
+      return nova
+    })
+    somas.push(soma)
+    const rodape = bloco.rodape && bloco.rodape.length > iTotal ? bloco.rodape.map((c, j) => (j === iTotal ? formatarReais(soma) : c)) : bloco.rodape
+    return { ...bloco, linhas, ...(rodape ? { rodape } : {}) }
+  })
+  if (somas.length === 0) return { documento, total: null }
+  const valorGlobal = arred(somas.reduce((a, b) => a + b, 0))
+  const comTexto = blocos.map((bloco): Bloco =>
+    bloco.tipo === 'paragrafo' && PARAGRAFO_DO_VALOR_GLOBAL.test(bloco.texto.trim())
+      ? { tipo: 'paragrafo', texto: `Valor global da proposta: R$ ${formatarReais(valorGlobal)} (${reaisPorExtenso(valorGlobal)}).` }
+      : bloco,
+  )
+  return { documento: { ...documento, blocos: comTexto }, total: valorGlobal }
 }

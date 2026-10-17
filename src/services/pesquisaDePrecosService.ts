@@ -6,7 +6,7 @@
 // ============================================================
 
 import axios from 'axios'
-import { EstatisticasDePreco, RegistroDePreco, estatisticasDePrecos, normalizarRegistroDePreco } from '../lib/precosDeMercado'
+import { EstatisticasDePreco, GrupoDeUnidade, RegistroDePreco, estatisticasPorUnidade, normalizarRegistroDePreco } from '../lib/precosDeMercado'
 
 const BASE = 'https://dadosabertos.compras.gov.br/modulo-pesquisa-preco'
 const TAMANHO_PAGINA = 500
@@ -34,11 +34,14 @@ export interface PesquisaDePrecos {
   filtro: { uf: string | null; meses: number }
   totalDeCompras: number
   estatisticas: EstatisticasDePreco | null
+  unidade: string | null
+  unidadeConfere: boolean | null
+  unidades: GrupoDeUnidade[]
   /** As compras mais recentes, para o usuário conferir de onde vem o número. */
   recentes: RegistroDePreco[]
 }
 
-const cache = new Map<string, { em: number; valor: PesquisaDePrecos }>()
+const cache = new Map<string, { em: number; registros: RegistroDePreco[]; total: number }>()
 export function limparCachePrecos(): void {
   cache.clear()
 }
@@ -48,7 +51,7 @@ function dataISO(d: Date): string {
 }
 
 export async function pesquisarPrecos(
-  entrada: { tipo: TipoDeItem; codigo: string; uf?: string | null; meses?: number },
+  entrada: { tipo: TipoDeItem; codigo: string; uf?: string | null; meses?: number; unidade?: string | null },
   opcoes: { buscar?: BuscadorDePrecos; agora?: Date } = {}
 ): Promise<PesquisaDePrecos> {
   const buscar = opcoes.buscar ?? buscadorPadrao
@@ -58,7 +61,7 @@ export async function pesquisarPrecos(
   const uf = entrada.uf ? entrada.uf.toUpperCase() : null
   const chave = JSON.stringify([entrada.tipo, codigo, uf, meses])
   const guardado = cache.get(chave)
-  if (guardado && Date.now() - guardado.em < CACHE_MS) return guardado.valor
+  if (guardado && Date.now() - guardado.em < CACHE_MS) return montarPesquisa(entrada, codigo, uf, meses, guardado.registros, guardado.total)
 
   const inicio = new Date(agora)
   inicio.setMonth(inicio.getMonth() - meses)
@@ -96,15 +99,29 @@ export async function pesquisarPrecos(
     if (!r.totalPaginas || pagina >= r.totalPaginas) break
   }
 
-  const valor: PesquisaDePrecos = {
+  if (cache.size >= CACHE_MAX) cache.delete(cache.keys().next().value as string)
+  cache.set(chave, { em: Date.now(), registros, total })
+  return montarPesquisa(entrada, codigo, uf, meses, registros, total)
+}
+
+function montarPesquisa(
+  entrada: { tipo: TipoDeItem; unidade?: string | null },
+  codigo: string,
+  uf: string | null,
+  meses: number,
+  registros: RegistroDePreco[],
+  total: number
+): PesquisaDePrecos {
+  const porUnidade = estatisticasPorUnidade(registros, entrada.unidade)
+  return {
     codigo,
     tipo: entrada.tipo,
     filtro: { uf, meses },
     totalDeCompras: total || registros.length,
-    estatisticas: estatisticasDePrecos(registros.map((r) => r.precoUnitario)),
-    recentes: [...registros].sort((a, b) => (b.data ?? '').localeCompare(a.data ?? '')).slice(0, 5),
+    estatisticas: porUnidade.estatisticas,
+    unidade: porUnidade.unidade,
+    unidadeConfere: porUnidade.unidadeConfere,
+    unidades: porUnidade.unidades,
+    recentes: [...porUnidade.registros].sort((a, b) => (b.data ?? '').localeCompare(a.data ?? '')).slice(0, 5),
   }
-  if (cache.size >= CACHE_MAX) cache.delete(cache.keys().next().value as string)
-  cache.set(chave, { em: Date.now(), valor })
-  return valor
 }

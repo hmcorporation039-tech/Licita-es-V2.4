@@ -33,6 +33,9 @@ const MAX_BLOCOS = 200
 const MAX_CELULA = 1000
 const MAX_LOCAL = 200
 const MARCADOR = '[preencher:'
+const COLUNA_DO_TOTAL = 'Valor total (R$)'
+const PARAGRAFO_DO_VALOR_GLOBAL = /^Valor global da proposta:/
+const ESPERA_DO_RECALCULO_MS = 500
 
 type Pedido = { tipo: 'proposta'; readequada: boolean } | { tipo: 'declaracoes'; ids: string[] } | { tipo: 'impugnacao' | 'esclarecimento'; alertas: string[] }
 type BlocoComChave = { chave: string; bloco: BlocoDoDocumento }
@@ -190,8 +193,17 @@ function Paragrafo({
   )
 }
 
-function TabelaEditavel({ bloco, onChange }: { bloco: Extract<BlocoDoDocumento, { tipo: 'tabela' }>; onChange: (b: Extract<BlocoDoDocumento, { tipo: 'tabela' }>) => void }) {
+function TabelaEditavel({
+  bloco,
+  calculada,
+  onChange,
+}: {
+  bloco: Extract<BlocoDoDocumento, { tipo: 'tabela' }>
+  calculada: boolean
+  onChange: (b: Extract<BlocoDoDocumento, { tipo: 'tabela' }>) => void
+}) {
   const direita = new Set(bloco.alinharDireita ?? [])
+  const colunaDoTotal = calculada ? bloco.colunas.indexOf(COLUNA_DO_TOTAL) : -1
   const largura = Math.max(560, bloco.colunas.length * 120 + 160)
 
   function alterarCelula(linha: number, coluna: number, valor: string) {
@@ -223,7 +235,14 @@ function TabelaEditavel({ bloco, onChange }: { bloco: Extract<BlocoDoDocumento, 
               <Tr key={i}>
                 {linha.map((valor, j) => (
                   <Td key={j} className={cx('px-1.5 py-1.5', !direita.has(j) && j > 0 && 'min-w-[14rem]')}>
-                    <Input aria-label={`${bloco.colunas[j] ?? 'Coluna'}, linha ${i + 1}`} value={valor} onChange={(e) => alterarCelula(i, j, e.target.value)} className={classeDaCelula(j, valor)} />
+                    <Input
+                      aria-label={`${bloco.colunas[j] ?? 'Coluna'}, linha ${i + 1}`}
+                      value={valor}
+                      readOnly={j === colunaDoTotal}
+                      title={j === colunaDoTotal ? 'Calculado: quantidade × valor unitário' : undefined}
+                      onChange={(e) => alterarCelula(i, j, e.target.value)}
+                      className={cx(classeDaCelula(j, valor), j === colunaDoTotal && 'bg-sunken!')}
+                    />
                   </Td>
                 ))}
               </Tr>
@@ -232,7 +251,14 @@ function TabelaEditavel({ bloco, onChange }: { bloco: Extract<BlocoDoDocumento, 
               <tr className="bg-sunken">
                 {bloco.rodape.map((valor, j) => (
                   <Td key={j} className="px-1.5 py-1.5">
-                    <Input aria-label={`Rodapé da tabela, coluna ${j + 1}`} value={valor} onChange={(e) => alterarRodape(j, e.target.value)} className={cx(classeDaCelula(j, valor), 'font-semibold')} />
+                    <Input
+                      aria-label={`Rodapé da tabela, coluna ${j + 1}`}
+                      value={valor}
+                      readOnly={j === colunaDoTotal}
+                      title={j === colunaDoTotal ? 'Calculado: soma dos itens' : undefined}
+                      onChange={(e) => alterarRodape(j, e.target.value)}
+                      className={cx(classeDaCelula(j, valor), 'font-semibold', j === colunaDoTotal && 'bg-sunken!')}
+                    />
                   </Td>
                 ))}
               </tr>
@@ -240,7 +266,13 @@ function TabelaEditavel({ bloco, onChange }: { bloco: Extract<BlocoDoDocumento, 
           </tbody>
         </Table>
       </TableWrap>
-      <p className="text-xs text-muted">Mudou um preço aqui? O total e o valor por extenso não são recalculados — para isso, ajuste o estudo de custos e gere de novo.</p>
+      {calculada ? (
+        <p className="text-xs text-muted">
+          Mudou um preço ou uma quantidade? O total de cada item, o valor global e o valor por extenso são recalculados (valor unitário com 2 casas). Para manter o estudo de custos igual, ajuste o preço lá também.
+        </p>
+      ) : (
+        <p className="text-xs text-muted">Os valores desta tabela saem como estão escritos.</p>
+      )}
     </div>
   )
 }
@@ -289,7 +321,45 @@ export default function DocumentosDaLicitacaoPage({ params }: { params: Promise<
   const [baixando, setBaixando] = useState<Formato | null>(null)
   const [erroDoArquivo, setErroDoArquivo] = useState<string | null>(null)
 
+  const [edicoesDaTabela, setEdicoesDaTabela] = useState(0)
+  const ultimaEdicaoDaTabela = useRef(0)
+  const blocosParaRecalcular = useRef<BlocoComChave[]>([])
+  const tituloAtual = useRef('')
+  useEffect(() => {
+    blocosParaRecalcular.current = blocos
+    tituloAtual.current = titulo
+  }, [blocos, titulo])
+  const ehProposta = previa?.documento.tipo === 'proposta'
+
   const novaChave = () => `b${++proximaChave.current}`
+
+  useEffect(() => {
+    if (edicoesDaTabela === 0 || !ehProposta) return
+    const pedidoFeito = edicoesDaTabela
+    const t = setTimeout(() => {
+      const enviados = blocosParaRecalcular.current
+      api
+        .post<{ documento: DocumentoDaLicitacao; total: number | null }>(`/api/tenders/${id}/documentos/recalcular`, {
+          documento: { tipo: 'proposta', titulo: tituloAtual.current.trim() || 'Proposta comercial', blocos: enviados.map((b) => b.bloco) },
+        })
+        .then((r) => {
+          if (pedidoFeito !== ultimaEdicaoDaTabela.current || r.documento.blocos.length !== enviados.length) return
+          setBlocos((atuais) =>
+            atuais.length !== r.documento.blocos.length
+              ? atuais
+              : atuais.map((b, i) => {
+                  const recalculado = r.documento.blocos[i]
+                  if (b.bloco.tipo === 'tabela' && recalculado.tipo === 'tabela') return { chave: b.chave, bloco: recalculado }
+                  if (b.bloco.tipo === 'paragrafo' && recalculado.tipo === 'paragrafo' && PARAGRAFO_DO_VALOR_GLOBAL.test(b.bloco.texto.trim())) return { chave: b.chave, bloco: recalculado }
+                  return b
+                }),
+          )
+          if (r.total !== null) setPrevia((p) => (p ? { ...p, total: r.total ?? p.total } : p))
+        })
+        .catch(() => setErroDoArquivo('Não foi possível recalcular os totais agora. Eles serão recalculados ao baixar o arquivo.'))
+    }, ESPERA_DO_RECALCULO_MS)
+    return () => clearTimeout(t)
+  }, [edicoesDaTabela, id, ehProposta])
 
   useEffect(() => {
     setPedido(lerPedido(window.location.search) ?? 'invalido')
@@ -347,6 +417,10 @@ export default function DocumentosDaLicitacaoPage({ params }: { params: Promise<
     setBlocos((atuais) => atuais.map((b) => (b.chave === chave ? { chave, bloco } : b)))
     setEditado(true)
     setErroDoArquivo(null)
+    if (bloco.tipo === 'tabela') {
+      ultimaEdicaoDaTabela.current += 1
+      setEdicoesDaTabela(ultimaEdicaoDaTabela.current)
+    }
   }
 
   function removerBloco(chave: string) {
@@ -525,7 +599,9 @@ export default function DocumentosDaLicitacaoPage({ params }: { params: Promise<
                 />
               )
             }
-            if (bloco.tipo === 'tabela') return <TabelaEditavel key={chave} bloco={bloco} onChange={(b) => alterarBloco(chave, b)} />
+            if (bloco.tipo === 'tabela') {
+              return <TabelaEditavel key={chave} bloco={bloco} calculada={ehProposta && bloco.colunas.includes(COLUNA_DO_TOTAL)} onChange={(b) => alterarBloco(chave, b)} />
+            }
             if (bloco.tipo === 'assinatura') return <Assinatura key={chave} local={bloco.local} onChange={(local) => alterarBloco(chave, { tipo: 'assinatura', local })} />
             return <Quebra key={chave} />
           })}

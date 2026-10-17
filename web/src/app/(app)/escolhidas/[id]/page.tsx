@@ -8,6 +8,7 @@ import { useRequireSession } from '@/hooks/useRequireSession'
 import { api, ApiRequestError, baixarArquivo } from '@/lib/api'
 import { useAvisoDeAlteracoesNaoSalvas } from '@/hooks/useAvisoDeAlteracoesNaoSalvas'
 import { DadosDoEstudo, EstudoResposta, PesquisaDePrecosResposta, ResultadoDoEstudo } from '@/lib/estudoTypes'
+import { arredondarCasas, lerNumero } from '@/lib/numeroBr'
 import {
   Button,
   Carregando,
@@ -54,15 +55,6 @@ function ComSeparadores({ partes }: { partes: ReactNode[] }) {
   )
 }
 
-function lerNumero(texto: string): number | null {
-  let t = texto.replace(/[^0-9.,]/g, '')
-  if (t === '') return null
-  if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.')
-  else if (!/^[0-9]+\.[0-9]{1,2}$/.test(t)) t = t.replace(/\./g, '')
-  const n = Number(t)
-  return Number.isFinite(n) ? Math.max(0, n) : null
-}
-
 type AtributosDoCampo = Pick<ComponentProps<'input'>, 'id' | 'aria-describedby' | 'aria-invalid' | 'aria-label' | 'required'>
 
 function Numero({
@@ -70,6 +62,8 @@ function Numero({
   aoMudar,
   passo = '0.01',
   moeda = false,
+  tresCasas = false,
+  casas,
   placeholder,
   ...atributos
 }: {
@@ -77,6 +71,8 @@ function Numero({
   aoMudar: (v: number | null) => void
   passo?: string
   moeda?: boolean
+  tresCasas?: boolean
+  casas?: number
   placeholder?: string
 } & AtributosDoCampo) {
   const [editando, setEditando] = useState<string | null>(null)
@@ -85,7 +81,7 @@ function Numero({
     valor === null || valor === 0
       ? ''
       : moeda
-        ? valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+        ? valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: tresCasas ? 3 : 2 })
         : valor.toLocaleString('pt-BR', { maximumFractionDigits: inteiro ? 0 : 4 })
   return (
     <Input
@@ -101,7 +97,8 @@ function Numero({
       }}
       onChange={(e) => {
         setEditando(e.target.value)
-        aoMudar(lerNumero(e.target.value))
+        const lido = lerNumero(e.target.value, { tresCasas })
+        aoMudar(lido === null || casas === undefined ? lido : arredondarCasas(lido, casas))
       }}
       onBlur={() => setEditando(null)}
       className="font-mono"
@@ -232,7 +229,20 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
         const e = r.estatisticas
         alterar((d) => ({
           ...d,
-          mercado: { ...d.mercado, [itemId]: { mediana: e.mediana, minimo: e.minimo, maximo: e.maximo, amostras: e.amostras, uf: r.filtro.uf, meses: r.filtro.meses, consultadoEm: r.consultadoEm } },
+          mercado: {
+            ...d.mercado,
+            [itemId]: {
+              mediana: e.mediana,
+              minimo: e.minimo,
+              maximo: e.maximo,
+              amostras: e.amostras,
+              uf: r.filtro.uf,
+              meses: r.filtro.meses,
+              consultadoEm: r.consultadoEm,
+              unidade: r.unidade,
+              unidadeConfere: r.unidadeConfere,
+            },
+          },
         }))
       } else {
         setAviso('Nenhuma compra encontrada para esse item nesse filtro. Tente ampliar o período ou pesquisar no Brasil todo.')
@@ -271,13 +281,10 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
 
   const t = estudo.tender
   const linhaPorItem = new Map(resultado.itens.map((l) => [l.id, l]))
-  const estimadoDosItens =
-    estudo.itens.length > 0 && estudo.itens.every((it) => it.valorEstimadoUnit !== null)
-      ? estudo.itens.reduce((soma, it) => soma + it.quantidade * (it.valorEstimadoUnit ?? 0), 0)
-      : (t.valorEstimado ?? null)
+  const estimadoDosItens = resultado.estimadoPeloOrgao
   const vendaAcimaDoEstimado = estimadoDosItens !== null && estimadoDosItens > 0 && resultado.receita > estimadoDosItens
   const temCatalogo = estudo.itens.some((i) => i.codigoCatalogo)
-  const custosAcimaDoEstimado = t.valorEstimado !== null && t.valorEstimado !== undefined && t.valorEstimado > 0 && resultado.custoTotal > t.valorEstimado
+  const prejuizoNoEstimado = resultado.resultadoNoEstimado !== null && resultado.resultadoNoEstimado < 0
   const destinoDoEstudo = estudo.destino
   const local = destinoDoEstudo ? [destinoDoEstudo.municipio, destinoDoEstudo.uf].filter(Boolean).join('/') : [t.municipio, t.uf].filter(Boolean).join('/')
   const origemDoDestino = destinoDoEstudo?.origem === 'edital' ? ' (local de execução lido do edital)' : destinoDoEstudo?.origem === 'objeto' ? ' (cidade citada no objeto)' : destinoDoEstudo?.origem === 'orgao' ? ' (cidade do órgão: confira o local de execução no edital)' : ''
@@ -356,7 +363,7 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
                 <tr>
                   <Th>Item</Th>
                   <Th align="right">Qtd.</Th>
-                  <Th align="right">Estimado (órgão)</Th>
+                  <Th align="right">Estimado un. (órgão)</Th>
                   <Th>Mercado (pago)</Th>
                   <Th>Seu custo un.</Th>
                   <Th>Seu preço un.</Th>
@@ -390,15 +397,24 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
                       </Td>
                       <Td numeric>
                         {it.quantidade.toLocaleString('pt-BR')} <span className="text-muted">{it.unidade ?? ''}</span>
+                        {it.quantidadeAssumida && <span className="block text-xs font-medium text-warn">sem qtd. no edital</span>}
                       </Td>
                       <Td numeric>{brl(it.valorEstimadoUnit)}</Td>
                       <Td className="min-w-[200px] text-xs">
                         {m ? (
                           <div className="flex flex-col gap-0.5">
-                            <span className="font-mono text-sm font-medium text-ink">{brl(m.mediana)}</span>
+                            <span className="font-mono text-sm font-medium text-ink">
+                              {brl(m.mediana)}
+                              {m.unidade && <span className="font-sans text-xs font-normal text-muted"> / {m.unidade}</span>}
+                            </span>
                             <span className="font-mono text-muted">
                               {brl(m.minimo)} a {brl(m.maximo)}
                             </span>
+                            {m.unidadeConfere === false && (
+                              <span className="font-medium text-warn">
+                                Unidade diferente da licitação ({it.unidade ?? '—'}): confira antes de usar.
+                              </span>
+                            )}
                             <span className="text-muted">
                               <span className="font-mono">{m.amostras}</span> compra(s), {m.uf ?? 'Brasil'}, <span className="font-mono">{m.meses}</span> meses
                             </span>
@@ -412,8 +428,10 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
                                 type="button"
                                 onClick={() => alterar((d) => ({ ...d, itens: { ...d.itens, [it.id]: { custoUnit: e.custoUnit, precoVendaUnit: m.mediana } } }))}
                                 className="font-medium text-accent hover:underline"
+                                aria-label={`Usar ${brl(m.mediana)}${m.unidade ? ` por ${m.unidade}` : ''} como meu preço, ${nomeDoItem}`}
                               >
-                                usar como meu preço
+                                usar como meu preço ({brl(m.mediana)}
+                                {m.unidade ? ` / ${m.unidade}` : ''})
                               </button>
                               {it.codigoCatalogo && (
                                 <button
@@ -450,6 +468,7 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
                         <div className="flex w-40 flex-col gap-1">
                           <Numero
                             moeda
+                            casas={2}
                             aria-label={`Seu preço unitário, ${nomeDoItem}`}
                             aria-invalid={precoAcimaDoEstimado || undefined}
                             valor={e.precoVendaUnit}
@@ -529,8 +548,8 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
             <Field label="Viagens">
               <Numero valor={dados.deslocamento.viagens} aoMudar={(v) => alterar((d) => ({ ...d, deslocamento: { ...d.deslocamento, viagens: Math.round(v ?? 0) } }))} passo="1" />
             </Field>
-            <Field label="Preço do litro do combustível">
-              <Numero moeda valor={dados.deslocamento.precoLitro} aoMudar={(v) => alterar((d) => ({ ...d, deslocamento: { ...d.deslocamento, precoLitro: v ?? 0 } }))} />
+            <Field label="Preço do litro do combustível" hint="Aceita 3 casas: 5,899 ou 5.899.">
+              <Numero moeda tresCasas casas={3} valor={dados.deslocamento.precoLitro} aoMudar={(v) => alterar((d) => ({ ...d, deslocamento: { ...d.deslocamento, precoLitro: v ?? 0 } }))} />
             </Field>
             <Field label="Consumo do veículo (km por litro)">
               <Numero
@@ -572,7 +591,8 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
             <Field label="Impostos sobre a venda (%)">
               <Numero valor={dados.impostosPct} aoMudar={(v) => alterar((d) => ({ ...d, impostosPct: Math.min(100, v ?? 0) }))} />
             </Field>
-            <Field label="Margem de lucro desejada (%)">
+            <Field label="Margem sobre o preço de venda (%)" hint="Ex.: custo R$ 100 com 10% de margem → preço R$ 111,11 (o lucro é 10% do preço, não do custo).">
+
               <Numero valor={dados.margemDesejadaPct} aoMudar={(v) => alterar((d) => ({ ...d, margemDesejadaPct: Math.min(100, v ?? 0) }))} />
             </Field>
           </div>
@@ -694,7 +714,13 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
       <Panel title="Resultado">
         <div className="flex flex-col gap-4">
           <MetricRow>
-            <Metric label="Total dos custos" value={brl(resultado.custoTotal)} tone={custosAcimaDoEstimado ? 'danger' : 'default'} className="col-span-2 sm:col-span-1" />
+            <Metric
+              label="Custos (sem impostos)"
+              value={brl(resultado.custosSemImpostos)}
+              tone={prejuizoNoEstimado ? 'danger' : 'default'}
+              detail={`+ impostos de ${brl(resultado.impostos)} (${dados.impostosPct.toLocaleString('pt-BR')}% sobre a venda)`}
+              className="col-span-2 sm:col-span-1"
+            />
             <Metric
               label={resultado.receita > 0 ? (resultado.lucro >= 0 ? 'Lucro estimado' : 'Resultado com os seus preços') : 'Lucro estimado'}
               value={resultado.receita > 0 ? brl(resultado.lucro) : '—'}
@@ -713,9 +739,10 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
             />
           </MetricRow>
 
-          {custosAcimaDoEstimado && (
-            <Notice tone="danger" title="Custo acima do valor estimado pelo órgão">
-              O total dos custos ({brl(resultado.custoTotal)}) é maior que o valor estimado pelo órgão ({brl(t.valorEstimado)}). Concorrer nesse valor daria prejuízo.
+          {prejuizoNoEstimado && (
+            <Notice tone="danger" title="Prejuízo no valor estimado pelo órgão">
+              No valor estimado pelo órgão ({brl(resultado.estimadoPeloOrgao)}), descontados os custos ({brl(resultado.custosSemImpostos)}) e os impostos sobre esse valor, o resultado seria{' '}
+              {brl(resultado.resultadoNoEstimado)}. Concorrer nesse valor daria prejuízo.
             </Notice>
           )}
 
@@ -726,10 +753,13 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
               { label: 'Custo dos itens', value: brl(resultado.custoItens), mono: true },
               { label: 'Deslocamento', value: brl(resultado.custoDeslocamento), mono: true },
               { label: 'Outros custos', value: brl(resultado.custoOutros), mono: true },
-              { label: 'Impostos', value: brl(resultado.impostos), mono: true },
-              { label: 'Custo total', value: <span className="font-semibold">{brl(resultado.custoTotal)}</span>, mono: true },
+              { label: 'Custos (sem impostos)', value: <span className="font-semibold">{brl(resultado.custosSemImpostos)}</span>, mono: true },
+              { label: `Impostos (${dados.impostosPct.toLocaleString('pt-BR')}% da receita)`, value: brl(resultado.impostos), mono: true },
             ]}
           />
+          <p className="text-xs text-muted">
+            Lucro = receita − custos − impostos. Os impostos incidem sobre o preço de venda, por isso sobem quando o preço sobe; os custos não mudam.
+          </p>
 
           {resultado.cenarios.length > 0 && (
             <TableWrap minWidth={520}>
@@ -782,8 +812,8 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
         )}
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="flex min-w-0 items-baseline gap-x-2 text-sm">
-            <span className="shrink-0 text-xs text-muted">Total</span>
-            <span className={cx('truncate font-mono font-semibold', custosAcimaDoEstimado ? 'text-danger' : 'text-ink')}>{brl(resultado.custoTotal)}</span>
+            <span className="shrink-0 text-xs text-muted">Custos (sem impostos)</span>
+            <span className={cx('truncate font-mono font-semibold', prejuizoNoEstimado ? 'text-danger' : 'text-ink')}>{brl(resultado.custosSemImpostos)}</span>
             <span className={cx('hidden truncate text-xs sm:inline', sujo ? 'font-medium text-warn' : 'text-muted')}>
               {sujo ? (
                 'Alterações não salvas'

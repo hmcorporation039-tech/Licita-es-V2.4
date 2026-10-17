@@ -88,7 +88,7 @@ describe('propostaComercial', () => {
     const tabela = r.documento.blocos.find((b) => b.tipo === 'tabela')
     expect(tabela && tabela.tipo === 'tabela' && tabela.linhas[0][5]).toBe('225.760,00')
     const textoTodo = JSON.stringify(r.documento)
-    expect(textoTodo).toContain('duzentos e vinte e cinco mil, setecentos e sessenta reais')
+    expect(textoTodo).toContain('duzentos e vinte e cinco mil setecentos e sessenta reais')
     expect(textoTodo).toContain('CNPJ nº 04.003.376/0001-00')
     expect(textoTodo).toContain('Pregão Eletrônico nº 02391654000119-1-000595/2026')
     expect(textoTodo).toContain('Brasília, 14 de outubro de 2026.')
