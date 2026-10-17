@@ -54,9 +54,9 @@ export function inteiroPorExtenso(n: number): string {
       if (idx === 0) return p.texto
       const ultimo = idx === partes.length - 1
       const usaE = ultimo && (p.valor < 100 || p.valor % 100 === 0)
-      return `${usaE ? 'e' : ''}${usaE ? ' ' : ''}${p.texto}`
+      return usaE ? `e ${p.texto}` : p.texto
     })
-    .reduce((acc, parte, idx) => (idx === 0 ? parte : parte.startsWith('e ') ? `${acc} ${parte}` : `${acc}, ${parte}`), '')
+    .join(' ')
 }
 
 export function reaisPorExtenso(valor: number): string {

@@ -26,6 +26,7 @@ export interface ItemDaLicitacao {
   valorEstimadoUnit: number | null
   /** Mediana de mercado (preços pagos pelo governo), quando pesquisada. */
   medianaDeMercado?: number | null
+  quantidadeAssumida?: boolean
 }
 
 /** Foto da pesquisa de preços de mercado de um item (fica registrada com a data da consulta). */
@@ -37,6 +38,8 @@ export interface MercadoDoItem {
   uf: string | null
   meses: number
   consultadoEm: string
+  unidade?: string | null
+  unidadeConfere?: boolean | null
 }
 
 export interface DadosDoEstudo {
@@ -110,10 +113,13 @@ export interface ResultadoDoEstudo {
   custoDeslocamento: number
   custoOutros: number
   impostos: number
+  custosSemImpostos: number
   custoTotal: number
   lucro: number
   margemPct: number | null
   receitaMinima: number | null
+  estimadoPeloOrgao: number | null
+  resultadoNoEstimado: number | null
   itens: LinhaDoItem[]
   deslocamento: {
     origem: 'estimado' | 'informado' | 'indisponivel'
@@ -136,6 +142,7 @@ export interface ResultadoDoEstudo {
 }
 
 const arred = (n: number) => Math.round(n * 100) / 100
+const arredParaCima = (n: number) => Math.ceil(Number((n * 100).toFixed(6))) / 100
 const num = (v: number | null | undefined) => (typeof v === 'number' && Number.isFinite(v) ? v : 0)
 
 function margem(lucro: number, receita: number): number | null {
@@ -194,6 +201,12 @@ export function calcularEstudo(itens: ItemDaLicitacao[], dados: DadosDoEstudo, c
   const semVenda = linhas.filter((l) => l.semPrecoDeVenda).length
   if (semCusto > 0) avisos.push(`${semCusto} item(ns) sem custo informado: o lucro está superestimado.`)
   if (semVenda > 0 && receita > 0) avisos.push(`${semVenda} item(ns) sem preço de venda: a receita considera só os itens preenchidos.`)
+  const semQuantidade = itens.filter((it) => it.quantidadeAssumida).length
+  if (semQuantidade > 0) avisos.push(`${semQuantidade} item(ns) sem quantidade no edital: o cálculo considerou 1 unidade. Confira a quantidade antes de ofertar.`)
+  const mercadoEmOutraUnidade = itens.filter((it) => dados.mercado[it.id]?.unidadeConfere === false).length
+  if (mercadoEmOutraUnidade > 0) {
+    avisos.push(`${mercadoEmOutraUnidade} item(ns) com preço de mercado em unidade diferente da pedida na licitação: confira antes de usar como preço.`)
+  }
 
   const custoOutros = arred(dados.outrosCustos.reduce((s, o) => s + num(o.valor), 0))
   const base = custoItens + custoDeslocamento + custoOutros
@@ -210,7 +223,7 @@ export function calcularEstudo(itens: ItemDaLicitacao[], dados: DadosDoEstudo, c
     const rateio = 1 + (custoDeslocamento + custoOutros) / custoItens
     itens.forEach((it, i) => {
       const c = dados.itens[it.id]?.custoUnit
-      if (c !== null && c !== undefined && c > 0) linhas[i].precoMinimoUnit = arred((c * rateio) / divisor)
+      if (c !== null && c !== undefined && c > 0) linhas[i].precoMinimoUnit = arredParaCima((c * rateio) / divisor)
     })
   }
 
@@ -241,6 +254,7 @@ export function calcularEstudo(itens: ItemDaLicitacao[], dados: DadosDoEstudo, c
       avisos.push(`Seu preço de venda (${reaisBr(receita)}) está acima do valor estimado pelo órgão (${reaisBr(estimadoPeloOrgao)}).`)
     }
   }
+  const resultadoNoEstimado = estimadoPeloOrgao !== null && estimadoPeloOrgao > 0 ? lucroEm(estimadoPeloOrgao) : null
   add('Com os seus preços de venda', receita > 0 ? receita : null)
   add('No valor estimado pelo órgão', estimadoPeloOrgao)
   add('Na mediana de mercado', somaOuNull((it) => it.medianaDeMercado ?? dados.mercado[it.id]?.mediana ?? null))
@@ -272,10 +286,13 @@ export function calcularEstudo(itens: ItemDaLicitacao[], dados: DadosDoEstudo, c
     custoDeslocamento,
     custoOutros,
     impostos,
+    custosSemImpostos: arred(base),
     custoTotal,
     lucro,
     margemPct: margem(lucro, receita),
     receitaMinima,
+    estimadoPeloOrgao: estimadoPeloOrgao !== null ? arred(estimadoPeloOrgao) : null,
+    resultadoNoEstimado,
     itens: linhas,
     deslocamento: {
       origem: origemKm,
@@ -296,9 +313,14 @@ export function calcularEstudo(itens: ItemDaLicitacao[], dados: DadosDoEstudo, c
 export function lerPrazoEmDias(texto: string | null | undefined): { dias: number; uteis: boolean } | null {
   if (!texto) return null
   const t = texto.toLowerCase()
-  const meses = t.match(/(\d{1,3})\s*(?:\([^)]*\)\s*)?(?:mes|meses|mês)\b/)
-  if (meses) return { dias: Number(meses[1]) * 30, uteis: false }
-  const dias = t.match(/(\d{1,4})\s*(?:\([^)]*\)\s*)?dias?\b(\s+(?:úteis|uteis|corridos))?/)
-  if (!dias) return null
-  return { dias: Number(dias[1]), uteis: /[uú]teis/.test(dias[2] ?? '') }
+  const emDias = [...t.matchAll(/(\d{1,4})\s*(?:\([^)]*\)\s*)?dias?\b(\s+(?:úteis|uteis|corridos))?/g)]
+  if (emDias.length > 0) {
+    const valores = new Set(emDias.map((m) => Number(m[1])))
+    if (valores.size > 1) return null
+    return { dias: Number(emDias[0][1]), uteis: emDias.some((m) => /[uú]teis/.test(m[2] ?? '')) }
+  }
+  const emMeses = [...t.matchAll(/(\d{1,3})\s*(?:\([^)]*\)\s*)?(?:mes|meses|mês)\b/g)]
+  const meses = new Set(emMeses.map((m) => Number(m[1])))
+  if (meses.size !== 1) return null
+  return { dias: Number(emMeses[0][1]) * 30, uteis: false }
 }

@@ -2,12 +2,12 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { prisma } from '../../services/tenderService'
 import { asyncHandler, ApiError } from '../asyncHandler'
-import { estudoPdfLimiter } from '../rateLimit'
+import { estudoCalculoLimiter, estudoPdfLimiter } from '../rateLimit'
 import { registrarAuditoria } from '../../services/auditService'
 import { dataDaSessao } from '../../lib/dataDaSessao'
 import { documentoSchema, type DocumentoDaLicitacao } from '../../lib/documentosDaLicitacao/modelo'
 import { dadosDoCertame, dadosDoProponente } from '../../lib/documentosDaLicitacao/proponente'
-import { propostaComercial } from '../../lib/documentosDaLicitacao/proposta'
+import { propostaComercial, recalcularProposta } from '../../lib/documentosDaLicitacao/proposta'
 import { declaracoes, IDS_DE_DECLARACAO, MODELOS_DE_DECLARACAO } from '../../lib/documentosDaLicitacao/declaracoes'
 import { renderizarPdf } from '../../services/documentos/renderizarPdf'
 import { renderizarDocx } from '../../services/documentos/renderizarDocx'
@@ -217,6 +217,15 @@ documentosDaLicitacaoRouter.post(
 
 const arquivoSchema = z.object({ formato: z.enum(['pdf', 'docx']), documento: documentoSchema })
 
+documentosDaLicitacaoRouter.post(
+  '/recalcular',
+  estudoCalculoLimiter,
+  asyncHandler(async (req, res) => {
+    const { documento } = z.object({ documento: documentoSchema }).parse(req.body)
+    res.json(recalcularProposta(documento, { normalizarUnitarios: false }))
+  })
+)
+
 const nomeDoArquivo = (doc: DocumentoDaLicitacao, numero: string, extensao: string) => {
   const prefixo =
     doc.tipo === 'proposta'
@@ -241,7 +250,9 @@ documentosDaLicitacaoRouter.post(
   '/arquivo',
   estudoPdfLimiter,
   asyncHandler(async (req, res) => {
-    const { formato, documento } = arquivoSchema.parse(req.body)
+    const pedido = arquivoSchema.parse(req.body)
+    const formato = pedido.formato
+    const documento = recalcularProposta(pedido.documento, { normalizarUnitarios: true }).documento
     const [timbrado, { certame }] = await Promise.all([carregarTimbrado(req.companyId!), carregarCertame(req.params.id)])
 
     const arquivo = formato === 'pdf' ? await renderizarPdf(documento, timbrado) : await renderizarDocx(documento, timbrado)

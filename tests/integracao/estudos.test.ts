@@ -253,12 +253,30 @@ rodar('Estudo de custos', () => {
     expect(pdf.status).toBe(200)
     expect(pdf.buf.subarray(0, 5).toString()).toBe('%PDF-')
 
-    const editado = { ...previa.body.documento, blocos: [...previa.body.documento.blocos, { tipo: 'paragrafo', texto: 'Parágrafo editado pelo usuário.' }] }
+    type Bloco = { tipo: string; colunas?: string[]; linhas?: string[][]; rodape?: string[]; texto?: string }
+    const blocos = previa.body.documento.blocos as Bloco[]
+    const comPrecoNovo = {
+      ...previa.body.documento,
+      blocos: blocos.map((b) => (b.tipo === 'tabela' ? { ...b, linhas: b.linhas!.map((l, i) => (i === 0 ? l.map((c, j) => (j === 4 ? '0,125' : c)) : l)) } : b)),
+    }
+    const recalculado = await http('POST', `/api/tenders/${tenderId}/documentos/recalcular`, { documento: comPrecoNovo }, tokenA)
+    expect(recalculado.status).toBe(200)
+    const tabela = (recalculado.body.documento.blocos as Bloco[]).find((b) => b.tipo === 'tabela')!
+    const quantidade = Number(tabela.linhas![0][3].replace(/\./g, '').replace(',', '.'))
+    const totalDaLinha = Math.round(0.13 * quantidade * 100) / 100
+    expect(tabela.linhas![0][5]).toBe(totalDaLinha.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
+    expect(tabela.rodape![5]).toBe(recalculado.body.total.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
+    expect(JSON.stringify(recalculado.body.documento)).toContain(`Valor global da proposta: R$ ${tabela.rodape![5]} (`)
+
+    const editado = { ...comPrecoNovo, blocos: [...comPrecoNovo.blocos, { tipo: 'paragrafo', texto: 'Parágrafo editado pelo usuário.' }] }
     const docx = await http('POST', `/api/tenders/${tenderId}/documentos/arquivo`, { formato: 'docx', documento: editado }, tokenA)
     expect(docx.status).toBe(200)
     const { unzipSync, strFromU8 } = await import('fflate')
     const partes = unzipSync(new Uint8Array(docx.buf))
-    expect(strFromU8(partes['word/document.xml'])).toContain('Parágrafo editado pelo usuário.')
+    const xml = strFromU8(partes['word/document.xml'])
+    expect(xml).toContain('Parágrafo editado pelo usuário.')
+    expect(xml).toContain('0,13')
+    expect(xml).toContain(tabela.rodape![5])
     expect(Object.keys(partes).some((n) => n.startsWith('word/media/'))).toBe(true)
 
     const decl = await http('POST', `/api/tenders/${tenderId}/documentos/previa`, { tipo: 'declaracoes', declaracoes: ['menor', 'fato-impeditivo'] }, tokenA)

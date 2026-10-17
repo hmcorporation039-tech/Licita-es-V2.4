@@ -32,6 +32,7 @@ export interface EntradaDoPdf {
 
 const brl = (n: number | null | undefined) =>
   n === null || n === undefined ? '—' : n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }).replace(/\u00a0/g, ' ')
+const brlPorLitro = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 3 }).replace(/\s/g, ' ')
 const pct = (n: number | null) => (n === null ? '—' : `${n.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%`)
 const dataBr = (iso: string | null) => (iso ? iso.split('-').reverse().join('/') : '—')
 const dataHora = (d: Date) =>
@@ -189,12 +190,14 @@ export function gerarPdfDoEstudo(e: EntradaDoPdf): Promise<Buffer> {
     par('Custo dos itens', brl(r.custoItens))
     par('Deslocamento', brl(r.custoDeslocamento))
     par('Outros custos', brl(r.custoOutros))
-    par(`Impostos (${pct(e.dados.impostosPct)})`, brl(r.impostos))
-    par('Custo total', brl(r.custoTotal))
-    par('TOTAL DOS CUSTOS', brl(r.custoTotal))
-    const estimado = e.licitacao.valorEstimado
-    if (estimado !== null && estimado > 0 && r.custoTotal > estimado) {
-      par('ALERTA', `o total dos custos supera o valor estimado pelo órgão (${brl(estimado)}); concorrer nesse valor daria prejuízo.`, COR.ruim)
+    par('Custos (sem impostos)', brl(r.custosSemImpostos))
+    par(`Impostos (${pct(e.dados.impostosPct)} da receita)`, brl(r.impostos))
+    if (r.resultadoNoEstimado !== null && r.resultadoNoEstimado < 0) {
+      par(
+        'ALERTA',
+        `no valor estimado pelo órgão (${brl(r.estimadoPeloOrgao)}), descontados custos e impostos, o resultado seria ${brl(r.resultadoNoEstimado)}; concorrer nesse valor daria prejuízo.`,
+        COR.ruim
+      )
     }
     if (r.receita > 0) par(r.lucro >= 0 ? 'Lucro estimado' : 'Resultado com seus preços', `${brl(r.lucro)}   (margem ${pct(r.margemPct)})`, corLucro)
     par(`Preço mínimo (margem de ${pct(e.dados.margemDesejadaPct)})`, r.receitaMinima === null ? '—' : brl(r.receitaMinima))
@@ -219,17 +222,28 @@ export function gerarPdfDoEstudo(e: EntradaDoPdf): Promise<Buffer> {
 
     // ---- Itens ----
     titulo('Itens: custos, preços e mercado')
-    const col = { desc: MARGEM, qtd: MARGEM + 190, custo: MARGEM + 225, venda: MARGEM + 285, minimo: MARGEM + 345, mercado: MARGEM + 410, cod: MARGEM + 475 }
+    const col = {
+      desc: MARGEM,
+      qtd: MARGEM + 142,
+      custo: MARGEM + 180,
+      custoTotal: MARGEM + 232,
+      venda: MARGEM + 294,
+      vendaTotal: MARGEM + 346,
+      minimo: MARGEM + 408,
+      mercado: MARGEM + 460,
+    }
+    const larguraDesc = 136
     const cabecalho = () => {
       const y = doc.y
-      doc.font('Helvetica-Bold').fontSize(7.5).fillColor(COR.suave)
-      doc.text('Item', col.desc, y, { width: 185, lineBreak: false })
-      doc.text('Qtd', col.qtd, y, { width: 32, lineBreak: false })
-      doc.text('Custo un.', col.custo, y, { width: 58, lineBreak: false })
-      doc.text('Venda un.', col.venda, y, { width: 58, lineBreak: false })
-      doc.text('Mínimo un.', col.minimo, y, { width: 62, lineBreak: false })
-      doc.text('Mercado (med.)', col.mercado, y, { width: 62, lineBreak: false })
-      doc.text('Catálogo', col.cod, y, { width: 50, lineBreak: false })
+      doc.font('Helvetica-Bold').fontSize(7).fillColor(COR.suave)
+      doc.text('Item', col.desc, y, { width: larguraDesc, lineBreak: false })
+      doc.text('Qtd', col.qtd, y, { width: 36, lineBreak: false })
+      doc.text('Custo un.', col.custo, y, { width: 50, lineBreak: false })
+      doc.text('Custo total', col.custoTotal, y, { width: 60, lineBreak: false })
+      doc.text('Venda un.', col.venda, y, { width: 50, lineBreak: false })
+      doc.text('Venda total', col.vendaTotal, y, { width: 60, lineBreak: false })
+      doc.text('Mínimo un.', col.minimo, y, { width: 50, lineBreak: false })
+      doc.text('Mercado (med.)', col.mercado, y, { width: 55, lineBreak: false })
       doc.y = y + 12
     }
     cabecalho()
@@ -237,31 +251,42 @@ export function gerarPdfDoEstudo(e: EntradaDoPdf): Promise<Buffer> {
       const linha = r.itens[i]
       const d = e.dados.itens[it.id]
       const mercado = e.dados.mercado[it.id]
-      const desc = `${it.numero ? it.numero + '. ' : ''}${it.descricao.replace(/\s+/g, ' ')}`.slice(0, 120)
+      const desc = `${it.numero ? it.numero + '. ' : ''}${it.descricao.replace(/\s+/g, ' ')}`.slice(0, 110) + (it.codigoCatalogo ? ` (cód. ${it.codigoCatalogo})` : '')
       garantir(30)
       if (doc.y + 30 > limite()) cabecalho()
       const y = doc.y
-      doc.font('Helvetica').fontSize(8).fillColor(COR.texto)
-      const alturaDesc = doc.heightOfString(desc, { width: 185 })
-      doc.text(desc, col.desc, y, { width: 185 })
-      doc.text(`${it.quantidade.toLocaleString('pt-BR')}${it.unidade ? ' ' + it.unidade : ''}`, col.qtd, y, { width: 34 })
-      doc.text(brl(d?.custoUnit ?? null), col.custo, y, { width: 58, lineBreak: false })
-      doc.text(brl(d?.precoVendaUnit ?? null), col.venda, y, { width: 58, lineBreak: false })
-      doc.text(brl(linha?.precoMinimoUnit ?? null), col.minimo, y, { width: 62, lineBreak: false })
-      doc.text(mercado ? brl(mercado.mediana) : '—', col.mercado, y, { width: 62, lineBreak: false })
-      doc.text(it.codigoCatalogo ?? '—', col.cod, y, { width: 50, lineBreak: false })
+      doc.font('Helvetica').fontSize(7.5).fillColor(COR.texto)
+      const alturaDesc = doc.heightOfString(desc, { width: larguraDesc })
+      doc.text(desc, col.desc, y, { width: larguraDesc })
+      doc.text(`${it.quantidade.toLocaleString('pt-BR')}${it.unidade ? ' ' + it.unidade : ''}`, col.qtd, y, { width: 36 })
+      doc.text(brl(d?.custoUnit ?? null), col.custo, y, { width: 50, lineBreak: false })
+      doc.text(d?.custoUnit === null || d?.custoUnit === undefined ? '—' : brl(linha?.custo ?? 0), col.custoTotal, y, { width: 60, lineBreak: false })
+      doc.text(brl(d?.precoVendaUnit ?? null), col.venda, y, { width: 50, lineBreak: false })
+      doc.text(d?.precoVendaUnit === null || d?.precoVendaUnit === undefined ? '—' : brl(linha?.venda ?? 0), col.vendaTotal, y, { width: 60, lineBreak: false })
+      doc.text(brl(linha?.precoMinimoUnit ?? null), col.minimo, y, { width: 50, lineBreak: false })
+      doc.text(mercado ? `${brl(mercado.mediana)}${mercado.unidade ? '/' + seguro(mercado.unidade) : ''}` : '—', col.mercado, y, { width: 55, lineBreak: false })
       doc.y = y + Math.max(alturaDesc, 11) + 4
     })
+    garantir(16)
+    const yTotal = doc.y
+    doc.moveTo(MARGEM, yTotal - 1).lineTo(MARGEM + largura, yTotal - 1).strokeColor(COR.linha).lineWidth(1).stroke()
+    doc.font('Helvetica-Bold').fontSize(7.5).fillColor(COR.texto)
+    doc.text('Total dos itens', col.desc, yTotal + 2, { width: larguraDesc, lineBreak: false })
+    doc.text(brl(r.custoItens), col.custoTotal, yTotal + 2, { width: 60, lineBreak: false })
+    doc.text(brl(r.receita), col.vendaTotal, yTotal + 2, { width: 60, lineBreak: false })
+    doc.y = yTotal + 16
     const comMercado = e.itens.filter((it) => e.dados.mercado[it.id])
     if (comMercado.length > 0) {
       doc.moveDown(0.4)
       paragrafo('Preços de mercado: valores efetivamente pagos por órgãos públicos (Compras.gov.br, Pesquisa de Preços), sem valores extremos.', COR.suave, 8)
       for (const it of comMercado) {
         const m = e.dados.mercado[it.id]
+        const porUnidade = m.unidade ? ` por ${seguro(m.unidade)}` : ''
         paragrafo(
-          `Item ${it.numero ?? ''}: mínimo ${brl(m.minimo)}, mediana ${brl(m.mediana)}, máximo ${brl(m.maximo)} em ${m.amostras} compra(s)` +
-            `${m.uf ? ' (' + m.uf + ')' : ' (Brasil)'}, últimos ${m.meses} meses, consultado em ${dataBr(m.consultadoEm.slice(0, 10))}.`,
-          COR.suave,
+          `Item ${it.numero ?? ''}: mínimo ${brl(m.minimo)}, mediana ${brl(m.mediana)}, máximo ${brl(m.maximo)}${porUnidade} em ${m.amostras} compra(s)` +
+            `${m.uf ? ' (' + m.uf + ')' : ' (Brasil)'}, últimos ${m.meses} meses, consultado em ${dataBr(m.consultadoEm.slice(0, 10))}.` +
+            (m.unidadeConfere === false ? ` Atenção: unidade diferente da pedida na licitação (${seguro(it.unidade ?? '—')}).` : ''),
+          m.unidadeConfere === false ? COR.alerta : COR.suave,
           8
         )
       }
@@ -278,7 +303,7 @@ export function gerarPdfDoEstudo(e: EntradaDoPdf): Promise<Buffer> {
     }
     par('Viagens', String(e.dados.deslocamento.viagens))
     if (dl.litrosPorViagem !== null) {
-      par('Combustível por viagem', `${dl.litrosPorViagem.toLocaleString('pt-BR')} litros x ${brl(e.dados.deslocamento.precoLitro)} = ${brl(dl.combustivelPorViagem)} (${e.dados.deslocamento.consumoKmPorLitro.toLocaleString('pt-BR')} km/l)`)
+      par('Combustível por viagem', `${dl.litrosPorViagem.toLocaleString('pt-BR')} litros x ${brlPorLitro(e.dados.deslocamento.precoLitro)} =${brl(dl.combustivelPorViagem)} (${e.dados.deslocamento.consumoKmPorLitro.toLocaleString('pt-BR')} km/l)`)
     }
     par('Outro custo por km / pedágio / hospedagem', `${brl(e.dados.deslocamento.valorPorKm)} / ${brl(e.dados.deslocamento.pedagioPorViagem)} / ${brl(e.dados.deslocamento.hospedagemPorViagem)}`)
     par('Custo por viagem', brl(dl.custoPorViagem))
@@ -298,7 +323,9 @@ export function gerarPdfDoEstudo(e: EntradaDoPdf): Promise<Buffer> {
     par('Total necessário', `${p.diasNecessarios} dia(s)`)
     if (p.situacao) {
       const cor = p.situacao === 'ok' ? COR.bom : p.situacao === 'apertado' ? COR.alerta : COR.ruim
-      par('Situação', `${p.situacao === 'ok' ? 'Cabe no prazo' : p.situacao === 'apertado' ? 'Prazo apertado' : 'Prazo inviável'} (folga de ${p.folgaDias} dia(s))`, cor)
+      const folga = p.folgaDias ?? 0
+      const detalhe = folga < 0 ? `atraso de ${Math.abs(folga)} ${Math.abs(folga) === 1 ? 'dia' : 'dias'}` : `folga de ${folga} ${folga === 1 ? 'dia' : 'dias'}`
+      par('Situação', `${p.situacao === 'ok' ? 'Cabe no prazo' : p.situacao === 'apertado' ? 'Prazo apertado' : 'Prazo inviável'} (${detalhe})`, cor)
     }
     if (e.dados.prazo.assinatura) {
       par('Assinatura prevista', dataBr(e.dados.prazo.assinatura))
