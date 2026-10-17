@@ -8,6 +8,7 @@ import { api, ApiRequestError } from '@/lib/api'
 import { Paginated, TenderMatch } from '@/lib/types'
 import NotaDeAderencia from '@/components/NotaDeAderencia'
 import { Button, Carregando, Checkbox, EmptyState, ErrorState, Field, LinkButton, PageHeader, Select, StatusTag, cx, useDialogo } from '@/components/ui'
+import SeloObraCompleta from '@/components/SeloObraCompleta'
 import { ROTULOS_DE_FONTE } from '@/lib/fontes'
 
 type MatchComEscolha = TenderMatch & { escolhida?: boolean }
@@ -183,6 +184,7 @@ export default function MatchesPage() {
                     <span aria-hidden>·</span>
                     <span className="font-mono">{formatValor(m.tender.valorEstimado)}</span>
                   </p>
+                  {m.dentroDeObraCompleta && <SeloObraCompleta />}
                   <NotaDeAderencia aderencia={m.aderencia} />
                   {m.matchedKeywords.length > 0 && <p className="text-xs text-faint">Palavras: {m.matchedKeywords.join(', ')}</p>}
                 </div>

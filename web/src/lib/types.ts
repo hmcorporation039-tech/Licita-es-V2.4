@@ -106,6 +106,7 @@ export interface MonitoredItem {
   userId: string
   name: string
   keywords: string[]
+  palavrasDeExclusao?: string[]
   catmatCodes: string[]
   catserCodes: string[]
   ufs: string[]
@@ -155,6 +156,7 @@ export interface TenderMatchInfo {
   classificacao: 'exata' | 'alta' | 'media'
   itensRelacionados: string[]
   palavrasChave: string[]
+  dentroDeObraCompleta?: boolean
 }
 
 export interface Tender {
@@ -186,6 +188,7 @@ export interface TenderMatch {
   userId: string
   score: number
   matchedKeywords: string[]
+  dentroDeObraCompleta?: boolean
   read: boolean
   createdAt: string
   tender: Tender

@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest'
+import { normalize } from '../src/lib/geoService'
 import {
   CODE_MATCH_SCORE,
   KEYWORD_MATCH_SCORE,
   buildKeywordRegex,
   compileKeywordPatterns,
+  ehObraCompleta,
+  estaDentroDeObraCompleta,
+  termosDoPreFiltro,
+  variacoesDaPalavra,
   keywordFoundIn,
   matchedKeywords,
   orgaoMatches,
@@ -47,10 +52,11 @@ describe('buildKeywordRegex', () => {
     expect(re.test('cabo de rede cat6 homologado')).toBe(true)
   })
 
-  it('não casa plural, porque o critério é literal', () => {
+  it('casa singular e plural da mesma palavra, sem virar busca por pedaço', () => {
     const re = buildKeywordRegex('notebook')!
-    expect(re.test('aquisicao de notebooks')).toBe(false)
+    expect(re.test('aquisicao de notebooks')).toBe(true)
     expect(re.test('aquisicao de notebook')).toBe(true)
+    expect(re.test('aquisicao de notebookpro')).toBe(false)
   })
 
   it('trata caractere especial de regex como texto literal', () => {
@@ -170,5 +176,60 @@ describe('scoreDoMatch', () => {
     expect(scoreDoMatch(true)).toBe(CODE_MATCH_SCORE)
     expect(scoreDoMatch(false)).toBe(KEYWORD_MATCH_SCORE)
     expect(CODE_MATCH_SCORE).toBeGreaterThan(KEYWORD_MATCH_SCORE)
+  })
+})
+
+describe('plural e singular nas palavras-chave', () => {
+  const casa = (palavra: string, texto: string) => buildKeywordRegex(palavra)!.test(normalize(texto))
+
+  it('acha o plural de quem digitou no singular e o singular de quem digitou no plural', () => {
+    expect(casa('esquadria', 'Fornecimento e instalação de esquadrias de alumínio')).toBe(true)
+    expect(casa('esquadrias', 'porta de correr em esquadria de alumínio')).toBe(true)
+    expect(casa('material de limpeza', 'Aquisição de materiais de limpeza')).toBe(true)
+    expect(casa('colchão', 'colchões hospitalares')).toBe(true)
+    expect(casa('papel', 'resmas de papéis A4')).toBe(true)
+    expect(casa('luz', 'luzes de emergência')).toBe(true)
+    expect(casa('item', 'itens de escritório')).toBe(true)
+  })
+
+  it('continua respeitando a borda de palavra', () => {
+    expect(casa('cat6', 'cateterismo cardíaco')).toBe(false)
+    expect(casa('medicamentos', 'equipamento médico')).toBe(false)
+    expect(casa('esquadria', 'esquadrilha da fumaça')).toBe(false)
+  })
+
+  it('o pré-filtro do banco cobre todas as formas que o regex aceita', () => {
+    for (const [palavra, texto] of [
+      ['material de limpeza', 'materiais de limpeza'],
+      ['esquadria', 'esquadrias'],
+      ['colchão', 'colchoes'],
+      ['colchões', 'colchao'],
+    ]) {
+      expect(termosDoPreFiltro(palavra).some((termo) => normalize(texto).includes(termo))).toBe(true)
+    }
+    expect(variacoesDaPalavra('cat6')).toEqual(['cat6'])
+  })
+})
+
+describe('dentro de obra completa', () => {
+  const CREAS =
+    'Contratação de empresa especializada para execução da obra de construção do CREAS, com a execução de serviços preliminares e administração de obra; movimento de terra, drenagem e águas pluviais; fundações; estruturas; alvenarias, divisórias, muros e fechos; cobertura; esquadrias, acessórios, vidros e espelhos; instalações elétricas; instalações hidrossanitárias'
+  const dentro = (objeto: string, palavras: string[]) => estaDentroDeObraCompleta(normalize(objeto), palavras)
+
+  it('marca a obra que lista vários serviços e a obra em que a palavra só está na planilha', () => {
+    expect(ehObraCompleta(normalize(CREAS))).toBe(true)
+    expect(dentro(CREAS, ['esquadria'])).toBe(true)
+    expect(dentro('Execução de restauração e pintura de edificações do Hospital Universitário', ['esquadria'])).toBe(true)
+  })
+
+  it('não marca quando o serviço é o objeto principal', () => {
+    expect(dentro('Fornecimento e instalação de porta de correr em esquadria de alumínio. Governador Valadares – MG', ['esquadria'])).toBe(false)
+    expect(dentro('CREDENCIAMENTO Nº 004/2026: SERVIÇO/CARPINTEIRO DE ESQUADRIA COM ENCARGOS', ['esquadria'])).toBe(false)
+    expect(dentro('Prestação de serviços de mão de obra para cobertura do abrigo', ['cobertura'])).toBe(false)
+  })
+
+  it('não marca quem procura a própria obra', () => {
+    expect(dentro(CREAS, ['construção'])).toBe(false)
+    expect(dentro(CREAS, ['reforma'])).toBe(false)
   })
 })

@@ -51,6 +51,7 @@ export function startMatcherWorker() {
           score: c.score,
           matchedByCode: c.matchedByCode,
           matchedKeywords: c.matchedKeywords,
+          dentroDeObraCompleta: c.dentroDeObraCompleta,
         })),
         skipDuplicates: true,
       })

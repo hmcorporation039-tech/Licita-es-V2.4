@@ -165,3 +165,17 @@ describe('código vale mais que palavra-chave, tudo o mais igual', () => {
     expect(porPalavras.faixa).toBe('boa')
   })
 })
+
+describe('calcularAderencia — dentro de obra completa', () => {
+  it('derruba o critério Objeto e explica o motivo', () => {
+    const normal = pontos(entrada(), 'objeto')
+    const obra = calcularAderencia(entrada({ dentroDeObraCompleta: true })).criterios.find((c) => c.id === 'objeto')!
+    expect(obra.pontos).toBeLessThan(normal)
+    expect(obra.pontos).toBeLessThanOrEqual(15)
+    expect(obra.motivo).toMatch(/obra completa/)
+  })
+
+  it('código CATMAT/CATSER igual continua valendo o máximo', () => {
+    expect(pontos(entrada({ porCodigo: true, dentroDeObraCompleta: true }), 'objeto')).toBe(50)
+  })
+})

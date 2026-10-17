@@ -39,6 +39,7 @@ export interface EntradaDeAderencia {
   porCodigo: boolean
   palavrasEncontradas: number
   palavrasTotal: number
+  dentroDeObraCompleta?: boolean
   item: {
     ufs: string[]
     valorMin: number | null
@@ -58,6 +59,7 @@ export interface EntradaDeAderencia {
 }
 
 const MS_DIA = 24 * 60 * 60 * 1000
+export const PONTOS_DENTRO_DE_OBRA_COMPLETA = 10
 
 export function faixaDaNota(nota: number): FaixaDeAderencia {
   if (nota >= 80) return 'alta'
@@ -73,6 +75,9 @@ function critObjeto(e: EntradaDeAderencia): CriterioDeAderencia {
   }
   const total = Math.max(e.palavrasTotal, 1)
   const encontradas = Math.min(e.palavrasEncontradas, total)
+  if (e.dentroDeObraCompleta) {
+    return { ...base, pontos: PONTOS_DENTRO_DE_OBRA_COMPLETA, motivo: 'A palavra aparece como parte de uma obra completa: confira se dá para disputar só este serviço.' }
+  }
   const pontos = Math.round(20 + 15 * (encontradas / total))
   return { ...base, pontos, motivo: `Palavras-chave encontradas no texto: ${encontradas} de ${total}.` }
 }

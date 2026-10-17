@@ -10,6 +10,7 @@ import { DashboardData } from '@/lib/types'
 import BrazilMap, { EstadoMapa } from '@/components/BrazilMap'
 import MedidorDeAnalises from '@/components/MedidorDeAnalises'
 import { Carregando, EmptyState, ErrorState, Metric, MetricRow, PageHeader, Panel, Prazo, TextLink } from '@/components/ui'
+import SeloObraCompleta from '@/components/SeloObraCompleta'
 
 const numero = (n: number) => n.toLocaleString('pt-BR')
 
@@ -90,6 +91,7 @@ export default function DashboardPage() {
                     {data.ultimosMatches.map((m) => (
                       <li key={m.id} className="flex min-w-0 flex-col gap-0.5 px-4 py-2.5">
                         <p className="truncate text-xs text-muted">Item: {m.monitoredItem.name}</p>
+                        {m.dentroDeObraCompleta && <span className="self-start"><SeloObraCompleta /></span>}
                         <Link href={`/tenders/${m.tenderId}`} className="line-clamp-2 text-sm text-ink hover:text-accent hover:underline">
                           {m.tender.objetoResumido ?? m.tender.objeto}
                         </Link>

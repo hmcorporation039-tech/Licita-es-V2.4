@@ -29,6 +29,7 @@ import {
   THead,
   Tr,
 } from '@/components/ui'
+import SeloObraCompleta from '@/components/SeloObraCompleta'
 import { ROTULOS_DE_FONTE } from '@/lib/fontes'
 import { ESTADOS } from '@/lib/estados'
 
@@ -108,6 +109,7 @@ function TenderRow({ t, somenteRelacionadas }: { t: TenderComEncerramento; somen
               {CLASSIFICACAO_LABEL[t.match.classificacao]} · nota <span className="font-mono">{Math.round(t.match.score * 100)}</span>
             </StatusTag>
           )}
+          {t.match?.dentroDeObraCompleta && <SeloObraCompleta />}
         </Td>
       )}
     </Tr>

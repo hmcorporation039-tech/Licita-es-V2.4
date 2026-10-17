@@ -21,6 +21,7 @@ async function main() {
     const candidates = await findMatchingTendersForItem(
       {
         keywords: item.keywords,
+        palavrasDeExclusao: item.palavrasDeExclusao,
         catmatCodes: item.catmatCodes,
         catserCodes: item.catserCodes,
         ufs: item.ufs,
@@ -49,6 +50,7 @@ async function main() {
           userId: item.userId,
           score: c.score,
           matchedKeywords: c.matchedKeywords,
+          dentroDeObraCompleta: c.dentroDeObraCompleta,
         })),
         skipDuplicates: true,
       })
