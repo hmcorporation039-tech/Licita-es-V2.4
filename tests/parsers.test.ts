@@ -32,6 +32,13 @@ describe('parsePNCPTender', () => {
     sequencialCompra: 1,
   }
 
+  it('valor homologado zero ou com prazo ainda aberto não marca a licitação como homologada', () => {
+    const daquiAUmMes = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 19)
+    expect(parsePNCPTender({ ...raw, valorTotalHomologado: 0 }).valorHomologado).toBeUndefined()
+    expect(parsePNCPTender({ ...raw, dataEncerramentoProposta: daquiAUmMes, valorTotalHomologado: 5000 }).valorHomologado).toBeUndefined()
+    expect(parsePNCPTender({ ...raw, valorTotalHomologado: 5000 }).valorHomologado).toBe(5000)
+  })
+
   it('normaliza os campos principais', () => {
     const t = parsePNCPTender(raw)
     expect(t.fonte).toBe('PNCP')

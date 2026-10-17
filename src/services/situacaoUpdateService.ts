@@ -22,6 +22,7 @@ import { pncpClient } from '../lib/httpClient'
 import { PNCP_SITUACAO_COMPRA_ID_MAP } from '../types'
 import { prisma } from './tenderService'
 import { identificadorCompraPncpValido } from '../lib/pncpIdentificador'
+import { valorHomologadoConfirmado } from '../lib/homologacao'
 
 // Mesmo mapa usado na coleta (pncpParser). Centralizado em types/index.ts.
 const SITUACAO_COMPRA_ID_MAP: Record<number, SituacaoEnum> = PNCP_SITUACAO_COMPRA_ID_MAP
@@ -72,7 +73,8 @@ export async function refreshTenderSituacao(tenderId: string): Promise<boolean> 
   // dispensa/inexigibilidade raramente tem prazo formal de proposta (82% vem
   // sem dataEncerramentoProposta, confirmado empiricamente em 2026-09-28) e o
   // PNCP não muda situacaoCompraId quando o processo segue seu curso normal.
-  const concluida = response.data.valorTotalHomologado != null
+  const valorHomologado = valorHomologadoConfirmado(response.data.valorTotalHomologado, tender.encerramentoAt)
+  const concluida = valorHomologado !== null
   const next: SituacaoEnum =
     mapped === 'ABERTA' && concluida
       ? 'HOMOLOGADA'
@@ -84,7 +86,7 @@ export async function refreshTenderSituacao(tenderId: string): Promise<boolean> 
 
   await prisma.tender.update({
     where: { id: tenderId },
-    data: { situacao: next, valorHomologado: response.data.valorTotalHomologado ?? undefined },
+    data: { situacao: next, valorHomologado: valorHomologado ?? undefined },
   })
   return true
 }
