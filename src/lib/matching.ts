@@ -23,11 +23,83 @@ import { haversineKm, normalize } from './geoService'
 export const KEYWORD_MATCH_SCORE = 0.9
 export const CODE_MATCH_SCORE = 1
 
+const PALAVRAS_DE_LIGACAO = new Set(['de', 'da', 'do', 'das', 'dos', 'e', 'em', 'para', 'com', 'por', 'a', 'o', 'as', 'os', 'ou', 'no', 'na', 'nos', 'nas'])
+const TAMANHO_MINIMO_DA_VARIACAO = 3
+
+export function variacoesDaPalavra(palavra: string): string[] {
+  if (palavra.length < TAMANHO_MINIMO_DA_VARIACAO || /\d/.test(palavra) || PALAVRAS_DE_LIGACAO.has(palavra)) return [palavra]
+  const formas = new Set([palavra])
+  const somar = (forma: string) => {
+    if (forma.length >= TAMANHO_MINIMO_DA_VARIACAO) formas.add(forma)
+  }
+  if (/(oes|aes)$/.test(palavra)) somar(`${palavra.slice(0, -3)}ao`)
+  if (/ais$/.test(palavra)) somar(`${palavra.slice(0, -3)}al`)
+  if (/eis$/.test(palavra)) {
+    somar(`${palavra.slice(0, -3)}el`)
+    somar(`${palavra.slice(0, -3)}il`)
+  }
+  if (/ois$/.test(palavra)) somar(`${palavra.slice(0, -3)}ol`)
+  if (/uis$/.test(palavra)) somar(`${palavra.slice(0, -3)}ul`)
+  if (/ns$/.test(palavra)) somar(`${palavra.slice(0, -2)}m`)
+  if (/[rsz]es$/.test(palavra)) somar(palavra.slice(0, -2))
+  if (/[^s]s$/.test(palavra)) somar(palavra.slice(0, -1))
+  for (const base of [...formas]) {
+    if (/ao$/.test(base)) {
+      somar(`${base.slice(0, -2)}oes`)
+      somar(`${base.slice(0, -2)}aes`)
+      somar(`${base}s`)
+    } else if (/al$/.test(base)) somar(`${base.slice(0, -2)}ais`)
+    else if (/el$/.test(base)) somar(`${base.slice(0, -2)}eis`)
+    else if (/ol$/.test(base)) somar(`${base.slice(0, -2)}ois`)
+    else if (/ul$/.test(base)) somar(`${base.slice(0, -2)}uis`)
+    else if (/il$/.test(base)) somar(`${base.slice(0, -2)}is`)
+    else if (/m$/.test(base)) somar(`${base.slice(0, -1)}ns`)
+    else if (/[rz]$/.test(base)) somar(`${base}es`)
+    else if (!/s$/.test(base)) somar(`${base}s`)
+  }
+  return [...formas].sort((a, b) => b.length - a.length)
+}
+
+function escaparParaRegex(texto: string): string {
+  return texto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 export function buildKeywordRegex(keyword: string): RegExp | null {
-  const norm = normalize(keyword).trim()
-  if (!norm) return null
-  const escaped = norm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  return new RegExp(`\\b${escaped}\\b`)
+  const palavras = normalize(keyword).trim().split(/\s+/).filter(Boolean)
+  if (palavras.length === 0) return null
+  const partes = palavras.map((palavra) => {
+    const formas = variacoesDaPalavra(palavra).map(escaparParaRegex)
+    return formas.length === 1 ? formas[0] : `(?:${formas.join('|')})`
+  })
+  return new RegExp(`\\b${partes.join('\\s+')}\\b`)
+}
+
+export function termosDoPreFiltro(keyword: string): string[] {
+  const palavras = normalize(keyword).trim().split(/\s+/).filter(Boolean)
+  if (palavras.length === 0) return []
+  const significativas = palavras.filter((p) => !PALAVRAS_DE_LIGACAO.has(p))
+  const maisLonga = (significativas.length > 0 ? significativas : palavras).reduce((a, b) => (b.length > a.length ? b : a))
+  const formas = variacoesDaPalavra(maisLonga)
+  return formas.filter((forma) => !formas.some((outra) => outra !== forma && forma.includes(outra)))
+}
+
+const TERMOS_DE_OBRA = /\b(obras?|construcao|construcoes|reforma|reformas|ampliacao|edificacao|edificacoes|engenharia)\b/
+const ETAPAS_DE_OBRA = /\b(fundac\w*|alvenarias?|cobertura|instalac\w* (?:eletricas?|hidrossanitarias?|hidraulicas?|sanitarias?)|hidrossanitari\w*|impermeabiliza\w*|revestimentos?|terraplenagem|movimento de terra|drenagem|pavimentac\w*|esquadrias?|estruturas?|pinturas?|forros?|pisos?)\b/g
+
+export function ehObraCompleta(objetoNorm: string): boolean {
+  const texto = objetoNorm.replace(/\bmao de obra\b/g, ' ')
+  if (!TERMOS_DE_OBRA.test(texto)) return false
+  const separadores = (texto.match(/[;,]/g) ?? []).length
+  const etapas = new Set(texto.match(ETAPAS_DE_OBRA) ?? []).size
+  return etapas >= 4 || (separadores >= 6 && etapas >= 2)
+}
+
+export function estaDentroDeObraCompleta(objetoNorm: string, palavrasEncontradas: string[]): boolean {
+  if (palavrasEncontradas.length === 0) return false
+  if (palavrasEncontradas.every((palavra) => TERMOS_DE_OBRA.test(normalize(palavra)))) return false
+  if (ehObraCompleta(objetoNorm)) return true
+  const algumaNoObjeto = palavrasEncontradas.some((palavra) => buildKeywordRegex(palavra)?.test(objetoNorm))
+  return !algumaNoObjeto && TERMOS_DE_OBRA.test(objetoNorm.replace(/\bmao de obra\b/g, ' '))
 }
 
 export interface KeywordPattern {

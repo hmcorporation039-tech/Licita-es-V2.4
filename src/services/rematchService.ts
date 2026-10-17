@@ -13,6 +13,7 @@ type ItemParaRematch = Pick<
   | 'companyId'
   | 'userId'
   | 'keywords'
+  | 'palavrasDeExclusao'
   | 'catmatCodes'
   | 'catserCodes'
   | 'ufs'
@@ -30,6 +31,7 @@ export async function buscarLicitacoesDoItem(item: ItemParaRematch, { notificar 
   const candidates = await findMatchingTendersForItem(
     {
       keywords: item.keywords,
+      palavrasDeExclusao: item.palavrasDeExclusao,
       catmatCodes: item.catmatCodes,
       catserCodes: item.catserCodes,
       ufs: item.ufs,
@@ -63,6 +65,7 @@ export async function buscarLicitacoesDoItem(item: ItemParaRematch, { notificar 
       score: c.score,
       matchedByCode: c.matchedByCode,
       matchedKeywords: c.matchedKeywords,
+      dentroDeObraCompleta: c.dentroDeObraCompleta,
     })),
     skipDuplicates: true,
   })

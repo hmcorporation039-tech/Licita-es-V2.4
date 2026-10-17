@@ -40,6 +40,8 @@ export const MODALIDADE_VALUES = [
 const MAX_ITENS_LISTA = 200
 const MAX_TAM_TERMO = 120
 const MIN_TAM_PALAVRA_CHAVE = 2
+const MAX_PALAVRAS_DE_EXCLUSAO = 50
+const MAX_TAM_PALAVRA_DE_EXCLUSAO = 60
 
 const createSchema = z.object({
   name: z.string().min(1).max(200),
@@ -52,6 +54,10 @@ const createSchema = z.object({
         .max(MAX_TAM_TERMO)
     )
     .max(MAX_ITENS_LISTA)
+    .default([]),
+  palavrasDeExclusao: z
+    .array(z.string().trim().min(MIN_TAM_PALAVRA_CHAVE).max(MAX_TAM_PALAVRA_DE_EXCLUSAO))
+    .max(MAX_PALAVRAS_DE_EXCLUSAO)
     .default([]),
   catmatCodes: z.array(z.string().max(MAX_TAM_TERMO)).max(MAX_ITENS_LISTA).default([]),
   catserCodes: z.array(z.string().max(MAX_TAM_TERMO)).max(MAX_ITENS_LISTA).default([]),

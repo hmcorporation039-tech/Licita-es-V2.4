@@ -14,8 +14,10 @@ import {
   Gates,
   KEYWORD_MATCH_SCORE,
   compileKeywordPatterns,
+  estaDentroDeObraCompleta,
   matchedKeywords,
   passaNosPortoes,
+  termosDoPreFiltro,
 } from '../lib/matching'
 
 export { CODE_MATCH_SCORE, KEYWORD_MATCH_SCORE }
@@ -54,6 +56,7 @@ export interface MatchCandidate {
   score: number
   matchedKeywords: string[]
   matchedByCode: boolean
+  dentroDeObraCompleta: boolean
 }
 
 // Nota de aderência (0–1) de uma licitação para um item. Os portões já passaram;
@@ -70,12 +73,14 @@ function scoreDeAderencia(
   },
   porCodigo: boolean,
   palavrasEncontradas: number,
-  palavrasTotal: number
+  palavrasTotal: number,
+  dentroDeObraCompleta: boolean
 ): number {
   const { nota } = calcularAderencia({
     porCodigo,
     palavrasEncontradas,
     palavrasTotal,
+    dentroDeObraCompleta,
     item,
     tender: {
       uf: tender.uf,
@@ -162,14 +167,17 @@ export async function findMatchCandidates(tenderId: string): Promise<MatchCandid
     const codeMatch = temCodigoEmComum(tender, mi.catmatCodes, mi.catserCodes)
 
     if (encontradas.length === 0 && !codeMatch) continue
+    if (matchedKeywords(compileKeywordPatterns(mi.palavrasDeExclusao), objetoNorm, itemDescsNorm).length > 0) continue
 
+    const dentroDeObraCompleta = !codeMatch && estaDentroDeObraCompleta(objetoNorm, encontradas)
     candidates.push({
       monitoredItemId: mi.id,
       companyId: mi.companyId,
       userId: mi.userId,
-      score: scoreDeAderencia(tender, gatesDoItem(mi), codeMatch, encontradas.length, mi.keywords.length),
+      score: scoreDeAderencia(tender, gatesDoItem(mi), codeMatch, encontradas.length, mi.keywords.length, dentroDeObraCompleta),
       matchedKeywords: encontradas,
       matchedByCode: codeMatch,
+      dentroDeObraCompleta,
     })
   }
 
@@ -178,6 +186,7 @@ export async function findMatchCandidates(tenderId: string): Promise<MatchCandid
 
 export interface RematchInput {
   keywords: string[]
+  palavrasDeExclusao: string[]
   catmatCodes: string[]
   catserCodes: string[]
   ufs: string[]
@@ -196,6 +205,7 @@ export interface RematchCandidate {
   score: number
   matchedKeywords: string[]
   matchedByCode: boolean
+  dentroDeObraCompleta: boolean
 }
 
 const REMATCH_BATCH_SIZE = 500
@@ -224,7 +234,7 @@ function whereDoRematch(item: RematchInput, cutoff: Date): Prisma.TenderWhereInp
   // O casamento em memória procura a palavra no objeto E na descrição dos
   // itens — o pré-filtro precisa cobrir os dois, senão descartaria no banco
   // licitações que dariam match pela descrição do item.
-  const termos = item.keywords.map((k) => normalize(k).trim()).filter(Boolean)
+  const termos = [...new Set(item.keywords.flatMap(termosDoPreFiltro))]
   const filtroDeTexto: Prisma.TenderWhereInput[] = termos.flatMap((termo) => [
     { objetoNorm: { contains: termo } },
     { items: { some: { descricaoNorm: { contains: termo } } } },
@@ -260,6 +270,7 @@ export async function findMatchingTendersForItem(
   }
 
   const patterns = compileKeywordPatterns(item.keywords)
+  const exclusoes = compileKeywordPatterns(item.palavrasDeExclusao)
   const results: RematchCandidate[] = []
 
   // Paginado por cursor: mesmo com o recorte no banco, uma palavra-chave muito
@@ -288,12 +299,15 @@ export async function findMatchingTendersForItem(
       const codeMatch = temCodigoEmComum(t, item.catmatCodes, item.catserCodes)
 
       if (encontradas.length === 0 && !codeMatch) continue
+      if (matchedKeywords(exclusoes, objetoNorm, itemDescsNorm).length > 0) continue
 
+      const dentroDeObraCompleta = !codeMatch && estaDentroDeObraCompleta(objetoNorm, encontradas)
       results.push({
         tenderId: t.id,
-        score: scoreDeAderencia(t, gates, codeMatch, encontradas.length, item.keywords.length),
+        score: scoreDeAderencia(t, gates, codeMatch, encontradas.length, item.keywords.length, dentroDeObraCompleta),
         matchedKeywords: encontradas,
         matchedByCode: codeMatch,
+        dentroDeObraCompleta,
       })
     }
 

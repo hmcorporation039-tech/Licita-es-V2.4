@@ -149,29 +149,30 @@ enum CompanyRole {
 // ============================================================
 
 model MonitoredItem {
-  id          String   @id @default(uuid())
+  id                 String   @id @default(uuid())
   // Dono de fato — ver comentário no model Company. userId continua
   // existindo só para saber quem cadastrou (auditoria), não para acesso.
-  companyId   String   @map("company_id")
-  userId      String   @map("user_id")
-  name        String // Nome amigável do item
-  keywords    String[] // ['notebook', 'computador portátil']
-  catmatCodes String[] @map("catmat_codes") // Códigos CATMAT (opcional)
-  catserCodes String[] @map("catser_codes") // Códigos CATSER (opcional)
-  ufs         String[] // ['DF', 'GO'] — vazio = nacional
-  valorMin    Decimal? @map("valor_min") // Filtro de valor mínimo
-  valorMax    Decimal? @map("valor_max") // Filtro de valor máximo
-  modalidades String[] // ['pregao', 'dispensa', 'concorrencia']
+  companyId          String   @map("company_id")
+  userId             String   @map("user_id")
+  name               String // Nome amigável do item
+  keywords           String[] // ['notebook', 'computador portátil']
+  palavrasDeExclusao String[] @default([]) @map("palavras_de_exclusao")
+  catmatCodes        String[] @map("catmat_codes") // Códigos CATMAT (opcional)
+  catserCodes        String[] @map("catser_codes") // Códigos CATSER (opcional)
+  ufs                String[] // ['DF', 'GO'] — vazio = nacional
+  valorMin           Decimal? @map("valor_min") // Filtro de valor mínimo
+  valorMax           Decimal? @map("valor_max") // Filtro de valor máximo
+  modalidades        String[] // ['pregao', 'dispensa', 'concorrencia']
   // Filtro por órgão — trecho do nome (ex: "PREFEITURA DE UBERLÂNDIA" para um
   // órgão específico, ou "PREFEITURA"/"UNIVERSIDADE FEDERAL" para uma categoria
   // inteira). Casamento literal por palavra, igual às keywords — ver matcherService.
-  orgaos      String[] // vazio = qualquer órgão
+  orgaos             String[] // vazio = qualquer órgão
   // Filtro por código UASG (unidade compradora) — só existe no sistema legado
   // (ComprasNet/Lei 8.666); licitações do PNCP não têm UASG, então esse
   // filtro simplesmente não restringe candidatas do PNCP (ver uasgMatches em
   // matcherService.ts). Preenchido via busca na tabela cacheada em Uasg.
-  uasgCodes   String[] @map("uasg_codes") // vazio = qualquer unidade
-  active      Boolean  @default(true)
+  uasgCodes          String[] @map("uasg_codes") // vazio = qualquer unidade
+  active             Boolean  @default(true)
 
   // Filtro por raio de distância — alternativa/complemento ao filtro por UF,
   // útil pra quem presta serviço presencial e só atende dentro de um raio.
@@ -397,25 +398,26 @@ model TenderItem {
 // ============================================================
 
 model TenderMatch {
-  id              String   @id @default(uuid())
-  tenderId        String   @map("tender_id")
-  monitoredItemId String   @map("monitored_item_id")
+  id                   String   @id @default(uuid())
+  tenderId             String   @map("tender_id")
+  monitoredItemId      String   @map("monitored_item_id")
   // Dono de fato — Etapa 1b: match de item monitorado compartilhado passa a
   // aparecer pra empresa toda, não só pra quem criou o item. userId
   // continua existindo (copiado do dono do MonitoredItem no momento da
   // criação do match) — hoje só usado pra decidir quem recebe o e-mail de
   // aviso (ver workers/notificador.ts), não é mais a chave de visibilidade.
-  companyId       String   @map("company_id")
-  userId          String   @map("user_id")
-  score           Float // Nota de aderência no momento do match, 0–1 (nota/100)
-  matchedKeywords String[] @map("matched_keywords") // Palavras que deram match
+  companyId            String   @map("company_id")
+  userId               String   @map("user_id")
+  score                Float // Nota de aderência no momento do match, 0–1 (nota/100)
+  matchedKeywords      String[] @map("matched_keywords") // Palavras que deram match
+  dentroDeObraCompleta Boolean  @default(false) @map("dentro_de_obra_completa")
   // Verdadeiro quando o match veio de código CATMAT/CATSER igual (o sinal mais
   // forte) — a nota de aderência ao vivo (lib/aderencia.ts) precisa disso.
-  matchedByCode   Boolean  @default(false) @map("matched_by_code")
+  matchedByCode        Boolean  @default(false) @map("matched_by_code")
   // Compartilhado entre os membros da empresa de propósito — se um colega já
   // viu, some da lista de não-lidos pra todo mundo. Sem inbox por pessoa.
-  read            Boolean  @default(false)
-  createdAt       DateTime @default(now()) @map("created_at")
+  read                 Boolean  @default(false)
+  createdAt            DateTime @default(now()) @map("created_at")
 
   tender        Tender        @relation(fields: [tenderId], references: [id], onDelete: Cascade)
   monitoredItem MonitoredItem @relation(fields: [monitoredItemId], references: [id], onDelete: Cascade)

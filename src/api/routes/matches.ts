@@ -49,6 +49,7 @@ const querySchema = z.object({
 const CAMPOS_DA_NOTA = {
   matchedByCode: true,
   matchedKeywords: true,
+  dentroDeObraCompleta: true,
   tender: { select: { uf: true, valorEstimado: true, encerramentoAt: true, municipioLat: true, municipioLng: true } },
   monitoredItem: { select: { keywords: true, ufs: true, valorMin: true, valorMax: true, raioKm: true, origemLat: true, origemLng: true } },
 } satisfies Prisma.TenderMatchSelect
@@ -67,6 +68,7 @@ function aderenciaDoMatch(m: MatchParaNota): Aderencia {
     porCodigo: m.matchedByCode,
     palavrasEncontradas: m.matchedKeywords.length,
     palavrasTotal: m.monitoredItem.keywords.length,
+    dentroDeObraCompleta: m.dentroDeObraCompleta,
     item: {
       ufs: m.monitoredItem.ufs,
       valorMin: m.monitoredItem.valorMin != null ? Number(m.monitoredItem.valorMin) : null,
@@ -144,7 +146,7 @@ matchesRouter.get(
       ;[items, total] = await Promise.all([
         prisma.tenderMatch.findMany({
           where,
-          orderBy: { createdAt: 'desc' },
+          orderBy: [{ dentroDeObraCompleta: 'asc' }, { createdAt: 'desc' }],
           skip: (page - 1) * pageSize,
           take: pageSize,
           include: { tender: { select: TENDER_PUBLICO }, monitoredItem: true },

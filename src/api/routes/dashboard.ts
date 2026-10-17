@@ -27,7 +27,7 @@ dashboardRouter.get(
       prisma.tenderMatch.count({ where: { companyId, tender: whereLicitacaoAberta() } }),
       prisma.tenderMatch.findMany({
         where: { companyId, tender: whereLicitacaoAberta() },
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ dentroDeObraCompleta: 'asc' }, { createdAt: 'desc' }],
         take: 5,
         include: { tender: { select: TENDER_PUBLICO }, monitoredItem: { select: { name: true } } },
       }),
