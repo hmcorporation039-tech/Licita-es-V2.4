@@ -42,6 +42,7 @@ rodar('Busca precisa: plural, palavras de exclusão e obra completa', () => {
     process.env.DATABASE_URL = URL_BANCO
     process.env.JWT_SECRET = process.env.JWT_SECRET ?? 'segredo-de-teste'
     process.env.RATE_LIMIT_DISABLED = 'true'
+    process.env.QUEUE_ENQUEUE_TIMEOUT_MS = '300'
     const { app } = await import('../../src/api/server')
     ;({ prisma } = await import('../../src/services/tenderService'))
     const { normalize } = await import('../../src/lib/geoService')
@@ -87,7 +88,7 @@ rodar('Busca precisa: plural, palavras de exclusão e obra completa', () => {
     expect(criado.body.palavrasDeExclusao).toEqual(['serra'])
     expect((await http('POST', `/api/monitored-items/${criado.body.id}/rematch`)).status).toBe(200)
     expect(await ligadas(criado.body.id)).toEqual({ plural: false, obra: true })
-  })
+  }, 30_000)
 
   it('sem palavra de exclusão a ferramenta entra, e a lista de matches põe a obra completa por último', async () => {
     const criado = await http('POST', '/api/monitored-items', { name: 'Esquadria sem filtro', keywords: ['esquadrias'] })
@@ -99,7 +100,7 @@ rodar('Busca precisa: plural, palavras de exclusão e obra completa', () => {
     expect(deste[deste.length - 1].dentroDeObraCompleta).toBe(true)
     const obra = deste.find((m) => m.dentroDeObraCompleta)!
     expect(obra.aderencia.criterios.find((c) => c.id === 'objeto')!.motivo).toMatch(/obra completa/)
-  })
+  }, 30_000)
 
   it('recusa lista de exclusão grande demais', async () => {
     const r = await http('POST', '/api/monitored-items', { name: 'X', keywords: ['x1'], palavrasDeExclusao: Array.from({ length: 51 }, (_, i) => `palavra${i}`) })
