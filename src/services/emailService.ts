@@ -4,6 +4,7 @@
 
 import { Resend } from 'resend'
 import { escapeHtml, safeHttpUrl } from '../lib/html'
+import { formatarDiaDoCalendario, formatarDiaEHoraDeBrasilia, formatarPrazoDaLicitacao } from '../lib/dataDeBrasilia'
 
 const EMAIL_FROM = process.env.EMAIL_FROM ?? 'noreply@seudominio.com.br'
 
@@ -11,6 +12,10 @@ let resend: Resend | null = null
 function getResendClient(): Resend {
   if (!resend) resend = new Resend(process.env.RESEND_API_KEY)
   return resend
+}
+
+function emReais(valor: number): string {
+  return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
 function linkHtml(url: string | null | undefined, rotulo: string): string {
@@ -45,7 +50,7 @@ export async function sendMatchEmail(params: MatchEmailParams) {
       <p><strong>Objeto:</strong> ${escapeHtml(tenderObjeto)}</p>
       ${orgao ? `<p><strong>Órgão:</strong> ${escapeHtml(orgao)}</p>` : ''}
       ${uf ? `<p><strong>UF:</strong> ${escapeHtml(uf)}</p>` : ''}
-      ${valorEstimado ? `<p><strong>Valor estimado:</strong> R$ ${escapeHtml(valorEstimado.toLocaleString('pt-BR'))}</p>` : ''}
+      ${valorEstimado ? `<p><strong>Valor estimado:</strong> ${escapeHtml(emReais(valorEstimado))}</p>` : ''}
       ${linkHtml(linkEdital, 'Ver edital')}
     `,
   })
@@ -66,7 +71,7 @@ export async function sendDocumentExpiryEmail(params: DocumentExpiryEmailParams)
 
   const { to, documentName, diasRestantes, dataValidade } = params
   const vencido = diasRestantes < 0
-  const dataFormatada = dataValidade.toLocaleDateString('pt-BR')
+  const dataFormatada = formatarDiaDoCalendario(dataValidade)
 
   await getResendClient().emails.send({
     from: EMAIL_FROM,
@@ -97,6 +102,7 @@ export interface TenderChangedEmailParams {
   campos: string[]
   orgao?: string | null
   encerramentoAt?: Date | null
+  fonte?: string
   linkEdital?: string | null
 }
 
@@ -106,7 +112,7 @@ export async function sendTenderChangedEmail(params: TenderChangedEmailParams) {
     return
   }
 
-  const { to, tenderObjeto, campos, orgao, encerramentoAt, linkEdital } = params
+  const { to, tenderObjeto, campos, orgao, encerramentoAt, fonte, linkEdital } = params
   const rotulos = campos.map((campo) => ROTULO_CAMPO_ALTERADO[campo] ?? campo)
 
   await getResendClient().emails.send({
@@ -121,7 +127,7 @@ export async function sendTenderChangedEmail(params: TenderChangedEmailParams) {
       ${
         encerramentoAt
           ? `<p><strong>Novo fim do recebimento de propostas:</strong> ${escapeHtml(
-              encerramentoAt.toLocaleString('pt-BR')
+              fonte ? formatarPrazoDaLicitacao(encerramentoAt, fonte) : formatarDiaEHoraDeBrasilia(encerramentoAt)
             )}</p>`
           : ''
       }

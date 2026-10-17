@@ -203,7 +203,7 @@ export interface DashboardData {
   matchesTotal: number
   ultimosMatches: TenderMatch[]
   documentosVencendoEmBreve: { id: string; nome: string; dataValidade: string }[]
-  proximosPrazos: { tenderId: string; tenderObjeto: string; label: string; date: string }[]
+  proximosPrazos: { tenderId: string; tenderObjeto: string; fonte: string; label: string; date: string }[]
 }
 
 export interface CompanyDocument {

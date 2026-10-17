@@ -6,6 +6,7 @@ import { useRequireSession } from '@/hooks/useRequireSession'
 import { api, ApiRequestError } from '@/lib/api'
 import { MonitoredItem, UasgResult } from '@/lib/types'
 import { MODALIDADE_OPTIONS } from '@/lib/modalidades'
+import { dinheiroBrParaEdicao, faixaDeValorBr, lerDinheiroBr } from '@/lib/dinheiroBr'
 import UasgPicker from '@/components/UasgPicker'
 import CatalogPicker from '@/components/CatalogPicker'
 import {
@@ -48,7 +49,7 @@ type Par<T> = readonly [T, Dispatch<SetStateAction<T>>]
 
 type ErrosDosCampos = Record<string, string>
 
-const CAMPOS_COM_ERRO_PROPRIO = ['name', 'keywords', 'catmatCodes', 'catserCodes', 'ufs', 'valorMax', 'orgaos', 'uasgCodes', 'modalidades', 'raioKm', 'origemMunicipio', 'origemUf']
+const CAMPOS_COM_ERRO_PROPRIO = ['name', 'keywords', 'catmatCodes', 'catserCodes', 'ufs', 'valorMin', 'valorMax', 'orgaos', 'uasgCodes', 'modalidades', 'raioKm', 'origemMunicipio', 'origemUf']
 
 const MIN_TAM_PALAVRA_CHAVE = 2
 
@@ -56,11 +57,34 @@ function separarLista(texto: string): string[] {
   return texto.split(',').map((t) => t.trim()).filter(Boolean)
 }
 
-function validarAntesDeEnviar(keywords: string): ErrosDosCampos {
+const VALOR_EM_FORMATO_INVALIDO = 'Valor em formato inválido. Use o formato 500.000,00.'
+
+function validarPalavrasChave(keywords: string): ErrosDosCampos {
   const curtas = separarLista(keywords).filter((k) => k.length < MIN_TAM_PALAVRA_CHAVE)
   if (curtas.length === 0) return {}
   const lista = curtas.map((k) => `"${k}"`).join(', ')
   return { keywords: `Cada palavra-chave precisa ter ao menos ${MIN_TAM_PALAVRA_CHAVE} caracteres (revise ${lista}).` }
+}
+
+function validarFaixaDeValor(valorMin: string, valorMax: string): ErrosDosCampos {
+  const minimo = lerDinheiroBr(valorMin)
+  const maximo = lerDinheiroBr(valorMax)
+  const erros: ErrosDosCampos = {}
+  if (!minimo.valido) erros.valorMin = VALOR_EM_FORMATO_INVALIDO
+  if (!maximo.valido) erros.valorMax = VALOR_EM_FORMATO_INVALIDO
+  if (minimo.valido && maximo.valido && minimo.valor !== null && maximo.valor !== null && minimo.valor > maximo.valor) {
+    erros.valorMax = 'O máximo precisa ser maior ou igual ao mínimo.'
+  }
+  return erros
+}
+
+function validarAntesDeEnviar(keywords: string, valorMin: string, valorMax: string): ErrosDosCampos {
+  return { ...validarPalavrasChave(keywords), ...validarFaixaDeValor(valorMin, valorMax) }
+}
+
+function valorDigitado(texto: string): number | null {
+  const leitura = lerDinheiroBr(texto)
+  return leitura.valido ? leitura.valor : null
 }
 
 function distribuirErro(err: unknown, padrao: string): { campos: ErrosDosCampos; geral: string | null } {
@@ -91,6 +115,7 @@ interface CamposDoItem {
   orgaos: Par<string>
   uasg: Par<UasgResult[]>
   ufs: Par<string>
+  valorMin: Par<string>
   valorMax: Par<string>
   raioKm: Par<string>
   origemMunicipio: Par<string>
@@ -128,6 +153,7 @@ function FormularioDoItem({
   const [orgaos, setOrgaos] = campos.orgaos
   const [uasg, setUasg] = campos.uasg
   const [ufs, setUfs] = campos.ufs
+  const [valorMin, setValorMin] = campos.valorMin
   const [valorMax, setValorMax] = campos.valorMax
   const [raioKm, setRaioKm] = campos.raioKm
   const [origemMunicipio, setOrigemMunicipio] = campos.origemMunicipio
@@ -166,11 +192,22 @@ function FormularioDoItem({
         </Field>
       </div>
 
-      <Field label="UFs" hint="Siglas de 2 letras separadas por vírgula. Vazio = nacional." error={erros.ufs}>
+      <Field label="UFs" hint="Siglas de 2 letras separadas por vírgula. Vazio = nacional." error={erros.ufs} className="sm:col-span-2">
         <Input placeholder="DF, SP" value={ufs} onChange={aoMudar('ufs', setUfs)} />
       </Field>
-      <Field label="Valor máximo (R$)" hint="Opcional." error={erros.valorMax}>
-        <Input type="number" inputMode="decimal" className="font-mono" value={valorMax} onChange={aoMudar('valorMax', setValorMax)} />
+      <Field
+        label="Valor total estimado da licitação — mínimo (R$)"
+        hint="Opcional. É o valor total da licitação, não o preço do item. Ex.: 50.000,00."
+        error={erros.valorMin}
+      >
+        <Input inputMode="decimal" className="font-mono" placeholder="50.000,00" value={valorMin} onChange={aoMudar('valorMin', setValorMin)} />
+      </Field>
+      <Field
+        label="Valor total estimado da licitação — máximo (R$)"
+        hint="Opcional. Licitações com valor total acima disso ficam de fora. Ex.: 500.000,00."
+        error={erros.valorMax}
+      >
+        <Input inputMode="decimal" className="font-mono" placeholder="500.000,00" value={valorMax} onChange={aoMudar('valorMax', setValorMax)} />
       </Field>
 
       <Field label="Órgãos" hint="Opcional. Separados por vírgula. Ex.: Prefeitura de Uberlândia, Universidade Federal." error={erros.orgaos} className="sm:col-span-2">
@@ -232,6 +269,7 @@ export default function ItemsPage() {
   const [orgaos, setOrgaos] = useState('')
   const [uasgSelected, setUasgSelected] = useState<UasgResult[]>([])
   const [ufs, setUfs] = useState('')
+  const [valorMin, setValorMin] = useState('')
   const [valorMax, setValorMax] = useState('')
   const [raioKm, setRaioKm] = useState('')
   const [origemMunicipio, setOrigemMunicipio] = useState('')
@@ -254,6 +292,7 @@ export default function ItemsPage() {
   const [editOrgaos, setEditOrgaos] = useState('')
   const [editUasgSelected, setEditUasgSelected] = useState<UasgResult[]>([])
   const [editUfs, setEditUfs] = useState('')
+  const [editValorMin, setEditValorMin] = useState('')
   const [editValorMax, setEditValorMax] = useState('')
   const [editRaioKm, setEditRaioKm] = useState('')
   const [editOrigemMunicipio, setEditOrigemMunicipio] = useState('')
@@ -283,7 +322,7 @@ export default function ItemsPage() {
     e.preventDefault()
     if (!user) return
     setError(null)
-    const errosLocais = validarAntesDeEnviar(keywords)
+    const errosLocais = validarAntesDeEnviar(keywords, valorMin, valorMax)
     setErrosNovos(errosLocais)
     if (Object.keys(errosLocais).length > 0) return
     setCreating(true)
@@ -297,7 +336,8 @@ export default function ItemsPage() {
         orgaos: orgaos.split(',').map((o) => o.trim()).filter(Boolean),
         uasgCodes: uasgSelected.map((u) => u.codigoUasg),
         ufs: ufs.split(',').map((u) => u.trim().toUpperCase()).filter(Boolean),
-        valorMax: valorMax ? Number(valorMax) : undefined,
+        valorMin: valorDigitado(valorMin) ?? undefined,
+        valorMax: valorDigitado(valorMax) ?? undefined,
         raioKm: raioKm ? Number(raioKm) : undefined,
         origemMunicipio: origemMunicipio.trim() || undefined,
         origemUf: origemUf.trim() ? origemUf.trim().toUpperCase() : undefined,
@@ -310,6 +350,7 @@ export default function ItemsPage() {
       setOrgaos('')
       setUasgSelected([])
       setUfs('')
+      setValorMin('')
       setValorMax('')
       setRaioKm('')
       setOrigemMunicipio('')
@@ -342,7 +383,8 @@ export default function ItemsPage() {
         .catch(() => setEditUasgSelected([]))
     }
     setEditUfs(item.ufs.join(', '))
-    setEditValorMax(item.valorMax ?? '')
+    setEditValorMin(dinheiroBrParaEdicao(item.valorMin))
+    setEditValorMax(dinheiroBrParaEdicao(item.valorMax))
     setEditRaioKm(item.raioKm ? String(item.raioKm) : '')
     setEditOrigemMunicipio(item.origemMunicipio ?? '')
     setEditOrigemUf(item.origemUf ?? '')
@@ -357,7 +399,7 @@ export default function ItemsPage() {
   async function handleSaveEdit(itemId: string) {
     if (!user) return
     setEditError(null)
-    const errosLocais = validarAntesDeEnviar(editKeywords)
+    const errosLocais = validarAntesDeEnviar(editKeywords, editValorMin, editValorMax)
     setErrosEditados(errosLocais)
     if (Object.keys(errosLocais).length > 0) return
     setEditSaving(true)
@@ -371,7 +413,8 @@ export default function ItemsPage() {
         orgaos: editOrgaos.split(',').map((o) => o.trim()).filter(Boolean),
         uasgCodes: editUasgSelected.map((u) => u.codigoUasg),
         ufs: editUfs.split(',').map((u) => u.trim().toUpperCase()).filter(Boolean),
-        valorMax: editValorMax ? Number(editValorMax) : null,
+        valorMin: valorDigitado(editValorMin),
+        valorMax: valorDigitado(editValorMax),
         raioKm: editRaioKm ? Number(editRaioKm) : null,
         origemMunicipio: editOrigemMunicipio.trim() || null,
         origemUf: editOrigemUf.trim() ? editOrigemUf.trim().toUpperCase() : null,
@@ -428,6 +471,7 @@ export default function ItemsPage() {
     orgaos: [orgaos, setOrgaos],
     uasg: [uasgSelected, setUasgSelected],
     ufs: [ufs, setUfs],
+    valorMin: [valorMin, setValorMin],
     valorMax: [valorMax, setValorMax],
     raioKm: [raioKm, setRaioKm],
     origemMunicipio: [origemMunicipio, setOrigemMunicipio],
@@ -443,6 +487,7 @@ export default function ItemsPage() {
     orgaos: [editOrgaos, setEditOrgaos],
     uasg: [editUasgSelected, setEditUasgSelected],
     ufs: [editUfs, setEditUfs],
+    valorMin: [editValorMin, setEditValorMin],
     valorMax: [editValorMax, setEditValorMax],
     raioKm: [editRaioKm, setEditRaioKm],
     origemMunicipio: [editOrigemMunicipio, setEditOrigemMunicipio],
@@ -560,6 +605,11 @@ export default function ItemsPage() {
                         )
                       )}
                       {item.orgaos.length > 0 && <Linha rotulo="Órgãos">{item.orgaos.join(', ')}</Linha>}
+                      {faixaDeValorBr(item.valorMin, item.valorMax) && (
+                        <Linha rotulo="Valor total">
+                          <span className="font-mono">{faixaDeValorBr(item.valorMin, item.valorMax)}</span>
+                        </Linha>
+                      )}
                     </dl>
                   </div>
                   <div className="flex shrink-0 flex-col gap-1.5 lg:items-end">

@@ -10,6 +10,8 @@ import { buildAutoMilestones } from '../../lib/participationPlanTemplate'
 import { asyncHandler } from '../asyncHandler'
 import { whereLicitacaoAberta } from '../../lib/licitacaoAberta'
 import { TENDER_PUBLICO } from '../../lib/tenderPublico'
+import { fimDoPrazoDaLicitacao } from '../../lib/dataDeBrasilia'
+import { prazoNoMapa, urgenciaDoEstado, type UrgenciaNoMapa } from '../../lib/prazoNoMapa'
 
 export const dashboardRouter = Router()
 
@@ -48,7 +50,7 @@ dashboardRouter.get(
       .sort((a, b) => (a.dataValidade!.getTime() - b.dataValidade!.getTime()))
 
     const prazoCutoff = now + PRAZO_JANELA_DIAS * 24 * 60 * 60 * 1000
-    const proximosPrazos: { tenderId: string; tenderObjeto: string; label: string; date: string }[] = []
+    const proximosPrazos: { tenderId: string; tenderObjeto: string; fonte: string; label: string; date: string }[] = []
 
     // Uma consulta para todas as análises, em vez de uma por plano dentro do laço.
     const analyses = await prisma.tenderAnalysis.findMany({
@@ -65,11 +67,12 @@ dashboardRouter.get(
       const milestones = buildAutoMilestones(plano.tender, analysisPrazos)
       for (const m of milestones) {
         if (m.done || !m.date) continue
-        const t = new Date(m.date).getTime()
-        if (t >= now && t <= prazoCutoff) {
+        const inicio = new Date(m.date)
+        if (fimDoPrazoDaLicitacao(inicio, plano.tender.fonte).getTime() >= now && inicio.getTime() <= prazoCutoff) {
           proximosPrazos.push({
             tenderId: plano.tender.id,
             tenderObjeto: plano.tender.objetoResumido ?? plano.tender.objeto,
+            fonte: plano.tender.fonte,
             label: m.label,
             date: m.date,
           })
@@ -89,13 +92,6 @@ dashboardRouter.get(
   })
 )
 
-// Janelas usadas pra classificar a urgência de cada licitação escolhida no
-// mapa — mesma lógica de "farol": vermelho pisca quando tá muito em cima da
-// hora, amarelo quando ainda dá tempo mas já é prá se organizar, verde
-// quando foi escolhida mas o prazo tá tranquilo (ou não tem data definida).
-const MAPA_URGENTE_DIAS = 2
-const MAPA_ANDAMENTO_DIAS = 7
-
 dashboardRouter.get(
   '/mapa',
   asyncHandler(async (req, res) => {
@@ -107,6 +103,7 @@ dashboardRouter.get(
         tender: {
           select: {
             id: true,
+            fonte: true,
             uf: true,
             municipio: true,
             orgao: true,
@@ -120,25 +117,17 @@ dashboardRouter.get(
     })
 
     const now = Date.now()
-    const DIA_MS = 24 * 60 * 60 * 1000
-
-    type Urgencia = 'urgente' | 'andamento' | 'selecionada'
-    const PRIORIDADE: Record<Urgencia, number> = { urgente: 3, andamento: 2, selecionada: 1 }
 
     const porUf = new Map<
       string,
-      { uf: string; tenders: { id: string; municipio: string | null; orgao: string | null; objeto: string; diasRestantes: number | null; urgencia: Urgencia }[] }
+      { uf: string; tenders: { id: string; municipio: string | null; orgao: string | null; objeto: string; horasRestantes: number | null; urgencia: UrgenciaNoMapa }[] }
     >()
 
     for (const plano of escolhidas) {
       const t = plano.tender
       if (!t.uf) continue // sem UF não dá pra sinalizar no mapa
 
-      const diasRestantes = t.encerramentoAt ? Math.ceil((t.encerramentoAt.getTime() - now) / DIA_MS) : null
-
-      let urgencia: Urgencia = 'selecionada'
-      if (diasRestantes !== null && diasRestantes <= MAPA_URGENTE_DIAS) urgencia = 'urgente'
-      else if (diasRestantes !== null && diasRestantes <= MAPA_ANDAMENTO_DIAS) urgencia = 'andamento'
+      const { horasRestantes, urgencia } = prazoNoMapa(t.encerramentoAt, t.fonte, now)
 
       const uf = t.uf.toUpperCase()
       if (!porUf.has(uf)) porUf.set(uf, { uf, tenders: [] })
@@ -147,17 +136,14 @@ dashboardRouter.get(
         municipio: t.municipio,
         orgao: t.orgao,
         objeto: t.objetoResumido ?? t.objeto,
-        diasRestantes,
+        horasRestantes,
         urgencia,
       })
     }
 
     const estados = Array.from(porUf.values()).map((g) => ({
       ...g,
-      urgenciaPrioritaria: g.tenders.reduce<Urgencia>(
-        (max, t) => (PRIORIDADE[t.urgencia] > PRIORIDADE[max] ? t.urgencia : max),
-        'selecionada'
-      ),
+      urgenciaPrioritaria: urgenciaDoEstado(g.tenders.map((t) => t.urgencia)),
     }))
 
     res.json({ estados })

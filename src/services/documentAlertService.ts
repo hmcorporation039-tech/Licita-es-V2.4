@@ -10,6 +10,7 @@
 
 import { prisma } from './tenderService'
 import { sendDocumentExpiryEmail } from './emailService'
+import { formatarDiaDoCalendario } from '../lib/dataDeBrasilia'
 
 export const ALERT_THRESHOLD_DAYS = 15
 export const ALERT_COOLDOWN_DAYS = 7
@@ -45,7 +46,7 @@ export async function checkExpiringDocuments(): Promise<{ checked: number; alert
           userId: doc.userId,
           type: 'EMAIL',
           title: diasRestantes < 0 ? `Documento vencido: ${doc.nome}` : `Documento vencendo em ${diasRestantes} dia(s): ${doc.nome}`,
-          body: `Validade: ${doc.dataValidade.toLocaleDateString('pt-BR')}`,
+          body: `Validade: ${formatarDiaDoCalendario(doc.dataValidade)}`,
           sentAt: now,
           metadata: { companyDocumentId: doc.id },
         },

@@ -89,6 +89,7 @@ async function processarAlteracao(payload: NotificadorAlteracaoPayload): Promise
     campos,
     orgao: tender.orgao,
     encerramentoAt: tender.encerramentoAt,
+    fonte: tender.fonte,
     linkEdital: tender.linkEdital,
   })
 

@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from 'react'
 import { Clock } from 'lucide-react'
 import { textoDoPrazo, tomDoPrazo } from '@/components/ui'
-import { formatarData, paraData } from '@/lib/datas'
+import { formatarData, instanteDoPrazo } from '@/lib/datas'
 
 const assinarNada = () => () => {}
 const noCliente = () => true
@@ -15,7 +15,7 @@ export function useHidratado(): boolean {
 
 export default function PrazoNoCliente({ prazo }: { prazo: string | null }) {
   const hidratado = useHidratado()
-  const data = paraData(prazo)
+  const data = instanteDoPrazo(prazo)
 
   if (!data) return <span className="az-prazo">Data no edital</span>
   if (!hidratado) return <span className="az-prazo">até {formatarData(prazo)}</span>

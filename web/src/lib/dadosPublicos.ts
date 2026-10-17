@@ -1,5 +1,6 @@
 import { API_URL } from './api'
 import type { Limites } from './adminTypes'
+import { dataDaLicitacao, instanteDoPrazo } from './datas'
 
 export interface PlanoPublico {
   codigo: string
@@ -84,7 +85,7 @@ function planosValidos(dados: PlanosResposta | null): PlanosResposta | null {
 
 function vitrineValida(dados: RespostaDaVitrine | null): RespostaDaVitrine | null {
   if (!dados || typeof dados.total !== 'number' || dados.total < 0 || !Array.isArray(dados.amostras)) return null
-  return dados
+  return { ...dados, amostras: dados.amostras.map((a) => ({ ...a, prazo: dataDaLicitacao(a.prazo, a.fonte) })) }
 }
 
 export async function buscarEstatisticas(esperaMaximaMs: number = ESPERA_DAS_ESTATISTICAS_MS): Promise<EstatisticasPublicas | null> {
@@ -106,9 +107,9 @@ function chaveDaAmostra(amostra: AmostraDaVitrine): string {
 
 function prazoAindaUtil(prazo: string | null, agora: number): boolean {
   if (!prazo) return true
-  const instante = new Date(prazo).getTime()
-  if (Number.isNaN(instante)) return false
-  return instante - agora > FOLGA_MINIMA_DO_PRAZO_MS
+  const instante = instanteDoPrazo(prazo)
+  if (!instante) return false
+  return instante.getTime() - agora > FOLGA_MINIMA_DO_PRAZO_MS
 }
 
 export function juntarAmostras(respostas: Array<RespostaDaVitrine | null>, agora: number = Date.now()): AmostraDaVitrine[] {
@@ -146,7 +147,7 @@ export function primeiroPrazoUtil(resposta: RespostaDaVitrine | null, agora: num
   let primeiro: { prazo: string; instante: number } | null = null
   for (const amostra of resposta.amostras) {
     if (!amostra.prazo || !prazoAindaUtil(amostra.prazo, agora)) continue
-    const instante = new Date(amostra.prazo).getTime()
+    const instante = instanteDoPrazo(amostra.prazo)?.getTime() ?? Number.POSITIVE_INFINITY
     if (!primeiro || instante < primeiro.instante) primeiro = { prazo: amostra.prazo, instante }
   }
   return primeiro?.prazo ?? null

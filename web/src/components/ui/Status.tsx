@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Clock } from 'lucide-react'
 import { cx } from './cx'
-import { ehDataPura, fimDoDiaEmBrasilia, formatarData, paraData } from '@/lib/datas'
+import { ehDataPura, formatarData, instanteDoPrazo } from '@/lib/datas'
 
 export type Tom = 'neutral' | 'accent' | 'ok' | 'warn' | 'danger'
 
@@ -93,7 +93,7 @@ export function Prazo({
   className?: string
 }) {
   const pura = typeof data === 'string' || data instanceof Date ? ehDataPura(data) : false
-  const valida = pura ? fimDoDiaEmBrasilia(data) : paraData(data)
+  const valida = instanteDoPrazo(data)
   const tom = tomDoPrazo(valida)
   const relativo = textoDoPrazo(valida)
   const absoluto = valida ? formatarData(data, { comHora: !semHora && !pura }) : '—'
