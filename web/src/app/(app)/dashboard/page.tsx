@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { BellDot, CalendarClock, FileWarning, Inbox, ListChecks } from 'lucide-react'
+import { useAtualizacaoAutomatica } from '@/hooks/useAtualizacaoAutomatica'
 import { useRequireSession } from '@/hooks/useRequireSession'
 import { api } from '@/lib/api'
 import { DashboardData } from '@/lib/types'
@@ -29,14 +30,33 @@ export default function DashboardPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  useEffect(() => {
-    if (!user) return
-    carregarResumo()
+  const carregarMapa = useCallback((manterSeFalhar: boolean) => {
     api
       .get<{ estados: EstadoMapa[] }>('/api/dashboard/mapa')
       .then((r) => setEstadosMapa(r.estados))
-      .catch(() => setEstadosMapa([]))
-  }, [user, carregarResumo])
+      .catch(() => {
+        if (!manterSeFalhar) setEstadosMapa([])
+      })
+  }, [])
+
+  const atualizarEmSilencio = useCallback(() => {
+    api
+      .get<DashboardData>('/api/dashboard')
+      .then((novos) => {
+        setData(novos)
+        setErro(false)
+      })
+      .catch(() => {})
+    carregarMapa(true)
+  }, [carregarMapa])
+
+  useEffect(() => {
+    if (!user) return
+    carregarResumo()
+    carregarMapa(false)
+  }, [user, carregarResumo, carregarMapa])
+
+  useAtualizacaoAutomatica(atualizarEmSilencio, { ativa: Boolean(user) })
 
   if (!user) return null
 
