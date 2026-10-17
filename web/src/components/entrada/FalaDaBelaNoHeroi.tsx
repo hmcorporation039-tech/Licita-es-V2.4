@@ -1,6 +1,6 @@
 'use client'
 
-import { paraData } from '@/lib/datas'
+import { instanteDoPrazo } from '@/lib/datas'
 import { useHidratado } from './PrazoNoCliente'
 
 const FUSO = 'America/Sao_Paulo'
@@ -30,7 +30,7 @@ function fraseDoTotal(total: number, termo: string): string {
 
 export default function FalaDaBelaNoHeroi({ total, termo, primeiroPrazo, className }: { total: number | null; termo: string; primeiroPrazo: string | null; className?: string }) {
   const hidratado = useHidratado()
-  const prazo = paraData(primeiroPrazo)
+  const prazo = instanteDoPrazo(primeiroPrazo)
   const prazoValido = hidratado && prazo && prazo.getTime() > Date.now()
 
   return (

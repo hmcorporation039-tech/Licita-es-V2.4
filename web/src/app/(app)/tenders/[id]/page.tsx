@@ -1,6 +1,6 @@
 'use client'
 
-import { formatarData } from '@/lib/datas'
+import { dataDaLicitacao, formatarData } from '@/lib/datas'
 import { use, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { AlertCircle, Calculator, Check, CheckCircle2, ChevronDown, ChevronUp, ExternalLink, Gavel, Loader2, Plus, RotateCcw, Trash2 } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
@@ -90,9 +90,9 @@ type TenderComEncerramento = Tender & { encerramentoAt?: string | null }
 const FONTES_COM_ABERTURA_NO_INICIO_DAS_PROPOSTAS = new Set(['PNCP', 'COMPRASNET'])
 
 function fimDasPropostas(t: TenderComEncerramento): string | null {
-  if (t.encerramentoAt) return t.encerramentoAt
+  if (t.encerramentoAt) return dataDaLicitacao(t.encerramentoAt, t.fonte)
   if (FONTES_COM_ABERTURA_NO_INICIO_DAS_PROPOSTAS.has(t.fonte)) return null
-  return t.aberturaAt
+  return dataDaLicitacao(t.aberturaAt, t.fonte)
 }
 
 function cnpjDoProcesso(numeroControle: string | null): string | null {
@@ -108,6 +108,14 @@ function formatValor(v: string | null) {
 
 function formatData(v: string | null) {
   return formatarData(v, { comHora: true })
+}
+
+function formatDataDaLicitacao(v: string | null, fonte: string) {
+  return formatData(dataDaLicitacao(v, fonte))
+}
+
+function dataDoMarco(m: { date: string | null; custom: boolean }, fonte: string): string | null {
+  return m.custom ? m.date : dataDaLicitacao(m.date, fonte)
 }
 
 function formatQuantidade(q: string | null) {
@@ -505,9 +513,9 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
     { label: 'Valor estimado', value: formatValor(tender.valorEstimado), mono: true },
     ...(tender.valorHomologado ? [{ label: 'Valor homologado', value: formatValor(tender.valorHomologado), mono: true }] : []),
     ...(tender.fonte === 'PNCP' && tender.srp != null ? [{ label: 'Registro de Preços', value: tender.srp ? 'Sim' : 'Não' }] : []),
-    { label: 'Publicação', value: formatData(tender.publicadoAt), mono: true },
-    { label: 'Abertura', value: formatData(tender.aberturaAt), mono: true },
-    ...(tender.encerramentoAt ? [{ label: 'Encerramento das propostas', value: formatData(tender.encerramentoAt), mono: true }] : []),
+    { label: 'Publicação', value: formatDataDaLicitacao(tender.publicadoAt, tender.fonte), mono: true },
+    { label: 'Abertura', value: formatDataDaLicitacao(tender.aberturaAt, tender.fonte), mono: true },
+    ...(tender.encerramentoAt ? [{ label: 'Encerramento das propostas', value: formatDataDaLicitacao(tender.encerramentoAt, tender.fonte), mono: true }] : []),
   ]
 
   return (
@@ -571,7 +579,7 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
             { label: 'Valor estimado', value: <span className="text-lg font-medium">{formatValor(tender.valorEstimado)}</span>, mono: true },
             { label: 'Fim do envio de propostas', value: <Prazo data={fimDasPropostas(tender)} layout="inline" /> },
             { label: 'Nº do processo', value: tender.numeroControle ? <span className="break-all">{tender.numeroControle}</span> : '—', mono: true },
-            { label: 'Publicação', value: formatData(tender.publicadoAt), mono: true },
+            { label: 'Publicação', value: formatDataDaLicitacao(tender.publicadoAt, tender.fonte), mono: true },
           ]}
         />
       </Panel>
@@ -931,9 +939,9 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
                           <div className="flex shrink-0 items-start gap-2">
                             {m.date &&
                               (m.done ? (
-                                <span className="font-mono text-xs text-muted">{formatData(m.date)}</span>
+                                <span className="font-mono text-xs text-muted">{formatData(dataDoMarco(m, tender.fonte))}</span>
                               ) : (
-                                <Prazo data={m.date} className="items-end text-right" />
+                                <Prazo data={dataDoMarco(m, tender.fonte)} className="items-end text-right" />
                               ))}
                             {m.custom && (
                               <Button

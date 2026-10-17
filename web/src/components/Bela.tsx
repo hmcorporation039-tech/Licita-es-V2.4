@@ -7,6 +7,7 @@ import { ArrowRight, Mic, Search, Square, X } from 'lucide-react'
 import { api, ApiRequestError } from '@/lib/api'
 import type { FiltrosDaBela, Paginated, PedidoDaBela, Tender } from '@/lib/types'
 import { MODALIDADE_OPTIONS } from '@/lib/modalidades'
+import { dataDaLicitacao } from '@/lib/datas'
 import { useEscuta, useFalaDaBela } from '@/hooks/useBela'
 import { Button, Checkbox, cx, FormError, Input, LinkButton, Notice, Prazo, StatusTag } from '@/components/ui'
 
@@ -26,9 +27,9 @@ type TenderComEncerramento = Tender & { encerramentoAt?: string | null }
 const FONTES_COM_ABERTURA_NO_INICIO_DAS_PROPOSTAS = new Set(['PNCP', 'COMPRASNET'])
 
 function fimDasPropostas(t: TenderComEncerramento): string | null {
-  if (t.encerramentoAt) return t.encerramentoAt
+  if (t.encerramentoAt) return dataDaLicitacao(t.encerramentoAt, t.fonte)
   if (FONTES_COM_ABERTURA_NO_INICIO_DAS_PROPOSTAS.has(t.fonte)) return null
-  return t.aberturaAt
+  return dataDaLicitacao(t.aberturaAt, t.fonte)
 }
 
 function rotuloDaModalidade(valor: string): string {

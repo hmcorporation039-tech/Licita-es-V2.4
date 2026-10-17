@@ -82,7 +82,7 @@ export function parseComprasnetDispensa(raw: Record<string, any>): NormalizedTen
     valorEstimado: raw.vr_estimado !== undefined && raw.vr_estimado !== null ? Number(raw.vr_estimado) : undefined,
     orgao: raw.no_ausg ?? undefined,
     unidade: raw.co_uasg !== undefined && raw.co_uasg !== null ? String(raw.co_uasg) : undefined,
-    publicadoAt: publicadoAt ? new Date(publicadoAt) : undefined,
+    publicadoAt: publicadoAt ? dataDeBrasilia(String(publicadoAt)) : undefined,
     numeroControle: raw.nu_processo,
     rawJson: {},
     items: undefined,

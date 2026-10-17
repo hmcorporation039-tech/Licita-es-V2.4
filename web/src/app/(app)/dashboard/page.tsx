@@ -7,6 +7,7 @@ import { useAtualizacaoAutomatica } from '@/hooks/useAtualizacaoAutomatica'
 import { useRequireSession } from '@/hooks/useRequireSession'
 import { api } from '@/lib/api'
 import { DashboardData } from '@/lib/types'
+import { dataDaLicitacao } from '@/lib/datas'
 import BrazilMap, { EstadoMapa } from '@/components/BrazilMap'
 import MedidorDeAnalises from '@/components/MedidorDeAnalises'
 import { Carregando, EmptyState, ErrorState, Metric, MetricRow, PageHeader, Panel, Prazo, TextLink } from '@/components/ui'
@@ -114,7 +115,7 @@ export default function DashboardPage() {
                             {p.tenderObjeto}
                           </Link>
                         </div>
-                        <Prazo data={p.date} semHora className="shrink-0 items-end text-right" />
+                        <Prazo data={dataDaLicitacao(p.date, p.fonte)} semHora className="shrink-0 items-end text-right" />
                       </li>
                     ))}
                   </ul>

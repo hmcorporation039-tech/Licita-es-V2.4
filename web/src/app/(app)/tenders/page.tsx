@@ -31,15 +31,16 @@ import {
 } from '@/components/ui'
 import { ROTULOS_DE_FONTE } from '@/lib/fontes'
 import { ESTADOS } from '@/lib/estados'
+import { dataDaLicitacao } from '@/lib/datas'
 
 type TenderComEncerramento = Tender & { encerramentoAt?: string | null }
 
 const FONTES_COM_ABERTURA_NO_INICIO_DAS_PROPOSTAS = new Set(['PNCP', 'COMPRASNET'])
 
 function fimDasPropostas(t: TenderComEncerramento): string | null {
-  if (t.encerramentoAt) return t.encerramentoAt
+  if (t.encerramentoAt) return dataDaLicitacao(t.encerramentoAt, t.fonte)
   if (FONTES_COM_ABERTURA_NO_INICIO_DAS_PROPOSTAS.has(t.fonte)) return null
-  return t.aberturaAt
+  return dataDaLicitacao(t.aberturaAt, t.fonte)
 }
 
 function formatValor(v: string | null) {
