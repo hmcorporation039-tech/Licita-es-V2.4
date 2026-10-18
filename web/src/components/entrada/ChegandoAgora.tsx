@@ -23,6 +23,7 @@ const ROTULO_CURTO_DA_FONTE: Record<string, string> = {
   INFRAERO: 'Infraero',
   DIARIO_MUNICIPAL: 'Diário municipal',
   TCE_CE: 'TCE-CE',
+  TCE_PI: 'TCE-PI',
 }
 
 export function rotuloCurtoDaFonte(fonte: string): string {

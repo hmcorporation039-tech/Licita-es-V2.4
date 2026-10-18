@@ -13,6 +13,7 @@ export const MARCAS_DAS_FONTES = [
   'Infraero',
   'Diários municipais',
   'TCE-CE',
+  'TCE-PI',
 ] as const
 
 export type MarcaDaFonte = (typeof MARCAS_DAS_FONTES)[number]
@@ -30,6 +31,7 @@ const MARCA_DA_FONTE: Record<FonteEnum, MarcaDaFonte | null> = {
   INFRAERO: 'Infraero',
   DIARIO_MUNICIPAL: 'Diários municipais',
   TCE_CE: 'TCE-CE',
+  TCE_PI: 'TCE-PI',
 }
 
 const MARCAS_DO_SISTEMA_S: MarcaDaFonte[] = ['SENAI', 'SESI', 'SENAC']

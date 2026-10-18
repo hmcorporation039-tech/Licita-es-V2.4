@@ -181,3 +181,5 @@ diarioMunicipalClient.defaults.maxRedirects = 0
 export const tceCeClient = createRateLimitedClient('https://municipios-licitacoes.tce.ce.gov.br', 1500, HTML_HEADERS)
 tceCeClient.defaults.maxContentLength = 5 * 1024 * 1024
 infraeroClient.defaults.maxContentLength = 2 * 1024 * 1024
+export const tcePiClient = createRateLimitedClient('https://sistemas.tce.pi.gov.br', 2000, HTML_HEADERS)
+tcePiClient.defaults.maxContentLength = 5 * 1024 * 1024

@@ -9,7 +9,7 @@ import { objetoSemConteudo } from './queridoDiarioParser'
 import { chaveDoNumero, comparacaoDoNumeroTceCe, numerosDoTender } from './tceCeDuplicidade'
 import { idDaLicitacaoTceCe } from './tceCeParser'
 
-export const FONTES_QUE_REPETEM_O_PNCP: FonteEnum[] = ['QUERIDO_DIARIO', 'DIARIO_MUNICIPAL', 'TCE_CE']
+export const FONTES_QUE_REPETEM_O_PNCP: FonteEnum[] = ['QUERIDO_DIARIO', 'DIARIO_MUNICIPAL', 'TCE_CE', 'TCE_PI']
 export const FONTES_DE_DIARIO: FonteEnum[] = ['QUERIDO_DIARIO', 'DIARIO_MUNICIPAL']
 export const MOTIVO_SEM_OBJETO = 'SEM_OBJETO'
 
@@ -70,7 +70,7 @@ function comoTender(registro: RegistroDeOutraFonte): NormalizedTender {
 }
 
 function comparacaoDoNumeroDoRegistro(registro: RegistroDeOutraFonte, pncp: NumeroDaCompraNoPncp): ComparacaoDoNumero {
-  if (registro.fonte !== 'TCE_CE') return comparacaoDoNumeroDoAviso(numeroDoAviso(registro.fonteId), pncp)
+  if (registro.fonte !== 'TCE_CE' && registro.fonte !== 'TCE_PI') return comparacaoDoNumeroDoAviso(numeroDoAviso(registro.fonteId), pncp)
   const tender = comoTender(registro)
   return comparacaoDoNumeroTceCe(tender, numerosDoTender(tender), pncp)
 }
