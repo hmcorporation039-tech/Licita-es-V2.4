@@ -16,6 +16,7 @@ import { escritaSensivelLimiter } from '../rateLimit'
 import { registrarAuditoria, ACOES } from '../../services/auditService'
 import { limitesDaEmpresa, resumoDeCotas } from '../../services/quotaService'
 import { inicioDoMesBrasilia, lerLimites } from '../../lib/planos'
+import { municipiosComLicitacaoAbertaPorUf } from '../../services/coberturaMunicipal'
 
 export const adminGestaoRouter = Router()
 adminGestaoRouter.use(requireAuth, requireAdmin)
@@ -62,6 +63,13 @@ adminGestaoRouter.get(
       },
       eventosDeAuditoriaUltimas24h: auditoria24h,
     })
+  })
+)
+
+adminGestaoRouter.get(
+  '/cobertura-municipal',
+  asyncHandler(async (_req, res) => {
+    res.json(await municipiosComLicitacaoAbertaPorUf())
   })
 )
 

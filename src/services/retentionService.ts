@@ -29,6 +29,7 @@
 
 import { Prisma } from '@prisma/client'
 import { prisma } from './tenderService'
+import { WHERE_HOMOLOGADA_PARA_RETENCAO, whereEncerradaParaRetencao } from '../lib/retencao'
 
 export const RETENTION_DAYS = 90
 export const WORKER_LOG_RETENTION_DAYS = 90
@@ -78,13 +79,12 @@ export async function cleanupOldUnmatchedTenders(): Promise<CleanupResult> {
   const cutoff = new Date(agora.getTime() - RETENTION_DAYS * 24 * 60 * 60 * 1000)
 
   const encerradas = await apagarEmLotes({
-    encerramentoAt: { lt: agora },
+    ...whereEncerradaParaRetencao(agora),
     ...SEM_INTERACAO,
   })
 
   const homologadas = await apagarEmLotes({
-    fonte: 'PNCP',
-    valorHomologado: { not: null },
+    ...WHERE_HOMOLOGADA_PARA_RETENCAO,
     ...SEM_INTERACAO,
   })
 

@@ -5,43 +5,138 @@
 
 import { Worker, Job } from 'bullmq'
 import { redisConnection, matcherQueue } from '../queues'
-import { pncpClient } from '../lib/httpClient'
 import { parsePNCPTender } from '../services/pncpParser'
-import { saveTender, saveWorkerLog } from '../services/tenderService'
+import { saveTenderSeAindaServir, saveWorkerLog } from '../services/tenderService'
 import { enfileirarSemTravar } from '../queues/enfileirar'
 import { resolveColetaWindow } from '../lib/coletaWindow'
 import { ultimaPublicacaoColetada } from '../services/coletaCursorService'
 import { avisarAlteracaoDeTender } from '../services/tenderChangeService'
+import {
+  CAMINHO_PROPOSTA_PNCP,
+  CAMINHO_PUBLICACAO_PNCP,
+  ContadoresDaColeta,
+  ContratacaoPncp,
+  ParametrosPncp,
+  ResumoDaColetaPncp,
+  coletarModalidadesPncp,
+  datasDoPncp,
+  parametrosDaVarreduraDePropostas,
+} from '../services/pncpColeta'
 import { ColetorJobPayload } from '../types'
 
-// Todos os códigos de modalidade do PNCP (1 a 13, ver PNCP_MODALIDADE_MAP em types/index.ts)
-const MODALIDADES_ALVO = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+export const WORKER_DA_COLETA_PNCP = 'coletor-pncp'
+export const WORKER_DA_VARREDURA_DE_PROPOSTAS = 'varredura-propostas-pncp'
 
-const ITEMS_PER_PAGE = 50
+export async function gravarContratacoesPncp(
+  itens: ContratacaoPncp[],
+  contadores: ContadoresDaColeta,
+  contexto: string
+): Promise<void> {
+  for (const rawTender of itens) {
+    contadores.vistos++
+    try {
+      const result = await saveTenderSeAindaServir(parsePNCPTender(rawTender))
 
-async function fetchPNCPPage(
-  dataInicial: string,
-  dataFinal: string,
-  modalidade: number,
-  pagina: number
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-): Promise<{ data: any[]; totalPages: number }> {
-  const response = await pncpClient.get('/v1/contratacoes/publicacao', {
-    params: {
-      dataInicial: dataInicial.replace(/-/g, ''),  // formato AAAAMMDD
-      dataFinal: dataFinal.replace(/-/g, ''),
-      codigoModalidadeContratacao: modalidade,
-      pagina,
-      tamanhoPagina: ITEMS_PER_PAGE,
-    },
+      if (!result) {
+        contadores.descartados++
+      } else if (result.isNew) {
+        contadores.novos++
+        await enfileirarSemTravar(matcherQueue, 'match-tender', { tenderId: result.tenderId }, contexto)
+      } else if (result.changed) {
+        contadores.atualizados++
+        await avisarAlteracaoDeTender(result.tenderId, result.changedFields)
+      } else {
+        contadores.inalterados++
+      }
+    } catch (itemErr) {
+      contadores.comErro++
+      console.error(`[${contexto}] Erro ao processar item:`, itemErr)
+    }
+  }
+}
+
+interface ExecucaoPncp {
+  worker: string
+  contexto: string
+  caminho: string
+  parametros: ParametrosPncp
+  descricao: string
+}
+
+function textoDoResumo(resumo: ResumoDaColetaPncp): string {
+  const c = resumo.contadores
+  return `vistos: ${c.vistos}, novos: ${c.novos}, atualizados: ${c.atualizados}, inalterados: ${c.inalterados}, já encerrados/homologados descartados: ${c.descartados}, com erro: ${c.comErro}, novas tentativas: ${resumo.tentativasExtras}`
+}
+
+async function executarColetaPncp(job: Job<ColetorJobPayload>, execucao: ExecucaoPncp): Promise<ResumoDaColetaPncp> {
+  const startedAt = new Date()
+  console.log(`[${execucao.contexto}] Iniciando ${execucao.descricao}`)
+
+  let resumo: ResumoDaColetaPncp
+  try {
+    resumo = await coletarModalidadesPncp({
+      caminho: execucao.caminho,
+      parametros: execucao.parametros,
+      contexto: execucao.contexto,
+      gravar: (itens, contadores) => gravarContratacoesPncp(itens, contadores, execucao.contexto),
+      aoTerminarModalidade: (indice, total) => job.updateProgress(Math.round((indice / total) * 100)),
+    })
+  } catch (err) {
+    await saveWorkerLog({
+      worker: execucao.worker,
+      status: 'FAILED',
+      fonte: 'PNCP',
+      errorMsg: err instanceof Error ? err.message : String(err),
+      startedAt,
+      finishedAt: new Date(),
+    })
+    throw err
+  }
+
+  const c = resumo.contadores
+  await saveWorkerLog({
+    worker: execucao.worker,
+    status: resumo.status,
+    fonte: 'PNCP',
+    totalFetched: c.vistos,
+    totalNew: c.novos,
+    totalDupes: c.inalterados + c.atualizados,
+    totalUpdated: c.atualizados,
+    errorMsg: resumo.falhas.length > 0 ? resumo.falhas.slice(0, 20).join('; ') : undefined,
+    startedAt,
+    finishedAt: new Date(),
   })
 
-  const body = response.data
-  // PNCP retorna: { data: [], totalRegistros, totalPaginas, paginaAtual }
-  return {
-    data: body.data ?? body ?? [],
-    totalPages: body.totalPaginas ?? 1,
+  console.log(`[${execucao.contexto}] Concluído (${resumo.status}) — ${textoDoResumo(resumo)}`)
+
+  if (resumo.status === 'FAILED') {
+    throw new Error(`${execucao.descricao} falhou em todas as consultas ao PNCP: ${resumo.falhas.slice(0, 3).join('; ')}`)
   }
+  return resumo
+}
+
+async function coletarPublicacoes(job: Job<ColetorJobPayload>) {
+  const { dataInicial, dataFinal } = resolveColetaWindow(job.data, {
+    ultimaPublicacaoColetada: await ultimaPublicacaoColetada('PNCP'),
+  })
+  return executarColetaPncp(job, {
+    worker: WORKER_DA_COLETA_PNCP,
+    contexto: 'PNCP Worker',
+    caminho: CAMINHO_PUBLICACAO_PNCP,
+    parametros: { dataInicial: datasDoPncp(dataInicial), dataFinal: datasDoPncp(dataFinal) },
+    descricao: `coleta ${dataInicial} → ${dataFinal}`,
+  })
+}
+
+async function varrerPropostasAbertas(job: Job<ColetorJobPayload>) {
+  const parametros = parametrosDaVarreduraDePropostas()
+  return executarColetaPncp(job, {
+    worker: WORKER_DA_VARREDURA_DE_PROPOSTAS,
+    contexto: 'PNCP Propostas',
+    caminho: CAMINHO_PROPOSTA_PNCP,
+    parametros,
+    descricao: `varredura das contratações recebendo proposta (prazo até ${parametros.dataFinal})`,
+  })
 }
 
 // Worker principal
@@ -49,102 +144,8 @@ export function startColetorPNCPWorker() {
   const worker = new Worker<ColetorJobPayload>(
     'coletor-pncp',
     async (job: Job<ColetorJobPayload>) => {
-      const { dataInicial, dataFinal } = resolveColetaWindow(job.data, {
-        ultimaPublicacaoColetada: await ultimaPublicacaoColetada('PNCP'),
-      })
-      const startedAt = new Date()
-      let totalFetched = 0
-      let totalNew = 0
-      let totalDupes = 0
-      let totalUpdated = 0
-
-      console.log(`[PNCP Worker] Iniciando coleta ${dataInicial} → ${dataFinal}`)
-
-      try {
-        let hadModalidadeErrors = false
-
-        for (const modalidade of MODALIDADES_ALVO) {
-          // Cada modalidade é isolada: se uma falhar (ex: 400/502 pontual),
-          // as demais continuam sendo coletadas em vez de abortar o job inteiro.
-          try {
-            let pagina = 1
-            let totalPages = 1
-
-            while (pagina <= totalPages) {
-              await job.updateProgress(Math.round((pagina / (totalPages || 1)) * 100))
-
-              const { data, totalPages: tp } = await fetchPNCPPage(
-                dataInicial,
-                dataFinal,
-                modalidade,
-                pagina
-              )
-
-              totalPages = tp
-              totalFetched += data.length
-
-              for (const rawTender of data) {
-                try {
-                  const normalized = parsePNCPTender(rawTender)
-                  const result = await saveTender(normalized)
-
-                  if (result.isNew) {
-                    totalNew++
-                    // Dispara matcher para cada nova licitação
-                    await enfileirarSemTravar(matcherQueue, 'match-tender', { tenderId: result.tenderId }, 'PNCP Worker')
-                  } else {
-                    totalDupes++
-                    if (result.changed) {
-                      totalUpdated++
-                      await avisarAlteracaoDeTender(result.tenderId, result.changedFields)
-                    }
-                  }
-                } catch (itemErr) {
-                  console.error('[PNCP Worker] Erro ao processar item:', itemErr)
-                }
-              }
-
-              pagina++
-            }
-          } catch (modalidadeErr) {
-            hadModalidadeErrors = true
-            const msg = modalidadeErr instanceof Error ? modalidadeErr.message : String(modalidadeErr)
-            console.error(`[PNCP Worker] Erro na modalidade ${modalidade}, pulando para a próxima:`, msg)
-          }
-        }
-
-        await saveWorkerLog({
-          worker: 'coletor-pncp',
-          status: hadModalidadeErrors ? 'PARTIAL' : 'SUCCESS',
-          fonte: 'PNCP',
-          totalFetched,
-          totalNew,
-          totalDupes,
-          totalUpdated,
-          errorMsg: hadModalidadeErrors ? 'Uma ou mais modalidades falharam — ver logs do worker' : undefined,
-          startedAt,
-          finishedAt: new Date(),
-        })
-
-        console.log(
-          `[PNCP Worker] Concluído — coletados: ${totalFetched}, novos: ${totalNew}, atualizados: ${totalUpdated}, inalterados: ${totalDupes - totalUpdated}${hadModalidadeErrors ? ' (com falhas parciais)' : ''}`
-        )
-      } catch (err) {
-        const errorMsg = err instanceof Error ? err.message : String(err)
-        await saveWorkerLog({
-          worker: 'coletor-pncp',
-          status: 'FAILED',
-          fonte: 'PNCP',
-          totalFetched,
-          totalNew,
-          totalDupes,
-          totalUpdated,
-          errorMsg,
-          startedAt,
-          finishedAt: new Date(),
-        })
-        throw err // BullMQ vai fazer retry automaticamente
-      }
+      if (job.data.varredura === 'propostas') await varrerPropostasAbertas(job)
+      else await coletarPublicacoes(job)
     },
     {
       connection: redisConnection,

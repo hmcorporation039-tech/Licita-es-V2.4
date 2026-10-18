@@ -11,6 +11,7 @@ import {
 } from '../types'
 import { getMunicipioByIbge, findMunicipioByNomeUf } from '../lib/geoService'
 import { dataDeBrasilia } from '../lib/dataDeBrasilia'
+import { valorHomologadoConfirmado } from '../lib/homologacao'
 
 // Trunca string longa para resumo
 function truncate(str: string, max = 500): string {
@@ -28,7 +29,7 @@ export function rawJsonEssencial(raw: Record<string, any>): Record<string, unkno
   return {
     anoCompra: raw.anoCompra,
     sequencialCompra: raw.sequencialCompra,
-    orgaoEntidade: { cnpj: raw.orgaoEntidade?.cnpj },
+    orgaoEntidade: { cnpj: raw.orgaoEntidade?.cnpj, esferaId: raw.orgaoEntidade?.esferaId },
     numeroCompra: raw.numeroCompra,
     processo: raw.processo,
   }
@@ -76,10 +77,7 @@ export function parsePNCPTender(raw: Record<string, any>): NormalizedTender {
     valorEstimado: raw.valorTotalEstimado
       ? parseFloat(raw.valorTotalEstimado)
       : undefined,
-    valorHomologado:
-      raw.valorTotalHomologado !== undefined && raw.valorTotalHomologado !== null
-        ? parseFloat(raw.valorTotalHomologado)
-        : undefined,
+    valorHomologado: valorHomologadoConfirmado(raw.valorTotalHomologado, dataDeBrasilia(raw.dataEncerramentoProposta)) ?? undefined,
     srp: typeof raw.srp === 'boolean' ? raw.srp : undefined,
     uf,
     municipio,
