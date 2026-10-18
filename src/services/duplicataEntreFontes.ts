@@ -3,13 +3,13 @@ import { NormalizedTender } from '../types'
 import { prisma } from './tenderService'
 import { normalize } from '../lib/geoService'
 import { whereLicitacaoAberta } from '../lib/licitacaoAberta'
-import { ComparacaoDoNumero, NumeroDaCompraNoPncp, comparacaoDoNumeroDoAviso, numeroDoAviso, podeEsconderComoRepeticao } from '../lib/repeticaoDoPncp'
+import { ComparacaoDoNumero, NumeroDaCompraNoPncp, comparacaoDoNumeroDoAviso, modalidadeIncerta, numeroDoAviso, podeEsconderComoRepeticao } from '../lib/repeticaoDoPncp'
 import { CandidatoDoPncpNoMunicipio, candidatosDoPncp, objetosCompativeis } from './queridoDiarioService'
 import { objetoSemConteudo } from './queridoDiarioParser'
 import { chaveDoNumero, comparacaoDoNumeroTceCe, numerosDoTender } from './tceCeDuplicidade'
 import { idDaLicitacaoTceCe } from './tceCeParser'
 
-export const FONTES_QUE_REPETEM_O_PNCP: FonteEnum[] = ['QUERIDO_DIARIO', 'DIARIO_MUNICIPAL', 'TCE_CE', 'TCE_PI']
+export const FONTES_QUE_REPETEM_O_PNCP: FonteEnum[] = ['QUERIDO_DIARIO', 'DIARIO_MUNICIPAL', 'TCE_CE', 'TCE_PI', 'TCE_TO']
 export const FONTES_DE_DIARIO: FonteEnum[] = ['QUERIDO_DIARIO', 'DIARIO_MUNICIPAL']
 export const MOTIVO_SEM_OBJETO = 'SEM_OBJETO'
 
@@ -70,7 +70,7 @@ function comoTender(registro: RegistroDeOutraFonte): NormalizedTender {
 }
 
 function comparacaoDoNumeroDoRegistro(registro: RegistroDeOutraFonte, pncp: NumeroDaCompraNoPncp): ComparacaoDoNumero {
-  if (registro.fonte !== 'TCE_CE' && registro.fonte !== 'TCE_PI') return comparacaoDoNumeroDoAviso(numeroDoAviso(registro.fonteId), pncp)
+  if (registro.fonte !== 'TCE_CE' && registro.fonte !== 'TCE_PI' && registro.fonte !== 'TCE_TO') return comparacaoDoNumeroDoAviso(numeroDoAviso(registro.fonteId), pncp)
   const tender = comoTender(registro)
   return comparacaoDoNumeroTceCe(tender, numerosDoTender(tender), pncp)
 }
@@ -80,7 +80,7 @@ export function ehRepeticaoDoCandidato(registro: RegistroDeOutraFonte, candidato
 }
 
 export async function licitacaoDoPncpDoRegistro(registro: RegistroDeOutraFonte, agora: Date = new Date()): Promise<string | null> {
-  const modalidadeConhecida = !(registro.fonte === 'TCE_CE' && registro.modalidade === 'OUTROS')
+  const modalidadeConhecida = !modalidadeIncerta(registro)
   const candidatos = await candidatosDoPncp(comoTender(registro), agora, modalidadeConhecida)
   return candidatos.find((candidato) => ehRepeticaoDoCandidato(registro, candidato))?.id ?? null
 }

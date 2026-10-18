@@ -51,11 +51,20 @@ function anoDoTender(tender: Pick<NormalizedTender, 'aberturaAt' | 'publicadoAt'
   return referencia ? new Date(referencia.getTime() - 3 * 3_600_000).getUTCFullYear() : null
 }
 
+const DIGITOS_MINIMOS_COM_ANO_COLADO = 8
+
+function semAnoColado(grupo: string, ano: number | null): string {
+  if (!ano || grupo.length < DIGITOS_MINIMOS_COM_ANO_COLADO) return grupo
+  const final = [ano, ano - 1].map(String).find((a) => grupo.endsWith(a))
+  return final ? grupo.slice(0, -final.length) : grupo
+}
+
 export function chaveDoNumero(texto: string | null | undefined, ano: number | null): string | null {
   const grupos = (texto ?? '').match(/\d+/g)
   if (!grupos) return null
   const anos = ano ? new Set([ano, ano % 100, ano - 1, (ano - 1) % 100]) : new Set<number>()
   const significativos = grupos
+    .map((g) => semAnoColado(g, ano))
     .map((g) => ({ valor: Number(g), digitos: g.length }))
     .filter((g) => !(anos.has(g.valor) && (g.digitos === 4 || g.digitos === 2)))
     .map((g) => String(g.valor))

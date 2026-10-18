@@ -22,6 +22,7 @@ export const FONTES_OFICIAIS: FonteOficial[] = [
   { nome: 'Diários municipais', descricao: 'Diários oficiais das associações de municípios (SIGPub)' },
   { nome: 'TCE-CE', descricao: 'Portal de Licitações dos Municípios do Ceará' },
   { nome: 'TCE-PI', descricao: 'Mural de Licitações do Tribunal de Contas do Piauí' },
+  { nome: 'TCE-TO', descricao: 'SICAP-LCO, licitações dos municípios do Tocantins' },
 ]
 
 const ID_DO_LETREIRO = 'letreiro-das-fontes'

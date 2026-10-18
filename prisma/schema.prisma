@@ -302,6 +302,7 @@ enum FonteEnum {
   DIARIO_MUNICIPAL
   TCE_CE
   TCE_PI
+  TCE_TO
 }
 
 // ============================================================
