@@ -7,6 +7,15 @@ import { useRequireSession } from '@/hooks/useRequireSession'
 import { api, ApiRequestError } from '@/lib/api'
 import { Paginated, Tender } from '@/lib/types'
 import { MODALIDADE_OPTIONS } from '@/lib/modalidades'
+import {
+  GRUPOS_DE_MODALIDADE,
+  VALOR_DE_VARIAS_MODALIDADES,
+  lerModalidadesDaUrl,
+  modalidadesDoSeletor,
+  parametroDeModalidade,
+  rotuloDasModalidades,
+  valorDoSeletorDeModalidade,
+} from '@/lib/filtroDeModalidade'
 import { SITUACAO_OPTIONS } from '@/lib/situacoes'
 import {
   Button,
@@ -136,7 +145,7 @@ export default function TendersPage() {
 
   const [orgao, setOrgao] = useState('')
   const [numero, setNumero] = useState('')
-  const [modalidade, setModalidade] = useState('')
+  const [modalidades, setModalidades] = useState<string[]>([])
   const [municipio, setMunicipio] = useState('')
   const [uf, setUf] = useState('')
   const [publicacaoInicio, setPublicacaoInicio] = useState('')
@@ -155,12 +164,12 @@ export default function TendersPage() {
     const qInicial = daUrl('q')
     const ufsIniciais = siglasValidas(daUrl('uf'))
     const municipioInicial = daUrl('municipio')
-    const modalidadeInicial = daUrl('modalidade')
+    const modalidadesIniciais = lerModalidadesDaUrl(params.get('modalidade'))
     const ufValida = ufsIniciais.length > 0
     if (qInicial) setQ(qInicial)
     if (ufValida) setUf(ufsIniciais.join(', '))
     if (municipioInicial) setMunicipio(municipioInicial)
-    if (MODALIDADE_OPTIONS.some((o) => o.value === modalidadeInicial)) setModalidade(modalidadeInicial)
+    if (modalidadesIniciais.length > 0) setModalidades(modalidadesIniciais)
     if (params.get('relacionadas') === '0') setSomenteRelacionadas(false)
     if (qInicial || ufValida || municipioInicial) setAdvancedOpen(true)
   }, [])
@@ -173,6 +182,7 @@ export default function TendersPage() {
       const qs = new URLSearchParams({ page: String(page), pageSize: agrupar ? '100' : '20', ordem })
       if (orgao) qs.set('orgao', orgao)
       if (numero) qs.set('numero', numero)
+      const modalidade = parametroDeModalidade(modalidades)
       if (modalidade) qs.set('modalidade', modalidade)
       if (municipio) qs.set('municipio', municipio)
       const ufs = siglasValidas(uf)
@@ -189,7 +199,7 @@ export default function TendersPage() {
         .finally(() => setLoading(false))
     }, 300)
     return () => clearTimeout(timeout)
-  }, [user, orgao, numero, modalidade, municipio, uf, publicacaoInicio, publicacaoFim, q, somenteRelacionadas, agrupar, ordem, page, tentativa])
+  }, [user, orgao, numero, modalidades, municipio, uf, publicacaoInicio, publicacaoFim, q, somenteRelacionadas, agrupar, ordem, page, tentativa])
 
   const grupos = (() => {
     if (!agrupar || !data) return null
@@ -213,7 +223,7 @@ export default function TendersPage() {
     setPage(1)
     setOrgao('')
     setNumero('')
-    setModalidade('')
+    setModalidades([])
     setMunicipio('')
     setUf('')
     setPublicacaoInicio('')
@@ -270,15 +280,23 @@ export default function TendersPage() {
               }}
             />
           </Field>
-          <Field label="Modalidade">
+          <Field label="Modalidade" hint={modalidades.length > 1 ? `Filtrando ${modalidades.length} modalidades: ${rotuloDasModalidades(modalidades)}` : undefined}>
             <Select
-              value={modalidade}
+              value={valorDoSeletorDeModalidade(modalidades)}
               onChange={(e) => {
                 setPage(1)
-                setModalidade(e.target.value)
+                setModalidades((atuais) => modalidadesDoSeletor(e.target.value, atuais))
               }}
             >
               <option value="">Todas</option>
+              {valorDoSeletorDeModalidade(modalidades) === VALOR_DE_VARIAS_MODALIDADES && (
+                <option value={VALOR_DE_VARIAS_MODALIDADES}>{rotuloDasModalidades(modalidades)}</option>
+              )}
+              {GRUPOS_DE_MODALIDADE.map((grupo) => (
+                <option key={grupo.value} value={grupo.value}>
+                  {grupo.label}
+                </option>
+              ))}
               {MODALIDADE_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
