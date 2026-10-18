@@ -3,6 +3,7 @@
 // ============================================================
 
 import { Router, type Request } from 'express'
+import { Prisma, type MonitoredItem } from '@prisma/client'
 import { z } from 'zod'
 import { prisma } from '../../services/tenderService'
 import { findMunicipioByNomeUf } from '../../lib/geoService'
@@ -11,7 +12,8 @@ import { exigirCotaDaRequisicao } from '../cotas'
 import { rematchLimiter } from '../rateLimit'
 import { registrarAuditoria } from '../../services/auditService'
 import { exigirCota } from '../../services/quotaService'
-import { buscarLicitacoesDoItem, reavaliarEBuscarLicitacoesDoItem } from '../../services/rematchService'
+import { situacaoDaBusca, solicitarBuscaDoItem, type RespostaDaBusca } from '../../services/rematchService'
+import { avisoDoLimite } from '../../lib/limiteDeMatches'
 import { interesseDaOrigem, nomeDoItemDoInteresse } from '../../lib/origemDoCadastro'
 import { temPalavraSignificativa } from '../../lib/matching'
 
@@ -80,7 +82,23 @@ const createSchema = z.object({
 
 const updateSchema = createSchema.partial().extend({ active: z.boolean().optional() })
 
-const CAMPOS_QUE_MUDAM_O_MATCH = ['keywords', 'palavrasDeExclusao', 'catmatCodes', 'catserCodes', 'ufs', 'valorMin', 'valorMax', 'modalidades', 'orgaos', 'uasgCodes', 'raioKm', 'origemMunicipio', 'origemUf', 'active'] as const
+const CAMPOS_QUE_MUDAM_O_MATCH = ['keywords', 'palavrasDeExclusao', 'catmatCodes', 'catserCodes', 'ufs', 'valorMin', 'valorMax', 'modalidades', 'orgaos', 'uasgCodes', 'raioKm', 'origemMunicipio', 'origemUf'] as const
+
+type CampoDoRecorte = (typeof CAMPOS_QUE_MUDAM_O_MATCH)[number]
+
+function valorComparavel(valor: unknown): unknown {
+  if (valor === undefined || valor === null) return null
+  if (valor instanceof Prisma.Decimal) return valor.toNumber()
+  return valor
+}
+
+function mudouOValor(antes: unknown, depois: unknown): boolean {
+  return JSON.stringify(valorComparavel(antes)) !== JSON.stringify(valorComparavel(depois))
+}
+
+export function camposDoRecorteQueMudaram(antes: Pick<MonitoredItem, CampoDoRecorte>, pedido: Partial<Record<CampoDoRecorte, unknown>>): CampoDoRecorte[] {
+  return CAMPOS_QUE_MUDAM_O_MATCH.filter((campo) => pedido[campo] !== undefined && mudouOValor(antes[campo], pedido[campo]))
+}
 
 // Resolve nome+UF de cidade em lat/lng usando a base do IBGE
 function geocodeOrigem(municipio: string, uf: string): { lat: number; lng: number } {
@@ -91,6 +109,20 @@ function geocodeOrigem(municipio: string, uf: string): { lat: number; lng: numbe
   return { lat: geo.lat, lng: geo.lng }
 }
 
+function itemPublico({ buscaEstado, buscaEncontrados, buscaRemovidos, buscaLimitada, buscaConcluidaEm, ...resto }: MonitoredItem) {
+  return { ...resto, situacaoDaBusca: situacaoDaBusca({ buscaEstado, buscaEncontrados, buscaRemovidos, buscaLimitada, buscaConcluidaEm }) }
+}
+
+function resumoDaBusca(resposta: RespostaDaBusca) {
+  if (resposta.busca === 'em-andamento') return { busca: resposta.busca }
+  return { busca: resposta.busca, limitado: resposta.limitado, aviso: resposta.limitado ? avisoDoLimite() : null }
+}
+
+async function itemDepoisDaBusca(item: MonitoredItem, resposta: RespostaDaBusca): Promise<MonitoredItem> {
+  if (resposta.busca === 'em-andamento') return { ...item, buscaEstado: 'EM_ANDAMENTO' }
+  return (await prisma.monitoredItem.findUnique({ where: { id: item.id } })) ?? item
+}
+
 async function assertOwnership(itemId: string, companyId: string) {
   const item = await prisma.monitoredItem.findUnique({ where: { id: itemId } })
   if (!item) throw new ApiError(404, 'Item monitorado não encontrado')
@@ -98,7 +130,7 @@ async function assertOwnership(itemId: string, companyId: string) {
   return item
 }
 
-export async function criarItemDoCadastro(req: Request, userId: string, companyId: string): Promise<{ id: string; name: string } | null> {
+export async function criarItemDoCadastro(req: Request, userId: string, companyId: string): Promise<{ id: string; name: string; busca: RespostaDaBusca['busca'] } | null> {
   const empresa = await prisma.company.findUnique({
     where: { id: companyId },
     select: { origemDoCadastro: true, _count: { select: { monitoredItems: true } } },
@@ -123,8 +155,8 @@ export async function criarItemDoCadastro(req: Request, userId: string, companyI
     },
     { userId }
   )
-  await buscarLicitacoesDoItem(item, { notificar: false })
-  return { id: item.id, name: item.name }
+  const { busca } = await solicitarBuscaDoItem(item, 'criacao')
+  return { id: item.id, name: item.name, busca }
 }
 
 monitoredItemsRouter.post(
@@ -158,8 +190,12 @@ monitoredItemsRouter.post(
       entityId: item.id,
       metadata: { nome: item.name },
     })
-    const { matchesFound } = await buscarLicitacoesDoItem(item, { notificar: false })
-    res.status(201).json({ ...item, matchesEncontrados: matchesFound })
+    const resposta = await solicitarBuscaDoItem(item, 'criacao')
+    res.status(201).json({
+      ...itemPublico(await itemDepoisDaBusca(item, resposta)),
+      ...resumoDaBusca(resposta),
+      ...(resposta.busca === 'concluida' ? { matchesEncontrados: resposta.matchesFound } : {}),
+    })
   })
 )
 
@@ -170,7 +206,7 @@ monitoredItemsRouter.get(
       where: { companyId: req.companyId! },
       orderBy: { createdAt: 'desc' },
     })
-    res.json(items)
+    res.json(items.map(itemPublico))
   })
 )
 
@@ -178,7 +214,15 @@ monitoredItemsRouter.get(
   '/:id',
   asyncHandler(async (req, res) => {
     const item = await assertOwnership(req.params.id, req.companyId!)
-    res.json(item)
+    res.json(itemPublico(item))
+  })
+)
+
+monitoredItemsRouter.get(
+  '/:id/busca',
+  asyncHandler(async (req, res) => {
+    const item = await assertOwnership(req.params.id, req.companyId!)
+    res.json(situacaoDaBusca(item))
   })
 )
 
@@ -216,13 +260,18 @@ monitoredItemsRouter.patch(
       entityId: updated.id,
       metadata: { nome: updated.name, campos: Object.keys(data) },
     })
-    const mudouORecorte = CAMPOS_QUE_MUDAM_O_MATCH.some((campo) => data[campo] !== undefined)
-    if (!mudouORecorte) {
-      res.json(updated)
+    const mudouORecorte = camposDoRecorteQueMudaram(existing, data).length > 0
+    const foiAtivado = data.active === true && !existing.active
+    if (!mudouORecorte && !foiAtivado) {
+      res.json(itemPublico(updated))
       return
     }
-    const { removidos, matchesFound } = await reavaliarEBuscarLicitacoesDoItem(updated)
-    res.json({ ...updated, matchesRemovidos: removidos, matchesEncontrados: matchesFound })
+    const resposta = await solicitarBuscaDoItem(updated, mudouORecorte ? 'edicao' : 'ativacao')
+    res.json({
+      ...itemPublico(await itemDepoisDaBusca(updated, resposta)),
+      ...resumoDaBusca(resposta),
+      ...(resposta.busca === 'concluida' ? { matchesRemovidos: resposta.removidos, matchesEncontrados: resposta.matchesFound } : {}),
+    })
   })
 )
 
@@ -249,6 +298,7 @@ monitoredItemsRouter.post(
   rematchLimiter,
   asyncHandler(async (req, res) => {
     const item = await assertOwnership(req.params.id, req.companyId!)
-    res.json(await buscarLicitacoesDoItem(item, { notificar: true }))
+    const resposta = await solicitarBuscaDoItem(item, 'buscar-agora')
+    res.json({ ...resumoDaBusca(resposta), ...(resposta.busca === 'concluida' ? { matchesFound: resposta.matchesFound } : {}) })
   })
 )

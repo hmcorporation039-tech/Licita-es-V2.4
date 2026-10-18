@@ -77,6 +77,7 @@ rodar('API com banco real', () => {
     process.env.DATABASE_URL = URL_BANCO
     process.env.JWT_SECRET = process.env.JWT_SECRET ?? 'segredo-de-teste'
     process.env.RATE_LIMIT_DISABLED = 'true'
+    process.env.QUEUE_ENQUEUE_TIMEOUT_MS = '300'
     process.env.AI_ANALYSIS_ENABLED = 'false'
 
     const { app } = await import('../../src/api/server')

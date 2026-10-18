@@ -31,8 +31,9 @@ dashboardRouter.get(
   asyncHandler(async (req, res) => {
     const companyId = req.companyId!
 
-    const [itensAtivos, matchesNaoLidos, matchesTotal, ultimosMatches, documentos, planos] = await Promise.all([
+    const [itensAtivos, buscasEmAndamento, matchesNaoLidos, matchesTotal, ultimosMatches, documentos, planos] = await Promise.all([
       prisma.monitoredItem.count({ where: { companyId, active: true } }),
+      prisma.monitoredItem.count({ where: { companyId, buscaEstado: 'EM_ANDAMENTO' } }),
       prisma.tenderMatch.count({ where: { companyId, read: false, tender: whereDaLicitacaoNoFeed() } }),
       prisma.tenderMatch.count({ where: { companyId, tender: whereDaLicitacaoNoFeed() } }),
       prisma.tenderMatch.findMany({
@@ -107,6 +108,7 @@ dashboardRouter.get(
 
     res.json({
       itensMonitoradosAtivos: itensAtivos,
+      buscasEmAndamento,
       matchesNaoLidos,
       matchesTotal,
       ultimosMatches,

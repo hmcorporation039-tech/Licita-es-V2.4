@@ -9,6 +9,7 @@ import { redisConnection, notificadorQueue } from '../queues'
 import { enfileirarSemTravar } from '../queues/enfileirar'
 import { prisma, garantirItensPNCP } from '../services/tenderService'
 import { findMatchCandidates } from '../services/matcherService'
+import { descartarItensNoLimite } from '../services/rematchService'
 import { MatcherJobPayload } from '../types'
 
 export function startMatcherWorker() {
@@ -39,7 +40,7 @@ export function startMatcherWorker() {
         select: { monitoredItemId: true },
       })
       const existingSet = new Set(existing.map((e) => e.monitoredItemId))
-      const newCandidates = candidates.filter((c) => !existingSet.has(c.monitoredItemId))
+      const newCandidates = await descartarItensNoLimite(candidates.filter((c) => !existingSet.has(c.monitoredItemId)))
       if (newCandidates.length === 0) return
 
       await prisma.tenderMatch.createMany({

@@ -120,6 +120,24 @@ export interface MonitoredItem {
   origemMunicipio: string | null
   origemUf: string | null
   createdAt: string
+  situacaoDaBusca?: SituacaoDaBusca
+}
+
+export interface SituacaoDaBusca {
+  estado: 'em-andamento' | 'concluida' | 'falhou'
+  encontrados: number | null
+  removidos: number | null
+  limitado: boolean
+  aviso: string | null
+}
+
+export interface RespostaDaBuscaDoItem {
+  busca: 'em-andamento' | 'concluida'
+  matchesFound?: number
+  matchesEncontrados?: number
+  matchesRemovidos?: number
+  limitado?: boolean
+  aviso?: string | null
 }
 
 export interface UasgResult {
@@ -200,6 +218,7 @@ export interface TenderMatch {
 
 export interface DashboardData {
   itensMonitoradosAtivos: number
+  buscasEmAndamento?: number
   matchesNaoLidos: number
   matchesTotal: number
   ultimosMatches: TenderMatch[]

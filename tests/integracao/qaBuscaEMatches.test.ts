@@ -152,7 +152,9 @@ rodar('Rodada de QA: busca por palavra inteira e matches coerentes', () => {
 
     const semGamer = await http('PATCH', `/api/monitored-items/${criado.body.id}`, { palavrasDeExclusao: ['gamer'] })
     expect(semGamer.status).toBe(200)
+    expect((semGamer.body as { busca?: string }).busca).toBe('concluida')
     expect(semGamer.body.matchesRemovidos).toBe(1)
+    expect((await http('GET', `/api/monitored-items/${criado.body.id}/busca`)).body).toMatchObject({ estado: 'concluida', encontrados: 0, removidos: 1 })
     expect(await matchesDoItem(criado.body.id)).toEqual(['a2-escolhida', 'a2-escritorio'])
 
     await http('PATCH', `/api/monitored-items/${criado.body.id}`, { ufs: ['DF'] })
@@ -168,6 +170,25 @@ rodar('Rodada de QA: busca por palavra inteira e matches coerentes', () => {
 
     const soNome = await http('PATCH', `/api/monitored-items/${criado.body.id}`, { name: 'A2 renomeado' })
     expect(soNome.body.matchesRemovidos).toBeUndefined()
+
+    const mesmoRecorte = await http('PATCH', `/api/monitored-items/${criado.body.id}`, { name: 'A2', keywords: [t], ufs: [], palavrasDeExclusao: [], catmatCodes: [], valorMin: null, raioKm: null, origemMunicipio: null })
+    expect(mesmoRecorte.status).toBe(200)
+    expect((mesmoRecorte.body as { busca?: string }).busca).toBeUndefined()
+    expect(mesmoRecorte.body.matchesRemovidos).toBeUndefined()
+
+    const desativado = await http('PATCH', `/api/monitored-items/${criado.body.id}`, { active: false })
+    expect((desativado.body as { busca?: string; active?: boolean }).busca).toBeUndefined()
+    expect((desativado.body as { active?: boolean }).active).toBe(false)
+    expect(await matchesDoItem(criado.body.id)).toEqual(['a2-escolhida', 'a2-escritorio', 'a2-gamer'])
+
+    await prisma.tenderMatch.deleteMany({ where: { monitoredItemId: criado.body.id, tenderId: ids['a2-gamer'] } })
+    const ativado = await http('PATCH', `/api/monitored-items/${criado.body.id}`, { active: true })
+    expect((ativado.body as { busca?: string }).busca).toBe('concluida')
+    expect(ativado.body.matchesEncontrados).toBe(1)
+    expect(ativado.body.matchesRemovidos).toBeUndefined()
+    expect(await matchesDoItem(criado.body.id)).toEqual(['a2-escolhida', 'a2-escritorio', 'a2-gamer'])
+    const situacao = await http('GET', `/api/monitored-items/${criado.body.id}/busca`)
+    expect(situacao.body).toMatchObject({ estado: 'concluida', encontrados: 1, removidos: null })
   }, 60_000)
 
   it('A4/A5: lista e vitrine contam palavra inteira com plural, não pedaço de outra palavra', async () => {

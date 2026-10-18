@@ -57,6 +57,11 @@ export const analiseQueue = new Queue('analise', {
   defaultJobOptions: { ...defaultQueueOptions.defaultJobOptions, attempts: 1 },
 })
 
+export const rematchItemQueue = new Queue('rematch-item', {
+  ...defaultQueueOptions,
+  defaultJobOptions: { ...defaultQueueOptions.defaultJobOptions, attempts: 2, removeOnComplete: true, removeOnFail: true },
+})
+
 interface ColetorScheduler {
   queue: Queue
   schedulerId: string

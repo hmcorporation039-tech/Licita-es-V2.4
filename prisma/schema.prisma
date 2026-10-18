@@ -182,6 +182,12 @@ model MonitoredItem {
   origemLat       Float?  @map("origem_lat")
   origemLng       Float?  @map("origem_lng")
 
+  buscaEstado      EstadoDaBusca? @map("busca_estado")
+  buscaEncontrados Int?           @map("busca_encontrados")
+  buscaRemovidos   Int?           @map("busca_removidos")
+  buscaLimitada    Boolean        @default(false) @map("busca_limitada")
+  buscaConcluidaEm DateTime?      @map("busca_concluida_em")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -191,6 +197,12 @@ model MonitoredItem {
 
   @@index([companyId])
   @@map("monitored_items")
+}
+
+enum EstadoDaBusca {
+  EM_ANDAMENTO
+  CONCLUIDA
+  FALHOU
 }
 
 // ============================================================
@@ -430,6 +442,7 @@ model TenderMatch {
 
   @@unique([tenderId, monitoredItemId])
   @@index([companyId])
+  @@index([monitoredItemId])
   @@index([userId])
   @@index([read])
   @@index([createdAt])

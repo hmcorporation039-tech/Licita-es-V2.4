@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react'
+import { useEffect, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react'
 import { Pause, Pencil, Play, Plus, RefreshCw, Save, Trash2 } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
 import { api, ApiRequestError } from '@/lib/api'
 import { MODELOS_DE_ITEM, type ModeloDeItem } from '@/lib/modelosDeItem'
-import { MonitoredItem, UasgResult } from '@/lib/types'
+import { MonitoredItem, RespostaDaBuscaDoItem, SituacaoDaBusca, UasgResult } from '@/lib/types'
+import { BUSCANDO, ESPERA_MAXIMA_DA_BUSCA_MS, INTERVALO_DA_CONSULTA_DA_BUSCA_MS, camposAlterados, dadosAtuaisDoItem, mensagemDaBusca, situacaoDaResposta } from '@/lib/buscaDoItem'
 import { MODALIDADE_OPTIONS } from '@/lib/modalidades'
 import { dinheiroBrParaEdicao, faixaDeValorBr, lerDinheiroBr } from '@/lib/dinheiroBr'
 import UasgPicker from '@/components/UasgPicker'
@@ -295,6 +296,7 @@ export default function ItemsPage() {
   const [error, setError] = useState<string | null>(null)
   const [erroCarregar, setErroCarregar] = useState<string | null>(null)
   const [rematchMsg, setRematchMsg] = useState<Record<string, string>>({})
+  const buscasAcompanhadas = useRef<Map<string, number>>(new Map())
 
   const [name, setName] = useState('')
   const [keywords, setKeywords] = useState('')
@@ -330,6 +332,7 @@ export default function ItemsPage() {
   const [editModalidades, setEditModalidades] = useState<string[]>([])
   const [editOrgaos, setEditOrgaos] = useState('')
   const [editUasgSelected, setEditUasgSelected] = useState<UasgResult[]>([])
+  const [editUasgCarregado, setEditUasgCarregado] = useState(true)
   const [editUfs, setEditUfs] = useState('')
   const [editValorMin, setEditValorMin] = useState('')
   const [editValorMax, setEditValorMax] = useState('')
@@ -356,6 +359,43 @@ export default function ItemsPage() {
   useEffect(() => {
     if (user) loadItems()
   }, [user])
+
+  const idsEmBusca = items.filter((i) => i.situacaoDaBusca?.estado === 'em-andamento').map((i) => i.id).join(',')
+
+  useEffect(() => {
+    if (!idsEmBusca) return
+    const ids = idsEmBusca.split(',')
+    const acompanhadas = buscasAcompanhadas.current
+    const agora = Date.now()
+    for (const id of ids) if (!acompanhadas.has(id)) acompanhadas.set(id, agora)
+    let cancelado = false
+    const relogio = window.setInterval(async () => {
+      for (const id of ids) {
+        const inicio = acompanhadas.get(id) ?? Date.now()
+        if (Date.now() - inicio > ESPERA_MAXIMA_DA_BUSCA_MS) {
+          acompanhadas.delete(id)
+          setRematchMsg((m) => ({ ...m, [id]: 'A busca segue em segundo plano. As licitações aparecem em "Meus matches" quando terminar.' }))
+          setItems((lista) => lista.map((i) => (i.id === id && i.situacaoDaBusca ? { ...i, situacaoDaBusca: { ...i.situacaoDaBusca, estado: 'concluida' } } : i)))
+          continue
+        }
+        try {
+          const situacao = await api.get<SituacaoDaBusca>(`/api/monitored-items/${id}/busca`)
+          if (cancelado || situacao.estado === 'em-andamento') continue
+          acompanhadas.delete(id)
+          setItems((lista) => lista.map((i) => (i.id === id ? { ...i, situacaoDaBusca: situacao } : i)))
+          setRematchMsg((m) => (m[id] === BUSCANDO ? { ...m, [id]: mensagemDaBusca(situacao) } : m))
+        } catch {}
+      }
+    }, INTERVALO_DA_CONSULTA_DA_BUSCA_MS)
+    return () => {
+      cancelado = true
+      window.clearInterval(relogio)
+    }
+  }, [idsEmBusca])
+
+  function registrarBusca(itemId: string, resposta: RespostaDaBuscaDoItem) {
+    setRematchMsg((m) => ({ ...m, [itemId]: mensagemDaBusca(situacaoDaResposta(resposta)) }))
+  }
 
   useEffect(() => {
     if (!user) return
@@ -386,7 +426,7 @@ export default function ItemsPage() {
     if (Object.keys(errosLocais).length > 0) return
     setCreating(true)
     try {
-      await api.post('/api/monitored-items', {
+      const criado = await api.post<MonitoredItem & RespostaDaBuscaDoItem>('/api/monitored-items', {
         name,
         keywords: separarLista(keywords),
         palavrasDeExclusao: separarLista(palavrasDeExclusao),
@@ -417,6 +457,7 @@ export default function ItemsPage() {
       setRaioKm('')
       setOrigemMunicipio('')
       setOrigemUf('')
+      registrarBusca(criado.id, criado)
       await loadItems()
     } catch (err) {
       const { campos, geral } = distribuirErro(err, 'Erro ao criar item')
@@ -439,10 +480,14 @@ export default function ItemsPage() {
     setEditModalidades(item.modalidades)
     setEditOrgaos(item.orgaos.join(', '))
     setEditUasgSelected([])
+    setEditUasgCarregado(item.uasgCodes.length === 0)
     if (item.uasgCodes.length > 0) {
       api
         .get<UasgResult[]>(`/api/uasg/by-codes?codes=${encodeURIComponent(item.uasgCodes.join(','))}`)
-        .then(setEditUasgSelected)
+        .then((uasgs) => {
+          setEditUasgSelected(uasgs)
+          setEditUasgCarregado(true)
+        })
         .catch(() => setEditUasgSelected([]))
     }
     setEditUfs(item.ufs.join(', '))
@@ -460,14 +505,15 @@ export default function ItemsPage() {
   }
 
   async function handleSaveEdit(itemId: string) {
-    if (!user) return
+    const original = items.find((i) => i.id === itemId)
+    if (!user || !original) return
     setEditError(null)
     const errosLocais = validarAntesDeEnviar(editKeywords, editValorMin, editValorMax)
     setErrosEditados(errosLocais)
     if (Object.keys(errosLocais).length > 0) return
     setEditSaving(true)
     try {
-      await api.patch(`/api/monitored-items/${itemId}`, {
+      const alterados = camposAlterados(dadosAtuaisDoItem(original), {
         name: editName,
         keywords: separarLista(editKeywords),
         palavrasDeExclusao: separarLista(editPalavrasDeExclusao),
@@ -475,7 +521,7 @@ export default function ItemsPage() {
         catserCodes: editCatserCodes.split(',').map((c) => c.trim()).filter(Boolean),
         modalidades: editModalidades,
         orgaos: editOrgaos.split(',').map((o) => o.trim()).filter(Boolean),
-        uasgCodes: editUasgSelected.map((u) => u.codigoUasg),
+        uasgCodes: editUasgCarregado ? editUasgSelected.map((u) => u.codigoUasg) : original.uasgCodes,
         ufs: ufsDoFormulario(editUfs, editRaioKm),
         valorMin: valorDigitado(editValorMin),
         valorMax: valorDigitado(editValorMax),
@@ -483,7 +529,13 @@ export default function ItemsPage() {
         origemMunicipio: editOrigemMunicipio.trim() || null,
         origemUf: editOrigemUf.trim() ? editOrigemUf.trim().toUpperCase() : null,
       })
+      if (Object.keys(alterados).length === 0) {
+        setEditingId(null)
+        return
+      }
+      const salvo = await api.patch<MonitoredItem & Partial<RespostaDaBuscaDoItem>>(`/api/monitored-items/${itemId}`, alterados)
       setEditingId(null)
+      if (salvo.busca) registrarBusca(itemId, { ...salvo, busca: salvo.busca })
       await loadItems()
     } catch (err) {
       const { campos, geral } = distribuirErro(err, 'Erro ao salvar alterações')
@@ -503,22 +555,20 @@ export default function ItemsPage() {
 
   async function handleToggleActive(item: MonitoredItem) {
     if (!user) return
-    await api.patch(`/api/monitored-items/${item.id}`, { active: !item.active })
+    const salvo = await api.patch<MonitoredItem & Partial<RespostaDaBuscaDoItem>>(`/api/monitored-items/${item.id}`, { active: !item.active })
+    if (salvo.busca) registrarBusca(item.id, { ...salvo, busca: salvo.busca })
+    else setRematchMsg((m) => ({ ...m, [item.id]: 'Item desativado: ele deixa de buscar licitações novas.' }))
     await loadItems()
   }
 
   async function handleRematch(itemId: string) {
     if (!user) return
-    setRematchMsg((m) => ({ ...m, [itemId]: 'Buscando...' }))
+    setRematchMsg((m) => ({ ...m, [itemId]: BUSCANDO }))
     try {
-      const res = await api.post<{ matchesFound: number }>(`/api/monitored-items/${itemId}/rematch`)
-      setRematchMsg((m) => ({
-        ...m,
-        [itemId]:
-          res.matchesFound > 0
-            ? `${res.matchesFound} nova(s) licitação(ões) encontrada(s)! Veja em "Meus matches".`
-            : 'Nenhuma licitação nova encontrada por enquanto.',
-      }))
+      const res = await api.post<RespostaDaBuscaDoItem>(`/api/monitored-items/${itemId}/rematch`)
+      const situacao = situacaoDaResposta(res)
+      setItems((lista) => lista.map((i) => (i.id === itemId ? { ...i, situacaoDaBusca: situacao } : i)))
+      registrarBusca(itemId, res)
     } catch (err) {
       setRematchMsg((m) => ({ ...m, [itemId]: err instanceof ApiRequestError ? err.message : 'Erro' }))
     }
@@ -691,6 +741,12 @@ export default function ItemsPage() {
                         </Linha>
                       )}
                       {item.orgaos.length > 0 && <Linha rotulo="Órgãos">{item.orgaos.join(', ')}</Linha>}
+                      {item.situacaoDaBusca?.limitado && item.situacaoDaBusca.aviso && (
+                        <Linha rotulo="Resultados">
+                          <StatusTag tone="warn">Muitos resultados</StatusTag>
+                          <span className="text-xs text-muted">{item.situacaoDaBusca.aviso}</span>
+                        </Linha>
+                      )}
                       {faixaDeValorBr(item.valorMin, item.valorMax) && (
                         <Linha rotulo="Valor total">
                           <span className="font-mono">{faixaDeValorBr(item.valorMin, item.valorMax)}</span>
@@ -714,7 +770,7 @@ export default function ItemsPage() {
                       </Button>
                     </div>
                     <p role="status" className="text-xs text-muted lg:text-right">
-                      {rematchMsg[item.id]}
+                      {rematchMsg[item.id] ?? (item.situacaoDaBusca?.estado === 'em-andamento' ? BUSCANDO : null)}
                     </p>
                   </div>
                 </li>

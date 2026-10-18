@@ -6,13 +6,27 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 const URL_BANCO = process.env.TEST_DATABASE_URL
 const rodar = describe.skipIf(!URL_BANCO)
 const LICITACOES = 33_000
+const DIA_MS = 86_400_000
+
+interface RespostaDoItem {
+  id: string
+  busca: string
+  matchesFound: number
+  matchesEncontrados: number
+  limitado: boolean
+  aviso: string | null
+  estado: string
+  encontrados: number
+}
 
 rodar('Rematch de item com palavra-chave muito comum', () => {
   let server: Server
   let base = ''
   let prisma: typeof import('../../src/services/tenderService').prisma
+  let limite = 0
   let desconectar: () => void = () => undefined
   let token = ''
+  let itemId = ''
   const sufixo = randomUUID().slice(0, 8)
   const termo = `parafusos${sufixo}`
 
@@ -22,7 +36,7 @@ rodar('Rematch de item com palavra-chave muito comum', () => {
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: corpo === undefined ? undefined : JSON.stringify(corpo),
     })
-    return { status: r.status, body: (await r.json().catch(() => ({}))) as { id: string; matchesFound: number; matchesEncontrados: number } }
+    return { status: r.status, body: (await r.json().catch(() => ({}))) as RespostaDoItem }
   }
 
   beforeAll(async () => {
@@ -32,17 +46,19 @@ rodar('Rematch de item com palavra-chave muito comum', () => {
     process.env.QUEUE_ENQUEUE_TIMEOUT_MS = '300'
     const { app } = await import('../../src/api/server')
     ;({ prisma } = await import('../../src/services/tenderService'))
+    ;({ MAX_MATCHES_POR_ITEM: limite } = await import('../../src/lib/limiteDeMatches'))
     const { hashPassword } = await import('../../src/services/authService')
     const filas = await import('../../src/queues')
     desconectar = () => filas.redisConnection.disconnect()
     server = app.listen(0)
     base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`
 
-    const encerramentoAt = new Date(Date.now() + 10 * 86_400_000)
+    const agora = Date.now()
     await prisma.tender.createMany({
       data: Array.from({ length: LICITACOES }, (_, i) => ({
         fonte: 'PNCP', fonteId: `rematch-${sufixo}-${i}`, modalidade: 'PREGAO_ELETRONICO', situacao: 'ABERTA',
-        objeto: `Aquisição de ${termo} lote ${i}`, objetoNorm: `aquisicao de ${termo} lote ${i}`, rawJson: {}, encerramentoAt, publicadoAt: new Date(),
+        objeto: `Aquisição de ${termo} lote ${i}`, objetoNorm: `aquisicao de ${termo} lote ${i}`, rawJson: {},
+        encerramentoAt: new Date(agora + (1 + (i % 100)) * DIA_MS + 3_600_000), publicadoAt: new Date(),
       })),
     })
     await prisma.user.create({
@@ -62,13 +78,51 @@ rodar('Rematch de item com palavra-chave muito comum', () => {
     desconectar()
   }, 120_000)
 
-  it('grava mais de 32.767 oportunidades ao criar o item sem estourar o limite de parâmetros do Postgres, e o rematch seguinte não duplica', async () => {
+  it('sem fila, cria o item rodando a busca na hora, mas guarda só as mais aderentes até o limite e avisa', async () => {
+    const inicio = Date.now()
     const item = await http('POST', '/api/monitored-items', { name: 'Parafusos', keywords: [termo] })
+    console.log(`[rematchGrande] POST com ${LICITACOES} candidatas, busca na própria requisição: ${Date.now() - inicio} ms`)
+    itemId = item.body.id
     expect(item.status).toBe(201)
-    expect(item.body.matchesEncontrados).toBe(LICITACOES)
-    expect(await prisma.tenderMatch.count({ where: { monitoredItemId: item.body.id } })).toBe(LICITACOES)
-    const repetida = await http('POST', `/api/monitored-items/${item.body.id}/rematch`)
+    expect(item.body.busca).toBe('concluida')
+    expect(item.body.matchesEncontrados).toBe(limite)
+    expect(item.body.limitado).toBe(true)
+    expect(item.body.aviso).toMatch(/Palavra muito genérica: mostrando as 2\.000 mais aderentes/)
+    expect(await prisma.tenderMatch.count({ where: { monitoredItemId: itemId } })).toBe(limite)
+
+    const guardados = await prisma.tenderMatch.findMany({ where: { monitoredItemId: itemId }, select: { score: true, tender: { select: { encerramentoAt: true } } } })
+    const diasAteOPrazo = guardados.map((m) => Math.floor((m.tender.encerramentoAt!.getTime() - Date.now()) / DIA_MS))
+    expect(Math.min(...diasAteOPrazo)).toBeGreaterThanOrEqual(15)
+    expect(Math.max(...diasAteOPrazo)).toBeLessThanOrEqual(21)
+    expect(new Set(guardados.map((m) => m.score)).size).toBe(1)
+
+    const situacao = await http('GET', `/api/monitored-items/${itemId}/busca`)
+    expect(situacao.body).toMatchObject({ estado: 'concluida', encontrados: limite, limitado: true })
+  }, 180_000)
+
+  it('"Buscar agora" no limite não grava nada a mais e segue avisando', async () => {
+    const repetida = await http('POST', `/api/monitored-items/${itemId}/rematch`)
     expect(repetida.status).toBe(200)
-    expect(repetida.body.matchesFound).toBe(0)
+    expect(repetida.body).toMatchObject({ busca: 'concluida', matchesFound: 0, limitado: true })
+    expect(await prisma.tenderMatch.count({ where: { monitoredItemId: itemId } })).toBe(limite)
+  }, 180_000)
+
+  it('o matcher de licitação nova também respeita o limite do item', async () => {
+    const { findMatchCandidates } = await import('../../src/services/matcherService')
+    const { descartarItensNoLimite } = await import('../../src/services/rematchService')
+    await prisma.monitoredItem.update({ where: { id: itemId }, data: { buscaLimitada: false } })
+    const nova = await prisma.tender.create({
+      data: {
+        fonte: 'PNCP', fonteId: `rematch-${sufixo}-nova`, modalidade: 'PREGAO_ELETRONICO', situacao: 'ABERTA',
+        objeto: `Aquisição de ${termo} lote novo`, objetoNorm: `aquisicao de ${termo} lote novo`, rawJson: {}, encerramentoAt: new Date(Date.now() + 30 * DIA_MS), publicadoAt: new Date(),
+      },
+    })
+    const candidatas = await findMatchCandidates(nova.id)
+    expect(candidatas.map((c) => c.monitoredItemId)).toContain(itemId)
+    expect((await descartarItensNoLimite(candidatas)).map((c) => c.monitoredItemId)).not.toContain(itemId)
+    expect((await prisma.monitoredItem.findUnique({ where: { id: itemId } }))!.buscaLimitada).toBe(true)
+
+    await prisma.tender.updateMany({ where: { fonteId: { startsWith: `rematch-${sufixo}-` }, tenderMatches: { some: { monitoredItemId: itemId } } }, data: { encerramentoAt: new Date(Date.now() - DIA_MS) } })
+    expect((await descartarItensNoLimite(candidatas)).map((c) => c.monitoredItemId)).toContain(itemId)
   }, 180_000)
 })
