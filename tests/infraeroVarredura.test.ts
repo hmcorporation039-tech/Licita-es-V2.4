@@ -1,18 +1,23 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { decodificarHtml } from '../src/services/sescRegional/tipos'
 import {
+  ESPERA_ANTES_DA_SONDA_APOS_FALHAS_MS,
   ESPERA_ENTRE_TENTATIVAS_MS,
   INFRAERO_ID_INICIAL,
   LimitesDaVarredura,
   RECUO_DO_CURSOR,
   RedeDaInfraero,
   RegistroDaInfraero,
+  SALTOS_DAS_SONDAS_APOS_FALHAS,
+  TAMANHO_DO_TRECHO_DIAGNOSTICO,
   deveGravarNova,
   escolherRevisitas,
   inicioDaVarredura,
   lerDetalhe,
+  motivoDaFalhaDaVarredura,
+  statusDaColetaInfraero,
   varrerNovos,
 } from '../src/services/infraeroVarredura'
 import { infraeroClient } from '../src/lib/httpClient'
@@ -119,14 +124,83 @@ describe('varrerNovos', () => {
     expect(r.lidas.map((l) => l.idLicitacao)).toEqual([100, 102])
   })
 
-  it('desiste da coleta quando o portal cai de vez', async () => {
-    const sempre = () => Array.from({ length: 5 }, () => erroDeRede())
-    const falhas = new Map<number, unknown[]>([[100, sempre()], [101, sempre()], [102, sempre()], [103, sempre()]])
-    const { rede, pedidos } = redeFalsa([100, 101, 102, 103], falhas)
+  it('desiste da coleta quando o portal cai de vez, mas só depois de sondar ids espalhados à frente com espera crescente', async () => {
+    const pedidos: number[] = []
+    const esperas: number[] = []
+    const rede: RedeDaInfraero = {
+      baixarDetalhe: async (id) => {
+        pedidos.push(id)
+        throw erroDeRede()
+      },
+      esperar: async (ms) => {
+        esperas.push(ms)
+      },
+    }
     const r = await varrerNovos(100, rede, LIMITES)
     expect(r.motivoDaParada).toBe('falhas')
+    const sondados = SALTOS_DAS_SONDAS_APOS_FALHAS.map((salto) => 102 + salto)
+    expect([...new Set(pedidos)]).toEqual([100, 101, 102, ...sondados])
+    expect(r.falhas).toHaveLength(3 + sondados.length)
+    expect(esperas.filter((ms) => ms >= ESPERA_ANTES_DA_SONDA_APOS_FALHAS_MS)).toEqual(
+      SALTOS_DAS_SONDAS_APOS_FALHAS.map((_, i) => ESPERA_ANTES_DA_SONDA_APOS_FALHAS_MS * 2 ** i)
+    )
+  })
+
+  it('não desiste no primeiro id: se a sonda à frente responde, a varredura segue e não pede o mesmo id duas vezes', async () => {
+    const sempre = () => Array.from({ length: 5 }, () => erroDeRede())
+    const falhas = new Map<number, unknown[]>([[100, sempre()], [101, sempre()], [102, sempre()]])
+    const sonda = 102 + SALTOS_DAS_SONDAS_APOS_FALHAS[0]
+    const { rede, pedidos } = redeFalsa([104, sonda], falhas)
+    const r = await varrerNovos(100, rede, { ...LIMITES, naoEncontradosParaParar: 40 })
+    expect(r.lidas.map((l) => l.idLicitacao).sort((a, b) => a - b)).toEqual([104, sonda])
+    expect(pedidos.filter((id) => id === sonda)).toHaveLength(1)
     expect(r.falhas).toHaveLength(3)
-    expect(new Set(pedidos)).toEqual(new Set([100, 101, 102]))
+    expect(r.motivoDaParada).not.toBe('falhas')
+  })
+
+  it('página de bloqueio do portal conta como página inesperada, com diagnóstico, nunca como "não encontrado"', async () => {
+    const bloqueio = `<html><head><title>Request Rejected</title></head><body>The requested URL was rejected. Please consult with your administrator.<br><br>Your support ID is: 1234567890${' '.repeat(50)}${'x'.repeat(400)}</body></html>`
+    const rede: RedeDaInfraero = {
+      baixarDetalhe: async (id) => ({
+        html: bloqueio,
+        status: 200,
+        urlFinal: `https://licitacao.infraero.gov.br/portal_licitacao/servlet/DetalheLicitacao;jsessionid=ABC123?idLicitacao=${id}&token=segredo`,
+        tipoDeConteudo: 'text/html; charset=utf-8',
+      }),
+      esperar: async () => undefined,
+    }
+    const avisos = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const r = await varrerNovos(INFRAERO_ID_INICIAL, rede, LIMITES)
+    const primeiroAviso = String(avisos.mock.calls[0]?.[0] ?? '')
+    avisos.mockRestore()
+
+    expect(r.motivoDaParada).toBe('falhas')
+    expect(r.naoEncontrados).toBe(0)
+    expect(r.lidas).toEqual([])
+    expect(r.paginasInesperadas).toBe(r.falhas.length)
+    expect(r.ultimaPaginaInesperada).toMatchObject({ status: 200, tipoDeConteudo: 'text/html; charset=utf-8', tamanho: bloqueio.length })
+    expect(r.ultimaPaginaInesperada?.urlFinal).toMatch(/^https:\/\/licitacao\.infraero\.gov\.br\/portal_licitacao\/servlet\/DetalheLicitacao\?idLicitacao=\d+$/)
+    expect(r.ultimaPaginaInesperada?.inicio).toContain('The requested URL was rejected')
+    expect(r.ultimaPaginaInesperada?.inicio.length).toBe(TAMANHO_DO_TRECHO_DIAGNOSTICO)
+    expect(r.falhas[0]).toBe(`${INFRAERO_ID_INICIAL} (página inesperada: HTTP 200, text/html; charset=utf-8, ${bloqueio.length} caracteres)`)
+    expect(primeiroAviso).toContain(`id ${INFRAERO_ID_INICIAL}: HTTP 200, text/html; charset=utf-8, ${bloqueio.length} caracteres, URL final https://licitacao.infraero.gov.br/`)
+    expect(primeiroAviso).not.toContain('segredo')
+    expect(primeiroAviso).not.toContain('ABC123')
+
+    const motivo = motivoDaFalhaDaVarredura(r)
+    expect(motivo).toContain('Varredura da Infraero interrompida')
+    expect(motivo).toContain('HTTP 200')
+    expect(motivo).toContain('The requested URL was rejected')
+    expect(statusDaColetaInfraero({ motivoDaParada: r.motivoDaParada, respostasValidas: 0, falhas: r.falhas, motivoDaFalha: motivo }, null)).toEqual({
+      status: 'FAILED',
+      errorMsg: motivo,
+    })
+  })
+
+  it('status da coleta: falha parcial com respostas válidas é PARTIAL, erro geral é FAILED com motivo', () => {
+    expect(statusDaColetaInfraero({ motivoDaParada: 'falhas', respostasValidas: 4, falhas: ['1 (x)'], motivoDaFalha: 'm' }, null)).toEqual({ status: 'PARTIAL', errorMsg: 'm' })
+    expect(statusDaColetaInfraero({ motivoDaParada: 'nao_encontrados', respostasValidas: 9, falhas: [], motivoDaFalha: null }, null)).toEqual({ status: 'SUCCESS' })
+    expect(statusDaColetaInfraero(null, 'ECONNRESET')).toEqual({ status: 'FAILED', errorMsg: 'Coleta da Infraero não terminou: ECONNRESET' })
   })
 
   it('página fora do formato é falha, não "não encontrado"', async () => {

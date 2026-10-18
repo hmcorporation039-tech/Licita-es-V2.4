@@ -133,6 +133,11 @@ Ver o cabeçalho de `scripts/enxugarRawJson.ts`.
 | Correções do teste de ponta a ponta: **fuso do PNCP** (horários 3 h adiantados; migration 27 corrige 47.966 registros), deslocamento até o local de execução, número real do edital, avisos de preço acima do estimado, alterações não salvas | #41 | ✅ |
 | Fonte nova: Sistema S — SENAC (API nacional, 28 unidades), SESI/SENAI/federações (Portal de Licitações da indústria, 13 portais; Paradigma, 9 federações) | #42 | 🟡 |
 | Fonte nova: **Infraero** (fora do PNCP) — varredura por id do portal próprio, revisita das abertas, aeroporto → município — `docs/MAPA_INFRAERO.md` | branch `fonte-infraero` | 🟡 |
+| QA 17/10: fontes que falhavam calado, fim do teste grátis, prazo/local em Meus matches e Escolhidas, e-mail de match com prazo e link, avisos vagos do Querido Diário | branch `qa-fontes-conta-emails` | 🟡 |
+
+### Decisão de 17/10: coleta do módulo legado do Compras.gov.br desativada
+
+`/modulo-legado/1_consultarLicitacao` e `/5_consultarComprasSemLicitacao` respondem 200 com `totalRegistros: 0` para jul–set/2025, para 2026 inteiro e para outubro/2026; abr–jun/2025 ainda tem 2.624 registros (a última página é de 09/06/2025) e dez/2024 tem 2.054. As 44 coletas "SUCCESS" com 0 licitações eram a API vazia, não um filtro nosso. O que o Compras.gov.br publica pela Lei 14.133 chega pelo PNCP. O agendador saiu de `COLETOR_SCHEDULERS` (e é removido do Redis na subida), o worker não sobe mais e a página de entrada parou de citar o Compras.gov.br como fonte própria. O código do coletor ficou no repositório.
 
 ### Pendente (próxima sessão)
 

@@ -14,6 +14,7 @@ import {
   DependenciasDaColeta,
   coletarQueridoDiario,
   descricaoDaParada,
+  desfechoDaColeta,
   memoriaDeDiariosNoRedis,
   resumoDaUf,
 } from '../services/queridoDiarioColeta'
@@ -48,10 +49,7 @@ export function startColetorQueridoDiarioWorker() {
       const r = await coletarQueridoDiario(dependenciasDaColeta(), janela)
 
       const parada = descricaoDaParada(r)
-      const status = r.houveFalhas ? (r.diariosLidos === 0 && r.jaLidosAntes === 0 ? 'FAILED' : 'PARTIAL') : 'SUCCESS'
-      const falhas = r.houveFalhas
-        ? `Coleta parcial: ${r.falhasDeTexto} diário(s) sem texto, ${r.falhasDeBusca} busca(s) com falha${parada ? `; ${parada}` : ''} — ver logs do worker`
-        : undefined
+      const { status, mensagem } = desfechoDaColeta(r)
 
       await saveWorkerLog({
         worker: 'coletor-querido-diario',
@@ -61,7 +59,7 @@ export function startColetorQueridoDiarioWorker() {
         totalNew: r.totalNew,
         totalDupes: r.totalDupes,
         totalUpdated: r.totalUpdated,
-        errorMsg: falhas,
+        errorMsg: mensagem,
         startedAt,
         finishedAt: new Date(),
       })

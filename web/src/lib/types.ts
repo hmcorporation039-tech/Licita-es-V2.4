@@ -174,6 +174,7 @@ export interface Tender {
   orgao: string | null
   numeroControle: string | null
   aberturaAt: string | null
+  encerramentoAt?: string | null
   publicadoAt: string | null
   linkEdital: string | null
   createdAt: string

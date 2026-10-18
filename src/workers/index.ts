@@ -4,9 +4,8 @@
 // ============================================================
 
 import 'dotenv/config'
-import { dispararColetaInicial, scheduleColetorJobs } from '../queues'
+import { COLETOR_SCHEDULERS, dispararColetaInicial, scheduleColetorJobs } from '../queues'
 import { startColetorPNCPWorker } from './coletorPNCP'
-import { startColetorComprasnetWorker } from './coletorComprasnet'
 import { startColetorNovacapWorker } from './coletorNovacap'
 import { startColetorFiegWorker } from './coletorFieg'
 import { startColetorSescGoWorker } from './coletorSescGo'
@@ -24,13 +23,13 @@ import { checkExpiringDocuments } from '../services/documentAlertService'
 import { configuracaoDeIa } from '../services/analiseEmDupla'
 import { textoDoDiagnostico } from '../lib/diagnosticoDeChave'
 import { alertarFalha, instalarAlertasDoProcesso } from '../services/alertaOperacional'
+import { verificarColetoresParados } from '../services/saudeDosColetores'
 
 async function main() {
   console.log('🚀 Iniciando workers da plataforma de licitações...')
 
   // Sobe os workers em paralelo
   const workerPNCP = startColetorPNCPWorker()
-  const workerComprasnet = startColetorComprasnetWorker()
   const workerNovacap = startColetorNovacapWorker()
   const workerFieg = startColetorFiegWorker()
   const workerSescGo = startColetorSescGoWorker()
@@ -43,12 +42,12 @@ async function main() {
   const workerNotificador = startNotificadorWorker()
   const workerAnalise = startAnaliseWorker()
 
-  console.log('✅ Workers ativos: PNCP, ComprasNet, Novacap, FIEG, SESC GO, SEST SENAT, SESC Regionais, Querido Diário, Sistema S, Infraero, Matcher, Notificador, Análise')
+  console.log('✅ Workers ativos: PNCP, Novacap, FIEG, SESC GO, SEST SENAT, SESC Regionais, Querido Diário, Sistema S, Infraero, Matcher, Notificador, Análise')
 
   // Alerta ao administrador só na falha DEFINITIVA (esgotadas as tentativas): uma tentativa
   // que falha e depois dá certo (portal instável) não é motivo para acordar ninguém.
   instalarAlertasDoProcesso('workers')
-  const todos = [workerPNCP, workerComprasnet, workerNovacap, workerFieg, workerSescGo, workerSestSenat, workerSescRegional, workerQueridoDiario, workerSistemaS, workerInfraero, workerMatcher, workerNotificador, workerAnalise]
+  const todos = [workerPNCP, workerNovacap, workerFieg, workerSescGo, workerSestSenat, workerSescRegional, workerQueridoDiario, workerSistemaS, workerInfraero, workerMatcher, workerNotificador, workerAnalise]
   for (const w of todos) {
     w.on('failed', (job, err) => {
       const tentativas = job?.opts?.attempts ?? 1
@@ -134,11 +133,22 @@ async function main() {
   setTimeout(runDocumentAlerts, 15 * 60 * 1000) // primeira execução 15min após o start
   setInterval(runDocumentAlerts, 24 * 60 * 60 * 1000) // depois, uma vez por dia
 
+  const fontesAgendadas = [...new Set(COLETOR_SCHEDULERS.map((s) => s.fonte))]
+  async function runSaudeDosColetores() {
+    try {
+      const parados = await verificarColetoresParados(fontesAgendadas)
+      console.log(`[Saúde dos coletores] ${parados.length === 0 ? 'Todas as fontes coletaram nas últimas 24 h.' : `${parados.length} fonte(s) sem coleta nas últimas 24 h.`}`)
+    } catch (err) {
+      console.error('[Saúde dos coletores] Erro na verificação:', err)
+    }
+  }
+  setTimeout(runSaudeDosColetores, 60 * 60 * 1000)
+  setInterval(runSaudeDosColetores, 6 * 60 * 60 * 1000)
+
   // Graceful shutdown
   process.on('SIGTERM', async () => {
     console.log('Encerrando workers...')
     await workerPNCP.close()
-    await workerComprasnet.close()
     await workerNovacap.close()
     await workerFieg.close()
     await workerSescGo.close()

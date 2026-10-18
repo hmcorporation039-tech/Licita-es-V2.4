@@ -33,7 +33,11 @@ companyRouter.get(
   '/usage',
   asyncHandler(async (req, res) => {
     // O administrador da plataforma nunca é limitado (ver exigirCota): a tela mostra "sem limite".
-    res.json({ ...(await resumoDeCotas(req.companyId!)), ilimitado: req.isAdmin === true })
+    const [resumo, usuario] = await Promise.all([
+      resumoDeCotas(req.companyId!),
+      prisma.user.findUnique({ where: { id: req.userId! }, select: { accessExpiresAt: true } }),
+    ])
+    res.json({ ...resumo, ilimitado: req.isAdmin === true, acessoAte: usuario?.accessExpiresAt?.toISOString() ?? null })
   })
 )
 

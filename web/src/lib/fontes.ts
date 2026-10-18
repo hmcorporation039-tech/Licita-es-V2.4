@@ -3,3 +3,8 @@ export const ROTULOS_DE_FONTE: Record<string, string> = {
   SISTEMA_S: 'Sistema S (SENAI/SESI/SENAC)',
   INFRAERO: 'Infraero',
 }
+
+export function fontesComLicitacaoAberta(fontesNaApi: number | null | undefined, fontesNaFaixa: number): number | null {
+  if (typeof fontesNaApi !== 'number' || !Number.isFinite(fontesNaApi) || fontesNaApi < 1) return null
+  return Math.min(Math.floor(fontesNaApi), fontesNaFaixa)
+}

@@ -7,9 +7,10 @@ import { useRequireSession } from '@/hooks/useRequireSession'
 import { api, ApiRequestError } from '@/lib/api'
 import { Paginated, TenderMatch } from '@/lib/types'
 import NotaDeAderencia from '@/components/NotaDeAderencia'
-import { Button, Carregando, Checkbox, EmptyState, ErrorState, Field, LinkButton, PageHeader, Select, StatusTag, cx, useDialogo } from '@/components/ui'
+import { Button, Carregando, Checkbox, EmptyState, ErrorState, Field, LinkButton, PageHeader, Prazo, Select, StatusTag, cx, useDialogo } from '@/components/ui'
 import SeloObraCompleta from '@/components/SeloObraCompleta'
 import { ROTULOS_DE_FONTE } from '@/lib/fontes'
+import { fimDasPropostas, localDaLicitacao } from '@/lib/licitacaoNaTela'
 
 type MatchComEscolha = TenderMatch & { escolhida?: boolean }
 
@@ -178,17 +179,24 @@ export default function MatchesPage() {
                   <Link href={`/tenders/${m.tenderId}`} className={cx('text-sm text-ink hover:text-accent hover:underline', m.read ? 'font-medium' : 'font-semibold')}>
                     {m.tender.objetoResumido ?? m.tender.objeto}
                   </Link>
+                  <p className="truncate text-xs text-muted" title={m.tender.orgao ?? undefined}>
+                    {m.tender.orgao ?? 'Órgão n/d'} · {localDaLicitacao(m.tender)}
+                  </p>
                   <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
                     <StatusTag mono>{rotuloDaFonte(m.tender.fonte)}</StatusTag>
-                    <span className="font-mono">{m.tender.uf ?? 'UF n/d'}</span>
-                    <span aria-hidden>·</span>
                     <span className="font-mono">{formatValor(m.tender.valorEstimado)}</span>
                   </p>
-                  {m.dentroDeObraCompleta && <SeloObraCompleta />}
+                  {m.dentroDeObraCompleta && (
+                    <span className="self-start">
+                      <SeloObraCompleta />
+                    </span>
+                  )}
                   <NotaDeAderencia aderencia={m.aderencia} />
                   {m.matchedKeywords.length > 0 && <p className="text-xs text-faint">Palavras: {m.matchedKeywords.join(', ')}</p>}
                 </div>
                 <div className="flex shrink-0 flex-col items-start gap-1.5 md:items-end">
+                  <span className="text-2xs font-medium text-muted">Prazo das propostas</span>
+                  <Prazo data={fimDasPropostas(m.tender)} className="md:items-end md:text-right" />
                   <div className="flex flex-wrap items-center gap-2">
                     {m.escolhida ? (
                       <>

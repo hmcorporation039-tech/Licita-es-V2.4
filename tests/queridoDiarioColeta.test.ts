@@ -22,6 +22,7 @@ import {
   MemoriaDeDiarios,
   coletarQueridoDiario,
   descricaoDaParada,
+  desfechoDaColeta,
   lotesPorUf,
   memoriaDeDiariosNoRedis,
 } from '../src/services/queridoDiarioColeta'
@@ -391,5 +392,46 @@ describe('Querido Diário — memória de diários lidos no Redis', () => {
     })
     expect((await memoria.jaLidos(['a.txt'])).size).toBe(0)
     await expect(memoria.marcarLido('a.txt')).resolves.toBeUndefined()
+  })
+})
+
+describe('Querido Diário — status e mensagem da coleta coerentes', () => {
+  const todos = [diario('BA', '2900001', 1), diario('TO', '1700001', 2)]
+  const cidades = [cidade('BA', 1), cidade('TO', 1)]
+
+  it('bloqueio logo na primeira busca é FAILED e diz o motivo real, sem "Coleta parcial" nem contadores zerados', async () => {
+    api(cidades, () => erroHttp(403))
+    const { dep } = dependencias()
+    const d = desfechoDaColeta(await coletarQueridoDiario(dep, JANELA))
+    expect(d.status).toBe('FAILED')
+    expect(d.mensagem).toBe(
+      'Nenhum diário lido: Querido Diário bloqueou as requisições (403/429) — ficaram para a próxima coleta: BA, TO — ver logs do worker'
+    )
+    expect(d.mensagem).not.toMatch(/parcial|\b0 /)
+  })
+
+  it('uma UF com falha e outra lida é PARTIAL e só cita o que falhou', async () => {
+    api(cidades, (params) => ((params.territory_ids as string[])[0] === '2900001' ? erroHttp(502) : pagina(todos, params)))
+    const { dep } = dependencias()
+    const d = desfechoDaColeta(await coletarQueridoDiario(dep, JANELA))
+    expect(d).toEqual({ status: 'PARTIAL', mensagem: 'Coleta parcial (1 diário(s) lido(s)): 1 busca(s) com falha — ver logs do worker' })
+  })
+
+  it('erro ao gravar entra na mensagem com a contagem', async () => {
+    api(cidades, (params) => pagina(todos, params))
+    const { dep } = dependencias({ salvarLote: vi.fn(async () => Promise.reject(new Error('banco fora'))) })
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const r = await coletarQueridoDiario(dep, JANELA)
+    expect(r.falhasAoGravar).toBe(2)
+    expect(desfechoDaColeta(r)).toEqual({
+      status: 'PARTIAL',
+      mensagem: 'Coleta parcial (2 diário(s) lido(s)): 2 aviso(s) que não deu para conferir ou gravar — ver logs do worker',
+    })
+  })
+
+  it('sem falha é SUCCESS sem mensagem de erro', async () => {
+    api(cidades, (params) => pagina(todos, params))
+    const { dep } = dependencias()
+    expect(desfechoDaColeta(await coletarQueridoDiario(dep, JANELA))).toEqual({ status: 'SUCCESS' })
   })
 })

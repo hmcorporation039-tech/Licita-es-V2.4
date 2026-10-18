@@ -9,7 +9,6 @@ interface FonteOficial {
 
 export const FONTES_OFICIAIS: FonteOficial[] = [
   { nome: 'PNCP', descricao: 'Portal Nacional de Contratações Públicas', logo: { src: '/fontes/pncp.svg', largura: 154, altura: 152, alturaNaFaixa: 30 }, comNome: true },
-  { nome: 'Compras.gov.br', descricao: 'Compras do Governo Federal' },
   { nome: 'SESC', descricao: 'Serviço Social do Comércio', logo: { src: '/fontes/sesc.png', largura: 99, altura: 50, alturaNaFaixa: 30 } },
   { nome: 'SENAI', descricao: 'Serviço Nacional de Aprendizagem Industrial', logo: { src: '/fontes/senai.svg', largura: 136, altura: 36, alturaNaFaixa: 28 } },
   { nome: 'SESI', descricao: 'Serviço Social da Indústria', logo: { src: '/fontes/sesi.svg', largura: 97, altura: 36, alturaNaFaixa: 28 } },

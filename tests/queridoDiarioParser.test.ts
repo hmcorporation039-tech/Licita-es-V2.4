@@ -4,9 +4,59 @@ import {
   chaveDeBusca,
   extrairAbertura,
   identificarModalidade,
+  objetoSemConteudo,
   parseDiarioOficial,
   separarBlocosDeAviso,
 } from '../src/services/queridoDiarioParser'
+
+describe('Querido Diário — aviso sem objeto de verdade é descartado', () => {
+  const avisoDeDispensa = (meio: string) => `AVISO DE DISPENSA ELETRÔNICA Nº 012/2026
+
+${meio}
+Data da sessão: 28/10/2026 às 09h00.
+Senhor do Bonfim, 13 de outubro de 2026.
+`
+
+  it.each([
+    'Pesquisa de preço no mercado',
+    'Pesquisa de preços no mercado local',
+    'Atender o disposto no §3º do art. 75…',
+    'Atender o disposto no §3º do art. 75 da Lei nº 14.133/2021',
+    'Atender o disposto no § 3º do Art. 75 da Lei Federal nº 14.133, de 1º de abril de 2021',
+  ])('"%s" não é objeto', (texto) => {
+    expect(objetoSemConteudo(texto)).toBe(true)
+  })
+
+  it.each([
+    'Aquisição de material de limpeza para as escolas municipais',
+    'Pesquisa de preços para aquisição de gêneros alimentícios da merenda escolar',
+    'Contratação de empresa para pesquisa de mercado e opinião pública',
+    'Atender o disposto no art. 75, com a aquisição de pneus para a frota',
+  ])('"%s" continua sendo objeto', (texto) => {
+    expect(objetoSemConteudo(texto)).toBe(false)
+  })
+
+  it('descarta o aviso cujo objeto é só "Pesquisa de preço no mercado"', () => {
+    const comObjeto = (objeto: string) => avisoDeDispensa(`A Prefeitura Municipal de Senhor do Bonfim torna pública a dispensa em epígrafe.\nObjeto: ${objeto}.`)
+    expect(parseDiarioOficial(gazeta(), comObjeto('Pesquisa de preço no mercado'), AGORA).tenders).toEqual([])
+    expect(parseDiarioOficial(gazeta(), comObjeto('Aquisição de material de limpeza para as escolas'), AGORA).tenders).toHaveLength(1)
+  })
+
+  it('descarta o aviso cujo "objeto" é só a citação do §3º do art. 75', () => {
+    const comObjetivo = (objetivo: string) =>
+      avisoDeDispensa(`A Prefeitura Municipal de Senhor do Bonfim, com o objetivo de ${objetivo}. Os interessados devem enviar proposta.`)
+    expect(parseDiarioOficial(gazeta(), comObjetivo('atender o disposto no §3º do art. 75 da Lei Federal nº 14.133, de 1º de abril de 2021'), AGORA).tenders).toEqual([])
+    expect(parseDiarioOficial(gazeta(), comObjetivo('adquirir medicamentos para a farmácia básica municipal'), AGORA).tenders).toHaveLength(1)
+  })
+
+  it('quando a frase vaga vem antes, aproveita o objeto de verdade que aparece depois', () => {
+    const texto = avisoDeDispensa(
+      'A Prefeitura Municipal de Senhor do Bonfim, com o objetivo de atender o disposto no §3º do art. 75 da Lei Federal nº 14.133/2021. Objeto: Aquisição de pneus e câmaras de ar para a frota municipal.'
+    )
+    const [t] = parseDiarioOficial(gazeta(), texto, AGORA).tenders
+    expect(t?.objeto).toBe('Aquisição de pneus e câmaras de ar para a frota municipal')
+  })
+})
 
 const AGORA = new Date('2026-10-15T20:00:00Z')
 

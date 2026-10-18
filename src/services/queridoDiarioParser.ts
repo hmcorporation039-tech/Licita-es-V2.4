@@ -484,7 +484,41 @@ function fimDoObjetoEntreAspas(plano: string, inicio: number, limite: number): n
   return posicao !== -1 && posicao < limite ? posicao : -1
 }
 
+const REFERENCIA_LEGAL =
+  /§+\s*\d+\s*[º°O]?|\b(?:ARTS?|ARTIGOS?)\.?\s*\d+\s*[º°O]?(?:\s*-\s*[A-Z]\b)?|\bINC(?:ISOS?)?\.?\s+[IVXLC]+\b|\b(?:LEI|DECRETO)(?:\s+(?:FEDERAL|COMPLEMENTAR|MUNICIPAL|ESTADUAL))?\s*(?:N\s*[º°O.]*\s*)?\d[\d.]*(?:\s*\/\s*\d{2,4})?/g
+
+const PALAVRAS_SEM_OBJETO = new Set([
+  ...Object.keys(MESES),
+  'ATENDER', 'ATENDIMENTO', 'CUMPRIR', 'CUMPRIMENTO', 'DAR', 'DISPOSTO', 'DISPOSTA', 'PREVISTO', 'PREVISTA', 'ESTABELECIDO', 'DETERMINADO',
+  'PRECEITUADO', 'EXIGIDO', 'CONFORME', 'TERMOS', 'FINS', 'PESQUISA', 'PESQUISAS', 'PRECO', 'PRECOS', 'MERCADO', 'COTACAO', 'COTACOES',
+  'LEVANTAMENTO', 'REALIZAR', 'REALIZACAO', 'ESTIMATIVA', 'LOCAL', 'JUNTO', 'BASE', 'FUNDAMENTO', 'LEGISLACAO', 'PERTINENTE', 'VIGENTE',
+  'APLICAVEL', 'ALTERACOES', 'SUAS', 'POSTERIORES', 'LICITACOES', 'CONTRATOS', 'ADMINISTRATIVOS', 'NOVA', 'LEI', 'LEIS', 'FEDERAL',
+  'MUNICIPAL', 'ESTADUAL', 'COMPLEMENTAR', 'DECRETO', 'ART', 'ARTS', 'ARTIGO', 'INCISO', 'INCISOS', 'PARAGRAFO', 'UNICO', 'CAPUT', 'ALINEA',
+  'DAS', 'DOS', 'NOS', 'NAS', 'COM', 'QUE', 'PARA', 'POR', 'SOBRE', 'PELO', 'PELA', 'PELOS', 'PELAS', 'AOS', 'DEMAIS', 'PRESENTE', 'AVISO',
+  'PUBLICIDADE', 'DIVULGACAO', 'DIA', 'DIAS', 'ANO',
+])
+
+export function objetoSemConteudo(objeto: string): boolean {
+  const palavras = chaveDeBusca(objeto)
+    .replace(REFERENCIA_LEGAL, ' ')
+    .split(/[^A-Z]+/)
+    .filter((p) => p.length >= 3)
+  return palavras.every((p) => PALAVRAS_SEM_OBJETO.has(p))
+}
+
 export function extrairObjeto(
+  plano: string,
+  chave: string,
+  inicioForcado?: number
+): { objeto: string; inicio: number; fim: number } | null {
+  const primeiro = extrairObjetoNoTrecho(plano, chave, inicioForcado)
+  if (!primeiro || !objetoSemConteudo(primeiro.objeto)) return primeiro
+  const seguinte = extrairObjetoNoTrecho(plano.slice(primeiro.fim), chave.slice(primeiro.fim))
+  if (!seguinte || objetoSemConteudo(seguinte.objeto)) return null
+  return { objeto: seguinte.objeto, inicio: primeiro.fim + seguinte.inicio, fim: primeiro.fim + seguinte.fim }
+}
+
+function extrairObjetoNoTrecho(
   plano: string,
   chave: string,
   inicioForcado?: number
