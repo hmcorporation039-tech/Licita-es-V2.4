@@ -53,7 +53,14 @@ type MatchComTudo = Prisma.TenderMatchGetPayload<{ include: { tender: { select: 
 
 // Teto de matches considerados ao ordenar por nota (o feed já é recortado pela
 // janela de prazo, então na prática fica muito abaixo disso).
-const LIMITE_ORDENACAO_POR_NOTA = 5000
+export const LIMITE_ORDENACAO_POR_NOTA = 5000
+
+const ORDEM_DA_AMOSTRA_POR_NOTA: Prisma.TenderMatchOrderByWithRelationInput[] = [
+  { dentroDeObraCompleta: 'asc' },
+  { tender: { encerramentoAt: { sort: 'asc', nulls: 'last' } } },
+  { createdAt: 'desc' },
+  { id: 'asc' },
+]
 
 // Nota ao vivo (o prazo restante muda com o tempo), a partir do que o match guardou
 // e do item/licitação de hoje.
@@ -94,20 +101,28 @@ matchesRouter.get(
 
     let items: MatchComTudo[]
     let total: number
+    let ordenacaoPorNotaLimitadaA: number | null = null
+    let totalPaginavel: number
 
     if (ordem === 'nota') {
       // A nota depende do tempo (o critério "Prazo" muda a cada dia), então ela
       // não é ordenável no banco: calcula só sobre os campos necessários de todos
       // os matches do recorte (limitado) e pagina em memória.
-      const leves = await prisma.tenderMatch.findMany({
-        where,
-        take: LIMITE_ORDENACAO_POR_NOTA,
-        select: { id: true, createdAt: true, ...CAMPOS_DA_NOTA },
-      })
+      const [leves, contagem] = await Promise.all([
+        prisma.tenderMatch.findMany({
+          where,
+          orderBy: ORDEM_DA_AMOSTRA_POR_NOTA,
+          take: LIMITE_ORDENACAO_POR_NOTA,
+          select: { id: true, createdAt: true, ...CAMPOS_DA_NOTA },
+        }),
+        prisma.tenderMatch.count({ where }),
+      ])
       const ordenados = leves
         .map((m) => ({ id: m.id, createdAt: m.createdAt, nota: aderenciaDoMatch(m).nota }))
         .sort((a, b) => b.nota - a.nota || b.createdAt.getTime() - a.createdAt.getTime())
-      total = ordenados.length
+      total = contagem
+      totalPaginavel = ordenados.length
+      if (contagem > LIMITE_ORDENACAO_POR_NOTA) ordenacaoPorNotaLimitadaA = LIMITE_ORDENACAO_POR_NOTA
       const ids = ordenados.slice((page - 1) * pageSize, page * pageSize).map((o) => o.id)
       const completos = await prisma.tenderMatch.findMany({
         where: { id: { in: ids } },
@@ -126,6 +141,7 @@ matchesRouter.get(
         }),
         prisma.tenderMatch.count({ where }),
       ])
+      totalPaginavel = total
     }
 
     const planosEscolhidos = await prisma.tenderParticipationPlan.findMany({
@@ -139,7 +155,8 @@ matchesRouter.get(
       total,
       page,
       pageSize,
-      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+      totalPages: Math.max(1, Math.ceil(totalPaginavel / pageSize)),
+      ordenacaoPorNotaLimitadaA,
     })
   })
 )

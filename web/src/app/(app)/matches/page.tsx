@@ -14,6 +14,8 @@ import { fimDasPropostas, localDaLicitacao } from '@/lib/licitacaoNaTela'
 
 type MatchComEscolha = TenderMatch & { escolhida?: boolean }
 
+type MatchesDaPagina = Paginated<MatchComEscolha> & { ordenacaoPorNotaLimitadaA?: number | null }
+
 const TAMANHO_DA_PAGINA = 30
 
 const SALVANDO = 'salvando'
@@ -29,7 +31,7 @@ function rotuloDaFonte(fonte: string) {
 
 export default function MatchesPage() {
   const user = useRequireSession()
-  const [data, setData] = useState<Paginated<MatchComEscolha> | null>(null)
+  const [data, setData] = useState<MatchesDaPagina | null>(null)
   const [page, setPage] = useState(1)
   const [unreadOnly, setUnreadOnly] = useState(false)
   const [ordem, setOrdem] = useState<'recentes' | 'nota'>('nota')
@@ -47,7 +49,7 @@ export default function MatchesPage() {
     if (unreadOnly) qs.set('unreadOnly', 'true')
     if (ordem === 'nota') qs.set('ordem', 'nota')
     api
-      .get<Paginated<MatchComEscolha>>(`/api/matches?${qs.toString()}`)
+      .get<MatchesDaPagina>(`/api/matches?${qs.toString()}`)
       .then(setData)
       .catch(() => setErro(true))
       .finally(() => setLoading(false))
@@ -147,6 +149,13 @@ export default function MatchesPage() {
             &quot;Buscar agora&quot;.
           </span>
         </p>
+
+        {!erro && !loading && ordem === 'nota' && data?.ordenacaoPorNotaLimitadaA ? (
+          <p role="status" className="rounded border border-line bg-sunken px-3 py-2 text-xs text-muted">
+            Ordenando por nota as {data.ordenacaoPorNotaLimitadaA.toLocaleString('pt-BR')} de prazo mais próximo, das{' '}
+            {data.total.toLocaleString('pt-BR')} encontradas. Para percorrer todas, ordene por &quot;Mais recentes&quot;.
+          </p>
+        ) : null}
 
         {erro ? (
           <ErrorState message="Não foi possível carregar os matches." onRetry={load} />
