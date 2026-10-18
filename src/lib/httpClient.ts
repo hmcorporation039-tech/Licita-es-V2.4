@@ -187,3 +187,6 @@ tceToClient.defaults.maxRedirects = 0
 infraeroClient.defaults.maxContentLength = 2 * 1024 * 1024
 export const tcePiClient = createRateLimitedClient('https://sistemas.tce.pi.gov.br', 2000, HTML_HEADERS)
 tcePiClient.defaults.maxContentLength = 5 * 1024 * 1024
+export const tceRsClient = createRateLimitedClient('https://dados.tce.rs.gov.br', 3000, { Accept: 'application/zip, */*' })
+tceRsClient.defaults.timeout = 60_000
+tceRsClient.defaults.maxRedirects = 0

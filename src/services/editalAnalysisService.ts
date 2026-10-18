@@ -111,7 +111,8 @@ async function listarDocumentosDisponiveis(tender: Tender): Promise<DocumentoDis
       return ordenarPorPrioridade(raw.anexos ?? [])
     }
     case 'SISTEMA_S':
-    case 'INFRAERO': {
+    case 'INFRAERO':
+    case 'TCE_RS': {
       const raw = tender.rawJson as { anexos?: unknown }
       return ordenarPorPrioridade(anexosBaixaveis(raw.anexos))
     }

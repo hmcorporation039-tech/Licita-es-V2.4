@@ -15,6 +15,7 @@ export const MARCAS_DAS_FONTES = [
   'TCE-CE',
   'TCE-PI',
   'TCE-TO',
+  'TCE-RS',
 ] as const
 
 export type MarcaDaFonte = (typeof MARCAS_DAS_FONTES)[number]
@@ -34,6 +35,7 @@ const MARCA_DA_FONTE: Record<FonteEnum, MarcaDaFonte | null> = {
   TCE_CE: 'TCE-CE',
   TCE_PI: 'TCE-PI',
   TCE_TO: 'TCE-TO',
+  TCE_RS: 'TCE-RS',
 }
 
 const MARCAS_DO_SISTEMA_S: MarcaDaFonte[] = ['SENAI', 'SESI', 'SENAC']

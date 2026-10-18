@@ -6,6 +6,7 @@ export const ROTULOS_DE_FONTE: Record<string, string> = {
   TCE_CE: 'TCE-CE (municípios do Ceará)',
   TCE_PI: 'TCE-PI (municípios do Piauí)',
   TCE_TO: 'TCE-TO (municípios do Tocantins)',
+  TCE_RS: 'TCE-RS (municípios do RS)',
 }
 
 export function fontesComLicitacaoAberta(fontesNaApi: number | null | undefined, fontesNaFaixa: number): number | null {

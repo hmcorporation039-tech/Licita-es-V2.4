@@ -1,0 +1,144 @@
+﻿CD_ORGAO,NR_LICITACAO,ANO_LICITACAO,CD_TIPO_MODALIDADE,CD_TIPO_DOCUMENTO,NOME_ARQUIVO_DOCUMENTO,CD_TIPO_FASE,ID_EVENTO_LICITACAO,TP_DOCUMENTO,NR_DOCUMENTO,ARQUIVO_TIMESTAMP,ARQUIVO_URL_DOWNLOAD,ARQUIVO_HASH_MD5
+47700,26,2026,PCE,EDI,Licitacao/ED002471107620260026.pdf,INT,,,,20261017012528,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9811486,323b6fb509950f5a3262fe506a372181
+47700,26,2026,PCE,ETP,Licitacao/IM002471202606167002.pdf,INT,,,,20261017012528,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9811487,1df2075dd800035e7526a1b0534dbd5d
+47700,26,2026,PCE,PUE,Licitacao/PUBL2471202661672026100711.pdf,EPU,3962008,,,20261017012527,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9811488,8b5c5c7828c189c1d70a061d1ab145cb
+47700,26,2026,PCE,PUE,Licitacao/PUBL2471202661672026100721.doc,EPU,3962010,,,20261017012527,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9811489,afbd37edf710894b684ec673246a5427
+84200,10,2026,PCE,ETP,Licitações\Processo Administrativo\10_2026_34_2026_PCE_0f1ea0bf-b81f-4cbe-8c73-8d68b43834ff_EstudoTecnicoPreliminarPeçasVeículoIZD0G37.pdf,INT,,,,20260331222217,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9045400,4a9b12b4368a7124e11fcf84fd1672f6
+84200,10,2026,PCE,PUE,Licitações\Publicações\10_2026_34_2026_PCE_c46935fe-1120-4241-8688-395180c471bc_1078.pdf,EPU,3681498,,,20260331222218,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9045399,955cb49fa259666d92efc695b75e9263
+84200,10,2026,PCE,OUT,Licitações\Processo Administrativo\10_2026_34_2026_PCE_2c2ab98f-c057-4576-a362-95420490affe_TermoReferenciaPeçasOnibusIZD0G37.pdf,INT,,,,20260331222217,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9045401,380044efbec8d3eb34ae3c0a38147c38
+84200,10,2026,PCE,EDI,Licitações\Processo Administrativo\10_2026_34_2026_PCE_e979b150-35b5-44cf-bdfe-0094d8a3a242_NovaLeiLicitaçãoExclusivaPregãoEletronico010.2026PeçasOnibusIZD0G37.pdf,INT,,,,20260331222217,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9045402,afc7062c9a76c60dede475cd9204ac2e
+54800,11,2026,CCE,PUE,documentos/DocLicitacao/CCE-2026-11_533763.pdf,EPU,3839487,,,20260721220957,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9472009,9e1c7569b3d0eb662a55eb4f81d56f20
+54800,11,2026,CCE,PUE,documentos/DocLicitacao/CCE-2026-11_533764.pdf,EPU,3839488,,,20260721220957,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9472010,9e1c7569b3d0eb662a55eb4f81d56f20
+54800,11,2026,CCE,REE,documentos/DocLicitacao/CCE-2026-11_559870.pdf,EPU,3931535,,,20260924223241,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9721726,2439522f71f944a709188ab1d2350934
+54800,11,2026,CCE,OCB,documentos/DocLicitacao/CCE-2026-11_559866.pdf,INT,,,,20260924223241,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9721728,47c1ac2e69f77995622ffa775145ab6a
+54800,11,2026,CCE,REE,documentos/DocLicitacao/CCE-2026-11_559872.pdf,EPU,3931536,,,20260924223241,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9721717,2439522f71f944a709188ab1d2350934
+54800,11,2026,CCE,EDI,documentos/DocLicitacao/CCE-2026-11_559864.pdf,INT,,,,20260924223241,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9721718,8e2be52e8e66f08ffb72b9cffb14091a
+54800,11,2026,CCE,DBD,documentos/DocLicitacao/CCE-2026-11_533758.pdf,INT,,,,20260721220956,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9472025,eee3b8ca81ffc7a0560c2e34bc23b58e
+54800,11,2026,CCE,DES,documentos/DocLicitacao/CCE-2026-11_533759.pdf,INT,,,,20260721220955,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9472026,eee3b8ca81ffc7a0560c2e34bc23b58e
+54800,11,2026,CCE,CRN,documentos/DocLicitacao/CCE-2026-11_533756.pdf,INT,,,,20260721220955,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9472028,eee3b8ca81ffc7a0560c2e34bc23b58e
+54800,11,2026,CCE,PBT,documentos/DocLicitacao/CCE-2026-11_533761.pdf,INT,,,,20260721220955,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9472029,eee3b8ca81ffc7a0560c2e34bc23b58e
+54800,11,2026,CCE,OCB,documentos/DocLicitacao/CCE-2026-11_533760.pdf,INT,,,,20260721220954,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9472030,eee3b8ca81ffc7a0560c2e34bc23b58e
+54800,11,2026,CCE,EDI,documentos/DocLicitacao/CCE-2026-11_533754.pdf,INT,,,,20260721220954,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9472031,b2f56a8bdb2646461cb92b6faad3b378
+50100,152,2026,PCP,PUE,Licitacao_2026_760_PCP\DOU 08 10 2026.pdf,EPU,3958679,,,20261015001804,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9801937,d5d59874718f50dff7d6659f04078234
+50100,152,2026,PCP,PUE,Licitacao_2026_760_PCP\JC 08 10 2026.pdf,EPU,3958678,,,20261015001804,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9801938,d2407d674165e483d76a2a6b1443b7e9
+50100,152,2026,PCP,PUE,Licitacao_2026_760_PCP\JM 08 10 2026.pdf,EPU,3958677,,,20261015001803,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9801939,11f8cb4c2eeeb40d348e641ba86dba51
+50100,152,2026,PCP,PUE,Licitacao_2026_760_PCP\AVISO PP 152 2026.pdf,EPU,3958676,,,20261015001803,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9801940,89e478721ffb365599cda2689059875
+50100,152,2026,PCP,ETP,Licitacao_2026_760_PCP\ETP.pdf,INT,,,,20261015001803,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9801941,24d5195cd5edcfc36ae38087c0c0260
+50100,152,2026,PCP,EDI,Licitacao_2026_760_PCP\EDITAL PP 152 2026.pdf,INT,,,,20261015001803,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9801942,cd73720569503824b44422631261a67
+74500,16,2026,PDE,OUT,documentos/DocLicitacao/PDE-2026-16_299355.pdf,INT,,,,20261017012427,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9812511,50b68e6fcc46cd19be5b4a54c0dc7321
+74500,16,2026,PDE,OUT,documentos/DocLicitacao/PDE-2026-16_299356.pdf,INT,,,,20261017012427,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9812512,cf6e57840031fc4ed2b2047a98f062ba
+74500,16,2026,PDE,PUE,documentos/DocLicitacao/PDE-2026-16_299361.pdf,EPU,3962402,,,20261017012427,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9812513,10742065b8ad51004abd7f27b4a8f2ff
+74500,16,2026,PDE,OUT,documentos/DocLicitacao/PDE-2026-16_299360.pdf,INT,,,,20261017012427,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9812516,52e3f2d90174ffaba8eed670eac2a16c
+74500,16,2026,PDE,EDI,documentos/DocLicitacao/PDE-2026-16_299358.pdf,INT,,,,20261017012427,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9812518,d895e8cfd9bbb92f71595f4899e1a818
+74500,16,2026,PDE,EDI,documentos/DocLicitacao/PDE-2026-16_299359.docx,INT,,,,20261017012426,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9812523,fa4a8f1520a185e1a9611bb7a9072a1c
+74500,16,2026,PDE,OUT,documentos/DocLicitacao/PDE-2026-16_299354.pdf,INT,,,,20261017012426,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9812525,5ecaf49c9012fef783b3028ed6561e11
+57500,3,2026,CPC,PUE,639276751049992655117169_AV _ JOC.pdf,EPU,3961528,,,20261017012644,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9810244,eba2919252c2b21a382dca11ccd9b4bc
+57500,3,2026,CPC,PUE,639276751461972683117169_AV _ DOM.pdf,EPU,3961529,,,20261017012644,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9810245,fcdc50589f2069ddcb57cd38ff82d6cf
+57500,3,2026,CPC,ETP,639269834680379858639265356054006796ETP.pdf,INT,,,,20261017012642,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9810287,27570f566cabf941392c127e509070a3
+57500,3,2026,CPC,OUT,639269834680460246639265356067632474Pedido de compra n 8692_2026 .pdf,INT,,,,20261017012642,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9810288,6d9c7c1f4da99094fbd04f33d06dca6a
+57500,3,2026,CPC,EDI,639271522227266604117169_Edital do Chamamento.pdf,INT,,,,20261017012642,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9810289,7715c7132d5c30ce78814a2020c1a9a9
+73400,2,2026,LEE,EDI,Licitacao_2026_493_LEE\Leilao 493-2026 novo (3).pdf,INT,,,,20261017012536,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9811392,a394abf55cb7448d6587405c7380dbaa
+73400,2,2026,LEE,ETP,Licitacao_2026_493_LEE\Leilao 493-2026 novo (3).pdf,INT,,,,20261017012536,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9811393,a394abf55cb7448d6587405c7380dbaa
+73400,2,2026,LEE,PUE,Licitacao_2026_493_LEE\famurs leilao.pdf,EPU,3961967,,,20261017012535,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9811394,efb20544a1e7958eb09cff43b7c3a927
+73400,2,2026,LEE,PUE,Licitacao_2026_493_LEE\pncp leilao.pdf,EPU,3961968,,,20261017012535,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9811395,7c68b94763b62a87f0727c7b9bbdc9ad
+68000,1,2026,CPP,EDI,Licitacao_617_1.PDF,INT,,,,20261008222848,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9783841,9a7e2dbb6c99e35a157078da439801a3
+68000,1,2026,CPP,ETP,Licitacao_617_2.PDF,INT,,,,20261008222848,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9783842,c570f1720d4e31eb8ec014ab5f3b5bf1
+68000,1,2026,CPP,PUE,Licitacao_617_3.PDF,EPU,3951956,,,20261008222848,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9783843,e5671fb4179624b29e2e6153e8a38e4e
+68000,1,2026,CPP,PUE,Licitacao_617_4.PDF,EPU,3951955,,,20261008222848,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9783844,9dac19afff2e6c3e8b9200177c5852ea
+77000,28,2026,PCE,EDI,Licitacao_1143_1.PDF,INT,,,,20261017012640,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9810335,ba8b59fc5087f535e3c8513ced1ac32
+77000,28,2026,PCE,ETP,Licitacao_1143_2.PDF,INT,,,,20261017012640,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9810336,d2fbda28ccca7514b249f13ef7036cdb
+77000,28,2026,PCE,PUE,Licitacao_1143_3.PDF,EPU,3961556,,,20261017012640,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9810337,d13c5a4e08d88ba8160502db4488e72a
+77000,28,2026,PCE,PUE,Licitacao_1143_4.PDF,EPU,3961553,,,20261017012640,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9810338,160b348d6784bcbc6e1815917f867887
+74501,1,2026,PDE,EDI,documentos/DocLicitacao/PDE-2026-1_299373.pdf,INT,,,,20261017012425,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9812535,660b0a36cec23e31c4e77b7aed3e07c9
+74501,1,2026,PDE,PUE,documentos/DocLicitacao/PDE-2026-1_299379.pdf,EPU,3962404,,,20261017012425,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9812536,bb9fae7eef066282b06c7e9a53edcc3
+74501,1,2026,PDE,OUT,documentos/DocLicitacao/PDE-2026-1_299371.pdf,INT,,,,20261017012425,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9812537,fa87a026da7b007e5d9ed9db0a07db96
+74501,1,2026,PDE,OUT,documentos/DocLicitacao/PDE-2026-1_299369.pdf,INT,,,,20261017012425,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9812538,803d677bc6cd0a3e8d04c02827b93a4c
+74501,1,2026,PDE,OUT,documentos/DocLicitacao/PDE-2026-1_299372.pdf,INT,,,,20261017012425,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9812539,1345ea2353eac5921a0516cc689c1968
+74501,1,2026,PDE,OUT,documentos/DocLicitacao/PDE-2026-1_299377.pdf,INT,,,,20261017012425,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9812540,225e04b16c38f574694e4b8ee8fc7f72
+74501,1,2026,PDE,EDI,documentos/DocLicitacao/PDE-2026-1_299376.docx,INT,,,,20261017012425,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9812541,5177a62324cff2496a310d2c89b1d759
+74501,1,2026,PDE,ETP,documentos/DocLicitacao/PDE-2026-1_299370.pdf,INT,,,,20261017012425,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9812542,802f3b0d981a4264711e01185bb5ea67
+54907,175,2026,PCE,EDI,460107a792992742fb254200df16127f/Edital_de_Pregao_Eletronico_PE_175_2026.pdf,INT,,,,20260930223216,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9746261,460107a792992742fb254200df16127f
+54907,175,2026,PCE,EDI,7c9cd4f80d10ee51d23a29e35eba66d7/Minuta_de_Contrato_PE_175_2026 (1).pdf,INT,,,,20260930223216,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9746262,7c9cd4f80d10ee51d23a29e35eba66d7
+54907,175,2026,PCE,PUE,3d62a11426ded55c03f4502cab11d6ef/dopa.pdf,EPU,3939407,,,20260930223216,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9746263,3d62a11426ded55c03f4502cab11d6ef
+54907,175,2026,PCE,REE,22ac7341404d2a3c2379b457cc8d1e14/Doparetificação.pdf,EPU,3949082,,,20261006223755,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9775892,22ac7341404d2a3c2379b457cc8d1e14
+54907,175,2026,PCE,ESC,6b2eed993d23d97112ac28ab89810d7b/esclarecimentos.pdf,EPU,3940896,,,20261016000327,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9807835,6b2eed993d23d97112ac28ab89810d7b
+54907,175,2026,PCE,OUT,f27e681f1933976535dd605438112930/DUDAB s compilados.pdf,INT,,,,20261001221317,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9750516,f27e681f1933976535dd605438112930
+54900,35,2026,PRD,EXD,2f105ff26bc7c95afff1f45a99668036/Edicao_Ordinaria_7709_599862.pdf,PUB,3654066,,,20260313222932,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/8975460,2f105ff26bc7c95afff1f45a99668036
+54900,35,2026,PRD,TFD,2f105ff26bc7c95afff1f45a99668036/Edicao_Ordinaria_7709_599862.pdf,INT,,,,20260306222449,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/8949031,2f105ff26bc7c95afff1f45a99668036
+54900,35,2026,PRD,PFC,Proposta.pdf,INT,,,,20260306222449,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/8949032,39a59fc0c4dfe5ae046f8fbf8542fea9
+88004,558,2026,PCE,PUE,PUB-709290.txt,EPU,3957075,,,20261014001206,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9797765,aa182d51d8eb472e774eb95d62deeccb
+88004,558,2026,PCE,EDI,Editais-907124.pdf,INT,,,,20261014001207,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9797719,b37d5ac3accc73dc7d2de1634b0f5ff0
+88004,558,2026,PCE,EDI,Editais-907125.pdf,INT,,,,20261014001207,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9797720,53161497bc1339215ae03e1f786f11b3
+88004,558,2026,PCE,EDI,Editais-907126.pdf,INT,,,,20261014001207,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9797721,af282cb79dc10a314d5259681091df43
+88004,558,2026,PCE,EDI,Editais-907130.pdf,INT,,,,20261014001207,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9797723,88ee657474cf007d5218504a357de7df
+88216,13,2026,PCE,ETP,ETP_%281%29_assinado.pdf,INT,,,,20261015094549,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9804345,deb6467ed57defa917f5833716fc371f
+88216,13,2026,PCE,EDI,EDITAL MATERIAL HOSPITALAR E FARMACOLÓGICO..pdf,INT,,,,20261015094019,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9804343,e576162ee0cda0485b8f90a5ec45821c
+88216,13,2026,PCE,PUE,publicado_117950_2026-10-14_12b8bed6a894bf4672400e50d0ecc269.pdf,EPU,3959600,,,20261015125141,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9804576,fa6ed33a8e0434d3e34a9647a999337b
+88216,13,2026,PCE,PUE,15-JCD006.pdf,EPU,3959602,,,20261015125201,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9804577,707cbd819e72a217ce3d61ee6b9832c2
+88030,5,2026,CHP,PUE,licitacao_1_2026_105_5_1.pdf,EPU,3840209,,,20260721220800,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9474076,226d61c34caabc924c915effe02c77cb
+88030,5,2026,CHP,OUT,licitacao_1_2026_105_2_1.pdf,INT,,,,20260721220759,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9474104,52aa6bd55ec05139d93f54fa3b4c1bd9
+88030,5,2026,CHP,OUT,licitacao_1_2026_105_3_1.pdf,INT,,,,20260721220759,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9474105,46ffde88a5eec67f925230ab04f49c9c
+88030,5,2026,CHP,OUT,licitacao_1_2026_105_4_1.pdf,INT,,,,20260721220758,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9474106,78517cd33521f381cf1280e9e22002c3
+88030,5,2026,CHP,EDI,licitacao_1_2026_105_1_1.pdf,INT,,,,20260721220759,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9474103,1e599b181c395ae9fa3a2409edb1cb7a
+54400,28,2026,PCE,SUO,DOM PE 28 2026 SUSPENSÃO.pdf,EPU,3777177,,,20260609085925,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9299337,8bea045c9b4881cedb3fe0b8bb0c1648
+54400,28,2026,PCE,EDI,EDITAL PE 28 2026.pdf,INT,,,,20260522110110,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9241098,e9a56e4299315350f1da94af7c7b6a84
+54400,28,2026,PCE,ETP,ETP.pdf,INT,,,,20260522110250,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9241100,39d5ffac6daf325d43a3f50fbcf2b6b2
+54400,28,2026,PCE,EDI,01 Edital II RPPE 124 2026.pdf,INT,,,,20261013085030,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9793383,b7005f27c8e91e359a18217fbcb88808
+54400,28,2026,PCE,OUT,ANEXOS.zip,INT,,,,20261013085103,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9793385,d5b8698a2b062bd34f6ff0bad639ad10
+54400,28,2026,PCE,PUE,dom 028 2026.pdf,EPU,3755302,,,20260522115111,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9241202,c1bafdcfe8ea913c53cb630ac4b26d8b
+54400,28,2026,PCE,AED,dom PE 028 REPUBLICADO_2026 SDEI.pdf,EPU,3955479,,,20261013084940,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9793381,c08592c8f0f14384908811d58757773b
+63001,9,2026,PCE,OUT,Impugnacao.pdf,EPU,3812900,,,20260702154137,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9397256,5852af90c2cc4867d76b5b402009507a
+63001,9,2026,PCE,EDI,retificação edital 02 .pdf,INT,,,,20260706162751,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9408127,08c3930fe9678a1fda2b94eac5b427bc
+63001,9,2026,PCE,PUE,publicação Edital.pdf,EPU,3803246,,,20260625145816,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9369731,5d83f65f3f699444a0b667cf87713a86
+63001,9,2026,PCE,REO,revogação  pregão 09 .pdf,EPU,3916979,,,20260916154611,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9687794,9f335aff0230580595569eef206f134e
+63001,9,2026,PCE,EDI,1.15 - EDITAL Nº 0011-2026.pdf,INT,,,,20260625144740,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9369722,cc58184f828726ed40c02e71582fbabc
+63001,9,2026,PCE,ETP,1.8 - ESTUDO TÉCNICO PRELIMINAR Nº 0026-2026.pdf,INT,,,,20260625144605,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9369717,ac1994bcc896c06ee18c6cce78c47049
+63001,9,2026,PCE,ICE,Impugnacao.pdf,EPU,3812900,,,20260702154101,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9397252,f690c8afda81455452354e77174d43f1
+63001,9,2026,PCE,IME,Impugnacao.pdf,EPU,3812900,,,20260702154124,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9397254,2cfca2011ffc31d58299b834b8788bf0
+79200,1,2026,CHP,EDI,licitacao_1_2026_29_1_1.doc,INT,,,,20260402223330,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9055502,a9e68b7100efbf10e41d9caf9d21bca6
+79200,1,2026,CHP,PUE,licitacao_1_2026_29_2_1.pdf,EPU,3685635,,,20260402223330,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9055503,87929f603e6918885ffe7737fc2ba9a2
+79200,1,2026,CHP,PUE,licitacao_1_2026_29_3_1.pdf,EPU,3685636,,,20260402223330,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9055504,e3153412e5293d649b496fd0c62a89fe
+79200,1,2026,CHP,PUE,licitacao_1_2026_29_4_1.pdf,EPU,3685637,,,20260402223330,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9055505,3fd6af63597f6c53c2289eec94ad27d6
+79200,1,2026,CHP,EDI,licitacao_1_2026_29_8_1.pdf,INT,,,,20260828230732,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9619011,abf94a0227e4186d23cd719ce8b24102
+79200,1,2026,CHP,REE,licitacao_1_2026_29_9_1.doc,EPU,3892959,,,20260828230732,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9619012,8ba1e8b39e2f25a89fc49de471806f
+79200,1,2026,CHP,REE,licitacao_1_2026_29_10_1.pdf,EPU,3892960,,,20260828230732,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9619013,c9edb81db4a270484694d96d81c74179
+54400,34,2026,PCE,PUE,dom 034 2026.pdf,EPU,3824074,,,20260710101000,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9430785,9aeb90820d87fba65407f87466d75ea2
+54400,34,2026,PCE,SUO,DOM SUSPENSÃO RPE 034 2026.pdf,EPU,3865846,,,20260810091926,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9543830,fc65e525c257339253c0fae6cc6bbba7
+54400,34,2026,PCE,AED,DOM RPE 034 2026 SAS NV EDITAL.pdf,EPU,3931209,,,20260924102634,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9720931,61e319f04848edc01d4adf1de20865f9
+54400,34,2026,PCE,EDI,Edital RPPE 034 2026 II.pdf,INT,,,,20260924102714,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9720932,1cb5f2d09466d398c1d2ddc8a38555ad
+54400,34,2026,PCE,EDI,Edital RPPE 034 2026.pdf,INT,,,,20260710092501,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9430721,eafa7f4bca87e29e5b6ee25f52d5dcd7
+54400,34,2026,PCE,ETP,ETP RPPE 034 2026.pdf,INT,,,,20260710092518,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9430723,650baa21995400c1d4c7af5f0ce7fa8c
+85300,2,2026,PCE,AJR,DECISÃO PREGÃO ELETRÔNICO 02-26.pdf,HAP,3658231,,,20260318144132,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/8986840,4faebf85d7b249f202b0c2d68c1e46ab
+85300,2,2026,PCE,RPR,Recurso.pdf,HAP,3658231,,,20260318144006,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/8986838,be429d31f3590fa6617353c38084eb1d
+85300,2,2026,PCE,EDI,EDITAL - PREGÃO ELETRÔNICO Nº 02-2026 - LIMPEZA E MANUTEÇÃO DAS ÁREAS VERDES.pdf,INT,,,,20260205084808,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/8844199,48f7abbc28fd5fe8a62e8d18c3c02b5a
+85300,2,2026,PCE,PUE,PUBLICAÇÃO.pdf,EPU,3602743,,,20260205091222,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/8844213,90ae547061e309c7329bed8d43ea94a7
+85300,2,2026,PCE,PUE,PUBLICAÇÃO.pdf,EPU,3602742,,,20260205091059,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/8844212,90ae547061e309c7329bed8d43ea94a7
+85300,2,2026,PCE,ARD,ATA DE SESSÃO- P.E. 002.2026.pdf,HAP,,,,20260225165333,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/8904675,2300e80a50b4a30676d6ff65b376fe07
+85300,2,2026,PCE,ETP,ETP - Manutenção das áreas verdes.pdf,INT,,,,20260205084846,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/8844201,8d2c2f0b1962f837fca92dc57a7e9f53
+85300,2,2026,PCE,ANO,DECISÃO PREGÃO ELETRÔNICO 02-26.pdf,HAP,3658243,,,20260318144533,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/8986845,4faebf85d7b249f202b0c2d68c1e46ab
+51800,10,2026,PCE,ARD,licitacao_1_2026_54_7_1.pdf,HAP,,,,20260512220523,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9197395,8adf36bfe200d1ec103c5eb29bfa14e8
+51800,10,2026,PCE,PRO,licitacao_1_2026_54_8_1.pdf,HAP,,,,20260512220523,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9197396,81d5e3abdbfa46924fb34a5b2a58066c
+51800,10,2026,PCE,ADJ,licitacao_1_2026_54_9_1.pdf,ADH,,,,20260512220523,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9197397,8a4e8ea34fb09c3ec7a17f01ae1ea5b1
+51800,10,2026,PCE,HOM,licitacao_1_2026_54_10_1.pdf,ADH,,,,20260512220523,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9197398,ceb587a1b79a3d239c08dde7c6814056
+51800,10,2026,PCE,EDI,licitacao_1_2026_54_2_1.pdf,INT,,,,20260408221655,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9072111,cf8a9a1bb91ea0ee6bb9e6149c955fae
+51800,10,2026,PCE,PUE,licitacao_1_2026_54_3_1.pdf,EPU,3691665,,,20260408221655,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9072112,ca2bdbcda83031e34069fda90098f7a8
+51800,10,2026,PCE,PUE,licitacao_1_2026_54_4_1.pdf,EPU,3691666,,,20260408221655,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9072113,4bd1de914ab2fcdaf165aeca4d9b3c05
+51800,10,2026,PCE,PUE,licitacao_1_2026_54_5_1.pdf,EPU,3691667,,,20260408221655,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9072114,c8ef94d8e705e740186d486951881a0a
+51800,10,2026,PCE,PUE,licitacao_1_2026_54_6_1.pdf,EPU,3691668,,,20260408221655,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9072115,440513e018eff1f9addad9ab64bf5ed8
+88154,7,2026,PRD,TFD,TERMO DE DISPENSA005.pdf,INT,,,,20260527124022,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9257040,95d45b930e1ad2b3bf13683fc24b37b0
+88154,7,2026,PRD,PFC,Proposta.pdf,INT,,,,20260616093824,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9327695,cebc746938149dcca2531e3ad2df7ea4
+88154,7,2026,PRD,PJB,Termo de Referência.pdf,INT,,,,20260527124035,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9257041,732a2e34bf4ada3b5ec28ad1a73dac48
+57102,90003,2026,PRI,EXI,PUBL Inex.90003.2026_PNCP.pdf,PUB,3650947,,,20260313125740,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/8968408,242f32dc37c65da6196f681a52815972
+57102,90003,2026,PRI,EXI,PUBL Inex.90003.2026_SITE.pdf,PUB,3650948,,,20260313125812,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/8968409,b8a5e41e00b970ad88a140e4a6a7354b
+57102,90003,2026,PRI,ETP,ETP - Manutenção.pdf,INT,,,,20260313124525,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/8968400,05db6f23597f2042dc7c964c0eca78ef
+57102,90003,2026,PRI,CEX,Exclusividade Hanna.pdf,INT,,,,20260313124650,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/8968402,7cd0e8f677d0839b4aa9483fa7b1bdf6
+57102,90003,2026,PRI,PFC,Proposta.pdf,INT,,,,20260313124713,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/8968404,fbf9c69a6ba75d0e633da5f72ec88c8b
+57102,90003,2026,PRI,TFI,Autorização de Inexigibilidade 90003.2065.pdf,INT,,,,20260313124728,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/8968405,37a46484acb71c9bc9cbca96515f3848
+57100,4,2026,PRI,PFC,Proposta.pdf,INT,,,,20260401122914,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9047001,f5b422fe147d037f3a75b93c1b34c5b8
+57100,4,2026,PRI,TFI,REQUISIÇÃO - 009.2026 - LIVROS DIDATICOS.pdf,INT,,,,20260401094858,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9047027,d2f03162389911e67f8e312b5a649878
+57100,4,2026,PRI,CEX,ATESTADO DE EXCLUISIVIDADE - INEXIGIBILIDADE 0004.2026.pdf,INT,,,,20260401094546,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9047014,99add9c6b9d192f04afb06285dad233a
+57100,4,2026,PRI,EXI,EXTRATO DE CONTRATAÇÃO - INEXIGIBILIDADE N° 0004.2026.pdf,PUB,3682017,,,20260401115200,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9047223,ed407a4a9165774c4e07501881b0b4d1
+57100,4,2026,PRI,ETP,ETP - INEXIGIBILIDADE 0004.2026.pdf,INT,,,,20260401122458,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/9041056,29a29f325b8a314b58044e49e3a6dadf
+88125,2,2026,PRD,TFD,Formalização da Demanda.odt,INT,,,,20260227154217,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/8915785,384f3a64278300a4c0b593b010838c61
+88125,2,2026,PRD,PFC,Proposta.pdf,INT,,,,20260227154555,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/8915786,5b48281d108d80312ba513f533735306
+88125,2,2026,PRD,EXD,EXTRATO PUBLICAÇÃO.pdf,PUB,3630130,,,20260227155007,https://portal.tce.rs.gov.br/app/silicon-download/documento_licitacao/8915791,9fca5ac88fa726d1dc09027202c090a5
