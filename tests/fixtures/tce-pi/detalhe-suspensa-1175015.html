@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head id="j_idt4">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
+        <meta name="apple-mobile-web-app-capable" content="yes" /><link type="text/css" rel="stylesheet" href="/muralic/javax.faces.resource/theme.css.xhtml;jsessionid=gG89-iFupHeqcM1gpkVu98xEFVDSeDyAbSAyqbWz.muralic-f96dff874-s8kms?ln=primefaces-paradise-blue&amp;v=10.0.0" /><link type="text/css" rel="stylesheet" href="/muralic/javax.faces.resource/primeicons/primeicons.css.xhtml;jsessionid=gG89-iFupHeqcM1gpkVu98xEFVDSeDyAbSAyqbWz.muralic-f96dff874-s8kms?ln=primefaces&amp;v=10.0.0" /><link type="text/css" rel="stylesheet" href="/muralic/javax.faces.resource/fa/font-awesome.css.xhtml;jsessionid=gG89-iFupHeqcM1gpkVu98xEFVDSeDyAbSAyqbWz.muralic-f96dff874-s8kms?ln=primefaces&amp;v=10.0.0" /><link type="text/css" rel="stylesheet" href="/muralic/javax.faces.resource/components.css.xhtml;jsessionid=gG89-iFupHeqcM1gpkVu98xEFVDSeDyAbSAyqbWz.muralic-f96dff874-s8kms?ln=primefaces&amp;v=10.0.0" /><script type="text/javascript" src="/muralic/javax.faces.resource/jquery/jquery.js.xhtml;jsessionid=gG89-iFupHeqcM1gpkVu98xEFVDSeDyAbSAyqbWz.muralic-f96dff874-s8kms?ln=primefaces&amp;v=10.0.0"></script><script type="text/javascript" src="/muralic/javax.faces.resource/jquery/jquery-plugins.js.xhtml;jsessionid=gG89-iFupHeqcM1gpkVu98xEFVDSeDyAbSAyqbWz.muralic-f96dff874-s8kms?ln=primefaces&amp;v=10.0.0"></script><script type="text/javascript" src="/muralic/javax.faces.resource/core.js.xhtml;jsessionid=gG89-iFupHeqcM1gpkVu98xEFVDSeDyAbSAyqbWz.muralic-f96dff874-s8kms?ln=primefaces&amp;v=10.0.0"></script><script type="text/javascript" src="/muralic/javax.faces.resource/components.js.xhtml;jsessionid=gG89-iFupHeqcM1gpkVu98xEFVDSeDyAbSAyqbWz.muralic-f96dff874-s8kms?ln=primefaces&amp;v=10.0.0"></script><script type="text/javascript" src="/muralic/javax.faces.resource/filedownload/filedownload.js.xhtml;jsessionid=gG89-iFupHeqcM1gpkVu98xEFVDSeDyAbSAyqbWz.muralic-f96dff874-s8kms?ln=primefaces&amp;v=10.0.0"></script><script type="text/javascript" src="/muralic/javax.faces.resource/touch/touchswipe.js.xhtml;jsessionid=gG89-iFupHeqcM1gpkVu98xEFVDSeDyAbSAyqbWz.muralic-f96dff874-s8kms?ln=primefaces&amp;v=10.0.0"></script><link type="text/css" rel="stylesheet" href="/muralic/javax.faces.resource/primeflex.min.css.xhtml;jsessionid=gG89-iFupHeqcM1gpkVu98xEFVDSeDyAbSAyqbWz.muralic-f96dff874-s8kms?ln=css" /><link type="text/css" rel="stylesheet" href="/muralic/javax.faces.resource/css/primeicons.css.xhtml;jsessionid=gG89-iFupHeqcM1gpkVu98xEFVDSeDyAbSAyqbWz.muralic-f96dff874-s8kms?ln=paradise-layout" /><link type="text/css" rel="stylesheet" href="/muralic/javax.faces.resource/css/layout-blue.css.xhtml;jsessionid=gG89-iFupHeqcM1gpkVu98xEFVDSeDyAbSAyqbWz.muralic-f96dff874-s8kms?ln=paradise-layout" /><link type="text/css" rel="stylesheet" href="/muralic/javax.faces.resource/sistema.css.xhtml;jsessionid=gG89-iFupHeqcM1gpkVu98xEFVDSeDyAbSAyqbWz.muralic-f96dff874-s8kms?ln=css" /><script type="text/javascript">if(window.PrimeFaces){PrimeFaces.settings.locale='pt_BR';PrimeFaces.settings.viewId='/detalhelicitacao.xhtml';PrimeFaces.settings.contextPath='/muralic';PrimeFaces.settings.cookiesSecure=false;}</script>
+    <title>TCE-PI - Mural de Licitações
+    </title><script type="text/javascript" src="/muralic/javax.faces.resource/js/layout.js.xhtml;jsessionid=gG89-iFupHeqcM1gpkVu98xEFVDSeDyAbSAyqbWz.muralic-f96dff874-s8kms?ln=paradise-layout"></script><script type="text/javascript" src="/muralic/javax.faces.resource/js/prism.js.xhtml;jsessionid=gG89-iFupHeqcM1gpkVu98xEFVDSeDyAbSAyqbWz.muralic-f96dff874-s8kms?ln=paradise-layout"></script><script type="text/javascript" src="/muralic/javax.faces.resource/primefaces-locale-pt_br.js.xhtml;jsessionid=gG89-iFupHeqcM1gpkVu98xEFVDSeDyAbSAyqbWz.muralic-f96dff874-s8kms?ln=javascript"></script>
+		<style type="text/css">
+#TituloRelatorio {
+	padding: 10px 40px;
+	border: thin solid #2779aa;
+	border-radius: 25px;
+	color: #2779aa;
+}
+#TituloRelatorio h2, #TituloRelatorio h3 {
+	margin: 0;
+	padding: 2px;
+}
+.ui-widget-content {
+	background: none;
+}
+.ui-widget .ui-widget .tituloCampo, .tituloCampo {
+	font-size: 0.7em;
+	text-align: center;
+	display: block;
+	white-space: normal
+}
+.campoDestaque {
+	padding: 0 5px;
+	font-weight: bold;
+	border: thin solid #cccccc;
+	border-radius: 25px;
+	display: block;
+	text-align: center;
+}
+.negrito {
+	font-wight: bold;
+}
+.responsavel {
+	font-size: 0.7em;
+	text-align: center;
+	border-bottom: 1px solid #cccccc;
+	padding-bottom: 0;
+}
+#cabecalho_content { padding: 0.6em }
+.item-cabecalho { color: #3984b8; padding: 0; margin:0; }
+.item-cabecalho div {
+	font-size:120%;
+	margin: 0;
+	padding: 0.2em;
+}
+.negrito {
+	font-weight: bold;
+}
+.quebraTexto {   word-wrap: break-word; }
+.fundoDestaque { border-bottom: thin solid #F5F5F5; }
+.marginFieldSet { margin:1.3em 0; }
+.tituloDestaque { 
+	font-size:105%;
+	font-weight: bold;
+	color: #4169e1;
+	display:block;
+}
+
+</style><script src="https://sistemas.tce.pi.gov.br/analytics-head.js" type="text/javascript"></script> </head><body><span id="growl"></span><script id="growl_s" type="text/javascript">$(function(){PrimeFaces.cw("Growl","widget_growl",{id:"growl",sticky:true,life:6000,escape:true,keepAlive:false,msgs:[]});});</script>
+
+    <div class="layout-wrapper">
+
+        <div class="topbar">
+            <div class="topbar-wrapper">
+                <div class="topbar-left">
+                    <a href="https://www.tcepi.tc.br"><img src="/muralic/javax.faces.resource/logo_mais_nome_sistema.png.xhtml;jsessionid=gG89-iFupHeqcM1gpkVu98xEFVDSeDyAbSAyqbWz.muralic-f96dff874-s8kms?ln=imagens" title="Tribunal de Contas do Estado do Piauí" width="70%" />
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="layout-main">
+            <div class="layout-content"><div id="j_idt17"></div><script id="j_idt17_s" type="text/javascript">$(function(){PrimeFaces.cw("AjaxStatus","widget_j_idt17",{id:"j_idt17",delay:0,start:function(){PF('dlgAguarde').show()},error:function(){PF('dlgAguarde').hide()},success:function(){PF('dlgAguarde').hide()}});});</script>
+
+		<div class="ui-fluid">
+
+			<div class="grid">
+
+				<div class="col-12">
+
+					<div class="card card-w-title"><div id="cabecalho" class="ui-panel ui-widget ui-widget-content ui-corner-all" style="margin: 0 0 1em 0" data-widget="widget_cabecalho"><div id="cabecalho_content" class="ui-panel-content ui-widget-content">
+							<div class="grid item-cabecalho">
+								<div class="col-12 md:col-2 ">ÓRGÃO:</div>
+								<div class="col-12 md:col-10">FUNDAÇÃO MUNICIPAL DE SAUDE DE TERESINA</div>
+								<div class="col-12 md:col-2 ">CONTROLE TCE:</div>
+								<div class="col-12 md:col-10">LW-010301/26 <small>(ID 1175015)</small></div>
+							</div></div></div><script id="cabecalho_s" type="text/javascript">$(function(){PrimeFaces.cw("Panel","widget_cabecalho",{id:"cabecalho"});});</script>
+
+						<div class="grid">
+
+							<div class="col-12 md:col-6">
+								<div class="grid">
+									<div class="col-12 md:col-4 lg:col-3 fundoDestaque">Nº do procedimento:
+									</div>
+									<div class="col-12 md:col-8 lg:col-9 fundoDestaque"><span class="negrito">Pregão Nº PE 110/2026</span>
+									</div>
+
+									<div class="col-12">
+										<div style="margin-bottom:0.2em">Objeto:
+										</div><label style="font-weight: bold; width:95%; height:100%; text-align:justify;">Registro de Preços para a locação de equipamentos médico-hospitalares (monitores multiparamétricos, ventiladores pulmonares e aparelhos de anestesia), destinadas aos hospitais da rede municipal de saúde vinculados à GAH/DAE.</label>
+									</div>
+
+									<div class="col-12 md:col-4 lg:col-3 fundoDestaque">Nº do processo admin.:
+									</div>
+									<div class="col-12 md:col-8 lg:col-9 fundoDestaque"><span class="negrito">00045.017930/2026-32</span>
+									</div>
+									
+									<div class="col-12 md:col-4 lg:col-3 fundoDestaque">Data abertura:
+									</div>
+									<div class="col-12 md:col-8 lg:col-9 fundoDestaque"><span class="negrito">16/10/2026 09:00</span>
+									</div>
+									<div class="col-12 md:col-3  fundoDestaque">Período de recebimento de propostas:
+									</div>
+									<div class="col-12 md:col-9  fundoDestaque"><span class="negrito">01/10/2026 08:00</span> a <span class="negrito">16/10/2026 08:59</span>
+									</div>
+									<div class="col-12 md:col-4 lg:col-3 fundoDestaque">Valor previsto:
+									</div>
+									<div class="col-12 md:col-8 lg:col-9 fundoDestaque"><span class="negrito">R$ 641.990,91</span>
+									</div>
+
+									<div class="col-12 md:col-4 lg:col-3 fundoDestaque">Tipo objeto:
+									</div>
+									<div class="col-12 md:col-8 lg:col-9 fundoDestaque">
+										<div class="grid grid-nogutter">
+												<div class="col-12"><b>Serviços</b></div>
+												<div class="col-12">Natureza: <b>COMUM</b></div>
+												<div class="col-12"><b>A licitação visa à contratação de serviços contínuos.</b></div>
+										</div>
+									</div>
+								</div>
+							</div>
+
+							<div class="col-12 md:col-6">
+
+								<div class="grid">
+
+									<div class="col-12 md:col-4 lg:col-3 fundoDestaque">Status licitação:
+									</div>
+									<div class="col-12 md:col-8 lg:col-9 fundoDestaque"><label style="font-weight: bold; width:95%; height:100%; text-align:justify;">SUSPENSA</label>
+									</div>
+
+									<div class="col-12 md:col-4 lg:col-3 fundoDestaque">Registro de preço:
+									</div>
+									<div class="col-12 md:col-8 lg:col-9 fundoDestaque"><span class="negrito">SIM</span>
+									</div>
+
+									<div class="col-12 md:col-4 lg:col-3 fundoDestaque">Regime Jurídico
+									</div>
+									<div class="col-12 md:col-8 lg:col-9 fundoDestaque"><span class="negrito">Lei nº 14.133/21</span>
+									</div>
+										<div class="col-12 md:col-4 lg:col-3 fundoDestaque">Forma Realização
+										</div>
+										<div class="col-12 md:col-8 lg:col-9 fundoDestaque"><span class="negrito">Eletrônica</span>
+										</div>
+										<div class="col-12 md:col-4 lg:col-3 fundoDestaque">Modo de Disputa
+										</div>
+										<div class="col-12 md:col-8 lg:col-9 fundoDestaque"><span class="negrito">Aberto e Fechado</span>
+										</div>
+
+									<div class="col-12 md:col-4 lg:col-3 fundoDestaque">Critério julgamento:
+									</div>
+									<div class="col-12 md:col-8 lg:col-9 fundoDestaque"><span class="negrito">Menor preço</span>
+									</div>
+										<div class="col-12 md:col-4 lg:col-3 fundoDestaque">Adjudicação do objeto:
+										</div>
+										<div class="col-12 md:col-8 lg:col-9 fundoDestaque"><span class="negrito" title="">Adjudicação por item</span>
+										</div>
+
+									<div class="col-12 md:col-4 lg:col-3 fundoDestaque">Fonte recurso emenda:
+									</div>
+									<div class="col-12 md:col-8 lg:col-9 fundoDestaque"><div id="j_idt122" class="ui-chip ui-widget mr-2"><div class="ui-chip-text">Não</div></div><script id="j_idt122_s" type="text/javascript">$(function(){PrimeFaces.cw("Chip","widget_j_idt122",{id:"j_idt122"});});</script>
+									</div>
+
+								</div>
+							</div>
+							<div class="col-12 fundoDestaque">
+								<div style="margin-bottom:0.4em">Motivo do suspensão
+								</div><label style="font-weight: bold; width:95%; height:100%; text-align:justify;">Outro: Pregão Eletrônico SUSPENSO em razão de impugnação ao edital. Posteriormente, será relançado com novo número</label>
+								<br style="margin-bottom:0.4em" />
+								<p>Data do suspensão: 
+									<span class="negrito">16/10/2026</span>
+									(informado em 16/10/2026)
+									
+								</p>
+								<br style="margin-bottom:0.4em" />
+<form id="j_idt156" name="j_idt156" method="post" action="/muralic/detalhelicitacao.xhtml;jsessionid=gG89-iFupHeqcM1gpkVu98xEFVDSeDyAbSAyqbWz.muralic-f96dff874-s8kms" enctype="application/x-www-form-urlencoded">
+<input type="hidden" name="j_idt156" value="j_idt156" />
+<button id="j_idt156:botaoBaixarArquivo" name="j_idt156:botaoBaixarArquivo" class="ui-button ui-widget ui-state-default ui-corner-all ui-button-text-icon-left" onclick="" style="width:auto" title="baixar anexo com justificativa" type="submit"><span class="ui-button-icon-left ui-icon ui-c pi pi-download"></span><span class="ui-button-text ui-c">justificativa</span></button><script id="j_idt156:botaoBaixarArquivo_s" type="text/javascript">$(function(){PrimeFaces.cw("CommandButton","widget_j_idt156_botaoBaixarArquivo",{id:"j_idt156:botaoBaixarArquivo"});});</script><input type="hidden" name="javax.faces.ViewState" id="j_id1:javax.faces.ViewState:0" value="-1988834351872513829:8918693224709406267" autocomplete="off" />
+</form>
+							</div>
+
+					  </div>	
+					</div>
+				</div>
+
+			</div>
+
+			<!--  D E T A L H A M E N T O --><fieldset id="j_idt160" class="ui-fieldset ui-widget ui-widget-content ui-corner-all ui-hidden-container" style="" data-widget="widget_j_idt160"><legend class="ui-fieldset-legend ui-corner-all ui-state-default">Detalhamento</legend><div class="ui-fieldset-content">
+				<div class="grid">	
+					<div class="col-12"><div id="j_idt162" class="ui-accordion ui-widget ui-helper-reset ui-hidden-container" role="tablist" data-widget="widget_j_idt162"><div id="j_idt162:j_idt163_header" class="ui-accordion-header ui-helper-reset ui-state-default ui-state-active ui-corner-top" role="tab" aria-expanded="true" aria-selected="true" tabindex="0"><span class="ui-icon ui-icon-triangle-1-s"></span>Datas</div><div id="j_idt162:j_idt163" class="ui-accordion-content ui-helper-reset ui-widget-content" role="tabpanel" aria-hidden="false">
+
+	<div class="grid grid-nogutter">
+
+		<!-- QUADRO ESQUERDA -->
+
+		<div class="col-12 md:col-6">
+			<div class="grid">
+				<div class="col-12 md:col-3 fundoDestaque">Início do cadastro:
+				</div>
+				<div class="col-12 md:col-9 fundoDestaque"><span class="negrito">01/10/2026</span>
+				</div>
+				<div class="col-12 md:col-3 fundoDestaque">Data divulgação:
+				</div>
+				<div class="col-12 md:col-9 fundoDestaque"><span class="negrito">01/10/2026</span>
+				</div>
+	
+				<div class="col-12 md:col-3 fundoDestaque">Data abertura:
+				</div>
+				<div class="col-12 md:col-9  fundoDestaque"><span class="negrito">16/10/2026 09:00</span><img id="j_idt162:j_idt177" width="2" height="1" alt="" src="data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" />
+				</div>
+				<div class="col-12 md:col-3  fundoDestaque">Período de recebimento de propostas:
+				</div>
+				<div class="col-12 md:col-9  fundoDestaque"><span class="negrito">01/10/2026 08:00</span> a <span class="negrito">16/10/2026</span>
+				</div>
+			<div class="col-12 md:col-3  fundoDestaque"><span title="data de publicação da ata">Data public. ata SRP:</span>
+			</div>
+			<div class="col-12 md:col-9  fundoDestaque"><span class="negrito"></span>
+			</div>
+			<div class="col-12 md:col-3  fundoDestaque">Vigência ata SRP:									
+			</div>
+			<div class="col-12 md:col-9  fundoDestaque"><span class="negrito"></span> até <span class="negrito"></span>
+			</div>
+
+			</div>
+		</div>
+
+		<!--  QUADRO DIREITA -->
+		<div class="col-12 md:col-6">
+			<div class="grid">
+				<div class="col-12 md:col-3  fundoDestaque">Data 1ª adjudicação:
+				</div>
+				<div class="col-12 md:col-9  fundoDestaque"><span class="negrito"></span>
+				</div>
+	
+				<div class="col-12 md:col-3  fundoDestaque">Data 1ª homologação:
+				</div>
+				<div class="col-12 md:col-9  fundoDestaque"><span class="negrito"></span>
+				</div>
+
+
+				<div class="col-12 md:col-3  fundoDestaque">Data finalização:
+				</div>
+				<div class="col-12 md:col-9  fundoDestaque"><span class="negrito"></span><img id="j_idt162:j_idt225" width="2" height="1" alt="" src="data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" />														
+				</div>
+				<div class="col-12 md:col-3  fundoDestaque">Data últ alteração:
+				</div>
+				<div class="col-12 md:col-9  fundoDestaque"><span class="negrito">16/10/2026 08:14</span>
+				</div>
+
+			</div>
+		</div>
+	</div><div id="j_idt162:j_idt233" class="ui-dialog ui-widget ui-widget-content ui-corner-all ui-shadow ui-hidden-container"><div class="ui-dialog-titlebar ui-widget-header ui-helper-clearfix ui-corner-top"><span id="j_idt162:j_idt233_title" class="ui-dialog-title">Histórico</span><a href="#" class="ui-dialog-titlebar-icon ui-dialog-titlebar-close ui-corner-all" aria-label="Fechar"><span class="ui-icon ui-icon-closethick"></span></a></div><div class="ui-dialog-content ui-widget-content" id="j_idt162:j_idt233_content"><div id="j_idt162:j_idt234" class="ui-datatable ui-widget"><div class="ui-datatable-header ui-widget-header ui-corner-top">
+			        Mudança na data de abertura da licitação
+			    </div><div class="ui-datatable-tablewrapper"><table role="grid"><thead id="j_idt162:j_idt234_head"><tr role="row"><th id="j_idt162:j_idt234:j_idt236" class="ui-state-default" role="columnheader" aria-label="data abertura" scope="col"><span class="ui-column-title">data abertura</span></th><th id="j_idt162:j_idt234:j_idt238" class="ui-state-default" role="columnheader" aria-label="informada em" scope="col"><span class="ui-column-title">informada em</span></th></tr></thead><tbody id="j_idt162:j_idt234_data" class="ui-datatable-data ui-widget-content"><tr data-ri="0" class="ui-widget-content ui-datatable-even" role="row"><td role="gridcell" class="">16/10/2026</td><td role="gridcell" class="">01/10/2026</td></tr></tbody></table></div></div><script id="j_idt162:j_idt234_s" type="text/javascript">$(function(){PrimeFaces.cw("DataTable","widget_j_idt162_j_idt234",{id:"j_idt162:j_idt234",groupColumnIndexes:[],disableContextMenuIfEmpty:false});});</script></div></div><script id="j_idt162:j_idt233_s" type="text/javascript">$(function(){PrimeFaces.cw("Dialog","dlg1",{id:"j_idt162:j_idt233",width:"380"});});</script><div id="j_idt162:j_idt240" class="ui-dialog ui-widget ui-widget-content ui-corner-all ui-shadow ui-hidden-container"><div class="ui-dialog-titlebar ui-widget-header ui-helper-clearfix ui-corner-top"><span id="j_idt162:j_idt240_title" class="ui-dialog-title">Histórico</span><a href="#" class="ui-dialog-titlebar-icon ui-dialog-titlebar-close ui-corner-all" aria-label="Fechar"><span class="ui-icon ui-icon-closethick"></span></a></div><div class="ui-dialog-content ui-widget-content" id="j_idt162:j_idt240_content"><div id="j_idt162:j_idt241" class="ui-datatable ui-widget ui-datatable-scrollable"><div class="ui-datatable-header ui-widget-header ui-corner-top">Finalizações da Licitação LW-010301/26</div><div class="ui-widget-header ui-datatable-scrollable-header"><div class="ui-datatable-scrollable-header-box"><table role="grid"><thead id="j_idt162:j_idt241_head"><tr role="row"><th id="j_idt162:j_idt241:j_idt243" class="ui-state-default" role="columnheader" aria-label="Finalizado em" scope="col" style="width:30%"><span class="ui-column-title">Finalizado em</span></th><th id="j_idt162:j_idt241:j_idt245" class="ui-state-default" role="columnheader" aria-label="Observação" scope="col"><span class="ui-column-title">Observação</span></th></tr></thead></table></div></div><div class="ui-datatable-scrollable-body" tabindex="-1" style="max-height:300px"><table role="grid"><tbody id="j_idt162:j_idt241_data" class="ui-datatable-data ui-widget-content"><tr class="ui-widget-content ui-datatable-empty-message"><td colspan="2">Nenhum registro encontrado.</td></tr></tbody></table></div><div class="ui-widget-header ui-datatable-scrollable-footer"><div class="ui-datatable-scrollable-footer-box"><table role="grid"></table></div></div><input type="hidden" id="j_idt162:j_idt241_scrollState" name="j_idt162:j_idt241_scrollState" autocomplete="off" value="0,0" /></div><script id="j_idt162:j_idt241_s" type="text/javascript">$(function(){PrimeFaces.cw("DataTable","widget_j_idt162_j_idt241",{id:"j_idt162:j_idt241",scrollable:true,liveScroll:false,scrollStep:0,scrollLimit:0,scrollHeight:"300",liveScrollBuffer:0,virtualScroll:false,touchable:false,groupColumnIndexes:[],disableContextMenuIfEmpty:false});});</script></div></div><script id="j_idt162:j_idt240_s" type="text/javascript">$(function(){PrimeFaces.cw("Dialog","histFinalizacoes",{id:"j_idt162:j_idt240",modal:true,width:"440",closeOnEscape:true});});</script></div><div id="j_idt162:j_idt247_header" class="ui-accordion-header ui-helper-reset ui-state-default ui-corner-all" role="tab" aria-expanded="false" aria-selected="false" tabindex="0"><span class="ui-icon ui-icon-triangle-1-e"></span>Publicações</div><div id="j_idt162:j_idt247" class="ui-accordion-content ui-helper-reset ui-widget-content ui-helper-hidden" role="tabpanel" aria-hidden="true"></div><div id="j_idt162:j_idt269_header" class="ui-accordion-header ui-helper-reset ui-state-default ui-corner-all" role="tab" aria-expanded="false" aria-selected="false" tabindex="0"><span class="ui-icon ui-icon-triangle-1-e"></span>Órgãos participantes</div><div id="j_idt162:j_idt269" class="ui-accordion-content ui-helper-reset ui-widget-content ui-helper-hidden" role="tabpanel" aria-hidden="true"></div><div id="j_idt162:j_idt281_header" class="ui-accordion-header ui-helper-reset ui-state-default ui-corner-all" role="tab" aria-expanded="false" aria-selected="false" tabindex="0" title="previsão de tratamento diferenciado para microempresas e pequenas empresas"><span class="ui-icon ui-icon-triangle-1-e"></span>Tratamento microempresas e pequenas empresas</div><div id="j_idt162:j_idt281" class="ui-accordion-content ui-helper-reset ui-widget-content ui-helper-hidden" role="tabpanel" aria-hidden="true"></div><div id="j_idt162:j_idt289_header" class="ui-accordion-header ui-helper-reset ui-state-default ui-corner-all" role="tab" aria-expanded="false" aria-selected="false" tabindex="0" title="informação dos recursos orçamentários"><span class="ui-icon ui-icon-triangle-1-e"></span>Recursos orçamentários</div><div id="j_idt162:j_idt289" class="ui-accordion-content ui-helper-reset ui-widget-content ui-helper-hidden" role="tabpanel" aria-hidden="true"></div><div id="j_idt162:j_idt303_header" class="ui-accordion-header ui-helper-reset ui-state-default ui-corner-all" role="tab" aria-expanded="false" aria-selected="false" tabindex="0"><span class="ui-icon ui-icon-triangle-1-e"></span>Arquivos</div><div id="j_idt162:j_idt303" class="ui-accordion-content ui-helper-reset ui-widget-content ui-helper-hidden" role="tabpanel" aria-hidden="true"></div><div id="j_idt162:j_idt497_header" class="ui-accordion-header ui-helper-reset ui-state-default ui-corner-all" role="tab" aria-expanded="false" aria-selected="false" tabindex="0"><span class="ui-icon ui-icon-triangle-1-e"></span>Responsáveis</div><div id="j_idt162:j_idt497" class="ui-accordion-content ui-helper-reset ui-widget-content ui-helper-hidden" role="tabpanel" aria-hidden="true"></div><div id="j_idt162:j_idt547_header" class="ui-accordion-header ui-helper-reset ui-state-default ui-corner-all" role="tab" aria-expanded="false" aria-selected="false" tabindex="0"><span class="ui-icon ui-icon-triangle-1-e"></span>Observações</div><div id="j_idt162:j_idt547" class="ui-accordion-content ui-helper-reset ui-widget-content ui-helper-hidden" role="tabpanel" aria-hidden="true"></div><div id="j_idt162:j_idt554_header" class="ui-accordion-header ui-helper-reset ui-state-default ui-corner-all" role="tab" aria-expanded="false" aria-selected="false" tabindex="0"><span class="ui-icon ui-icon-triangle-1-e"></span>Adesões Ata SRP</div><div id="j_idt162:j_idt554" class="ui-accordion-content ui-helper-reset ui-widget-content ui-helper-hidden" role="tabpanel" aria-hidden="true"></div><div id="j_idt162:j_idt568_header" class="ui-accordion-header ui-helper-reset ui-state-default ui-corner-all" role="tab" aria-expanded="false" aria-selected="false" tabindex="0"><span class="ui-icon ui-icon-triangle-1-e"></span>Contratos Originados</div><div id="j_idt162:j_idt568" class="ui-accordion-content ui-helper-reset ui-widget-content ui-helper-hidden" role="tabpanel" aria-hidden="true"></div><input type="hidden" id="j_idt162_active" name="j_idt162_active" value="0" autocomplete="off" /></div><script id="j_idt162_s" type="text/javascript">$(function(){PrimeFaces.cw("AccordionPanel","widget_j_idt162",{id:"j_idt162",dynamic:true,cache:true,multiple:true});});</script>
+					</div>
+				</div></div></fieldset><script id="j_idt160_s" type="text/javascript">$(function(){PrimeFaces.cw("Fieldset","widget_j_idt160",{id:"j_idt160"});});</script>
+			<br />
+<form id="j_idt588" name="j_idt588" method="post" action="/muralic/detalhelicitacao.xhtml;jsessionid=gG89-iFupHeqcM1gpkVu98xEFVDSeDyAbSAyqbWz.muralic-f96dff874-s8kms" enctype="application/x-www-form-urlencoded">
+<input type="hidden" name="j_idt588" value="j_idt588" />
+<fieldset id="j_idt588:j_idt589" class="ui-fieldset ui-widget ui-widget-content ui-corner-all ui-hidden-container" style="" data-widget="widget_j_idt588_j_idt589"><legend class="ui-fieldset-legend ui-corner-all ui-state-default">Controle Social</legend><div class="ui-fieldset-content">
+					<div class="grid">
+						<div class="col-12">Cidadão, você pode exercer o controle social enviando informações para o TCE se constatar possíveis irregularidades nesta licitação.
+						</div>
+						<div class="col-12 md:col-2"><button id="j_idt588:botaoDenunciarLicitacao" name="j_idt588:botaoDenunciarLicitacao" class="ui-button ui-widget ui-state-default ui-corner-all ui-button-text-icon-right" onclick="window.open('https://www.tce.pi.gov.br/ouvidoria?irregularidade&amp;orgao=FUNDAÇÃO MUNICIPAL DE SAUDE DE TERESINA&amp;orgaoid=3&amp;valor=641990.91&amp;ano=2026&amp;message=[br]Quero fazer a seguinte denúncia (descreva nas próximas linhas): [br][br][br]--- Dados da Licitação ----------[br]Órgão público: FUNDAÇÃO MUNICIPAL DE SAUDE DE TERESINA[br]Nº Processo TCE: LW-010301/26[br]Nº procedimento: PE 110/2026[br]Nº processo administrativo: 00045.017930/2026-32[br]Tipo do objeto: Serviços[br]Objeto: Registro de Preços para a locação de equipamentos médico-hospitalares (monitores multiparamétricos, ventiladores pulmonares e aparelhos de anestesia), destinadas aos hospitais da rede municipal de saúde vinculados à GAH/DAE.[br]Dt abertura: 16/10/2026 09:00[br]Dt cadastro: 01/10/2026[br]Dt últ alteração: 16/10/2026[br][br]--------------------------------------------------------------[br]#central','_blank')" title="clique aqui para comunicar irregularidade" type="button"><span class="ui-button-icon-right ui-icon ui-c ui-icon-alert"></span><span class="ui-button-text ui-c">comunicar irregularidade</span></button><script id="j_idt588:botaoDenunciarLicitacao_s" type="text/javascript">$(function(){PrimeFaces.cw("CommandButton","widget_j_idt588_botaoDenunciarLicitacao",{id:"j_idt588:botaoDenunciarLicitacao"});});</script>
+						</div>
+						<div class="col-12 md:col-10"><img id="j_idt588:j_idt594" width="6" height="1" alt="" src="data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" />
+						</div>
+					</div></div></fieldset><script id="j_idt588:j_idt589_s" type="text/javascript">$(function(){PrimeFaces.cw("Fieldset","widget_j_idt588_j_idt589",{id:"j_idt588:j_idt589"});});</script><input type="hidden" name="javax.faces.ViewState" id="j_id1:javax.faces.ViewState:1" value="-1988834351872513829:8918693224709406267" autocomplete="off" />
+</form>
+
+		</div><div id="j_idt597" class="ui-dialog ui-widget ui-widget-content ui-corner-all ui-shadow ui-hidden-container"><div class="ui-dialog-titlebar ui-widget-header ui-helper-clearfix ui-corner-top"><span id="j_idt597_title" class="ui-dialog-title"></span><a href="#" class="ui-dialog-titlebar-icon ui-dialog-titlebar-close ui-corner-all" aria-label="Fechar"><span class="ui-icon ui-icon-closethick"></span></a></div><div class="ui-dialog-content ui-widget-content" id="j_idt597_content">
+
+			<h3>Responsáveis informados na licitação migrada</h3></div></div><script id="j_idt597_s" type="text/javascript">$(function(){PrimeFaces.cw("Dialog","dlgResponsaveisMigrados",{id:"j_idt597",modal:true,width:"76%",responsive:true});});</script>
+            </div>
+        </div>
+    <style>
+        .layout-wrapper .layout-footer {
+            background-color: #ffffff;
+            border-top: 1px solid #dee4e9;
+            border-bottom: 1px solid #dee4e9;
+            padding: 4px 6px;
+        }
+    </style>
+    <div class="layout-footer"><img id="j_idt621" src="/muralic/javax.faces.resource/logo-tce-transparente.png.xhtml;jsessionid=gG89-iFupHeqcM1gpkVu98xEFVDSeDyAbSAyqbWz.muralic-f96dff874-s8kms?ln=imagens" alt="" style="width:3.5em" />
+        <span style="vertical-align: super;">
+			<a href="https://www.tcepi.tc.br" style="font-size:100%">Tribunal de Contas do Estado do Piauí</a>
+		</span>
+        <div class="layout-footer-right">
+            <a href="https://www.facebook.com/pages/TCE-Tribunal-de-Contas-do-Estado-do-Piauí/" target="_blank">
+                <i class="fa fa-facebook"></i>
+            </a>
+            <a href="https://twitter.com/tcepi" target="_blank">
+                <i class="fa fa-twitter"></i>
+            </a>
+        </div>
+    </div>
+    </div><div id="dlgAguarde" class="ui-dialog ui-widget ui-widget-content ui-corner-all ui-shadow ui-hidden-container"><div class="ui-dialog-content ui-widget-content" id="dlgAguarde_content">
+        <div align="center">
+            <h1><br />Aguarde...</h1><img id="j_idt629" src="/muralic/javax.faces.resource/ajaxloadingcircle.gif.xhtml;jsessionid=gG89-iFupHeqcM1gpkVu98xEFVDSeDyAbSAyqbWz.muralic-f96dff874-s8kms?ln=imagens" alt="" />
+        </div></div></div><script id="dlgAguarde_s" type="text/javascript">$(function(){PrimeFaces.cw("Dialog","dlgAguarde",{id:"dlgAguarde",draggable:false,resizable:false,modal:true});});</script><div id="statusDownloadWidget" class="ui-dialog ui-widget ui-widget-content ui-corner-all ui-shadow ui-hidden-container"><div class="ui-dialog-content ui-widget-content" id="statusDownloadWidget_content">
+        <div align="center">
+            <h1><br />Baixando...</h1><img id="j_idt632" src="/muralic/javax.faces.resource/ajaxloadingcircle.gif.xhtml;jsessionid=gG89-iFupHeqcM1gpkVu98xEFVDSeDyAbSAyqbWz.muralic-f96dff874-s8kms?ln=imagens" alt="" />
+        </div></div></div><script id="statusDownloadWidget_s" type="text/javascript">$(function(){PrimeFaces.cw("Dialog","statusDownloadWidget",{id:"statusDownloadWidget",draggable:false,resizable:false,modal:true});});</script>
+
+    <script type="text/javascript">
+        function showStatus() {
+            PF('statusDownloadWidget').show();
+        }
+
+        function hideStatus() {
+            PF('statusDownloadWidget').hide();
+        }
+    </script></body>
+
+</html>

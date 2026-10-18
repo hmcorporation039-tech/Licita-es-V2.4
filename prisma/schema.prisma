@@ -301,6 +301,7 @@ enum FonteEnum {
   INFRAERO
   DIARIO_MUNICIPAL
   TCE_CE
+  TCE_PI
 }
 
 // ============================================================

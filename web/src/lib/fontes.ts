@@ -4,6 +4,7 @@ export const ROTULOS_DE_FONTE: Record<string, string> = {
   INFRAERO: 'Infraero',
   DIARIO_MUNICIPAL: 'Diários municipais (associações)',
   TCE_CE: 'TCE-CE (municípios do Ceará)',
+  TCE_PI: 'TCE-PI (municípios do Piauí)',
 }
 
 export function fontesComLicitacaoAberta(fontesNaApi: number | null | undefined, fontesNaFaixa: number): number | null {
