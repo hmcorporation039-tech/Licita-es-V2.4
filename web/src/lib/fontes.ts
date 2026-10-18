@@ -3,4 +3,5 @@ export const ROTULOS_DE_FONTE: Record<string, string> = {
   SISTEMA_S: 'Sistema S (SENAI/SESI/SENAC)',
   INFRAERO: 'Infraero',
   DIARIO_MUNICIPAL: 'Diários municipais (associações)',
+  TCE_CE: 'TCE-CE (municípios do Ceará)',
 }

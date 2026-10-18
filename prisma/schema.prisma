@@ -283,6 +283,7 @@ enum FonteEnum {
   SISTEMA_S
   INFRAERO
   DIARIO_MUNICIPAL
+  TCE_CE
 }
 
 // ============================================================
