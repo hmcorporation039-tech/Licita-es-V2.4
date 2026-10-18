@@ -1,3 +1,5 @@
+import { MAX_PALAVRAS_NO_NOME_DE_MUNICIPIO, ufsDoMunicipio } from './municipios'
+
 export type ModalidadeFalada =
   | 'PREGAO_ELETRONICO'
   | 'PREGAO_PRESENCIAL'
@@ -289,16 +291,127 @@ function acharLugares(t: string, original: string): { ufs: string[]; regioes: st
 }
 
 const CAPITAIS_QUE_SAO_PALAVRAS = new Set(['natal', 'vitoria', 'palmas', 'salvador', 'boa vista', 'campo grande', 'rio branco'])
-const PREPOSICAO_DE_CIDADE = '(?:em|no|na|para)'
-const NOME_QUE_CONTINUA = '(?!\\s+(?:da|de|do|das|dos)\\s+[a-z])(?!-)'
+const NOMES_DE_ESTADO = new Set(ESTADOS.map(([nome]) => nome))
+const PREPOSICOES_FORTES_DE_CIDADE = new Set(['em', 'no', 'na', 'nos', 'nas'])
+const LIGACOES_DE_NOME = new Set(['da', 'de', 'do', 'das', 'dos', 'e'])
 
-function acharCapital(t: string): { nome: string; uf: string; trecho: RegExp } | null {
-  for (const [chave, nome, uf] of CAPITAIS) {
-    const preposicao = CAPITAIS_QUE_SAO_PALAVRAS.has(chave) ? '(?:em)' : PREPOSICAO_DE_CIDADE
-    const trecho = new RegExp(`\\b${preposicao}\\s+${chave}\\b${NOME_QUE_CONTINUA}`)
-    if (trecho.test(t)) return { nome, uf, trecho }
+const MUNICIPIOS_QUE_SAO_PALAVRAS_COMUNS = new Set([
+  'agudo', 'alegre', 'alegria', 'alianca', 'almas', 'altos', 'aluminio', 'americana', 'amparo', 'angelica', 'angulo', 'antas', 'arame', 'arara',
+  'araras', 'areal', 'areia', 'areias', 'ares', 'armazem', 'arraial', 'arvoredo', 'atalaia', 'aurora', 'bagre', 'balsamo', 'balsas', 'bananal',
+  'bandeira', 'bandeirante', 'bandeirantes', 'barao', 'barra', 'barracao', 'barras', 'barreira', 'barreiras', 'barro', 'barrocas', 'batalha',
+  'bicas', 'bocaina', 'bonfim', 'bonito', 'brasileira', 'breves', 'brejo', 'bugre', 'buriti', 'cachoeira', 'cajueiro', 'calcado', 'caldas',
+  'california', 'campanario', 'campanha', 'campestre', 'canas', 'candeias', 'canela', 'canoas', 'capela', 'capim', 'capitao', 'capoeiras',
+  'caridade', 'carmo', 'carneiros', 'carolina', 'carvalhos', 'casca', 'cascavel', 'caseiros', 'castanheira', 'castanheiras', 'castelo', 'catarina',
+  'cedro', 'centenario', 'central', 'ceres', 'chacara', 'chale', 'chapada', 'charrua', 'chaves', 'choro', 'cipo', 'colares', 'colina', 'colinas',
+  'colmeia', 'colombia', 'colorado', 'coluna', 'combinado', 'comodoro', 'conceicao', 'conchas', 'concordia', 'condado', 'conde', 'condor',
+  'confins', 'congo', 'conquista', 'consolacao', 'contagem', 'contenda', 'coqueiral', 'cordeiro', 'cordeiros', 'corrente', 'correntes', 'cortes',
+  'cristais', 'cristal', 'cristina', 'croata', 'cruz', 'cruzeiro', 'cunha', 'custodia', 'datas', 'delta', 'descalvado', 'descanso', 'descoberto',
+  'desterro', 'diamante', 'divino', 'dobrada', 'dourado', 'dourados', 'eldorado', 'emas', 'encantado', 'encanto', 'encruzilhada', 'equador', 'ermo',
+  'escada', 'esmeralda', 'esmeraldas', 'esperanca', 'esplanada', 'estacao', 'estancia', 'esteio', 'estiva', 'estreito', 'estrela', 'extrema',
+  'fama', 'farol', 'fartura', 'fatima', 'feliz', 'fenix', 'ferreiros', 'ferros', 'figueira', 'flores', 'floresta', 'florestal', 'florida',
+  'formiga', 'formigueiro', 'formosa', 'formoso', 'fortuna', 'franca', 'fronteira', 'fronteiras', 'gameleira', 'gameleiras', 'garca', 'gaviao',
+  'gentil', 'gloria', 'goiabeira', 'graca', 'gramado', 'granito', 'granja', 'gravata', 'guarani', 'harmonia', 'horizonte', 'imigrante',
+  'imperatriz', 'independencia', 'indiana', 'inga', 'inocencia', 'ipe', 'jacinto', 'jangada', 'jaqueira', 'jardim', 'jatoba', 'joia', 'juramento',
+  'jurema', 'lagoa', 'lagoinha', 'laje', 'lajeado', 'lajedo', 'lajes', 'lapa', 'laranjal', 'laranjeiras', 'lastro', 'lavras', 'leme', 'liberdade',
+  'limeira', 'limoeiro', 'livramento', 'logradouro', 'lontra', 'lontras', 'luz', 'macieira', 'malhada', 'malta', 'mamonas', 'manga', 'maravilha',
+  'maravilhas', 'marco', 'mascote', 'mata', 'matinha', 'mercedes', 'messias', 'milagres', 'milha', 'mirante', 'modelo', 'moeda', 'montanha',
+  'montanhas', 'moreno', 'morrinhos', 'morros', 'mulungu', 'mutum', 'natividade', 'navegantes', 'nazare', 'normandia', 'olaria', 'oleo', 'oliveira',
+  'oriente', 'ouro', 'ouvidor', 'painel', 'palestina', 'palma', 'palmeira', 'palmeiras', 'panama', 'panelas', 'panorama', 'papagaios', 'paraiso',
+  'passagem', 'passos', 'patos', 'pavao', 'pedra', 'pedreira', 'pedreiras', 'peixe', 'penha', 'pequi', 'perdizes', 'periquito', 'perola',
+  'pescador', 'piedade', 'pilar', 'pimenta', 'pinhal', 'pinhao', 'pinheiro', 'pinheiros', 'piranhas', 'placas', 'planalto', 'platina', 'pombal',
+  'pombos', 'pontal', 'porto', 'posse', 'pote', 'prado', 'prados', 'prainha', 'prata', 'primavera', 'princesa', 'progresso', 'pureza', 'quadra',
+  'queimadas', 'queimados', 'quilombo', 'raposa', 'realeza', 'recreio', 'redencao', 'reduto', 'regeneracao', 'registro', 'remanso', 'renascenca',
+  'reserva', 'restinga', 'riachao', 'riqueza', 'rodeio', 'romaria', 'rosario', 'roteiro', 'sacramento', 'salgado', 'salinas', 'salitre', 'salto',
+  'santana', 'santiago', 'santos', 'saudades', 'saude', 'seara', 'segredo', 'serra', 'serrana', 'serraria', 'serrinha', 'sertao', 'sobradinho',
+  'sobrado', 'socorro', 'soledade', 'solidao', 'sonora', 'sorriso', 'sossego', 'sucupira', 'tabuleiro', 'tapera', 'telha', 'tesouro', 'tiradentes',
+  'tiros', 'toledo', 'torres', 'triunfo', 'trindade', 'trombas', 'tunas', 'turmalina', 'uniao', 'vacaria', 'valente', 'vargem', 'varzea', 'vazante',
+  'ventania', 'vera', 'vereda', 'vertentes', 'viadutos', 'videira', 'vigia',
+  'agua azul', 'agua boa', 'agua branca', 'agua clara', 'agua doce', 'agua fria', 'agua limpa', 'agua nova', 'agua preta', 'areia branca',
+  'boa esperanca', 'boa hora', 'boa saude', 'boa viagem', 'bom jardim', 'bom jesus', 'bom retiro', 'bom sucesso', 'campo alegre', 'campo belo',
+  'campo bom', 'campo limpo', 'campo novo', 'campo verde', 'casa nova', 'cruz alta', 'mar vermelho', 'mato verde', 'nova era', 'ouro branco',
+  'ouro fino', 'ouro verde', 'pedra branca', 'pedra preta', 'ponte alta', 'porto seguro', 'rio bonito', 'rio claro', 'rio doce', 'rio negro',
+  'rio novo', 'rio verde', 'terra boa', 'terra nova', 'terra rica', 'terra roxa', 'vista alegre',
+])
+
+const PROCURA_DE_MUNICIPIO = /\b(em|no|na|nos|nas|de|do|da|dos|das|para)\s+/g
+const SEQUENCIA_DE_PALAVRAS = /^[a-z0-9'’-]+(?: [a-z0-9'’-]+)*/
+const ESTADO_COLADO = new RegExp(`^\\s*(?:[,/-]\\s*)?(?:(${PREPOSICAO})\\s+)?(${UNIDADE})\\b`)
+const NOME_QUE_CONTINUA = /^\s+(?:da|de|do|das|dos)\s+[a-z]/
+
+interface MunicipioFalado {
+  chave: string
+  falado: string
+  ufs: string[]
+  ufColada: string | null
+  inicio: number
+  fim: number
+}
+
+function capitalizar(palavra: string): string {
+  const apostrofo = palavra.match(/^(d['’])(.+)$/)
+  if (apostrofo) return apostrofo[1] + capitalizar(apostrofo[2])
+  return palavra.charAt(0).toUpperCase() + palavra.slice(1)
+}
+
+function nomeParaExibir(municipio: MunicipioFalado, uf: string | undefined): string {
+  const capital = CAPITAIS.find(([chave, , ufDaCapital]) => chave === municipio.chave && (uf === undefined || uf === ufDaCapital))
+  if (capital) return capital[1]
+  return municipio.falado
+    .toLowerCase()
+    .split(' ')
+    .map((p, i) => (i > 0 && LIGACOES_DE_NOME.has(normalizar(p)) ? p : p.split('-').map(capitalizar).join('-')))
+    .join(' ')
+}
+
+function municipioAceito(chave: string, preposicao: string, ufs: string[], ufColada: string | null): boolean {
+  if (ufColada !== null && !ufs.includes(ufColada)) return false
+  const forte = PREPOSICOES_FORTES_DE_CIDADE.has(preposicao)
+  if (CAPITAIS_QUE_SAO_PALAVRAS.has(chave)) return preposicao === 'em' || (forte && ufColada !== null)
+  if (CAPITAIS.some(([c, , uf]) => c === chave && ufs.includes(uf))) return forte || preposicao === 'para' || ufColada !== null
+  if (MUNICIPIOS_QUE_SAO_PALAVRAS_COMUNS.has(chave)) return forte && ufColada !== null
+  return forte || chave.includes(' ') || ufColada !== null
+}
+
+function acharMunicipio(t: string, original: string): MunicipioFalado | null {
+  const procura = new RegExp(PROCURA_DE_MUNICIPIO.source, 'g')
+  const mesmoTamanho = normalizar(original).length === original.length
+  let encontrado: RegExpExecArray | null
+  while ((encontrado = procura.exec(t)) !== null) {
+    const preposicao = encontrado[1]
+    const inicio = encontrado.index + encontrado[0].length
+    const palavras = (t.slice(inicio).match(SEQUENCIA_DE_PALAVRAS)?.[0] ?? '').split(' ').slice(0, MAX_PALAVRAS_NO_NOME_DE_MUNICIPIO)
+    for (let k = palavras.length; k >= 1; k--) {
+      const chave = palavras.slice(0, k).join(' ')
+      if (NOMES_DE_ESTADO.has(chave)) break
+      const ufs = ufsDoMunicipio(chave)
+      if (ufs.length === 0) continue
+      const fim = inicio + chave.length
+      const resto = t.slice(fim)
+      const colado = ESTADO_COLADO.exec(resto)
+      const lugarColado = colado ? lerLugar(colado[2], colado[1], false, original) : null
+      const ufColada = lugarColado && !lugarColado.regiao && lugarColado.ufs.length === 1 ? lugarColado.ufs[0] : null
+      if (ufColada === null && NOME_QUE_CONTINUA.test(resto)) break
+      if (municipioAceito(chave, preposicao, ufs, ufColada)) {
+        const fimComEstado = ufColada !== null && colado ? fim + colado[0].length : fim
+        return { chave, falado: mesmoTamanho ? original.slice(inicio, fim) : chave, ufs, ufColada, inicio: encontrado.index, fim: fimComEstado }
+      }
+      procura.lastIndex = fim
+      break
+    }
   }
   return null
+}
+
+function ufDoMunicipio(municipio: MunicipioFalado, ufsFaladas: string[]): { uf: string | undefined } | null {
+  if (municipio.ufColada !== null) return { uf: municipio.ufColada }
+  if (ufsFaladas.length > 0) {
+    const comuns = municipio.ufs.filter((uf) => ufsFaladas.includes(uf))
+    if (comuns.length === 0) return null
+    return { uf: comuns.length === 1 ? comuns[0] : undefined }
+  }
+  if (municipio.ufs.length === 1) return { uf: municipio.ufs[0] }
+  const capital = CAPITAIS.find(([chave, , uf]) => chave === municipio.chave && municipio.ufs.includes(uf))
+  return { uf: capital?.[2] }
 }
 
 function juntarComE(itens: string[]): string {
@@ -349,14 +462,18 @@ export function interpretarPedido(texto: string, contexto: 'busca' | 'pregao' = 
   const filtros: FiltrosDaBusca = {}
   const partes: string[] = []
 
-  const lugares = acharLugares(t, original)
-  const capital = acharCapital(t)
-  if (capital && (lugares.ufs.length === 0 || lugares.ufs.includes(capital.uf))) {
-    filtros.municipio = capital.nome
-    filtros.uf = capital.uf
-    removidos.push(capital.trecho, ...lugares.trechos)
+  const municipio = acharMunicipio(t, original)
+  const semMunicipio = municipio ? t.slice(0, municipio.inicio) + ' '.repeat(municipio.fim - municipio.inicio) + t.slice(municipio.fim) : t
+  const lugares = acharLugares(semMunicipio, original)
+  const escolha = municipio ? ufDoMunicipio(municipio, lugares.ufs) : null
+  removidos.push(...lugares.trechos)
+  if (municipio && escolha) {
+    filtros.municipio = nomeParaExibir(municipio, escolha.uf)
+    removidos.push(new RegExp(`\\b${escaparParaRegex(t.slice(municipio.inicio, municipio.fim))}(?![a-z0-9'’-])`))
+  }
+  if (municipio && escolha?.uf) {
+    filtros.uf = escolha.uf
   } else {
-    removidos.push(...lugares.trechos)
     if (lugares.ufs.length === 1 && lugares.regioes.length === 0) filtros.uf = lugares.ufs[0]
     if (lugares.ufs.length > 1 || lugares.regioes.length > 0) {
       filtros.ufs = lugares.ufs
@@ -390,7 +507,7 @@ export function interpretarPedido(texto: string, contexto: 'busca' | 'pregao' = 
   const descricao = [
     filtros.q ? `"${filtros.q}"` : 'licitações',
     partes.length ? `em ${partes.join(', ')}` : '',
-    filtros.municipio ? `em ${filtros.municipio}/${filtros.uf}` : filtros.rotuloDoLocal ? filtros.rotuloDoLocal : filtros.uf ? `na UF ${filtros.uf}` : '',
+    filtros.municipio ? `em ${filtros.municipio}${filtros.uf ? `/${filtros.uf}` : ''}` : filtros.rotuloDoLocal ? filtros.rotuloDoLocal : filtros.uf ? `na UF ${filtros.uf}` : '',
     filtros.situacao ? 'abertas' : '',
   ]
     .filter(Boolean)

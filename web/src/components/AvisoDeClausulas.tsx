@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import type { PainelDoFiscal } from '@/lib/adminTypes'
+import { diasUteis } from '@/lib/datas'
 import { Button, Notice } from '@/components/ui'
 
 function dia(iso: string) {
@@ -33,7 +34,7 @@ export default function AvisoDeClausulas({ tenderId, onVerDetalhes, onImpugnar }
     prazos && !prazos.sessaoPassou
       ? prazos.limitePassou
         ? 'O prazo para impugnar já terminou.'
-        : `Prazo para impugnar ou pedir esclarecimento: até ${dia(prazos.limiteImpugnacao)} (${prazos.diasUteisAteLimite} dia(s) útil(eis)).`
+        : `Prazo para impugnar ou pedir esclarecimento: até ${dia(prazos.limiteImpugnacao)} (${diasUteis(prazos.diasUteisAteLimite)}).`
       : null
 
   return (

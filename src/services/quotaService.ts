@@ -12,6 +12,7 @@ import {
   ROTULO_RECURSO,
   Recurso,
   quantidadeDoRecurso,
+  bloqueiaNovo,
   excedeu,
   inicioDoMesBrasilia,
   inicioDoProximoMesBrasilia,
@@ -83,6 +84,7 @@ export async function resumoDeCotas(companyId: string) {
       usado: uso[r],
       limite: limites[r],
       excedido: excedeu(uso[r], limites[r]),
+      noLimite: bloqueiaNovo(uso[r], limites[r]),
     })),
   }
 }
@@ -94,7 +96,7 @@ export async function exigirCota(companyId: string, recurso: Recurso, isAdmin = 
   if (isAdmin) return
   const [{ planName, limites }, uso] = await Promise.all([limitesDaEmpresa(companyId), usoDaEmpresa(companyId)])
   const limite = limites[recurso]
-  if (limite === null || !excedeu(uso[recurso], limite)) return
+  if (limite === null || !bloqueiaNovo(uso[recurso], limite)) return
   throw new ApiError(
     402,
     `Limite do plano ${planName} atingido: ${quantidadeDoRecurso(recurso, limite)}. Fale com o administrador para ampliar o plano.`,

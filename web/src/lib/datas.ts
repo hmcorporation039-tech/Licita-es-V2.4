@@ -60,3 +60,11 @@ export function formatarData(valor: EntradaDeData, opcoes: { comHora?: boolean; 
 export function formatarDataDaLicitacao(valor: EntradaDeData, fonte: string, opcoes: { comHora?: boolean; anoCurto?: boolean } = { comHora: true }): string {
   return formatarData(dataDaLicitacao(valor, fonte), opcoes)
 }
+
+export function diasUteis(quantidade: number): string {
+  return `${quantidade.toLocaleString('pt-BR')} ${quantidade === 1 ? 'dia útil' : 'dias úteis'}`
+}
+
+export function faltamDiasUteis(quantidade: number): string {
+  return `${quantidade === 1 ? 'Falta' : 'Faltam'} ${diasUteis(quantidade)}.`
+}

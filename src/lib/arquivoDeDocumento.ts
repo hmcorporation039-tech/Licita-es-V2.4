@@ -31,6 +31,27 @@ export function nomeDeArquivoSeguro(nome: string | undefined | null, tipo: TipoD
   return `${base || 'documento'}.${EXTENSAO[tipo]}`
 }
 
+export interface ProblemaNosDados {
+  path: (string | number)[]
+  code: string
+}
+
+const MENSAGEM_DO_CAMPO: Record<string, { vazio: string; invalido: string }> = {
+  nome: { vazio: 'Informe o nome do documento', invalido: 'O nome do documento deve ter até 200 caracteres' },
+  tipo: { vazio: 'Tipo de documento inválido', invalido: 'Tipo de documento inválido' },
+  dataEmissao: { vazio: 'Data de emissão inválida', invalido: 'Data de emissão inválida' },
+  dataValidade: { vazio: 'Data de validade inválida', invalido: 'Data de validade inválida' },
+  observacao: { vazio: 'Observação inválida', invalido: 'A observação deve ter até 2.000 caracteres' },
+}
+
+export function erroDosDadosDoDocumento(problemas: ProblemaNosDados[]): { campo: string | null; mensagem: string } {
+  const problema = problemas.find((p) => typeof p.path[0] === 'string' && MENSAGEM_DO_CAMPO[p.path[0]])
+  if (!problema) return { campo: null, mensagem: 'Dados do documento inválidos' }
+  const campo = problema.path[0] as string
+  const vazio = problema.code === 'invalid_type' || problema.code === 'too_small'
+  return { campo, mensagem: vazio ? MENSAGEM_DO_CAMPO[campo].vazio : MENSAGEM_DO_CAMPO[campo].invalido }
+}
+
 export function limiteDeArmazenamentoPorEmpresa(env: NodeJS.ProcessEnv = process.env): number {
   const mb = Number(env.MAX_ARQUIVOS_MB_EMPRESA)
   return (Number.isInteger(mb) && mb > 0 ? mb : 300) * 1024 * 1024

@@ -89,7 +89,7 @@ function fraseDoResultado(filtros: FiltrosDaBela, total: number, primeira: Tende
 function FiltrosAplicados({ filtros }: { filtros: FiltrosDaBela }) {
   const chips = [
     filtros.q ? `Objeto: “${filtros.q}”` : null,
-    filtros.municipio ? `${filtros.municipio}/${filtros.uf ?? ''}` : filtros.rotuloDoLocal ? `Local: ${filtros.rotuloDoLocal.replace(/^(no|em) /, '')}` : filtros.uf ? `UF ${filtros.uf}` : null,
+    filtros.municipio ? `${filtros.municipio}${filtros.uf ? `/${filtros.uf}` : ''}` : filtros.rotuloDoLocal ? `Local: ${filtros.rotuloDoLocal.replace(/^(no|em) /, '')}` : filtros.uf ? `UF ${filtros.uf}` : null,
     rotuloDasModalidades(filtros),
     filtros.situacao === 'ABERTA' ? 'Abertas' : null,
   ].filter((c): c is string => Boolean(c))

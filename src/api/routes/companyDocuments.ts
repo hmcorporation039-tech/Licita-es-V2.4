@@ -14,6 +14,7 @@ import { escritaSensivelLimiter } from '../rateLimit'
 import {
   TAMANHO_MAXIMO_ARQUIVO,
   detectarTipoDeArquivo,
+  erroDosDadosDoDocumento,
   limiteDeArmazenamentoPorEmpresa,
   nomeDeArquivoSeguro,
 } from '../../lib/arquivoDeDocumento'
@@ -156,7 +157,10 @@ companyDocumentsRouter.post(
   lerArquivo,
   asyncHandler(async (req, res) => {
     const metadados = createSchema.safeParse(metadadosDoCabecalho(req.header('x-documento')))
-    if (!metadados.success) throw new ApiError(400, 'Informe o nome do documento')
+    if (!metadados.success) {
+      const { campo, mensagem } = erroDosDadosDoDocumento(metadados.error.issues)
+      throw new ApiError(400, mensagem, campo ? { campo } : undefined)
+    }
     await exigirEspacoParaMaisUmDocumento(req.companyId!)
     const dados = await arquivoValidado(req, 0)
 

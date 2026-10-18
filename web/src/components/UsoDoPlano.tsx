@@ -2,6 +2,7 @@
 
 import { useUsoDoPlano } from '@/hooks/useUsoDoPlano'
 import { Carregando, ErrorState, Panel, StatusTag, cx } from '@/components/ui'
+import { avisoDoUsoDoPlano, situacaoDoRecurso } from '@/lib/planos'
 
 export default function UsoDoPlano() {
   const { dados, erro, recarregar } = useUsoDoPlano()
@@ -17,8 +18,9 @@ export default function UsoDoPlano() {
 
   const recursos = dados.recursos.map((r) => {
     const limite = dados.ilimitado ? null : r.limite
-    return { ...r, limite, excedido: limite !== null && r.excedido }
+    return { ...r, limite, excedido: situacaoDoRecurso(r.usado, limite) === 'excedido' }
   })
+  const aviso = avisoDoUsoDoPlano(recursos)
 
   return (
     <Panel title="Seu plano" actions={<StatusTag>{dados.plano.nome}</StatusTag>}>
@@ -59,9 +61,7 @@ export default function UsoDoPlano() {
           )
         })}
       </ul>
-      {recursos.some((r) => r.excedido) && (
-        <p className="mt-3.5 text-xs text-danger">Você atingiu um limite do plano. Fale com o administrador para ampliá-lo.</p>
-      )}
+      {aviso && <p className={cx('mt-3.5 text-xs', aviso.tom === 'perigo' ? 'text-danger' : 'text-muted')}>{aviso.texto}</p>}
     </Panel>
   )
 }

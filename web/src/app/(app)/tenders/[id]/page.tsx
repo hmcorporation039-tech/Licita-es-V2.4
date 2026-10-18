@@ -1,6 +1,6 @@
 'use client'
 
-import { dataDaLicitacao, formatarData } from '@/lib/datas'
+import { dataDaLicitacao, faltamDiasUteis, formatarData } from '@/lib/datas'
 import { use, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { AlertCircle, Calculator, Check, CheckCircle2, ChevronDown, ChevronUp, ExternalLink, Gavel, Loader2, Plus, RotateCcw, Trash2 } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
@@ -607,7 +607,7 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
                         ? 'O prazo já terminou.'
                         : prazos.diasUteisAteLimite === 0
                           ? 'Termina hoje.'
-                          : `Faltam ${prazos.diasUteisAteLimite} dia(s) útil(eis).`}
+                          : faltamDiasUteis(prazos.diasUteisAteLimite ?? 0)}
                   </p>
                   {prazos.aviso && <p className="mt-1 text-xs text-muted">{prazos.aviso}</p>}
                 </Notice>

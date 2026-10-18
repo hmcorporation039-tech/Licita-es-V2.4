@@ -56,8 +56,12 @@ export function limitesEfetivos(planLimits: unknown, overrides: unknown): Limite
   return lerLimites(overrides, lerLimites(planLimits))
 }
 
-export function excedeu(usado: number, limite: number | null): boolean {
+export function bloqueiaNovo(usado: number, limite: number | null): boolean {
   return limite !== null && usado >= limite
+}
+
+export function excedeu(usado: number, limite: number | null): boolean {
+  return limite !== null && usado > limite
 }
 
 // Início do PRÓXIMO mês no fuso de Brasília: quando a cota mensal de análises volta a zero.

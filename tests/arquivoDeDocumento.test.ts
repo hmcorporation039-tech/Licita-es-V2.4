@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { detectarTipoDeArquivo, limiteDeArmazenamentoPorEmpresa, nomeDeArquivoSeguro } from '../src/lib/arquivoDeDocumento'
+import { z } from 'zod'
+import { detectarTipoDeArquivo, erroDosDadosDoDocumento, limiteDeArmazenamentoPorEmpresa, nomeDeArquivoSeguro } from '../src/lib/arquivoDeDocumento'
 
 describe('detectarTipoDeArquivo', () => {
   it('reconhece PDF, JPEG e PNG pelo conteúdo', () => {
@@ -33,5 +34,36 @@ describe('limiteDeArmazenamentoPorEmpresa', () => {
     expect(limiteDeArmazenamentoPorEmpresa({})).toBe(300 * 1024 * 1024)
     expect(limiteDeArmazenamentoPorEmpresa({ MAX_ARQUIVOS_MB_EMPRESA: '50' })).toBe(50 * 1024 * 1024)
     expect(limiteDeArmazenamentoPorEmpresa({ MAX_ARQUIVOS_MB_EMPRESA: 'x' })).toBe(300 * 1024 * 1024)
+  })
+})
+
+describe('erroDosDadosDoDocumento', () => {
+  const esquema = z.object({
+    tipo: z.string().min(1).max(120).nullable().optional(),
+    nome: z.string().min(1).max(200),
+    dataEmissao: z.coerce.date().nullable().optional(),
+    dataValidade: z.coerce.date().nullable().optional(),
+    observacao: z.string().max(2000).nullable().optional(),
+  })
+  const erro = (dados: unknown) => {
+    const r = esquema.safeParse(dados)
+    if (r.success) throw new Error('era para falhar')
+    return erroDosDadosDoDocumento(r.error.issues)
+  }
+
+  it('data de validade inválida responde pelo campo certo, não pelo nome', () => {
+    expect(erro({ nome: 'Balanço', dataValidade: '31/02/abc' })).toEqual({ campo: 'dataValidade', mensagem: 'Data de validade inválida' })
+    expect(erro({ nome: 'Balanço', dataEmissao: 'ontem' })).toEqual({ campo: 'dataEmissao', mensagem: 'Data de emissão inválida' })
+  })
+
+  it('nome ausente, vazio ou longo demais', () => {
+    expect(erro({ tipo: 'balanco' })).toEqual({ campo: 'nome', mensagem: 'Informe o nome do documento' })
+    expect(erro({ nome: '' })).toEqual({ campo: 'nome', mensagem: 'Informe o nome do documento' })
+    expect(erro({ nome: 'x'.repeat(201) })).toEqual({ campo: 'nome', mensagem: 'O nome do documento deve ter até 200 caracteres' })
+  })
+
+  it('observação longa e corpo que não é objeto', () => {
+    expect(erro({ nome: 'ok', observacao: 'x'.repeat(2001) })).toEqual({ campo: 'observacao', mensagem: 'A observação deve ter até 2.000 caracteres' })
+    expect(erro(null)).toEqual({ campo: null, mensagem: 'Dados do documento inválidos' })
   })
 })

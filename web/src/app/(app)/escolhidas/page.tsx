@@ -82,52 +82,88 @@ export default function EscolhidasPage() {
           />
         )
       ) : (
-        <TableWrap minWidth={940}>
-          <Table>
-            <THead>
-              <tr>
-                <Th>Prazo</Th>
-                <Th>Objeto</Th>
-                <Th>Fonte</Th>
-                <Th>Local</Th>
-                <Th align="right">Valor estimado</Th>
-                <Th align="right">
-                  <span className="sr-only">Ações</span>
-                </Th>
-              </tr>
-            </THead>
-            <tbody>
-              {plans.map((p) => (
-                <Tr key={p.id} interactive>
-                  <Td className="whitespace-nowrap">
-                    <Prazo data={fimDasPropostas(p.tender)} />
-                  </Td>
-                  <Td className="max-w-[420px]">
-                    <Link href={`/tenders/${p.tenderId}`} className="line-clamp-2 font-medium text-ink hover:text-accent hover:underline">
-                      {p.tender.objetoResumido ?? p.tender.objeto}
-                    </Link>
-                    <p className="mt-0.5 truncate text-xs text-muted">{p.tender.orgao ?? 'órgão n/d'}</p>
-                  </Td>
-                  <Td>
-                    <StatusTag mono>{rotuloDaFonte(p.tender.fonte)}</StatusTag>
-                  </Td>
-                  <Td className="whitespace-nowrap">{localDaLicitacao(p.tender)}</Td>
-                  <Td numeric>{formatValor(p.tender.valorEstimado)}</Td>
-                  <Td>
-                    <div className="flex justify-end gap-2">
-                      <LinkButton href={`/escolhidas/${p.tenderId}`} size="sm" icon={Calculator}>
-                        Estudo de custos
-                      </LinkButton>
-                      <Button size="sm" variant="ghost" icon={X} onClick={() => remover(p.tenderId)}>
-                        Remover da lista
-                      </Button>
-                    </div>
-                  </Td>
-                </Tr>
-              ))}
-            </tbody>
-          </Table>
-        </TableWrap>
+        <>
+          <ul aria-label="Licitações escolhidas" className="grid grid-cols-1 gap-3 md:grid-cols-2 min-[1360px]:hidden">
+            {plans.map((p) => (
+              <li key={p.id} className="flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-surface p-4 shadow-cartao">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <Prazo data={fimDasPropostas(p.tender)} />
+                  <StatusTag mono>{rotuloDaFonte(p.tender.fonte)}</StatusTag>
+                </div>
+                <div className="min-w-0">
+                  <Link href={`/tenders/${p.tenderId}`} className="line-clamp-3 font-medium break-words text-ink hover:text-accent hover:underline">
+                    {p.tender.objetoResumido ?? p.tender.objeto}
+                  </Link>
+                  <p className="mt-0.5 text-xs break-words text-muted">{p.tender.orgao ?? 'órgão n/d'}</p>
+                </div>
+                <dl className="grid grid-cols-1 gap-2 text-sm min-[420px]:grid-cols-2">
+                  <div className="min-w-0">
+                    <dt className="text-xs text-muted">Local</dt>
+                    <dd className="break-words text-ink-2">{localDaLicitacao(p.tender)}</dd>
+                  </div>
+                  <div className="min-w-0">
+                    <dt className="text-xs text-muted">Valor estimado</dt>
+                    <dd className="font-mono text-ink-2">{formatValor(p.tender.valorEstimado)}</dd>
+                  </div>
+                </dl>
+                <div className="flex flex-wrap gap-2">
+                  <LinkButton href={`/escolhidas/${p.tenderId}`} size="sm" icon={Calculator} className="flex-1 justify-center">
+                    Estudo de custos
+                  </LinkButton>
+                  <Button size="sm" variant="ghost" icon={X} onClick={() => remover(p.tenderId)}>
+                    Remover da lista
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <TableWrap minWidth={940} className="hidden min-[1360px]:block">
+            <Table>
+              <THead>
+                <tr>
+                  <Th>Prazo</Th>
+                  <Th>Objeto</Th>
+                  <Th>Fonte</Th>
+                  <Th>Local</Th>
+                  <Th align="right">Valor estimado</Th>
+                  <Th align="right">
+                    <span className="sr-only">Ações</span>
+                  </Th>
+                </tr>
+              </THead>
+              <tbody>
+                {plans.map((p) => (
+                  <Tr key={p.id} interactive>
+                    <Td className="whitespace-nowrap">
+                      <Prazo data={fimDasPropostas(p.tender)} />
+                    </Td>
+                    <Td className="max-w-[380px]">
+                      <Link href={`/tenders/${p.tenderId}`} className="line-clamp-2 font-medium text-ink hover:text-accent hover:underline">
+                        {p.tender.objetoResumido ?? p.tender.objeto}
+                      </Link>
+                      <p className="mt-0.5 truncate text-xs text-muted">{p.tender.orgao ?? 'órgão n/d'}</p>
+                    </Td>
+                    <Td>
+                      <StatusTag mono>{rotuloDaFonte(p.tender.fonte)}</StatusTag>
+                    </Td>
+                    <Td className="min-w-[8rem]">{localDaLicitacao(p.tender)}</Td>
+                    <Td numeric>{formatValor(p.tender.valorEstimado)}</Td>
+                    <Td>
+                      <div className="flex flex-col items-end gap-1.5">
+                        <LinkButton href={`/escolhidas/${p.tenderId}`} size="sm" icon={Calculator}>
+                          Estudo de custos
+                        </LinkButton>
+                        <Button size="sm" variant="ghost" icon={X} onClick={() => remover(p.tenderId)}>
+                          Remover da lista
+                        </Button>
+                      </div>
+                    </Td>
+                  </Tr>
+                ))}
+              </tbody>
+            </Table>
+          </TableWrap>
+        </>
       )}
     </>
   )
