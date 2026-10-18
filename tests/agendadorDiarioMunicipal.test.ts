@@ -17,6 +17,9 @@ vi.mock('bullmq', () => ({
     async removeRepeatableByKey() {
       return undefined
     }
+    async removeJobScheduler() {
+      return undefined
+    }
     async upsertJobScheduler(id: string, opcoes: unknown, job: unknown) {
       filas.agendados.get(this.name)!.push({ id, opcoes, job })
     }
