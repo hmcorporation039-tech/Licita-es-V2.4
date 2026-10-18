@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { LIMITES_PADRAO, excedeu, inicioDoMesBrasilia, lerLimites, limitesEfetivos, quantidadeDoRecurso } from '../src/lib/planos'
-import { resumoDosLimites } from '../web/src/lib/planos'
+import { LIMITES_PADRAO, bloqueiaNovo, excedeu, inicioDoMesBrasilia, lerLimites, limitesEfetivos, quantidadeDoRecurso } from '../src/lib/planos'
+import { avisoDoUsoDoPlano, resumoDosLimites, situacaoDoRecurso } from '../web/src/lib/planos'
 
 describe('resumo dos limites do teste grátis no cadastro', () => {
   it('mostra os limites reais do plano, no singular e no plural', () => {
@@ -49,15 +49,52 @@ describe('limitesEfetivos', () => {
   })
 })
 
-describe('excedeu', () => {
-  it('bloqueia ao atingir o limite (usado >= limite)', () => {
-    expect(excedeu(3, 3)).toBe(true)
-    expect(excedeu(2, 3)).toBe(false)
+describe('bloqueiaNovo', () => {
+  it('bloqueia criar mais um ao atingir o limite (usado >= limite)', () => {
+    expect(bloqueiaNovo(3, 3)).toBe(true)
+    expect(bloqueiaNovo(2, 3)).toBe(false)
   })
 
   it('limite 0 bloqueia tudo; null nunca bloqueia', () => {
-    expect(excedeu(0, 0)).toBe(true)
+    expect(bloqueiaNovo(0, 0)).toBe(true)
+    expect(bloqueiaNovo(1_000_000, null)).toBe(false)
+  })
+})
+
+describe('excedeu', () => {
+  it('estar no limite não é exceder: só passa quando o uso é maior que o limite', () => {
+    expect(excedeu(1, 1)).toBe(false)
+    expect(excedeu(3, 3)).toBe(false)
+    expect(excedeu(4, 3)).toBe(true)
+    expect(excedeu(0, 0)).toBe(false)
     expect(excedeu(1_000_000, null)).toBe(false)
+  })
+})
+
+describe('uso do plano na tela', () => {
+  const usuarios = (usado: number, limite: number | null) => ({ rotulo: 'usuários', usado, limite })
+
+  it('conta Teste com 1 usuário de 1 não mostra alerta vermelho, só uma informação', () => {
+    expect(situacaoDoRecurso(1, 1)).toBe('no-limite')
+    expect(avisoDoUsoDoPlano([usuarios(1, 1), { rotulo: 'itens monitorados', usado: 0, limite: 3 }])).toEqual({
+      tom: 'info',
+      texto: 'Você já usa tudo o que o plano inclui em usuários. Para adicionar mais, fale com o administrador.',
+    })
+  })
+
+  it('só fica vermelho quando o uso passa do limite', () => {
+    expect(situacaoDoRecurso(4, 3)).toBe('excedido')
+    expect(avisoDoUsoDoPlano([usuarios(1, 1), { rotulo: 'itens monitorados', usado: 5, limite: 3 }])).toEqual({
+      tom: 'perigo',
+      texto: 'Você passou do limite do plano em itens monitorados. Fale com o administrador para ampliá-lo.',
+    })
+  })
+
+  it('longe do limite ou sem limite não mostra aviso', () => {
+    expect(situacaoDoRecurso(1, 10)).toBe('livre')
+    expect(situacaoDoRecurso(8, 10)).toBe('perto')
+    expect(situacaoDoRecurso(50, null)).toBe('sem-limite')
+    expect(avisoDoUsoDoPlano([usuarios(1, 10), usuarios(9, null)])).toBeNull()
   })
 })
 

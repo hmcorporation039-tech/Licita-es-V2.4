@@ -12,6 +12,7 @@ export interface RecursoDoPlano {
   usado: number
   limite: number | null
   excedido: boolean
+  noLimite?: boolean
 }
 
 export interface ResumoDeCotas {

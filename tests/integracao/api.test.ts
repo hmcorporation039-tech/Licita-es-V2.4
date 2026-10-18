@@ -324,7 +324,9 @@ rodar('API com banco real', () => {
       expect(r.status).toBe(200)
       expect(r.body.plano.codigo).toBe('TESTE')
       const itens = r.body.recursos.find((x: { recurso: string }) => x.recurso === 'itensMonitorados')
-      expect(itens).toMatchObject({ usado: 3, limite: 3, excedido: true })
+      expect(itens).toMatchObject({ usado: 3, limite: 3, excedido: false, noLimite: true })
+      const usuarios = r.body.recursos.find((x: { recurso: string }) => x.recurso === 'usuarios')
+      expect(usuarios).toMatchObject({ usado: 1, limite: 1, excedido: false, noLimite: true })
     })
 
     it('o admin muda o plano e o limite sobe; ajuste pontual vence o plano', async () => {
