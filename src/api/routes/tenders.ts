@@ -3,6 +3,7 @@
 // ============================================================
 
 import { Router, Request } from 'express'
+import { ModalidadeEnum, Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { prisma, garantirItensPNCP } from '../../services/tenderService'
 import { asyncHandler, ApiError } from '../asyncHandler'
@@ -22,7 +23,9 @@ import { alertasDaAnalise } from '../../lib/alertasLegais'
 import type { EditalAnalysisResult } from '../../services/llm/types'
 import { chaveDaExigencia, ExigenciaVerificada, resumoDaVerificacao } from '../../lib/matrizExigencias'
 import { analiseParaResposta } from '../../lib/analiseParaResposta'
-import { whereLicitacaoAberta } from '../../lib/licitacaoAberta'
+import { whereLicitacaoAberta, whereLicitacaoComPrazoConfirmado } from '../../lib/licitacaoAberta'
+import { idsQueCitamOTexto, whereDoNumeroDoEdital, whereDoOrgao } from '../../services/buscaDeLicitacoes'
+import { fatiasDaPagina } from '../../lib/paginacaoEmGrupos'
 import { TENDER_PUBLICO, semRawJson } from '../../lib/tenderPublico'
 import { MAX_ANALISES_POR_HORA, pedidosDeAnaliseNaUltimaHora } from '../../services/quotaService'
 import { desfazerReserva, reservarAnalise } from '../../services/reservaDeAnalise'
@@ -30,6 +33,7 @@ import { falhouHaPouco } from '../../lib/esperaDeReanalise'
 import { dataDaSessao } from '../../lib/dataDaSessao'
 
 import { SIGLAS_DAS_UFS } from '../../lib/origemDoCadastro'
+import { literalNoLike } from '../../lib/buscaLiteral'
 
 export const tendersRouter = Router()
 
@@ -42,7 +46,12 @@ const querySchema = z.object({
     .transform((v) => [...new Set(v.toUpperCase().split(/[\s,;]+/).filter(Boolean))])
     .pipe(z.array(z.enum(SIGLAS_DAS_UFS)).max(SIGLAS_DAS_UFS.length))
     .optional(),
-  modalidade: z.enum(MODALIDADE_VALUES).optional(),
+  modalidade: z
+    .string()
+    .max(400)
+    .transform((v) => [...new Set(v.toUpperCase().split(/[\s,;]+/).filter(Boolean))])
+    .pipe(z.array(z.enum(MODALIDADE_VALUES)).max(MODALIDADE_VALUES.length))
+    .optional(),
   situacao: z.enum(SITUACAO_VALUES).optional(),
   orgao: z.string().trim().min(1).max(200).optional(),
   municipio: z.string().trim().min(1).max(200).optional(),
@@ -72,6 +81,27 @@ const querySchema = z.object({
   pageSize: z.coerce.number().int().positive().max(100).default(20),
 })
 
+type MatchDaLista = { score: number; matchedByCode: boolean; matchedKeywords: string[]; dentroDeObraCompleta: boolean; monitoredItem: { id: string; name: string } }
+
+function ordemDaLista(agrupar: boolean, ordem: 'prazo' | 'recentes'): Prisma.TenderOrderByWithRelationInput[] {
+  return [
+    ...(agrupar ? [{ uf: 'asc' as const }, { orgao: 'asc' as const }] : []),
+    ...(ordem === 'prazo'
+      ? [{ encerramentoAt: { sort: 'asc' as const, nulls: 'last' as const } }, { aberturaAt: { sort: 'asc' as const, nulls: 'last' as const } }]
+      : []),
+    { publicadoAt: 'desc' as const },
+    { id: 'asc' as const },
+  ]
+}
+
+function gruposDaLista(where: Prisma.TenderWhereInput, companyId: string | undefined): Prisma.TenderWhereInput[] {
+  if (!companyId) return [where]
+  return [
+    { AND: [where, { tenderMatches: { some: { companyId, dentroDeObraCompleta: false } } }] },
+    { AND: [where, { tenderMatches: { some: { companyId }, none: { companyId, dentroDeObraCompleta: false } } }] },
+  ]
+}
+
 tendersRouter.get(
   '/',
   asyncHandler(async (req, res) => {
@@ -92,64 +122,63 @@ tendersRouter.get(
       pageSize,
     } = querySchema.parse(req.query)
     const companyId = somenteRelacionadas ? req.companyId! : undefined
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const where: Record<string, any> = {}
-    if (uf?.length) where.uf = uf.length === 1 ? uf[0] : { in: uf }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if (modalidade) where.modalidade = modalidade as any
-    // Só licitações abertas para concorrência (ver lib/licitacaoAberta.ts). O filtro
-    // `situacao` antigo foi aposentado: encerradas não aparecem mais nas buscas.
     void situacao
-    where.AND = [whereLicitacaoAberta()]
-    // Busca contra as colunas *_norm (minúsculas, sem acento) em vez das colunas
-    // originais — assim "uberlandia" encontra "Uberlândia" sem depender da
-    // extensão unaccent do Postgres (ver comentário no schema.prisma).
-    if (orgao) where.orgaoNorm = { contains: normalize(orgao) }
-    if (municipio) where.municipioNorm = { contains: normalize(municipio) }
-    if (numero) where.numeroControle = { contains: numero, mode: 'insensitive' }
+
+    const condicoes: Prisma.TenderWhereInput[] = [whereLicitacaoAberta()]
+    if (uf?.length) condicoes.push({ uf: uf.length === 1 ? uf[0] : { in: uf } })
+    if (modalidade?.length) condicoes.push({ modalidade: modalidade.length === 1 ? (modalidade[0] as ModalidadeEnum) : { in: modalidade as ModalidadeEnum[] } })
+    if (orgao) condicoes.push(whereDoOrgao(orgao))
+    if (municipio) condicoes.push({ municipioNorm: { contains: literalNoLike(normalize(municipio)) } })
+    if (numero) condicoes.push(whereDoNumeroDoEdital(numero))
     if (publicacaoInicio || publicacaoFim) {
-      where.publicadoAt = {
-        ...(publicacaoInicio ? { gte: publicacaoInicio } : {}),
-        ...(publicacaoFim ? { lte: publicacaoFim } : {}),
-      }
+      condicoes.push({
+        publicadoAt: {
+          ...(publicacaoInicio ? { gte: publicacaoInicio } : {}),
+          ...(publicacaoFim ? { lte: publicacaoFim } : {}),
+        },
+      })
     }
+    if (companyId) condicoes.push({ tenderMatches: { some: { companyId } } })
+    const where: Prisma.TenderWhereInput = { AND: condicoes }
+
+    const orderBy = ordemDaLista(agrupar, ordem)
+    const grupos = gruposDaLista(where, companyId)
+    const select = companyId
+      ? { ...TENDER_PUBLICO, tenderMatches: { where: { companyId }, include: { monitoredItem: { select: { id: true, name: true } } } } }
+      : TENDER_PUBLICO
+
+    let rows: Record<string, unknown>[]
+    let total: number
+    let totais: { comPrazoConfirmado: number; semDataInformada: number } | undefined
+    let buscaLimitada = false
+
     if (q) {
-      const qNorm = normalize(q)
-      where.OR = [{ objetoNorm: { contains: qNorm } }, { objetoResumidoNorm: { contains: qNorm } }]
+      const buscas = await Promise.all(grupos.map((g) => idsQueCitamOTexto(q, g, orderBy)))
+      const ids = buscas.flatMap((b) => b.ids)
+      buscaLimitada = buscas.some((b) => b.limitada)
+      total = ids.length
+      const idsDaPagina = ids.slice((page - 1) * pageSize, page * pageSize)
+      const encontradas = await prisma.tender.findMany({ where: { id: { in: idsDaPagina } }, select })
+      const porId = new Map(encontradas.map((t) => [t.id, t as Record<string, unknown>]))
+      rows = idsDaPagina.map((id) => porId.get(id)).filter((t): t is Record<string, unknown> => t !== undefined)
+    } else {
+      const [totaisDosGrupos, comPrazoConfirmado] = await Promise.all([
+        Promise.all(grupos.map((g) => prisma.tender.count({ where: g }))),
+        prisma.tender.count({ where: { AND: [where, whereLicitacaoComPrazoConfirmado()] } }),
+      ])
+      total = totaisDosGrupos.reduce((soma, n) => soma + n, 0)
+      totais = { comPrazoConfirmado, semDataInformada: Math.max(0, total - comPrazoConfirmado) }
+      const fatias = fatiasDaPagina(totaisDosGrupos, page, pageSize)
+      const partes = await Promise.all(
+        fatias.map((f) => prisma.tender.findMany({ where: grupos[f.grupo], orderBy, skip: f.skip, take: f.take, select }))
+      )
+      rows = partes.flat() as Record<string, unknown>[]
     }
-    if (companyId) where.tenderMatches = { some: { companyId } }
 
-    const [rows, total] = await Promise.all([
-      prisma.tender.findMany({
-        where,
-        orderBy: [
-          ...(agrupar ? [{ uf: 'asc' as const }, { orgao: 'asc' as const }] : []),
-          ...(ordem === 'prazo'
-            ? [{ encerramentoAt: { sort: 'asc' as const, nulls: 'last' as const } }, { aberturaAt: { sort: 'asc' as const, nulls: 'last' as const } }]
-            : []),
-          { publicadoAt: 'desc' as const },
-        ],
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-        select: companyId
-          ? { ...TENDER_PUBLICO, tenderMatches: { where: { companyId }, include: { monitoredItem: { select: { id: true, name: true } } } } }
-          : TENDER_PUBLICO,
-      }),
-      prisma.tender.count({ where }),
-    ])
-
-    // Classifica a relevância do match (maior score entre os itens que bateram
-    // com esta licitação) pra dar ao usuário um sinal rápido de prioridade.
     const items = rows.map((t) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const matches = (t as any).tenderMatches as
-        | { score: number; matchedByCode: boolean; matchedKeywords: string[]; dentroDeObraCompleta: boolean; monitoredItem: { id: string; name: string } }[]
-        | undefined
+      const matches = t.tenderMatches as MatchDaLista[] | undefined
       if (!matches) return t
 
-      // `score` é a nota de aderência (nota/100). "Exata" continua sendo o match
-      // por código CATMAT/CATSER, que antes se reconhecia por score = 1.
       const bestScore = matches.reduce((max, m) => Math.max(max, m.score), 0)
       const dentroDeObraCompleta = matches.every((m) => m.dentroDeObraCompleta)
       const classificacao = matches.some((m) => m.matchedByCode) ? 'exata' : !dentroDeObraCompleta && bestScore >= 0.7 ? 'alta' : 'media'
@@ -167,7 +196,15 @@ tendersRouter.get(
       }
     })
 
-    res.json({ items, total, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)) })
+    res.json({
+      items,
+      total,
+      page,
+      pageSize,
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+      ...(totais ? { totais } : {}),
+      ...(buscaLimitada ? { buscaLimitada } : {}),
+    })
   })
 )
 

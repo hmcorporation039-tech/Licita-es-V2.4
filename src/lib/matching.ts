@@ -26,36 +26,52 @@ export const CODE_MATCH_SCORE = 1
 const PALAVRAS_DE_LIGACAO = new Set(['de', 'da', 'do', 'das', 'dos', 'e', 'em', 'para', 'com', 'por', 'a', 'o', 'as', 'os', 'ou', 'no', 'na', 'nos', 'nas'])
 const TAMANHO_MINIMO_DA_VARIACAO = 3
 
+const TAMANHO_MINIMO_DO_RADICAL_EM_L = 4
+
+function pluralDoRadicalEmL(base: string): string | null {
+  if (base.length < TAMANHO_MINIMO_DO_RADICAL_EM_L) return null
+  if (/il$/.test(base)) return `${base.slice(0, -2)}is`
+  if (/[aeou]l$/.test(base)) return `${base.slice(0, -1)}is`
+  return null
+}
+
+export function temPalavraSignificativa(keyword: string): boolean {
+  return normalize(keyword).split(/\s+/).some((palavra) => palavra !== '' && !PALAVRAS_DE_LIGACAO.has(palavra))
+}
+
 export function variacoesDaPalavra(palavra: string): string[] {
   if (palavra.length < TAMANHO_MINIMO_DA_VARIACAO || /\d/.test(palavra) || PALAVRAS_DE_LIGACAO.has(palavra)) return [palavra]
   const formas = new Set([palavra])
   const somar = (forma: string) => {
     if (forma.length >= TAMANHO_MINIMO_DA_VARIACAO) formas.add(forma)
   }
+  const pluralEmLComRadicalLongo = palavra.length > TAMANHO_MINIMO_DO_RADICAL_EM_L
   if (/(oes|aes)$/.test(palavra)) somar(`${palavra.slice(0, -3)}ao`)
-  if (/ais$/.test(palavra)) somar(`${palavra.slice(0, -3)}al`)
-  if (/eis$/.test(palavra)) {
-    somar(`${palavra.slice(0, -3)}el`)
-    somar(`${palavra.slice(0, -3)}il`)
+  if (pluralEmLComRadicalLongo) {
+    if (/ais$/.test(palavra)) somar(`${palavra.slice(0, -3)}al`)
+    if (/eis$/.test(palavra)) {
+      somar(`${palavra.slice(0, -3)}el`)
+      somar(`${palavra.slice(0, -3)}il`)
+    }
+    if (/ois$/.test(palavra)) somar(`${palavra.slice(0, -3)}ol`)
+    if (/uis$/.test(palavra)) somar(`${palavra.slice(0, -3)}ul`)
   }
-  if (/ois$/.test(palavra)) somar(`${palavra.slice(0, -3)}ol`)
-  if (/uis$/.test(palavra)) somar(`${palavra.slice(0, -3)}ul`)
   if (/ns$/.test(palavra)) somar(`${palavra.slice(0, -2)}m`)
   if (/[rsz]es$/.test(palavra)) somar(palavra.slice(0, -2))
   if (/[^s]s$/.test(palavra)) somar(palavra.slice(0, -1))
   for (const base of [...formas]) {
     if (/ao$/.test(base)) {
-      somar(`${base.slice(0, -2)}oes`)
+      if (base.length > TAMANHO_MINIMO_DA_VARIACAO) somar(`${base.slice(0, -2)}oes`)
       somar(`${base.slice(0, -2)}aes`)
       somar(`${base}s`)
-    } else if (/al$/.test(base)) somar(`${base.slice(0, -2)}ais`)
-    else if (/el$/.test(base)) somar(`${base.slice(0, -2)}eis`)
-    else if (/ol$/.test(base)) somar(`${base.slice(0, -2)}ois`)
-    else if (/ul$/.test(base)) somar(`${base.slice(0, -2)}uis`)
-    else if (/il$/.test(base)) somar(`${base.slice(0, -2)}is`)
-    else if (/m$/.test(base)) somar(`${base.slice(0, -1)}ns`)
+    } else if (/l$/.test(base)) {
+      const plural = pluralDoRadicalEmL(base)
+      if (plural) somar(plural)
+    } else if (/m$/.test(base)) somar(`${base.slice(0, -1)}ns`)
     else if (/[rz]$/.test(base)) somar(`${base}es`)
-    else if (!/s$/.test(base)) somar(`${base}s`)
+    else if (/s$/.test(base)) {
+      if (base.length === TAMANHO_MINIMO_DA_VARIACAO) somar(`${base}es`)
+    } else somar(`${base}s`)
   }
   return [...formas].sort((a, b) => b.length - a.length)
 }
@@ -64,14 +80,42 @@ function escaparParaRegex(texto: string): string {
   return texto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
-export function buildKeywordRegex(keyword: string): RegExp | null {
+function partesDaPalavraChave(keyword: string): string[] | null {
   const palavras = normalize(keyword).trim().split(/\s+/).filter(Boolean)
   if (palavras.length === 0) return null
-  const partes = palavras.map((palavra) => {
+  return palavras.map((palavra) => {
     const formas = variacoesDaPalavra(palavra).map(escaparParaRegex)
     return formas.length === 1 ? formas[0] : `(?:${formas.join('|')})`
   })
-  return new RegExp(`\\b${partes.join('\\s+')}\\b`)
+}
+
+export function buildKeywordRegex(keyword: string): RegExp | null {
+  const partes = partesDaPalavraChave(keyword)
+  return partes ? new RegExp(`\\b${partes.join('\\s+')}\\b`) : null
+}
+
+const CARACTERE_DE_PALAVRA = /[A-Za-z0-9_]/
+const ESPACO_DO_JAVASCRIPT_NO_POSTGRES = '[[:space:]\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]+'
+
+function bordaAntesNoPostgres(forma: string): string {
+  return CARACTERE_DE_PALAVRA.test(forma[0]) ? '(?<![A-Za-z0-9_])' : '(?<=[A-Za-z0-9_])'
+}
+
+function bordaDepoisNoPostgres(forma: string): string {
+  return CARACTERE_DE_PALAVRA.test(forma[forma.length - 1]) ? '(?![A-Za-z0-9_])' : '(?=[A-Za-z0-9_])'
+}
+
+export function regexDaPalavraNoPostgres(keyword: string): string | null {
+  const palavras = normalize(keyword).trim().split(/\s+/).filter(Boolean)
+  if (palavras.length === 0) return null
+  const ultima = palavras.length - 1
+  const partes = palavras.map((palavra, i) => {
+    const formas = variacoesDaPalavra(palavra).map(
+      (forma) => `${i === 0 ? bordaAntesNoPostgres(forma) : ''}${escaparParaRegex(forma)}${i === ultima ? bordaDepoisNoPostgres(forma) : ''}`
+    )
+    return formas.length === 1 ? formas[0] : `(?:${formas.join('|')})`
+  })
+  return partes.join(ESPACO_DO_JAVASCRIPT_NO_POSTGRES)
 }
 
 export function termosDoPreFiltro(keyword: string): string[] {
@@ -133,14 +177,32 @@ export function matchedKeywords(
 // mas funciona como um portão (igual UF/modalidade): se configurado, o órgão
 // da licitação precisa bater com algum dos filtros pra ela nem entrar na
 // contagem de score.
+const ORGAO_DO_EXECUTIVO_MUNICIPAL = /^(?:prefeitura(?: municipal)?|municipio)(?: (de|do|da|dos|das))? (.+)$/
+const CAMARA_MUNICIPAL = /^camara(?: municipal)?(?: (de|do|da|dos|das))? (.+)$/
+const SO_PREFEITURA = /^prefeitura(?: municipal)?$/
+
+export function variantesDoOrgao(orgao: string): string[] {
+  const texto = normalize(orgao).replace(/\s+/g, ' ')
+  if (!texto) return []
+  if (SO_PREFEITURA.test(texto)) return [texto, 'municipio']
+  const executivo = texto.match(ORGAO_DO_EXECUTIVO_MUNICIPAL)
+  if (executivo) {
+    const [, preposicao = 'de', cidade] = executivo
+    return [...new Set([texto, `municipio ${preposicao} ${cidade}`, `prefeitura municipal ${preposicao} ${cidade}`, `prefeitura ${preposicao} ${cidade}`])]
+  }
+  const camara = texto.match(CAMARA_MUNICIPAL)
+  if (camara) {
+    const [, preposicao = 'de', cidade] = camara
+    return [...new Set([texto, `camara municipal ${preposicao} ${cidade}`, `camara ${preposicao} ${cidade}`])]
+  }
+  return [texto]
+}
+
 export function orgaoMatches(orgaos: string[], tenderOrgao: string | null): boolean {
   if (orgaos.length === 0) return true
   if (!tenderOrgao) return false
   const orgaoNorm = normalize(tenderOrgao)
-  return orgaos.some((o) => {
-    const re = buildKeywordRegex(o)
-    return re ? re.test(orgaoNorm) : false
-  })
+  return orgaos.some((o) => variantesDoOrgao(o).some((variante) => buildKeywordRegex(variante)?.test(orgaoNorm) ?? false))
 }
 
 // Filtro por código UASG (unidade compradora) — só existe no sistema legado
@@ -178,7 +240,7 @@ export interface TenderGateInput {
 }
 
 export function passaNosPortoes(gates: Gates, tender: TenderGateInput): boolean {
-  if (gates.ufs.length > 0 && (!tender.uf || !gates.ufs.includes(tender.uf))) return false
+  if (gates.raioKm == null && gates.ufs.length > 0 && (!tender.uf || !gates.ufs.includes(tender.uf))) return false
   if (gates.valorMin != null && tender.valorEstimado != null && gates.valorMin > tender.valorEstimado) return false
   if (gates.valorMax != null && tender.valorEstimado != null && gates.valorMax < tender.valorEstimado) return false
   if (gates.modalidades.length > 0 && !gates.modalidades.includes(tender.modalidade)) return false

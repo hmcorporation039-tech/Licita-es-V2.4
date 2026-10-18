@@ -157,12 +157,28 @@ rodar('Cadastro público e recuperação de senha', () => {
       expect(desconhecido.body).toEqual(conhecido.body) // não revela se o e-mail tem conta
     })
 
-    it('confirma com o código certo, uma vez só; reusar falha; depois o login funciona', async () => {
+    it('confirma com o código certo, uma vez só; reusar falha; depois o login funciona; os 7 dias contam da confirmação', async () => {
+      await prisma.user.update({ where: { email: email('fulano') }, data: { accessExpiresAt: new Date(Date.now() + 4 * 86_400_000) } })
       expect((await http('POST', '/api/auth/verify-email', { email: email('fulano'), codigo: codigoInicial })).status).toBe(200)
+      const confirmado = await prisma.user.findUnique({ where: { email: email('fulano') } })
+      const dias = (confirmado.accessExpiresAt.getTime() - Date.now()) / 86_400_000
+      expect(dias).toBeGreaterThan(6.9)
+      expect(dias).toBeLessThan(7.1)
       expect((await http('POST', '/api/auth/verify-email', { email: email('fulano'), codigo: codigoInicial })).status).toBe(400)
       const login = await http('POST', '/api/auth/login', { email: email('fulano'), password: SENHA })
       expect(login.status).toBe(200)
       expect(login.body.token).toBeTruthy()
+    })
+
+    it('o teste recomeça na confirmação só para o plano TESTE com prazo, e nunca encurta um prazo maior', async () => {
+      const { fimDoTesteNaConfirmacao } = await import('../../src/services/contaService')
+      const agora = new Date('2026-10-17T12:00:00Z')
+      const doCadastro = new Date('2026-10-20T12:00:00Z')
+      expect(fimDoTesteNaConfirmacao(doCadastro, 'TESTE', agora, 7)?.toISOString()).toBe('2026-10-24T12:00:00.000Z')
+      expect(fimDoTesteNaConfirmacao(null, 'TESTE', agora, 7)).toBeNull()
+      expect(fimDoTesteNaConfirmacao(doCadastro, 'ESSENCIAL', agora, 7)).toBe(doCadastro)
+      const prazoMaior = new Date('2026-12-31T12:00:00Z')
+      expect(fimDoTesteNaConfirmacao(prazoMaior, 'TESTE', agora, 7)).toBe(prazoMaior)
     })
 
     it('e-mail já cadastrado: a tela é AVISADA (409), nenhuma conta nova, e o dono também recebe aviso por e-mail', async () => {
@@ -375,6 +391,41 @@ rodar('Cadastro público e recuperação de senha', () => {
       expect(r.status).toBe(403)
       expect(r.body.code).toBe('ACESSO_EXPIRADO')
       await prisma.user.update({ where: { email: email('fulano') }, data: { accessExpiresAt: null } })
+    })
+
+    it('o prazo do teste aparece no uso do plano; vencido, a mensagem orienta o cliente e a sessão aberta continua bloqueada', async () => {
+      const ate = new Date(Date.now() + 3 * 86_400_000)
+      await prisma.user.update({ where: { email: email('fulano') }, data: { accessExpiresAt: ate } })
+      const token = (await http('POST', '/api/auth/login', { email: email('fulano'), password: SENHA })).body.token
+      const uso = await http('GET', '/api/company/usage', undefined, token)
+      expect(uso.status).toBe(200)
+      expect(uso.body.acessoAte).toBe(ate.toISOString())
+      expect(uso.body.plano.codigo).toBe('TESTE')
+
+      const vencidoEm = new Date('2026-10-10T15:00:00Z')
+      await prisma.user.update({ where: { email: email('fulano') }, data: { accessExpiresAt: vencidoEm } })
+      const login = await http('POST', '/api/auth/login', { email: email('fulano'), password: SENHA })
+      expect(login.status).toBe(403)
+      expect(login.body).toMatchObject({ code: 'ACESSO_EXPIRADO', emTeste: true, acessoAte: vencidoEm.toISOString() })
+      expect(login.body.error).toContain('Seu teste grátis terminou em 10/10/2026')
+      expect(login.body.error).not.toMatch(/administrador/i)
+      expect(login.body.token).toBeUndefined()
+
+      const sessaoAberta = await http('GET', '/api/auth/me', undefined, token)
+      expect(sessaoAberta.status).toBe(403)
+      expect(sessaoAberta.body.code).toBe('ACESSO_EXPIRADO')
+      expect((await http('GET', '/api/conta/meus-dados', undefined, token)).status).toBe(403)
+
+      expect((await http('POST', '/api/auth/acesso-encerrado/pedido', { email: email('fulano'), password: 'errada-123456', pedido: 'exportar' })).status).toBe(401)
+      const pedido = await http('POST', '/api/auth/acesso-encerrado/pedido', { email: email('fulano'), password: SENHA, pedido: 'exportar' })
+      expect(pedido.status).toBe(202)
+      expect(pedido.body.mensagem).toMatch(/cópia dos seus dados/)
+      expect(pedido.body.token).toBeUndefined()
+      const usuario = await prisma.user.findUniqueOrThrow({ where: { email: email('fulano') } })
+      expect(await prisma.auditLog.count({ where: { action: 'ACESSO_ENCERRADO_PEDIDO', entityId: usuario.id } })).toBe(1)
+
+      await prisma.user.update({ where: { email: email('fulano') }, data: { accessExpiresAt: null } })
+      expect((await http('POST', '/api/auth/acesso-encerrado/pedido', { email: email('fulano'), password: SENHA, pedido: 'continuar' })).status).toBe(409)
     })
   })
 

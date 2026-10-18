@@ -208,6 +208,37 @@ rodar('API com banco real', () => {
       expect((await http('DELETE', `/api/company-documents/${docA}/arquivo`, 'a')).status).toBe(404)
     })
 
+    it('cadastra documento e arquivo de uma vez; arquivo inválido não deixa documento sem arquivo', async () => {
+      const criar = (corpo: Buffer, metadados: unknown) =>
+        fetch(`${base}/api/company-documents/com-arquivo`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/octet-stream',
+            'X-Nome-Arquivo': encodeURIComponent('Balanço.pdf'),
+            ...(metadados !== undefined ? { 'X-Documento': encodeURIComponent(JSON.stringify(metadados)) } : {}),
+            Authorization: `Bearer ${tokens.a}`,
+          },
+          body: corpo,
+        })
+      const contar = () => prisma.companyDocument.count({ where: { companyId: ids.empresaa } })
+      const antes = await contar()
+
+      expect((await criar(Buffer.from('<html>nao sou pdf</html>'), { tipo: 'balanco', nome: 'Balanço patrimonial' })).status).toBe(415)
+      expect((await criar(Buffer.from('<html>nao sou pdf</html>'), { tipo: 'balanco', nome: 'Balanço patrimonial' })).status).toBe(415)
+      expect((await criar(Buffer.from('%PDF-1.4 x'), undefined)).status).toBe(400)
+      expect((await criar(Buffer.from('%PDF-1.4 x'), { tipo: 'balanco' })).status).toBe(400)
+      expect(await contar()).toBe(antes)
+
+      const ok = await criar(Buffer.from('%PDF-1.4 balanco %%EOF'), { tipo: 'balanco', nome: 'Balanço patrimonial', dataValidade: '2027-04-30' })
+      expect(ok.status).toBe(201)
+      const criado = (await ok.json()) as { id: string; nome: string; tipo: string; dataValidade: string; arquivo: { nomeArquivo: string; tamanho: number } }
+      expect(criado).toMatchObject({ nome: 'Balanço patrimonial', tipo: 'balanco', arquivo: { nomeArquivo: 'Balanco.pdf' } })
+      expect(criado.dataValidade.slice(0, 10)).toBe('2027-04-30')
+      expect(await contar()).toBe(antes + 1)
+      expect((await fetch(`${base}/api/company-documents/${criado.id}/arquivo`, { headers: { Authorization: `Bearer ${tokens.b}` } })).status).toBe(403)
+      expect((await http('DELETE', `/api/company-documents/${criado.id}`, 'a')).status).toBe(204)
+    })
+
     it('empresa B não altera nem apaga o documento de A pelo id', async () => {
       expect((await http('PATCH', `/api/company-documents/${docA}`, 'b', { nome: 'invadido' })).status).toBe(403)
       expect((await http('DELETE', `/api/company-documents/${docA}`, 'b')).status).toBe(403)

@@ -18,6 +18,7 @@ export interface ResumoDeCotas {
   plano: { codigo: string; nome: string }
   renovaEm?: string
   ilimitado?: boolean
+  acessoAte?: string | null
   recursos: RecursoDoPlano[]
 }
 

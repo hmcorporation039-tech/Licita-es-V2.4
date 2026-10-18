@@ -101,6 +101,15 @@ function distribuirErro(err: unknown, padrao: string): { campos: ErrosDosCampos;
   return { campos, geral }
 }
 
+function raioPreenchido(raioKm: string): boolean {
+  return Number(raioKm) > 0
+}
+
+function ufsDoFormulario(ufs: string, raioKm: string): string[] {
+  if (raioPreenchido(raioKm)) return []
+  return ufs.split(',').map((u) => u.trim().toUpperCase()).filter(Boolean)
+}
+
 function semCampo(erros: ErrosDosCampos, campo: string): ErrosDosCampos {
   const resto = { ...erros }
   delete resto[campo]
@@ -161,6 +170,7 @@ function FormularioDoItem({
   const [raioKm, setRaioKm] = campos.raioKm
   const [origemMunicipio, setOrigemMunicipio] = campos.origemMunicipio
   const [origemUf, setOrigemUf] = campos.origemUf
+  const raioAtivo = raioPreenchido(raioKm)
 
   function aoMudar(campo: string, setter: (valor: string) => void, transformar: (valor: string) => string = (v) => v) {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -203,8 +213,17 @@ function FormularioDoItem({
         </Field>
       </div>
 
-      <Field label="Estados (UF)" hint="Siglas separadas por vírgula, ex.: DF, GO. Deixe vazio para buscar no Brasil todo." error={erros.ufs} className="sm:col-span-2">
-        <Input placeholder="DF, SP" value={ufs} onChange={aoMudar('ufs', setUfs)} />
+      <Field
+        label="Estados (UF)"
+        hint={
+          raioAtivo
+            ? 'Desligado enquanto o raio de distância estiver preenchido: o raio já define onde buscar, inclusive em outros estados.'
+            : 'Siglas separadas por vírgula, ex.: DF, GO. Deixe vazio para buscar no Brasil todo.'
+        }
+        error={erros.ufs}
+        className="sm:col-span-2"
+      >
+        <Input placeholder="DF, SP" value={raioAtivo ? '' : ufs} disabled={raioAtivo} onChange={aoMudar('ufs', setUfs)} />
       </Field>
       <Field
         label="Valor total estimado da licitação — mínimo (R$)"
@@ -221,7 +240,12 @@ function FormularioDoItem({
         <Input inputMode="decimal" className="font-mono" placeholder="500.000,00" value={valorMax} onChange={aoMudar('valorMax', setValorMax)} />
       </Field>
 
-      <Field label="Órgãos" hint="Opcional. Separados por vírgula. Ex.: Prefeitura de Uberlândia, Universidade Federal." error={erros.orgaos} className="sm:col-span-2">
+      <Field
+        label="Órgãos"
+        hint="Opcional. Separados por vírgula. Ex.: Prefeitura de Uberlândia (também acha Município de Uberlândia, como o PNCP grava), Universidade Federal."
+        error={erros.orgaos}
+        className="sm:col-span-2"
+      >
         <Input placeholder="Prefeitura de…" value={orgaos} onChange={aoMudar('orgaos', setOrgaos)} />
       </Field>
 
@@ -236,7 +260,7 @@ function FormularioDoItem({
 
       <Grupo
         legenda="Filtro por raio de distância"
-        dica="Opcional, útil para serviço presencial. Se preenchido, tem prioridade sobre a lista de UFs."
+        dica="Opcional, útil para serviço presencial. Se preenchido, substitui a lista de UFs."
       >
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-[8rem_minmax(0,1fr)_6rem]">
           <Field label="Raio (km)" error={erros.raioKm}>
@@ -371,7 +395,7 @@ export default function ItemsPage() {
         modalidades,
         orgaos: orgaos.split(',').map((o) => o.trim()).filter(Boolean),
         uasgCodes: uasgSelected.map((u) => u.codigoUasg),
-        ufs: ufs.split(',').map((u) => u.trim().toUpperCase()).filter(Boolean),
+        ufs: ufsDoFormulario(ufs, raioKm),
         valorMin: valorDigitado(valorMin) ?? undefined,
         valorMax: valorDigitado(valorMax) ?? undefined,
         raioKm: raioKm ? Number(raioKm) : undefined,
@@ -452,7 +476,7 @@ export default function ItemsPage() {
         modalidades: editModalidades,
         orgaos: editOrgaos.split(',').map((o) => o.trim()).filter(Boolean),
         uasgCodes: editUasgSelected.map((u) => u.codigoUasg),
-        ufs: editUfs.split(',').map((u) => u.trim().toUpperCase()).filter(Boolean),
+        ufs: ufsDoFormulario(editUfs, editRaioKm),
         valorMin: valorDigitado(editValorMin),
         valorMax: valorDigitado(editValorMax),
         raioKm: editRaioKm ? Number(editRaioKm) : null,

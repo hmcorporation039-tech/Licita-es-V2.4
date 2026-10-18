@@ -213,7 +213,19 @@ function objetoClaro(objeto: string, cessao: boolean | undefined, processo: stri
   return `${processo}: ${objeto}`
 }
 
+export const MAX_TAMANHO_DO_DETALHE_INFRAERO = 1024 * 1024
+export const MAX_ETIQUETAS_DO_DETALHE_INFRAERO = 5000
+
+function quantidadeDeEtiquetas(html: string): number {
+  let total = 0
+  for (let i = html.indexOf('<'); i !== -1 && total <= MAX_ETIQUETAS_DO_DETALHE_INFRAERO; i = html.indexOf('<', i + 1)) total++
+  return total
+}
+
 export function parseInfraeroDetalhe(html: string, idLicitacao: number): LeituraDoDetalheInfraero {
+  if (html.length > MAX_TAMANHO_DO_DETALHE_INFRAERO || quantidadeDeEtiquetas(html) > MAX_ETIQUETAS_DO_DETALHE_INFRAERO) {
+    throw new Error(`Infraero: detalhe ${idLicitacao} fora do formato esperado (página grande demais)`)
+  }
   const $ = cheerio.load(html)
   const campos = camposDoDetalhe($)
 

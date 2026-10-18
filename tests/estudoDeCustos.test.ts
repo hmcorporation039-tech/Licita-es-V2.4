@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { DadosDoEstudo, FATOR_ESTRADA, ItemDaLicitacao, calcularEstudo, dadosIniciais, lerPrazoEmDias } from '../src/lib/estudoDeCustos'
+import { DadosDoEstudo, FATOR_ESTRADA, ItemDaLicitacao, calcularEstudo, dadosIniciais, lerPrazoEmDias, precoMinimoComMargem } from '../src/lib/estudoDeCustos'
+import { limitesDoAlvo } from '../src/lib/bela/copiloto'
 import { estatisticasDePrecos, estatisticasPorUnidade, normalizarRegistroDePreco, normalizarUnidade } from '../src/lib/precosDeMercado'
 import { limparCachePrecos, pesquisarPrecos, PrecosIndisponiveisError } from '../src/services/pesquisaDePrecosService'
 import { gerarPdfDoEstudo } from '../src/services/estudoPdf'
@@ -128,6 +129,25 @@ describe('calcularEstudo: preço mínimo por item e avisos', () => {
     expect(r.itens[1].precoMinimoUnit).toBe(3.59)
     const somaDosMinimos = 3 * r.itens[0].precoMinimoUnit! + 7 * r.itens[1].precoMinimoUnit!
     expect(somaDosMinimos).toBeGreaterThanOrEqual(r.receitaMinima!)
+  })
+
+  it('o "seu mínimo" do pregão é o mesmo mínimo unitário do estudo, centavo a centavo', () => {
+    const its = [item('a', 3), item('b', 7), item('c', 2)]
+    const d = dados({
+      itens: { a: { custoUnit: 10, precoVendaUnit: null }, b: { custoUnit: 3.33, precoVendaUnit: null }, c: { custoUnit: 401.99, precoVendaUnit: null } },
+      outrosCustos: [{ descricao: 'frete', valor: 37.41 }],
+      impostosPct: 6.5,
+      margemDesejadaPct: 7,
+    })
+    const r = calcularEstudo(its, d, ctx)
+    const rateio = 1 + (r.custoDeslocamento + r.custoOutros) / r.custoItens
+    for (const [i, id] of (['a', 'b', 'c'] as const).entries()) {
+      const doPregao = limitesDoAlvo({ custoComRateio: d.itens[id].custoUnit! * rateio, impostosPct: d.impostosPct, margemDesejadaPct: d.margemDesejadaPct }).minimoComMargem
+      expect(doPregao).toBe(r.itens[i].precoMinimoUnit)
+    }
+    expect(limitesDoAlvo({ custoComRateio: r.custoItens + r.custoDeslocamento + r.custoOutros, impostosPct: 6.5, margemDesejadaPct: 7 }).minimoComMargem).toBe(r.receitaMinima)
+    expect(precoMinimoComMargem(3.33, 0, 7)).toBe(3.59)
+    expect(limitesDoAlvo({ custoComRateio: 3.33, impostosPct: 0, margemDesejadaPct: 7 }).minimoComMargem).toBe(3.59)
   })
 
   it('valor exato não sobe um centavo à toa', () => {

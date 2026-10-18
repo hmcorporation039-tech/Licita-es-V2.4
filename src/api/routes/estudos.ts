@@ -194,6 +194,7 @@ function montarResposta(ctx: Contexto, dados: DadosDoEstudo, salvoEm: Date | nul
       valorEstimado: num(tender.valorEstimado),
       encerramentoAt: tender.encerramentoAt,
       aberturaAt: tender.aberturaAt,
+      fonte: tender.fonte,
       modalidade: tender.modalidade,
       linkEdital: tender.linkEdital,
     },

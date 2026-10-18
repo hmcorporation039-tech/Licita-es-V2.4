@@ -14,6 +14,7 @@ import {
   tenderContentHash,
 } from '../lib/tenderContentHash'
 import { retencaoApagariaAoChegar } from '../lib/retencao'
+import { anoDoProcesso } from '../lib/anoDoProcesso'
 
 const prisma = new PrismaClient()
 
@@ -81,6 +82,7 @@ function dadosPersistidos(tender: NormalizedTender) {
     publicadoAt: tender.publicadoAt,
     linkEdital: tender.linkEdital,
     numeroControle: tender.numeroControle,
+    anoDoProcesso: anoDoProcesso(tender.fonte, tender.numeroControle),
     rawJson: tender.rawJson as Prisma.InputJsonValue,
     contentHash: tenderContentHash(tender),
   }

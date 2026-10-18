@@ -137,7 +137,7 @@ export default function DashboardPage() {
                     {data.documentosVencendoEmBreve.map((d) => (
                       <li key={d.id} className="flex items-start justify-between gap-4 px-4 py-2.5">
                         <span className="min-w-0 break-words text-sm font-medium text-ink">{d.nome}</span>
-                        <Prazo data={d.dataValidade} semHora className="shrink-0 items-end text-right" />
+                        <Prazo data={d.dataValidade} semHora rotuloDoPassado="Vencido" className="shrink-0 items-end text-right" />
                       </li>
                     ))}
                   </ul>

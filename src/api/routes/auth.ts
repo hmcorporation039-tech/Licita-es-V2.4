@@ -18,7 +18,7 @@ import { requireAuth } from '../authMiddleware'
 import { registrarAuditoria } from '../../services/auditService'
 import { loginLimiter, loginPorContaLimiter, loginPorContaGlobalLimiter, codigoPorContaLimiter, changePasswordLimiter, cadastroLimiter, recuperacaoLimiter } from '../rateLimit'
 import { captchaValido, emailDescartavel, maxCadastrosPorHora } from '../../lib/protecaoCadastro'
-import { alertarFalha } from '../../services/alertaOperacional'
+import { alertarFalha, avisarAdministrador } from '../../services/alertaOperacional'
 import { cnpjValido, cpfValido } from '../../lib/documentos'
 import {
   cadastrar,
@@ -29,6 +29,13 @@ import {
   trialDias,
 } from '../../services/contaService'
 import { interesseSchema, montarOrigem, utmSchema } from '../../lib/origemDoCadastro'
+import {
+  PLANO_DE_TESTE,
+  acessoExpirou,
+  avisoDoPedidoDeAcessoEncerrado,
+  detalhesDoAcessoEncerrado,
+  mensagemDeAcessoEncerrado,
+} from '../../lib/acessoEncerrado'
 import { criarItemDoCadastro } from './monitoredItems'
 
 export const authRouter = Router()
@@ -269,13 +276,18 @@ authRouter.post(
         code: 'EMAIL_NAO_VERIFICADO',
       })
     }
-    if (user.accessExpiresAt && user.accessExpiresAt.getTime() < Date.now()) {
+    if (user.accessExpiresAt && acessoExpirou(user.accessExpiresAt)) {
       await registrarAuditoria(
         req,
         { action: 'LOGIN_FALHA', entityType: 'usuario', entityId: user.id, companyId: user.companyId, metadata: { motivo: 'acesso-expirado' } },
         { userId: user.id, email: user.email }
       )
-      throw new ApiError(403, 'O acesso desta conta expirou — fale com o administrador', { code: 'ACESSO_EXPIRADO' })
+      const empresa = await prisma.company.findUnique({ where: { id: user.companyId }, select: { planCode: true } })
+      throw new ApiError(
+        403,
+        mensagemDeAcessoEncerrado(user.accessExpiresAt, empresa?.planCode === PLANO_DE_TESTE),
+        detalhesDoAcessoEncerrado(user.accessExpiresAt, empresa?.planCode)
+      )
     }
 
     const token = signSessionToken(user.id, user.tokenVersion)
@@ -288,6 +300,42 @@ authRouter.post(
       token,
       user: { id: user.id, email: user.email, name: user.name, isAdmin: user.isAdmin },
     })
+  })
+)
+
+const pedidoDeAcessoEncerradoSchema = loginSchema.extend({
+  pedido: z.enum(['continuar', 'exportar']),
+})
+
+authRouter.post(
+  '/acesso-encerrado/pedido',
+  loginLimiter,
+  loginPorContaLimiter,
+  loginPorContaGlobalLimiter,
+  asyncHandler(async (req, res) => {
+    const parsed = pedidoDeAcessoEncerradoSchema.parse(req.body)
+    const email = normalizeEmail(parsed.email)
+    const user = await prisma.user.findUnique({ where: { email }, include: { company: { select: { name: true, planCode: true } } } })
+    const senhaConfere = await verifyPasswordConstantTime(parsed.password, user && user.active ? user.passwordHash : null)
+    if (!user || !user.active || !senhaConfere) throw new ApiError(401, 'E-mail ou senha inválidos')
+    if (!user.accessExpiresAt || !acessoExpirou(user.accessExpiresAt)) {
+      throw new ApiError(409, 'O acesso desta conta está ativo. Entre normalmente para usar o Monitor ou baixar seus dados em Conta.')
+    }
+
+    const aviso = avisoDoPedidoDeAcessoEncerrado(parsed.pedido, {
+      email: user.email,
+      empresa: user.company?.name ?? null,
+      companyId: user.companyId,
+      planCode: user.company?.planCode ?? null,
+      acessoAte: user.accessExpiresAt,
+    })
+    await registrarAuditoria(
+      req,
+      { action: 'ACESSO_ENCERRADO_PEDIDO', entityType: 'usuario', entityId: user.id, companyId: user.companyId, metadata: { pedido: parsed.pedido } },
+      { userId: user.id, email: user.email }
+    )
+    void avisarAdministrador(`acesso-encerrado|${user.id}|${parsed.pedido}`, aviso.assunto, aviso.texto)
+    res.status(202).json({ mensagem: aviso.resposta })
   })
 )
 

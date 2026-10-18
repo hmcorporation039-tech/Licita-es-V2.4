@@ -6,8 +6,9 @@ import { Calculator, X } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
 import { api, ApiRequestError } from '@/lib/api'
 import { ParticipationPlanListItem } from '@/lib/types'
-import { Button, Carregando, EmptyState, ErrorState, LinkButton, PageHeader, StatusTag, Table, TableWrap, Td, Th, THead, Tr } from '@/components/ui'
+import { Button, Carregando, EmptyState, ErrorState, LinkButton, PageHeader, Prazo, StatusTag, Table, TableWrap, Td, Th, THead, Tr } from '@/components/ui'
 import { ROTULOS_DE_FONTE } from '@/lib/fontes'
+import { fimDasPropostas, localDaLicitacao } from '@/lib/licitacaoNaTela'
 
 function formatValor(v: string | null) {
   if (!v) return '—'
@@ -51,7 +52,7 @@ export default function EscolhidasPage() {
         description={
           <p className="max-w-3xl">
             Licitações em que você decidiu concorrer. Para incluir uma, use “Escolher esta licitação” no detalhe da licitação ou “Marcar como interessado” em “Meus matches”.
-            aqui. Em cada uma, o estudo de custos calcula preços de mercado, deslocamento, prazo, lucro ou prejuízo e gera o PDF.
+            Em cada uma, o estudo de custos calcula preços de mercado, deslocamento, prazo, lucro ou prejuízo e gera o PDF.
           </p>
         }
       />
@@ -81,13 +82,14 @@ export default function EscolhidasPage() {
           />
         )
       ) : (
-        <TableWrap minWidth={820}>
+        <TableWrap minWidth={940}>
           <Table>
             <THead>
               <tr>
+                <Th>Prazo</Th>
                 <Th>Objeto</Th>
                 <Th>Fonte</Th>
-                <Th>UF</Th>
+                <Th>Local</Th>
                 <Th align="right">Valor estimado</Th>
                 <Th align="right">
                   <span className="sr-only">Ações</span>
@@ -97,6 +99,9 @@ export default function EscolhidasPage() {
             <tbody>
               {plans.map((p) => (
                 <Tr key={p.id} interactive>
+                  <Td className="whitespace-nowrap">
+                    <Prazo data={fimDasPropostas(p.tender)} />
+                  </Td>
                   <Td className="max-w-[420px]">
                     <Link href={`/tenders/${p.tenderId}`} className="line-clamp-2 font-medium text-ink hover:text-accent hover:underline">
                       {p.tender.objetoResumido ?? p.tender.objeto}
@@ -106,7 +111,7 @@ export default function EscolhidasPage() {
                   <Td>
                     <StatusTag mono>{rotuloDaFonte(p.tender.fonte)}</StatusTag>
                   </Td>
-                  <Td className="font-mono">{p.tender.uf ?? 'n/d'}</Td>
+                  <Td className="whitespace-nowrap">{localDaLicitacao(p.tender)}</Td>
                   <Td numeric>{formatValor(p.tender.valorEstimado)}</Td>
                   <Td>
                     <div className="flex justify-end gap-2">

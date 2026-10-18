@@ -18,6 +18,8 @@ import {
   inicioDaVarredura,
   lerDetalhe,
   motivoCurto,
+  motivoDaFalhaDaVarredura,
+  statusDaColetaInfraero,
   varrerNovos,
 } from '../services/infraeroVarredura'
 import { NormalizedTender } from '../types'
@@ -32,6 +34,8 @@ export interface ResumoDaColetaInfraero {
   motivoDaParada: MotivoDaParada
   requisicoes: number
   naoEncontrados: number
+  paginasInesperadas: number
+  respostasValidas: number
   ignorados: number
   revisitadas: number
   lidas: number
@@ -40,6 +44,7 @@ export interface ResumoDaColetaInfraero {
   totalUpdated: number
   situacoesAlteradas: number
   falhas: string[]
+  motivoDaFalha: string | null
 }
 
 async function registrosDaInfraero(): Promise<RegistroDaInfraero[]> {
@@ -124,6 +129,8 @@ export async function coletarInfraero(rede: RedeDaInfraero = REDE_DA_INFRAERO, a
     motivoDaParada: varredura.motivoDaParada,
     requisicoes: varredura.requisicoes + revisita.visitados.length,
     naoEncontrados: varredura.naoEncontrados,
+    paginasInesperadas: varredura.paginasInesperadas,
+    respostasValidas: varredura.lidas.length + revisita.lidas.length + varredura.naoEncontrados,
     ignorados,
     revisitadas: revisita.visitados.length,
     lidas: novos.length + atualizacoes.length,
@@ -132,6 +139,7 @@ export async function coletarInfraero(rede: RedeDaInfraero = REDE_DA_INFRAERO, a
     totalUpdated: salvos.totalUpdated,
     situacoesAlteradas,
     falhas: varredura.falhas,
+    motivoDaFalha: motivoDaFalhaDaVarredura(varredura),
   }
 }
 
@@ -151,8 +159,7 @@ export function startColetorInfraeroWorker() {
       }
 
       const falhas = resumo?.falhas ?? []
-      const semNadaLido = resumo?.lidas === 0 && resumo.motivoDaParada === 'falhas'
-      const status = erroGeral || semNadaLido ? 'FAILED' : falhas.length > 0 ? 'PARTIAL' : 'SUCCESS'
+      const { status, errorMsg } = statusDaColetaInfraero(resumo, erroGeral)
 
       await saveWorkerLog({
         worker: 'coletor-infraero',
@@ -162,7 +169,7 @@ export function startColetorInfraeroWorker() {
         totalNew: resumo?.totalNew ?? 0,
         totalDupes: resumo?.totalDupes ?? 0,
         totalUpdated: resumo?.totalUpdated ?? 0,
-        errorMsg: erroGeral ?? (falhas.length > 0 ? `Ids com falha: ${falhas.slice(0, 20).join(', ')}` : undefined),
+        errorMsg,
         startedAt,
         finishedAt: new Date(),
       })
@@ -170,11 +177,12 @@ export function startColetorInfraeroWorker() {
       if (resumo) {
         console.log(
           `[${CONTEXTO}] Concluído — ids ${resumo.inicio} a ${resumo.ultimoIdVisitado ?? resumo.inicio} (parada: ${resumo.motivoDaParada}), ` +
-            `requisições: ${resumo.requisicoes}, não encontrados: ${resumo.naoEncontrados}, ignorados: ${resumo.ignorados}, ` +
-            `revisitadas: ${resumo.revisitadas}, novos: ${resumo.totalNew}, atualizados: ${resumo.totalUpdated}, ` +
+            `requisições: ${resumo.requisicoes}, não encontrados: ${resumo.naoEncontrados}, páginas inesperadas: ${resumo.paginasInesperadas}, ` +
+            `ignorados: ${resumo.ignorados}, revisitadas: ${resumo.revisitadas}, novos: ${resumo.totalNew}, atualizados: ${resumo.totalUpdated}, ` +
             `situações alteradas: ${resumo.situacoesAlteradas}${falhas.length > 0 ? `, falhas: ${falhas.length}` : ''}`
         )
       }
+      if (errorMsg) console.warn(`[${CONTEXTO}] ${status}: ${errorMsg}`)
     },
     {
       connection: redisConnection,

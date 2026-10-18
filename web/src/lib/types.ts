@@ -174,6 +174,7 @@ export interface Tender {
   orgao: string | null
   numeroControle: string | null
   aberturaAt: string | null
+  encerramentoAt?: string | null
   publicadoAt: string | null
   linkEdital: string | null
   createdAt: string
@@ -312,7 +313,14 @@ export interface TenderAnalysis {
   errorMsg: string | null
 }
 
-export type ModalidadeFalada = 'PREGAO_ELETRONICO' | 'PREGAO_PRESENCIAL' | 'CONCORRENCIA' | 'DISPENSA_COM_DISPUTA' | 'INEXIGIBILIDADE' | 'CREDENCIAMENTO'
+export type ModalidadeFalada =
+  | 'PREGAO_ELETRONICO'
+  | 'PREGAO_PRESENCIAL'
+  | 'CONCORRENCIA'
+  | 'DISPENSA_COM_DISPUTA'
+  | 'DISPENSA_SEM_DISPUTA'
+  | 'INEXIGIBILIDADE'
+  | 'CREDENCIAMENTO'
 
 export interface FiltrosDaBela {
   q?: string
@@ -321,6 +329,7 @@ export interface FiltrosDaBela {
   rotuloDoLocal?: string
   municipio?: string
   modalidade?: ModalidadeFalada
+  modalidades?: ModalidadeFalada[]
   situacao?: 'ABERTA'
 }
 

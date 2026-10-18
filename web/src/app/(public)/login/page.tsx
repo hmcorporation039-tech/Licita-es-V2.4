@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { PublicCard } from '@/components/PublicShell'
 import { Button, Field, FormError, Input, Notice, TextLink } from '@/components/ui'
-import { api, ApiRequestError } from '@/lib/api'
+import { api, ApiRequestError, CODIGO_ACESSO_EXPIRADO } from '@/lib/api'
+import AcessoEncerrado, { lerDadosDoAcessoEncerrado, type DadosDoAcessoEncerrado } from '@/components/AcessoEncerrado'
 import { setSession } from '@/lib/session'
 import { User } from '@/lib/types'
 
@@ -18,6 +19,7 @@ export default function LoginPage() {
   const [naoConfirmado, setNaoConfirmado] = useState(false)
   const [info, setInfo] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [encerrado, setEncerrado] = useState<DadosDoAcessoEncerrado | null>(null)
   const router = useRouter()
 
   async function handleSubmit(e: React.FormEvent) {
@@ -31,6 +33,10 @@ export default function LoginPage() {
       setSession(token, user)
       router.push('/dashboard')
     } catch (err) {
+      if (err instanceof ApiRequestError && err.code === CODIGO_ACESSO_EXPIRADO) {
+        setEncerrado(lerDadosDoAcessoEncerrado(err.detalhes))
+        return
+      }
       setError(err instanceof ApiRequestError ? err.message : 'Erro ao entrar')
       setNaoConfirmado(err instanceof ApiRequestError && err.code === 'EMAIL_NAO_VERIFICADO')
     } finally {
@@ -46,6 +52,25 @@ export default function LoginPage() {
     } catch (err) {
       setError(err instanceof ApiRequestError ? err.message : 'Erro ao reenviar')
     }
+  }
+
+  if (encerrado) {
+    return (
+      <PublicCard
+        title={encerrado.emTeste ? 'Seu teste grátis terminou' : 'O acesso da sua conta terminou'}
+        fala="Seus dados continuam guardados. Veja como continuar."
+      >
+        <AcessoEncerrado
+          dados={encerrado}
+          emailInicial={email}
+          senhaInicial={password}
+          onVoltar={() => {
+            setEncerrado(null)
+            setPassword('')
+          }}
+        />
+      </PublicCard>
+    )
   }
 
   return (

@@ -71,6 +71,15 @@ rodar('Vitrine pública da página de entrada', () => {
     expect(corpo.total).toBe(2)
   })
 
+  it('curingas do LIKE são buscados como texto e não devolvem a base inteira', async () => {
+    for (const q of ['%%%', '___', `vassouras%${sufixo}`]) {
+      const r = (await (await fetch(`${base}/api/public/vitrine?q=${encodeURIComponent(q)}`)).json()) as { total: number }
+      expect(r.total).toBe(0)
+    }
+    const literal = (await (await fetch(`${base}/api/public/vitrine?q=${encodeURIComponent(`vassouras especiais ${sufixo}`)}`)).json()) as { total: number }
+    expect(literal.total).toBe(1)
+  })
+
   it('recusa busca curta demais e informa as estatísticas', async () => {
     expect((await fetch(`${base}/api/public/vitrine?q=ab`)).status).toBe(400)
     const e = (await (await fetch(`${base}/api/public/estatisticas`)).json()) as { abertas: number; fontes: number }

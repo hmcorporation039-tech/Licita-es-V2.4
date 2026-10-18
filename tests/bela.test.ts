@@ -50,6 +50,61 @@ describe('Bela: pedido de busca falado', () => {
     expect(interpretarPedido('ar condicionado no Pará')).toMatchObject({ filtros: { q: 'ar condicionado', uf: 'PA' } })
   })
 
+  it('ignora "só", "somente", "apenas" e outras palavras de conversa no objeto', () => {
+    expect(interpretarPedido('Bela, pregão eletrônico de notebook no DF, só as abertas')).toMatchObject({
+      filtros: { q: 'notebook', uf: 'DF', modalidade: 'PREGAO_ELETRONICO', situacao: 'ABERTA' },
+    })
+    expect(interpretarPedido('somente cadeiras em Goiás')).toMatchObject({ filtros: { q: 'cadeiras', uf: 'GO' } })
+    expect(interpretarPedido('notebook apenas no DF')).toMatchObject({ filtros: { q: 'notebook', uf: 'DF' } })
+    expect(interpretarPedido('se tiver licitação de asfalto')).toMatchObject({ filtros: { q: 'asfalto' } })
+    expect(interpretarPedido('tem alguma licitação de merenda escolar?')).toMatchObject({ filtros: { q: 'merenda escolar' } })
+    expect(interpretarPedido('existe licitação de pneus em Goiás')).toMatchObject({ filtros: { q: 'pneus', uf: 'GO' } })
+    expect(interpretarPedido('quero ver licitação de uniformes')).toMatchObject({ filtros: { q: 'uniformes' } })
+  })
+
+  it('"de natal" é parte do objeto, não a capital do RN', () => {
+    const decoracao = interpretarPedido('decoração de natal em São Paulo')
+    expect(decoracao).toMatchObject({ filtros: { q: 'decoração de natal', uf: 'SP' } })
+    expect(decoracao.acao === 'buscar' && decoracao.filtros.municipio).toBeFalsy()
+    const cestas = interpretarPedido('cestas de natal')
+    expect(cestas).toMatchObject({ filtros: { q: 'cestas de natal' } })
+    expect(cestas.acao === 'buscar' && (cestas.filtros.uf || cestas.filtros.municipio)).toBeFalsy()
+    expect(interpretarPedido('iluminação de natal no Paraná')).toMatchObject({ filtros: { q: 'iluminação de natal', uf: 'PR' } })
+    expect(interpretarPedido('árvore de natal em Natal')).toMatchObject({ filtros: { q: 'árvore de natal', municipio: 'Natal', uf: 'RN' } })
+  })
+
+  it('não lê cidade de nome composto como a capital de mesmo começo', () => {
+    const conquista = interpretarPedido('merenda escolar em Vitória da Conquista na Bahia')
+    expect(conquista).toMatchObject({ filtros: { uf: 'BA' } })
+    expect(conquista.acao === 'buscar' && conquista.filtros.municipio).toBeFalsy()
+    const semEstado = interpretarPedido('merenda escolar em Vitória da Conquista')
+    expect(semEstado.acao === 'buscar' && (semEstado.filtros.uf || semEstado.filtros.municipio)).toBeFalsy()
+    expect(interpretarPedido('merenda escolar em Vitória')).toMatchObject({ filtros: { q: 'merenda escolar', municipio: 'Vitória', uf: 'ES' } })
+  })
+
+  it('com capital e estado diferentes, fica com o estado dito', () => {
+    const r = interpretarPedido('obras em Curitiba na Bahia')
+    expect(r).toMatchObject({ filtros: { uf: 'BA' } })
+    expect(r.acao === 'buscar' && r.filtros.municipio).toBeFalsy()
+    expect(interpretarPedido('limpeza em Goiânia em Goiás')).toMatchObject({ filtros: { q: 'limpeza', municipio: 'Goiânia', uf: 'GO' } })
+  })
+
+  it('"dispensa" falada cobre as dispensas com e sem disputa', () => {
+    const r = interpretarPedido('dispensa de material de limpeza')
+    expect(r).toMatchObject({ filtros: { q: 'material de limpeza', modalidades: ['DISPENSA_COM_DISPUTA', 'DISPENSA_SEM_DISPUTA'] } })
+    expect(r.acao === 'buscar' && r.filtros.modalidade).toBeFalsy()
+    expect(interpretarPedido('dispensa eletrônica de material de limpeza')).toMatchObject({ filtros: { q: 'material de limpeza', modalidade: 'DISPENSA_COM_DISPUTA' } })
+    expect(interpretarPedido('dispensa com disputa de café')).toMatchObject({ filtros: { q: 'café', modalidade: 'DISPENSA_COM_DISPUTA' } })
+  })
+
+  it('"sul de Minas" é o sul do estado de Minas Gerais, não a região Sul', () => {
+    const r = interpretarPedido('café no sul de Minas')
+    expect(r).toMatchObject({ filtros: { q: 'café', uf: 'MG' } })
+    expect(r.acao === 'buscar' && r.filtros.ufs).toBeFalsy()
+    expect(interpretarPedido('leite no norte do Paraná')).toMatchObject({ filtros: { q: 'leite', uf: 'PR' } })
+    expect(interpretarPedido('estrutura metálica no sul')).toMatchObject({ filtros: { ufs: ['PR', 'RS', 'SC'] } })
+  })
+
   it('pede de novo quando não há o que buscar', () => {
     expect(interpretarPedido('Bela').acao).toBe('desconhecida')
     expect(interpretarPedido('   ').acao).toBe('desconhecida')
@@ -97,6 +152,10 @@ describe('Bela: valor falado no pregão', () => {
     'o lance está em 180 mil e o meu em 190 mil',
     '50 centavos e 3 reais',
     'mil reais',
+    '1,234',
+    'o lance está em 1,234',
+    '12,3456',
+    '1.2345',
   ])('não chuta quando sobra número sem sentido claro: %s', (frase) => {
     expect(lerValorFalado(frase)).toBeNull()
   })
@@ -186,5 +245,12 @@ describe('Bela: copiloto do lance', () => {
     const a = avaliarLance(1400, { ...limites, custoComRateio: 0 }, regras, 0)
     expect(a.sugestao).toBeNull()
     expect(a.mensagem).toContain('Preencha os custos')
+  })
+
+  it('o exemplo da página de entrada bate com a conta do produto (margem sobre o preço)', () => {
+    const exemplo = { custoComRateio: 2620.65, impostosPct: 0, margemDesejadaPct: 15 }
+    expect(limitesDoAlvo(exemplo).minimoComMargem).toBe(3083.12)
+    expect(avaliarLance(3112, exemplo, { decrementoPct: 0.5, maxLances: 5 }, 0).sugestao).toEqual({ valor: 3096.44, margemPct: 15.4, ultimo: false })
+    expect(Math.round(((3380 - 2620.65) / 3380) * 1000) / 10).toBe(22.5)
   })
 })

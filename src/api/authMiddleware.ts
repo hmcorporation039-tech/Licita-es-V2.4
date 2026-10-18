@@ -11,6 +11,7 @@ import { prisma } from '../services/tenderService'
 import { verifySessionToken } from '../services/authService'
 import { ApiError } from './asyncHandler'
 import { empresaTemDonoComAcesso } from '../lib/acessoDaEmpresa'
+import { PLANO_DE_TESTE, acessoExpirou, detalhesDoAcessoEncerrado, mensagemDeAcessoEncerrado } from '../lib/acessoEncerrado'
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -38,6 +39,7 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
       include: {
         company: {
           select: {
+            planCode: true,
             users: {
               where: { companyRole: 'OWNER' },
               select: { active: true, disabledByAdmin: true, accessExpiresAt: true },
@@ -50,8 +52,9 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
     if (user.tokenVersion !== payload.tokenVersion) {
       throw new ApiError(401, 'Sessão encerrada — faça login novamente')
     }
-    if (user.accessExpiresAt && user.accessExpiresAt.getTime() < Date.now()) {
-      throw new ApiError(403, 'O acesso desta conta expirou — fale com o administrador')
+    if (user.accessExpiresAt && acessoExpirou(user.accessExpiresAt)) {
+      const planCode = user.company?.planCode
+      throw new ApiError(403, mensagemDeAcessoEncerrado(user.accessExpiresAt, planCode === PLANO_DE_TESTE), detalhesDoAcessoEncerrado(user.accessExpiresAt, planCode))
     }
     if (!user.isAdmin && user.companyRole !== 'OWNER' && !empresaTemDonoComAcesso(user.company?.users ?? [])) {
       throw new ApiError(403, 'O acesso da sua empresa está suspenso — fale com o administrador')

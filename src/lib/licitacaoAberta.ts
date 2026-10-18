@@ -16,6 +16,7 @@
 
 import { FonteEnum, Prisma, SituacaoEnum } from '@prisma/client'
 import { inicioDoDiaEmBrasilia } from './dataDeBrasilia'
+import { FONTES_COM_ANO_NO_NUMERO, anoEmBrasilia } from './anoDoProcesso'
 
 export const DIAS_SEM_PRAZO = 30
 
@@ -29,6 +30,7 @@ function inicioDoDia(agora: Date): Date {
 
 export function whereLicitacaoAberta(agora: Date = new Date()): Prisma.TenderWhereInput {
   const limiteSemPrazo = new Date(agora.getTime() - DIAS_SEM_PRAZO * 86_400_000)
+  const anoAtual = anoEmBrasilia(agora)
   return {
     situacao: 'ABERTA',
     valorHomologado: null,
@@ -37,8 +39,18 @@ export function whereLicitacaoAberta(agora: Date = new Date()): Prisma.TenderWhe
       { encerramentoAt: null, fonte: { notIn: FONTES_ABERTURA_E_INICIO }, aberturaAt: { gte: inicioDoDia(agora) } },
       {
         encerramentoAt: null,
+        fonte: { notIn: FONTES_COM_ANO_NO_NUMERO },
         OR: [{ fonte: { in: FONTES_ABERTURA_E_INICIO } }, { aberturaAt: null }],
         AND: [{ OR: [{ publicadoAt: { gte: limiteSemPrazo } }, { publicadoAt: null, createdAt: { gte: limiteSemPrazo } }] }],
+      },
+      {
+        encerramentoAt: null,
+        aberturaAt: null,
+        fonte: { in: FONTES_COM_ANO_NO_NUMERO },
+        OR: [
+          { publicadoAt: { gte: limiteSemPrazo }, OR: [{ anoDoProcesso: null }, { anoDoProcesso: { gte: anoAtual } }] },
+          { publicadoAt: null, anoDoProcesso: { gte: anoAtual } },
+        ],
       },
     ],
   }
@@ -63,6 +75,7 @@ export interface DatasDaLicitacao {
   aberturaAt: Date | null
   publicadoAt: Date | null
   createdAt: Date
+  anoDoProcesso?: number | null
 }
 
 // Mesma regra de whereLicitacaoAberta, para quem já tem a licitação em memória.
@@ -70,6 +83,10 @@ export function estaAberta(t: DatasDaLicitacao, agora: Date = new Date()): boole
   if (t.situacao !== 'ABERTA' || (t.valorHomologado !== null && t.valorHomologado !== undefined)) return false
   if (t.encerramentoAt) return t.encerramentoAt.getTime() >= agora.getTime()
   if (t.aberturaAt && !FONTES_ABERTURA_E_INICIO.includes(t.fonte)) return t.aberturaAt.getTime() >= inicioDoDia(agora).getTime()
-  const referencia = t.publicadoAt ?? t.createdAt
-  return referencia.getTime() >= agora.getTime() - DIAS_SEM_PRAZO * 86_400_000
+  const limiteSemPrazo = agora.getTime() - DIAS_SEM_PRAZO * 86_400_000
+  if (!FONTES_COM_ANO_NO_NUMERO.includes(t.fonte)) return (t.publicadoAt ?? t.createdAt).getTime() >= limiteSemPrazo
+  const ano = t.anoDoProcesso ?? null
+  if (ano !== null && ano < anoEmBrasilia(agora)) return false
+  if (t.publicadoAt) return t.publicadoAt.getTime() >= limiteSemPrazo
+  return ano !== null
 }

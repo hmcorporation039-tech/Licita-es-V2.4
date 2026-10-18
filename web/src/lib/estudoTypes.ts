@@ -87,6 +87,7 @@ export interface EstudoResposta {
     valorEstimado: number | null
     encerramentoAt: string | null
     aberturaAt: string | null
+    fonte: string
     modalidade: string
     linkEdital: string | null
   }

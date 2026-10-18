@@ -145,6 +145,11 @@ const arred = (n: number) => Math.round(n * 100) / 100
 const arredParaCima = (n: number) => Math.ceil(Number((n * 100).toFixed(6))) / 100
 const num = (v: number | null | undefined) => (typeof v === 'number' && Number.isFinite(v) ? v : 0)
 
+export function precoMinimoComMargem(custoComRateio: number, impostosPct: number, margemDesejadaPct: number): number | null {
+  const divisor = 1 - impostosPct / 100 - margemDesejadaPct / 100
+  return divisor > 0 && custoComRateio > 0 ? arredParaCima(custoComRateio / divisor) : null
+}
+
 function margem(lucro: number, receita: number): number | null {
   return receita > 0 ? Math.round((lucro / receita) * 10_000) / 100 : null
 }
@@ -216,14 +221,14 @@ export function calcularEstudo(itens: ItemDaLicitacao[], dados: DadosDoEstudo, c
 
   // ---- Preço mínimo (para a margem desejada) ----
   const divisor = 1 - imp - mar
-  const receitaMinima = divisor > 0 && base > 0 ? arred(base / divisor) : null
+  const receitaMinima = precoMinimoComMargem(base, num(dados.impostosPct), num(dados.margemDesejadaPct))
   if (divisor <= 0) avisos.push('Impostos + margem desejada somam 100% ou mais: não existe preço que cumpra a margem.')
   if (divisor > 0 && custoItens > 0) {
     // Custos que não são dos itens (deslocamento, outros) são rateados pelo custo de cada item.
     const rateio = 1 + (custoDeslocamento + custoOutros) / custoItens
     itens.forEach((it, i) => {
       const c = dados.itens[it.id]?.custoUnit
-      if (c !== null && c !== undefined && c > 0) linhas[i].precoMinimoUnit = arredParaCima((c * rateio) / divisor)
+      if (c !== null && c !== undefined && c > 0) linhas[i].precoMinimoUnit = precoMinimoComMargem(c * rateio, num(dados.impostosPct), num(dados.margemDesejadaPct))
     })
   }
 
@@ -313,13 +318,13 @@ export function calcularEstudo(itens: ItemDaLicitacao[], dados: DadosDoEstudo, c
 export function lerPrazoEmDias(texto: string | null | undefined): { dias: number; uteis: boolean } | null {
   if (!texto) return null
   const t = texto.toLowerCase()
-  const emDias = [...t.matchAll(/(\d{1,4})\s*(?:\([^)]*\)\s*)?dias?\b(\s+(?:úteis|uteis|corridos))?/g)]
+  const emDias = [...t.matchAll(/(\d{1,4})\s*(?:\([^)]*\)\s*)?dias?\b(\s+(?:úteis|uteis|útil|util|corridos?))?/g)]
   if (emDias.length > 0) {
     const valores = new Set(emDias.map((m) => Number(m[1])))
     if (valores.size > 1) return null
-    return { dias: Number(emDias[0][1]), uteis: emDias.some((m) => /[uú]teis/.test(m[2] ?? '')) }
+    return { dias: Number(emDias[0][1]), uteis: emDias.some((m) => /[uú]t(?:eis|il)/.test(m[2] ?? '')) }
   }
-  const emMeses = [...t.matchAll(/(\d{1,3})\s*(?:\([^)]*\)\s*)?(?:mes|meses|mês)\b/g)]
+  const emMeses = [...t.matchAll(/(\d{1,3})\s*(?:\([^)]*\)\s*)?(?:meses|mês|mes)(?![a-z])/g)]
   const meses = new Set(emMeses.map((m) => Number(m[1])))
   if (meses.size !== 1) return null
   return { dias: Number(emMeses[0][1]) * 30, uteis: false }

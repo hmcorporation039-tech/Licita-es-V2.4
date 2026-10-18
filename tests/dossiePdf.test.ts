@@ -5,11 +5,20 @@
 
 import { writeFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { gerarPdfDoEstudo, EntradaDoPdf } from '../src/services/estudoPdf'
+import { gerarPdfDoEstudo, EntradaDoPdf, identificacaoDaEmpresa } from '../src/services/estudoPdf'
 import { avaliarHabilitacao } from '../src/lib/habilitacao'
 import { buildChecklistTemplate } from '../src/lib/checklistTemplate'
 import { dadosIniciais, calcularEstudo } from '../src/lib/estudoDeCustos'
 import { CepIndisponivelError, CepNaoEncontradoError, consultarCep, limparCacheDeCep, montarEndereco, normalizarCep } from '../src/lib/cep'
+
+describe('identificação da empresa no papel timbrado do PDF', () => {
+  it('mostra o CNPJ ou o CPF com máscara, mesmo gravado só com dígitos', () => {
+    expect(identificacaoDaEmpresa({ nome: 'Construtora Exemplo Ltda', documento: '11222333000181' })).toBe('Construtora Exemplo Ltda  -  CNPJ 11.222.333/0001-81')
+    expect(identificacaoDaEmpresa({ nome: 'Construtora Exemplo Ltda', documento: '11.222.333/0001-81' })).toBe('Construtora Exemplo Ltda  -  CNPJ 11.222.333/0001-81')
+    expect(identificacaoDaEmpresa({ nome: 'Fulano MEI', documento: '52998224725' })).toBe('Fulano MEI  -  CPF 529.982.247-25')
+    expect(identificacaoDaEmpresa({ nome: 'Sem documento', documento: null })).toBe('Sem documento')
+  })
+})
 
 describe('CEP', () => {
   it('normaliza e valida o CEP', () => {
