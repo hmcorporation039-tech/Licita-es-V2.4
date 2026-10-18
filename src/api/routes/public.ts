@@ -69,8 +69,9 @@ publicRouter.get(
       return
     }
     const comPrazo = whereLicitacaoComPrazoConfirmado()
-    const [abertas, porFonte, doSistemaS, ultimaColeta] = await Promise.all([
+    const [abertas, porMunicipio, porFonte, doSistemaS, ultimaColeta] = await Promise.all([
       prisma.tender.count({ where: comPrazo }),
+      prisma.tender.groupBy({ by: ['municipioIbge', 'uf'], where: { AND: [comPrazo, { municipioIbge: { not: null } }] } }),
       prisma.tender.groupBy({ by: ['fonte'], where: { AND: [comPrazo, { fonte: { not: 'SISTEMA_S' } }] }, _count: { _all: true } }),
       prisma.tender.groupBy({ by: ['orgao'], where: { AND: [comPrazo, { fonte: 'SISTEMA_S' }] }, _count: { _all: true } }),
       prisma.workerLog.findFirst({ where: { status: { in: ['SUCCESS', 'PARTIAL'] }, finishedAt: { not: null } }, orderBy: { finishedAt: 'desc' }, select: { finishedAt: true } }),
@@ -79,7 +80,9 @@ publicRouter.get(
       ...porFonte.filter((f) => f._count._all > 0).map((f) => ({ fonte: f.fonte, orgao: null })),
       ...doSistemaS.filter((g) => g._count._all > 0).map((g) => ({ fonte: 'SISTEMA_S' as const, orgao: g.orgao })),
     ])
-    const valor = { abertas, fontes: marcas.length, marcas, atualizadoEm: ultimaColeta?.finishedAt ?? null }
+    const municipios = new Set(porMunicipio.map((g) => g.municipioIbge)).size
+    const estados = new Set(porMunicipio.map((g) => g.uf).filter((uf): uf is string => Boolean(uf))).size
+    const valor = { abertas, municipios, estados, fontes: marcas.length, marcas, atualizadoEm: ultimaColeta?.finishedAt ?? null }
     gravarCache('estatisticas', valor)
     res.setHeader('Cache-Control', 'public, max-age=300')
     res.json(valor)

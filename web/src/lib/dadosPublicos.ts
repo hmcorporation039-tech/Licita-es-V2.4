@@ -17,6 +17,8 @@ export interface PlanosResposta {
 
 export interface EstatisticasPublicas {
   abertas: number
+  municipios?: number
+  estados?: number
   fontes: number
   marcas?: string[]
   atualizadoEm: string | null
