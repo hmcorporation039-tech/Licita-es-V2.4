@@ -82,8 +82,10 @@ rodar('Vitrine pública da página de entrada', () => {
 
   it('recusa busca curta demais e informa as estatísticas', async () => {
     expect((await fetch(`${base}/api/public/vitrine?q=ab`)).status).toBe(400)
-    const e = (await (await fetch(`${base}/api/public/estatisticas`)).json()) as { abertas: number; fontes: number }
+    const e = (await (await fetch(`${base}/api/public/estatisticas`)).json()) as { abertas: number; fontes: number; municipios: number; estados: number }
     expect(e.abertas).toBeGreaterThanOrEqual(1)
     expect(e.fontes).toBeGreaterThanOrEqual(1)
+    expect(Number.isInteger(e.municipios)).toBe(true)
+    expect(e.estados).toBeLessThanOrEqual(27)
   })
 })

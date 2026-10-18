@@ -256,6 +256,11 @@ function Navegacao() {
   )
 }
 
+function rotuloDosEstados(estados: number): string {
+  if (estados >= 27) return 'em todos os 26 estados e no DF'
+  return estados === 1 ? 'em 1 estado' : `em ${estados} estados`
+}
+
 function Provas({ estatisticas, trialDias }: { estatisticas: EstatisticasPublicas | null; trialDias: number | null }) {
   const fontes = fontesComLicitacaoAberta(estatisticas?.fontes, FONTES_OFICIAIS.length)
   return (
@@ -276,7 +281,18 @@ function Provas({ estatisticas, trialDias }: { estatisticas: EstatisticasPublica
           </dd>
         </div>
       )}
-      {fontes && (
+      {estatisticas?.municipios ? (
+        <div>
+          <dt className="sr-only">Municípios com licitação aberta</dt>
+          <dd>
+            <NumeroQueSobe valor={estatisticas.municipios} className="az-provas-numero" />
+            <span className="az-provas-rotulo">
+              {estatisticas.municipios === 1 ? 'município com licitação aberta' : 'municípios com licitação aberta'}
+              {estatisticas.estados ? <small>{rotuloDosEstados(estatisticas.estados)}</small> : null}
+            </span>
+          </dd>
+        </div>
+      ) : fontes && (
         <div>
           <dt className="sr-only">Fontes públicas</dt>
           <dd>
