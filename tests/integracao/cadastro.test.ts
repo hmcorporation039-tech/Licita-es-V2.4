@@ -77,6 +77,7 @@ rodar('Cadastro público e recuperação de senha', () => {
     process.env.DATABASE_URL = URL_BANCO
     process.env.JWT_SECRET = process.env.JWT_SECRET ?? 'segredo-de-teste'
     process.env.RATE_LIMIT_DISABLED = 'true'
+    process.env.QUEUE_ENQUEUE_TIMEOUT_MS = '300'
     process.env.APP_URL = 'https://site.teste'
 
     const { app } = await import('../../src/api/server')
@@ -607,6 +608,7 @@ rodar('Cadastro público e recuperação de senha', () => {
       const login = await http('POST', '/api/auth/login', { email: email('origem'), password: SENHA })
       const lista = await http('GET', '/api/monitored-items', undefined, login.body.token)
       expect(lista.body.map((i: { name: string }) => i.name)).toEqual(['Material de limpeza'])
+      expect(lista.body[0].situacaoDaBusca).toMatchObject({ estado: 'concluida', encontrados: idsLigados.length, limitado: false, aviso: null })
     })
 
     it('UTM grande demais ou UF inválida não barram o cadastro: só aquele dado é ignorado', async () => {

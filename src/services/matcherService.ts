@@ -249,6 +249,7 @@ export interface RematchCandidate {
   matchedKeywords: string[]
   matchedByCode: boolean
   dentroDeObraCompleta: boolean
+  encerramentoAt: Date | null
 }
 
 const REMATCH_BATCH_SIZE = 500
@@ -300,7 +301,7 @@ export async function findMatchingTendersForItem(
 
     for (const t of lote) {
       const avaliacao = avaliarLicitacaoParaItem(t, regras, agora)
-      if (avaliacao) results.push({ tenderId: t.id, ...avaliacao })
+      if (avaliacao) results.push({ tenderId: t.id, encerramentoAt: t.encerramentoAt, ...avaliacao })
     }
 
     if (lote.length < REMATCH_BATCH_SIZE) break

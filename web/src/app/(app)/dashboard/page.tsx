@@ -10,10 +10,13 @@ import { DashboardData } from '@/lib/types'
 import { dataDaLicitacao } from '@/lib/datas'
 import BrazilMap, { EstadoMapa } from '@/components/BrazilMap'
 import MedidorDeAnalises from '@/components/MedidorDeAnalises'
-import { Carregando, EmptyState, ErrorState, Metric, MetricRow, PageHeader, Panel, Prazo, TextLink } from '@/components/ui'
+import { Carregando, EmptyState, ErrorState, Metric, MetricRow, Notice, PageHeader, Panel, Prazo, TextLink } from '@/components/ui'
 import SeloObraCompleta from '@/components/SeloObraCompleta'
 
 const numero = (n: number) => n.toLocaleString('pt-BR')
+
+const INTERVALO_ENQUANTO_BUSCA_MS = 3_000
+const MAXIMO_DE_CONSULTAS_ENQUANTO_BUSCA = 40
 
 export default function DashboardPage() {
   const user = useRequireSession()
@@ -21,6 +24,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState(false)
   const [estadosMapa, setEstadosMapa] = useState<EstadoMapa[]>([])
+  const [consultasEnquantoBusca, setConsultasEnquantoBusca] = useState(0)
 
   const carregarResumo = useCallback(() => {
     setLoading(true)
@@ -60,6 +64,20 @@ export default function DashboardPage() {
 
   useAtualizacaoAutomatica(atualizarEmSilencio, { ativa: Boolean(user) })
 
+  const buscando = (data?.buscasEmAndamento ?? 0) > 0
+
+  useEffect(() => {
+    if (!buscando || consultasEnquantoBusca >= MAXIMO_DE_CONSULTAS_ENQUANTO_BUSCA) return
+    const espera = window.setTimeout(() => {
+      setConsultasEnquantoBusca((n) => n + 1)
+      api
+        .get<DashboardData>('/api/dashboard')
+        .then(setData)
+        .catch(() => {})
+    }, INTERVALO_ENQUANTO_BUSCA_MS)
+    return () => window.clearTimeout(espera)
+  }, [buscando, consultasEnquantoBusca])
+
   if (!user) return null
 
   return (
@@ -72,6 +90,9 @@ export default function DashboardPage() {
         <Carregando linhas={4} texto="Carregando o painel…" />
       ) : (
         <>
+          {buscando && (
+            <Notice title="Buscando licitações para os seus itens…">Os matches aparecem aqui assim que a busca terminar.</Notice>
+          )}
           <MetricRow>
             <Metric label="Itens monitorados ativos" value={numero(data.itensMonitoradosAtivos)} href="/items" icon={ListChecks} color="accent" />
             <Metric label="Matches não lidos" value={numero(data.matchesNaoLidos)} href="/matches" icon={BellDot} color="violeta" />

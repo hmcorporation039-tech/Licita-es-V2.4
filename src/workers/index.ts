@@ -19,6 +19,7 @@ import { startColetorTceCeWorker } from './coletorTceCe'
 import { startMatcherWorker } from './matcher'
 import { startNotificadorWorker } from './notificador'
 import { startAnaliseWorker } from './analise'
+import { startRematchItemWorker } from './rematchItem'
 import { refreshAllOpenSituacoes } from '../services/situacaoUpdateService'
 import { cleanupOldUnmatchedTenders, cleanupOldWorkerLogs } from '../services/retentionService'
 import { checkExpiringDocuments } from '../services/documentAlertService'
@@ -46,13 +47,14 @@ async function main() {
   const workerMatcher = startMatcherWorker()
   const workerNotificador = startNotificadorWorker()
   const workerAnalise = startAnaliseWorker()
+  const workerRematchItem = startRematchItemWorker()
 
-  console.log('✅ Workers ativos: PNCP, Novacap, FIEG, SESC GO, SEST SENAT, SESC Regionais, Querido Diário, Sistema S, Infraero, Diários municipais, TCE-CE, Matcher, Notificador, Análise')
+  console.log('✅ Workers ativos: PNCP, Novacap, FIEG, SESC GO, SEST SENAT, SESC Regionais, Querido Diário, Sistema S, Infraero, Diários municipais, TCE-CE, Matcher, Notificador, Análise, Busca do item')
 
   // Alerta ao administrador só na falha DEFINITIVA (esgotadas as tentativas): uma tentativa
   // que falha e depois dá certo (portal instável) não é motivo para acordar ninguém.
   instalarAlertasDoProcesso('workers')
-  const todos = [workerPNCP, workerNovacap, workerFieg, workerSescGo, workerSestSenat, workerSescRegional, workerQueridoDiario, workerSistemaS, workerInfraero, workerDiarioMunicipal, workerTceCe, workerMatcher, workerNotificador, workerAnalise]
+  const todos = [workerPNCP, workerNovacap, workerFieg, workerSescGo, workerSestSenat, workerSescRegional, workerQueridoDiario, workerSistemaS, workerInfraero, workerDiarioMunicipal, workerTceCe, workerMatcher, workerNotificador, workerAnalise, workerRematchItem]
   for (const w of todos) {
     w.on('failed', (job, err) => {
       const tentativas = job?.opts?.attempts ?? 1
@@ -173,6 +175,7 @@ async function main() {
     await workerMatcher.close()
     await workerNotificador.close()
     await workerAnalise.close()
+    await workerRematchItem.close()
     process.exit(0)
   })
 }

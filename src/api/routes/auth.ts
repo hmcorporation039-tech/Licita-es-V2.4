@@ -37,8 +37,11 @@ import {
   mensagemDeAcessoEncerrado,
 } from '../../lib/acessoEncerrado'
 import { criarItemDoCadastro } from './monitoredItems'
+import { aguardarFimDaBusca } from '../../services/rematchService'
 
 export const authRouter = Router()
+
+const ESPERA_DA_BUSCA_DO_CADASTRO_MS = 5_000
 
 // Respostas de "esqueci a senha"/"reenviar confirmação" levam um tempo mínimo
 // fixo: sem isso, a diferença entre "conta existe" (grava token, envia e-mail)
@@ -177,7 +180,8 @@ authRouter.post(
     }
     await registrarAuditoria(req, { action: 'EMAIL_VERIFICADO', entityType: 'usuario', entityId: r.userId, companyId: r.companyId }, { userId: r.userId })
     try {
-      await criarItemDoCadastro(req, r.userId, r.companyId)
+      const item = await criarItemDoCadastro(req, r.userId, r.companyId)
+      if (item?.busca === 'em-andamento') await aguardarFimDaBusca(item.id, ESPERA_DA_BUSCA_DO_CADASTRO_MS)
     } catch (err) {
       console.error('[Cadastro] Item do interesse não foi criado:', err instanceof Error ? err.message : err)
     }

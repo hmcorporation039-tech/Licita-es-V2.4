@@ -217,6 +217,13 @@ export interface MatcherJobPayload {
   tenderId: string
 }
 
+export type ModoDaBuscaDoItem = 'criacao' | 'edicao' | 'ativacao' | 'buscar-agora'
+
+export interface RematchItemJobPayload {
+  itemId: string
+  modo: ModoDaBuscaDoItem
+}
+
 export interface AnaliseJobPayload {
   tenderId: string
   // Quem pediu — a análise é compartilhada, mas o consumo é atribuído a quem a
