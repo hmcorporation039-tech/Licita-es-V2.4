@@ -3,11 +3,15 @@ import { NormalizedTender } from '../types'
 import { prisma } from './tenderService'
 import { normalize } from '../lib/geoService'
 import { whereLicitacaoAberta } from '../lib/licitacaoAberta'
-import { SIMILARIDADE_MINIMA_PARA_ESCONDER_NO_MESMO_DIA, ehMesmaLicitacaoDoPncp, licitacaoDoPncpEquivalente, modalidadesEquivalentes, objetosCompativeis } from './queridoDiarioService'
-import { chaveDoNumero, duplicataNoPncpTceCe, motivoDaDuplicidade, numerosDoTender } from './tceCeDuplicidade'
+import { ComparacaoDoNumero, NumeroDaCompraNoPncp, comparacaoDoNumeroDoAviso, numeroDoAviso, podeEsconderComoRepeticao } from '../lib/repeticaoDoPncp'
+import { CandidatoDoPncpNoMunicipio, candidatosDoPncp, objetosCompativeis } from './queridoDiarioService'
+import { objetoSemConteudo } from './queridoDiarioParser'
+import { chaveDoNumero, comparacaoDoNumeroTceCe, numerosDoTender } from './tceCeDuplicidade'
 import { idDaLicitacaoTceCe } from './tceCeParser'
 
 export const FONTES_QUE_REPETEM_O_PNCP: FonteEnum[] = ['QUERIDO_DIARIO', 'DIARIO_MUNICIPAL', 'TCE_CE']
+export const FONTES_DE_DIARIO: FonteEnum[] = ['QUERIDO_DIARIO', 'DIARIO_MUNICIPAL']
+export const MOTIVO_SEM_OBJETO = 'SEM_OBJETO'
 
 const DIAS_DE_HISTORICO = 180
 const DIA_MS = 86_400_000
@@ -39,6 +43,15 @@ export interface LicitacaoDoPncpNoLocal {
   municipioIbge?: string | null
 }
 
+export interface RevisaoDasRepeticoes {
+  escondidos: Partial<Record<FonteEnum, number>>
+  restaurados: Partial<Record<FonteEnum, number>>
+  semObjeto: number
+  comObjetoDeVolta: number
+}
+
+type OriginalDoPncp = CandidatoDoPncpNoMunicipio & { registroId: string }
+
 function comoTender(registro: RegistroDeOutraFonte): NormalizedTender {
   return {
     fonte: registro.fonte,
@@ -56,10 +69,20 @@ function comoTender(registro: RegistroDeOutraFonte): NormalizedTender {
   }
 }
 
-export async function licitacaoDoPncpDoRegistro(registro: RegistroDeOutraFonte, agora: Date = new Date()): Promise<string | null> {
+function comparacaoDoNumeroDoRegistro(registro: RegistroDeOutraFonte, pncp: NumeroDaCompraNoPncp): ComparacaoDoNumero {
+  if (registro.fonte !== 'TCE_CE') return comparacaoDoNumeroDoAviso(numeroDoAviso(registro.fonteId), pncp)
   const tender = comoTender(registro)
-  if (registro.fonte === 'TCE_CE') return (await duplicataNoPncpTceCe(tender, agora, registro.modalidade !== 'OUTROS'))?.id ?? null
-  return licitacaoDoPncpEquivalente(tender, agora)
+  return comparacaoDoNumeroTceCe(tender, numerosDoTender(tender), pncp)
+}
+
+export function ehRepeticaoDoCandidato(registro: RegistroDeOutraFonte, candidato: CandidatoDoPncpNoMunicipio): boolean {
+  return podeEsconderComoRepeticao(registro, candidato, comparacaoDoNumeroDoRegistro(registro, candidato))
+}
+
+export async function licitacaoDoPncpDoRegistro(registro: RegistroDeOutraFonte, agora: Date = new Date()): Promise<string | null> {
+  const modalidadeConhecida = !(registro.fonte === 'TCE_CE' && registro.modalidade === 'OUTROS')
+  const candidatos = await candidatosDoPncp(comoTender(registro), agora, modalidadeConhecida)
+  return candidatos.find((candidato) => ehRepeticaoDoCandidato(registro, candidato))?.id ?? null
 }
 
 async function marcarComoDuplicata(id: string, original: string): Promise<boolean> {
@@ -81,19 +104,18 @@ function textoOuNulo(valor: unknown): string | null {
 
 export function ehRepeticaoDaLicitacaoDoPncp(registro: RegistroDeOutraFonte, pncp: NormalizedTender, similaridade: number): boolean {
   const raw = pncp.rawJson as { numeroCompra?: unknown; anoCompra?: unknown; processo?: unknown }
-  const tender = comoTender(registro)
-  const candidato = {
+  return ehRepeticaoDoCandidato(registro, {
+    id: '',
+    modalidade: pncp.modalidade,
+    orgao: pncp.orgao ?? null,
+    objeto: pncp.objeto,
     aberturaAt: pncp.aberturaAt ?? null,
     encerramentoAt: pncp.encerramentoAt ?? null,
     similaridade,
     numeroCompra: textoOuNulo(raw.numeroCompra),
     anoCompra: textoOuNulo(raw.anoCompra),
-  }
-  if (registro.fonte === 'TCE_CE') {
-    if (registro.modalidade !== 'OUTROS' && !modalidadesEquivalentes(registro.modalidade).includes(pncp.modalidade)) return false
-    return motivoDaDuplicidade(tender, numerosDoTender(tender), { ...candidato, objeto: pncp.objeto, processo: textoOuNulo(raw.processo) }) !== null
-  }
-  return modalidadesEquivalentes(registro.modalidade).includes(pncp.modalidade) && ehMesmaLicitacaoDoPncp(tender, candidato, SIMILARIDADE_MINIMA_PARA_ESCONDER_NO_MESMO_DIA)
+    processo: textoOuNulo(raw.processo),
+  })
 }
 
 export async function esconderRepeticoesDaLicitacaoDoPncp(pncpId: string, pncp: NormalizedTender, agora: Date = new Date()): Promise<number> {
@@ -126,7 +148,59 @@ export async function esconderRepeticoesDaLicitacaoDoPncp(pncpId: string, pncp: 
   return escondidos
 }
 
-export async function revisarRepeticoesDoPncp(agora: Date = new Date()): Promise<Partial<Record<FonteEnum, number>>> {
+function contar(contagem: Partial<Record<FonteEnum, number>>, fonte: FonteEnum): void {
+  contagem[fonte] = (contagem[fonte] ?? 0) + 1
+}
+
+export async function restaurarRepeticoesQueNaoSeConfirmam(): Promise<Partial<Record<FonteEnum, number>>> {
+  const originais = await prisma.$queryRaw<OriginalDoPncp[]>`
+    SELECT d.id AS "registroId",
+           p.id,
+           p.modalidade::text AS modalidade,
+           p.orgao,
+           p.objeto,
+           p.abertura_at AS "aberturaAt",
+           p.encerramento_at AS "encerramentoAt",
+           similarity(coalesce(p.objeto_norm, ''), coalesce(d.objeto_norm, ''))::float8 AS similaridade,
+           p.raw_json->>'numeroCompra' AS "numeroCompra",
+           p.raw_json->>'anoCompra' AS "anoCompra",
+           p.raw_json->>'processo' AS processo
+    FROM tenders d
+    JOIN tenders p ON p.id = d.duplicata_de AND p.fonte = 'PNCP'
+    WHERE d.fonte::text IN (${Prisma.join(FONTES_QUE_REPETEM_O_PNCP)})
+  `
+  if (originais.length === 0) return {}
+  const registros = await prisma.tender.findMany({ where: { id: { in: originais.map((o) => o.registroId) } }, select: REGISTRO_DE_OUTRA_FONTE })
+  const porId = new Map(registros.map((r) => [r.id, r]))
+  const restaurados: Partial<Record<FonteEnum, number>> = {}
+  for (const original of originais) {
+    const registro = porId.get(original.registroId)
+    if (!registro || ehRepeticaoDoCandidato(registro, original)) continue
+    const { count } = await prisma.tender.updateMany({ where: { id: registro.id, duplicataDe: original.id }, data: { duplicataDe: null } })
+    if (count > 0) contar(restaurados, registro.fonte)
+  }
+  return restaurados
+}
+
+async function marcarMotivo(ids: string[], de: string | null, para: string | null): Promise<number> {
+  if (ids.length === 0) return 0
+  const { count } = await prisma.tender.updateMany({ where: { id: { in: ids }, motivoOculta: de }, data: { motivoOculta: para } })
+  return count
+}
+
+export async function revisarAvisosSemObjeto(agora: Date = new Date()): Promise<{ semObjeto: number; comObjetoDeVolta: number }> {
+  const abertos = await prisma.tender.findMany({
+    where: { AND: [whereLicitacaoAberta(agora), { fonte: { in: FONTES_DE_DIARIO } }] },
+    select: { id: true, objeto: true },
+  })
+  const semObjeto = await marcarMotivo(abertos.filter((t) => objetoSemConteudo(t.objeto)).map((t) => t.id), null, MOTIVO_SEM_OBJETO)
+  const ocultos = await prisma.tender.findMany({ where: { fonte: { in: FONTES_DE_DIARIO }, motivoOculta: MOTIVO_SEM_OBJETO }, select: { id: true, objeto: true } })
+  const comObjetoDeVolta = await marcarMotivo(ocultos.filter((t) => !objetoSemConteudo(t.objeto)).map((t) => t.id), MOTIVO_SEM_OBJETO, null)
+  return { semObjeto, comObjetoDeVolta }
+}
+
+export async function revisarRepeticoesDoPncp(agora: Date = new Date()): Promise<RevisaoDasRepeticoes> {
+  const restaurados = await restaurarRepeticoesQueNaoSeConfirmam()
   const registros = await prisma.tender.findMany({
     where: { AND: [whereLicitacaoAberta(agora), { fonte: { in: FONTES_QUE_REPETEM_O_PNCP } }] },
     select: REGISTRO_DE_OUTRA_FONTE,
@@ -135,9 +209,9 @@ export async function revisarRepeticoesDoPncp(agora: Date = new Date()): Promise
   const escondidos: Partial<Record<FonteEnum, number>> = {}
   for (const registro of registros) {
     const original = await licitacaoDoPncpDoRegistro(registro, agora)
-    if (original && (await marcarComoDuplicata(registro.id, original))) escondidos[registro.fonte] = (escondidos[registro.fonte] ?? 0) + 1
+    if (original && (await marcarComoDuplicata(registro.id, original))) contar(escondidos, registro.fonte)
   }
-  return escondidos
+  return { escondidos, restaurados, ...(await revisarAvisosSemObjeto(agora)) }
 }
 
 export function anoDaLicitacaoTceCe(registro: Pick<RegistroDeOutraFonte, 'numeroControle' | 'publicadoAt'>): number | null {

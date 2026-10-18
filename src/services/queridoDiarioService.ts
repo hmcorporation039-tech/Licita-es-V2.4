@@ -5,6 +5,10 @@ import { prisma } from './tenderService'
 import { normalize } from '../lib/geoService'
 import { queridoDiarioArquivosClient, queridoDiarioClient } from '../lib/httpClient'
 import { GazetaQueridoDiario } from './queridoDiarioParser'
+import { NumeroDoAviso, comparacaoDoNumeroDoAviso, conflitoComOPncp, modalidadesEquivalentes, numeroDoAviso } from '../lib/repeticaoDoPncp'
+
+export { modalidadesEquivalentes, numeroDoAviso }
+export type { NumeroDoAviso }
 
 export const TERMOS_DE_BUSCA = [
   'aviso de licitação',
@@ -32,10 +36,10 @@ const DIAS_SEM_CURSOR = 5
 const JANELA_MAXIMA_DIAS = 30
 const SIMILARIDADE_MINIMA_COM_O_PNCP = 0.45
 const SIMILARIDADE_MINIMA_NO_MESMO_DIA = 0.2
-export const SIMILARIDADE_MINIMA_PARA_ESCONDER_NO_MESMO_DIA = 0.4
 const SIMILARIDADE_MINIMA_COM_O_MESMO_NUMERO = 0.1
 const SEMELHANCA_MINIMA_ENTRE_REPUBLICACOES = 0.3
 const DIAS_DE_HISTORICO_DO_PNCP = 180
+const CANDIDATOS_DO_PNCP = 50
 const HORAS_DE_BRASILIA_PARA_UTC = 3
 const DIA_MS = 86_400_000
 
@@ -64,9 +68,13 @@ export interface CandidatoDoPncp {
   anoCompra?: string | number | null
 }
 
-export interface NumeroDoAviso {
-  sequencial: number
-  ano: string
+export interface CandidatoDoPncpNoMunicipio extends CandidatoDoPncp {
+  id: string
+  modalidade: ModalidadeEnum
+  orgao: string | null
+  objeto: string
+  numeroCompra: string | null
+  processo: string | null
 }
 
 export interface RegistroJaColetado {
@@ -150,20 +158,6 @@ export async function baixarTextoDoDiario(txtUrl: string): Promise<string> {
   return resposta.data
 }
 
-export function modalidadesEquivalentes(modalidade: ModalidadeEnum): ModalidadeEnum[] {
-  if (modalidade === 'PREGAO_ELETRONICO' || modalidade === 'PREGAO_PRESENCIAL') return ['PREGAO_ELETRONICO', 'PREGAO_PRESENCIAL']
-  if (modalidade === 'DISPENSA_COM_DISPUTA' || modalidade === 'DISPENSA_SEM_DISPUTA') {
-    return ['DISPENSA_COM_DISPUTA', 'DISPENSA_SEM_DISPUTA']
-  }
-  if (modalidade === 'CREDENCIAMENTO' || modalidade === 'INEXIGIBILIDADE') return ['CREDENCIAMENTO', 'INEXIGIBILIDADE']
-  return [modalidade]
-}
-
-export function numeroDoAviso(fonteId: string | undefined): NumeroDoAviso | null {
-  const m = /:(\d+)-(20\d{2})[A-Z]?(?::|$)/.exec(fonteId ?? '')
-  return m ? { sequencial: Number(m[1]), ano: m[2] } : null
-}
-
 export function mesmoNumeroDoPncp(numero: NumeroDoAviso | null, candidato: CandidatoDoPncp): boolean {
   if (!numero || !candidato.numeroCompra || String(candidato.anoCompra ?? '') !== numero.ano) return false
   const digitos = /\d+/.exec(candidato.numeroCompra.replace(/(\d)\.(?=\d{3})/g, '$1'))
@@ -187,28 +181,47 @@ export function ehMesmaLicitacaoDoPncp(
   return [candidato.aberturaAt, candidato.encerramentoAt].some((data) => data !== null && diaEmBrasilia(new Date(data)) === dia)
 }
 
-export async function licitacaoDoPncpEquivalente(tender: NormalizedTender, agora: Date = new Date()): Promise<string | null> {
-  if (!tender.uf || (!tender.municipioIbge && !tender.municipio)) return null
-  const modalidades = modalidadesEquivalentes(tender.modalidade)
+export async function candidatosDoPncp(
+  tender: NormalizedTender,
+  agora: Date = new Date(),
+  modalidadeConhecida = true,
+  quantos = CANDIDATOS_DO_PNCP
+): Promise<CandidatoDoPncpNoMunicipio[]> {
+  if (!tender.uf || (!tender.municipioIbge && !tender.municipio)) return []
   const limite = new Date(agora.getTime() - DIAS_DE_HISTORICO_DO_PNCP * DIA_MS)
   const municipioNorm = tender.municipio ? normalize(tender.municipio) : null
-  const candidatos = await prisma.$queryRaw<(CandidatoDoPncp & { id: string })[]>`
+  const filtroDaModalidade = modalidadeConhecida
+    ? Prisma.sql`AND modalidade::text IN (${Prisma.join(modalidadesEquivalentes(tender.modalidade))})`
+    : Prisma.empty
+  return prisma.$queryRaw<CandidatoDoPncpNoMunicipio[]>`
     SELECT id,
+           modalidade::text AS modalidade,
+           orgao,
+           objeto,
            abertura_at AS "aberturaAt",
            encerramento_at AS "encerramentoAt",
            similarity(coalesce(objeto_norm, ''), ${normalize(tender.objeto)})::float8 AS similaridade,
            raw_json->>'numeroCompra' AS "numeroCompra",
-           raw_json->>'anoCompra' AS "anoCompra"
+           raw_json->>'anoCompra' AS "anoCompra",
+           raw_json->>'processo' AS processo
     FROM tenders
     WHERE fonte = 'PNCP'
       AND uf = ${tender.uf}
       AND publicado_at >= ${limite}
-      AND modalidade::text IN (${Prisma.join(modalidades)})
+      ${filtroDaModalidade}
       AND (municipio_ibge = ${tender.municipioIbge ?? null} OR municipio_norm = ${municipioNorm})
     ORDER BY similaridade DESC
-    LIMIT 50
+    LIMIT ${quantos}
   `
-  return candidatos.find((candidato) => ehMesmaLicitacaoDoPncp(tender, candidato))?.id ?? null
+}
+
+export function conflitaComOAviso(tender: NormalizedTender, candidato: CandidatoDoPncpNoMunicipio): boolean {
+  return conflitoComOPncp(tender, candidato, comparacaoDoNumeroDoAviso(numeroDoAviso(tender.fonteId), candidato)) !== null
+}
+
+export async function licitacaoDoPncpEquivalente(tender: NormalizedTender, agora: Date = new Date()): Promise<string | null> {
+  const candidatos = await candidatosDoPncp(tender, agora)
+  return candidatos.find((candidato) => !conflitaComOAviso(tender, candidato) && ehMesmaLicitacaoDoPncp(tender, candidato))?.id ?? null
 }
 
 export async function existeNoPncp(tender: NormalizedTender, agora: Date = new Date()): Promise<boolean> {

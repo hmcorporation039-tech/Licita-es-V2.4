@@ -132,7 +132,7 @@ rodar('Diário Municipal (SIGPub) — coleta gravando no banco', () => {
         municipioNorm: 'caapora',
         municipioIbge: '2503001',
         publicadoAt: new Date('2026-10-15T12:00:00Z'),
-        encerramentoAt: new Date('2026-11-05T12:00:00Z'),
+        encerramentoAt: new Date('2026-10-30T12:00:00Z'),
         rawJson: { numeroCompra: '00020', anoCompra: 2026 },
       },
     })

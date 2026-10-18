@@ -1,11 +1,8 @@
-import { Prisma } from '@prisma/client'
 import { NormalizedTender } from '../types'
 import { normalize } from '../lib/geoService'
-import { prisma } from './tenderService'
-import { CandidatoDoPncp, ehMesmaLicitacaoDoPncp, modalidadesEquivalentes } from './queridoDiarioService'
+import { ComparacaoDoNumero, NumeroDaCompraNoPncp, conflitoComOPncp } from '../lib/repeticaoDoPncp'
+import { CandidatoDoPncp, candidatosDoPncp, ehMesmaLicitacaoDoPncp } from './queridoDiarioService'
 
-const DIAS_DE_HISTORICO_DO_PNCP = 180
-const DIA_MS = 86_400_000
 const SIMILARIDADE_MINIMA_COM_O_MESMO_NUMERO = 0.25
 const SIMILARIDADE_QUE_DISPENSA_AS_PALAVRAS = 0.8
 const PALAVRAS_EM_COMUM_PELO_OBJETO = 0.5
@@ -72,6 +69,25 @@ export function numerosDoTender(tender: NormalizedTender): Set<string> {
   return new Set(textos.map((t) => chaveDoNumero(t, ano)).filter((c): c is string => c !== null))
 }
 
+function terminaCom(chave: string, final: string): boolean {
+  const partes = chave.split('.')
+  const doFinal = final.split('.')
+  return doFinal.length <= partes.length && doFinal.every((parte, i) => partes[partes.length - doFinal.length + i] === parte)
+}
+
+export function comparacaoDoNumeroTceCe(
+  tender: Pick<NormalizedTender, 'aberturaAt' | 'publicadoAt'>,
+  numeros: Set<string>,
+  candidato: NumeroDaCompraNoPncp
+): ComparacaoDoNumero {
+  const ano = anoDoTender(tender)
+  const doPncp = [candidato.numeroCompra, candidato.processo].map((t) => chaveDoNumero(t, ano)).filter((c): c is string => c !== null)
+  if (numeros.size === 0 || doPncp.length === 0) return 'desconhecido'
+  if (doPncp.some((chave) => numeros.has(chave))) return 'igual'
+  const doTce = [...numeros]
+  return doPncp.some((chave) => doTce.some((numero) => terminaCom(numero, chave) || terminaCom(chave, numero))) ? 'desconhecido' : 'diferente'
+}
+
 export function motivoDaDuplicidade(
   tender: Pick<NormalizedTender, 'aberturaAt' | 'publicadoAt' | 'objeto' | 'municipio'>,
   numeros: Set<string>,
@@ -97,31 +113,10 @@ export async function duplicataNoPncpTceCe(
   agora: Date = new Date(),
   modalidadeConhecida = true
 ): Promise<DuplicataNoPncp | null> {
-  if (!tender.uf || (!tender.municipioIbge && !tender.municipio)) return null
-  const limite = new Date(agora.getTime() - DIAS_DE_HISTORICO_DO_PNCP * DIA_MS)
-  const municipioNorm = tender.municipio ? normalize(tender.municipio) : null
-  const filtroDaModalidade = modalidadeConhecida
-    ? Prisma.sql`AND modalidade::text IN (${Prisma.join(modalidadesEquivalentes(tender.modalidade))})`
-    : Prisma.empty
-  const candidatos = await prisma.$queryRaw<(CandidatoDoPncpNoCeara & { id: string })[]>`
-    SELECT id,
-           abertura_at AS "aberturaAt",
-           encerramento_at AS "encerramentoAt",
-           objeto,
-           raw_json->>'numeroCompra' AS "numeroCompra",
-           raw_json->>'processo' AS processo,
-           similarity(coalesce(objeto_norm, ''), ${normalize(tender.objeto)})::float8 AS similaridade
-    FROM tenders
-    WHERE fonte = 'PNCP'
-      AND uf = ${tender.uf}
-      AND publicado_at >= ${limite}
-      ${filtroDaModalidade}
-      AND (municipio_ibge = ${tender.municipioIbge ?? null} OR municipio_norm = ${municipioNorm})
-    ORDER BY similaridade DESC
-    LIMIT ${CANDIDATOS_POR_CONSULTA}
-  `
+  const candidatos = await candidatosDoPncp(tender, agora, modalidadeConhecida, CANDIDATOS_POR_CONSULTA)
   const numeros = numerosDoTender(tender)
   for (const candidato of candidatos) {
+    if (conflitoComOPncp(tender, candidato, comparacaoDoNumeroTceCe(tender, numeros, candidato))) continue
     const motivo = motivoDaDuplicidade(tender, numeros, candidato)
     if (motivo) return { id: candidato.id, motivo }
   }

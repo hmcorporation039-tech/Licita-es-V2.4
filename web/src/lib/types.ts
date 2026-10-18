@@ -195,6 +195,7 @@ export interface Tender {
   encerramentoAt?: string | null
   publicadoAt: string | null
   linkEdital: string | null
+  duplicataDe?: string | null
   createdAt: string
   items?: TenderItem[]
   match?: TenderMatchInfo

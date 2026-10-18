@@ -22,7 +22,7 @@ rodar('Somente licitações abertas', () => {
   let token = ''
 
   const casos: Record<string, Record<string, unknown>> = {
-    prazoFuturo: { encerramentoAt: dias(5), publicadoAt: dias(-400), uf: 'GO' },
+    prazoFuturo: { encerramentoAt: dias(5), publicadoAt: dias(-400), aberturaAt: dias(-10), uf: 'GO' },
     prazoVencido: { encerramentoAt: dias(-1) },
     homologada: { encerramentoAt: dias(5), valorHomologado: 1000 },
     revogada: { encerramentoAt: dias(5), situacao: 'REVOGADA' },
@@ -43,10 +43,17 @@ rodar('Somente licitações abertas', () => {
     tceCeComReaberturaEm2202: { fonte: 'TCE_CE', aberturaAt: new Date('2202-11-21T11:00:00Z'), publicadoAt: new Date('2022-11-30T03:00:00Z') },
     pncpAntigoComPrazoEm2102: { encerramentoAt: new Date('2102-03-01T03:00:00Z'), publicadoAt: dias(-400) },
     pncpCredenciamentoDeDezAnos: { encerramentoAt: dias(3650), publicadoAt: dias(-10), modalidade: 'CREDENCIAMENTO', uf: 'SP' },
+    pregaoDeFevereiroComPrazoEm2029: { encerramentoAt: dias(870), publicadoAt: dias(-250), aberturaAt: dias(-250) },
+    presencialRecenteComPrazoTresAnosDepois: { encerramentoAt: dias(1070), publicadoAt: dias(-3), aberturaAt: dias(-38), modalidade: 'PREGAO_PRESENCIAL', uf: 'SP' },
+    concorrenciaAntigaComPrazoTresAnosDepois: { encerramentoAt: dias(1070), publicadoAt: dias(-60), modalidade: 'CONCORRENCIA' },
+    inexigibilidadeComPrazoDeTresAnos: { encerramentoAt: dias(1070), publicadoAt: dias(-60), modalidade: 'INEXIGIBILIDADE', uf: 'SP' },
     diarioRepetidoDoPncp: { fonte: 'QUERIDO_DIARIO', aberturaAt: dias(5), publicadoAt: dias(-2), duplicataDe: 'id-da-licitacao-do-pncp' },
   }
-  const abertas = ['prazoFuturo', 'dispensaRecente', 'sessaoFiegFutura', 'sestSenatDesteAnoSemData', 'sescRegionalPublicadaHaPouco', 'novacapComPrazoENumeroAntigo', 'pncpCredenciamentoDeDezAnos']
-  const comPrazoConfirmado = ['prazoFuturo', 'sessaoFiegFutura', 'novacapComPrazoENumeroAntigo', 'pncpCredenciamentoDeDezAnos']
+  const abertas = [
+    'prazoFuturo', 'dispensaRecente', 'sessaoFiegFutura', 'sestSenatDesteAnoSemData', 'sescRegionalPublicadaHaPouco', 'novacapComPrazoENumeroAntigo', 'pncpCredenciamentoDeDezAnos',
+    'presencialRecenteComPrazoTresAnosDepois', 'inexigibilidadeComPrazoDeTresAnos',
+  ]
+  const comPrazoConfirmado = ['prazoFuturo', 'sessaoFiegFutura', 'novacapComPrazoENumeroAntigo', 'pncpCredenciamentoDeDezAnos', 'inexigibilidadeComPrazoDeTresAnos']
 
   beforeAll(async () => {
     process.env.DATABASE_URL = URL_BANCO

@@ -53,7 +53,7 @@ rodar('Querido Diário — duplicidade com o PNCP e republicação', () => {
         municipioNorm: `cidade ${sufixo}`,
         municipioIbge: ibge,
         aberturaAt: dias(-2),
-        encerramentoAt: dias(20),
+        encerramentoAt: dias(10),
         publicadoAt: dias(-2),
         rawJson: {},
       },
@@ -71,9 +71,9 @@ rodar('Querido Diário — duplicidade com o PNCP e republicação', () => {
   })
 
   it('no mesmo dia da sessão, reconhece objeto resumido de outro jeito, mas não descarta licitação diferente', async () => {
-    const resumido = doDiario({ objeto: 'Kits de materiais para professores', aberturaAt: dias(20) })
+    const resumido = doDiario({ objeto: 'Kits de materiais para professores', aberturaAt: dias(10) })
     expect(await servico.existeNoPncp(resumido, agora)).toBe(true)
-    const outra = doDiario({ objeto: 'Contratação de serviço de transporte escolar', aberturaAt: dias(20) })
+    const outra = doDiario({ objeto: 'Contratação de serviço de transporte escolar', aberturaAt: dias(10) })
     expect(await servico.existeNoPncp(outra, agora)).toBe(false)
   })
 
