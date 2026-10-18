@@ -13,6 +13,7 @@ import { NotificadorAlteracaoPayload, NotificadorJobPayload, NotificadorMatchPay
 import { limites } from '../lib/limites'
 import { inicioDoDiaEmBrasilia } from '../lib/dataDeBrasilia'
 import { estaAberta } from '../lib/licitacaoAberta'
+import { SELECT_DO_DESTINATARIO, acessoDoDestinatarioComEmpresa, avisarFimDoAcessoUmaVez } from '../services/avisoDeAcessoEncerrado'
 
 async function jaNotificado(caminho: string[], valor: string): Promise<boolean> {
   const existente = await prisma.notification.findFirst({
@@ -29,10 +30,13 @@ export async function processarMatch(payload: NotificadorMatchPayload): Promise<
 
   const match = await prisma.tenderMatch.findUnique({
     where: { id: tenderMatchId },
-    include: { tender: true, monitoredItem: true, user: true },
+    include: { tender: true, monitoredItem: true, user: { select: SELECT_DO_DESTINATARIO } },
   })
-  if (!match || !match.user.active) return
-  if (!estaAberta(match.tender)) return
+  if (!match || !estaAberta(match.tender)) return
+
+  const acesso = acessoDoDestinatarioComEmpresa(match.user)
+  if (acesso.situacao === 'encerrado') await avisarFimDoAcessoUmaVez(match.user, acesso.acessoAte)
+  if (acesso.situacao !== 'ativo') return
 
   const emailsHojeDaEmpresa = await prisma.notification.count({
     where: {
@@ -87,9 +91,9 @@ async function processarAlteracao(payload: NotificadorAlteracaoPayload): Promise
 
   const [tender, user] = await Promise.all([
     prisma.tender.findUnique({ where: { id: tenderId } }),
-    prisma.user.findUnique({ where: { id: userId }, select: { email: true, active: true } }),
+    prisma.user.findUnique({ where: { id: userId }, select: SELECT_DO_DESTINATARIO }),
   ])
-  if (!tender || !user || !user.active) return
+  if (!tender || !user || acessoDoDestinatarioComEmpresa(user).situacao !== 'ativo') return
 
   await sendTenderChangedEmail({
     to: user.email,

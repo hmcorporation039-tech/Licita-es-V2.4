@@ -116,6 +116,7 @@ model Company {
   baseLat             Float?      @map("base_lat")
   baseLng             Float?      @map("base_lng")
   origemDoCadastro    Json?       @map("origem_do_cadastro")
+  avisoDoFimDoAcesso  DateTime?   @map("aviso_do_fim_do_acesso")
   createdAt           DateTime    @default(now()) @map("created_at")
   updatedAt           DateTime    @updatedAt @map("updated_at")
 

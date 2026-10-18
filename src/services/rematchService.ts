@@ -5,7 +5,8 @@ import { entradaDoItem, findMatchingTendersForItem, reavaliarMatchesDoItem, type
 import { notificadorQueue, redisConnection, rematchItemQueue } from '../queues'
 import { enfileirarSemTravar } from '../queues/enfileirar'
 import { whereLicitacaoAberta } from '../lib/licitacaoAberta'
-import { MAX_MATCHES_POR_ITEM, avisoDoLimite, selecionarDentroDoLimite } from '../lib/limiteDeMatches'
+import { MAX_MATCHES_POR_ITEM, avisoDoLimite, compararPorAderenciaEPrazo, substituirMenosAderentes, type CandidatoComAderencia, type MatchAbertoNoLimite } from '../lib/limiteDeMatches'
+import type { MatchCandidate } from './matcherService'
 import type { ModoDaBuscaDoItem } from '../types'
 
 export const MAX_EMAILS_POR_REMATCH = 20
@@ -51,11 +52,117 @@ export async function itensNoLimiteDeMatches(itemIds: string[]): Promise<Set<str
   return new Set(grupos.filter((g) => g._count._all >= MAX_MATCHES_POR_ITEM).map((g) => g.monitoredItemId))
 }
 
-export async function descartarItensNoLimite<T extends { monitoredItemId: string }>(candidatos: T[]): Promise<T[]> {
+export interface NovoMatchDoItem extends CandidatoComAderencia {
+  matchedKeywords: string[]
+  matchedByCode: boolean
+  dentroDeObraCompleta: boolean
+}
+
+export interface DonoDoItem {
+  id: string
+  companyId: string
+  userId: string
+}
+
+export interface GravacaoNoLimite {
+  gravados: string[]
+  criados: number
+  limitado: boolean
+}
+
+function trabalhoDaEmpresa(companyId: string) {
+  const daEmpresa = { where: { companyId }, select: { id: true }, take: 1 } as const
+  return { participationPlans: daEmpresa, costStudies: daEmpresa, pregoes: daEmpresa, checklists: daEmpresa }
+}
+
+export async function matchesAbertosDoItem(item: Pick<DonoDoItem, 'id' | 'companyId'>): Promise<MatchAbertoNoLimite[]> {
+  const abertos = await prisma.tenderMatch.findMany({
+    where: { monitoredItemId: item.id, tender: whereLicitacaoAberta() },
+    select: { id: true, tenderId: true, score: true, tender: { select: { encerramentoAt: true, ...trabalhoDaEmpresa(item.companyId) } } },
+  })
+  return abertos.map(({ id, tenderId, score, tender }) => ({
+    id,
+    tenderId,
+    score,
+    encerramentoAt: tender.encerramentoAt,
+    protegido: tender.participationPlans.length + tender.costStudies.length + tender.pregoes.length + tender.checklists.length > 0,
+  }))
+}
+
+async function marcarItemLimitado(itemId: string) {
+  await prisma.monitoredItem.updateMany({ where: { id: itemId, buscaLimitada: false }, data: { buscaLimitada: true } })
+}
+
+export async function gravarMatchesDoItemNoLimite(item: DonoDoItem, novos: NovoMatchDoItem[], abertosJaGravados?: number): Promise<GravacaoNoLimite> {
+  if (novos.length === 0) return { gravados: [], criados: 0, limitado: false }
+  const abertos = abertosJaGravados ?? (await contarMatchesAbertosDoItem(item.id))
+  const { entram, saem, limitado } =
+    abertos + novos.length <= MAX_MATCHES_POR_ITEM
+      ? { entram: [...novos].sort(compararPorAderenciaEPrazo), saem: [], limitado: false }
+      : substituirMenosAderentes(novos, await matchesAbertosDoItem(item))
+  if (limitado) await marcarItemLimitado(item.id)
+  if (entram.length === 0) return { gravados: [], criados: 0, limitado }
+
+  const [{ count }] = await prisma.$transaction([
+    prisma.tenderMatch.createMany({
+      data: entram.map((c) => ({
+        tenderId: c.tenderId,
+        monitoredItemId: item.id,
+        companyId: item.companyId,
+        userId: item.userId,
+        score: c.score,
+        matchedByCode: c.matchedByCode,
+        matchedKeywords: c.matchedKeywords,
+        dentroDeObraCompleta: c.dentroDeObraCompleta,
+      })),
+      skipDuplicates: true,
+    }),
+    prisma.tenderMatch.deleteMany({ where: { monitoredItemId: item.id, id: { in: saem.map((m) => m.id) } } }),
+  ])
+  return { gravados: entram.map((c) => c.tenderId), criados: count, limitado }
+}
+
+export async function gravarMatchesDaLicitacao(tenderId: string, encerramentoAt: Date | null, candidatos: MatchCandidate[]): Promise<string[]> {
+  if (candidatos.length === 0) return []
   const noLimite = await itensNoLimiteDeMatches([...new Set(candidatos.map((c) => c.monitoredItemId))])
-  if (noLimite.size === 0) return candidatos
-  await prisma.monitoredItem.updateMany({ where: { id: { in: [...noLimite] }, buscaLimitada: false }, data: { buscaLimitada: true } })
-  return candidatos.filter((c) => !noLimite.has(c.monitoredItemId))
+  const comVaga = candidatos.filter((c) => !noLimite.has(c.monitoredItemId))
+  const gravados = comVaga.map((c) => c.monitoredItemId)
+  if (comVaga.length > 0) {
+    await prisma.tenderMatch.createMany({
+      data: comVaga.map((c) => ({
+        tenderId,
+        monitoredItemId: c.monitoredItemId,
+        companyId: c.companyId,
+        userId: c.userId,
+        score: c.score,
+        matchedByCode: c.matchedByCode,
+        matchedKeywords: c.matchedKeywords,
+        dentroDeObraCompleta: c.dentroDeObraCompleta,
+      })),
+      skipDuplicates: true,
+    })
+  }
+  for (const c of candidatos.filter((candidato) => noLimite.has(candidato.monitoredItemId))) {
+    const item = { id: c.monitoredItemId, companyId: c.companyId, userId: c.userId }
+    const novo = { tenderId, encerramentoAt, score: c.score, matchedKeywords: c.matchedKeywords, matchedByCode: c.matchedByCode, dentroDeObraCompleta: c.dentroDeObraCompleta }
+    const { gravados: doItem } = await gravarMatchesDoItemNoLimite(item, [novo], MAX_MATCHES_POR_ITEM)
+    if (doItem.length > 0) gravados.push(c.monitoredItemId)
+  }
+  return gravados
+}
+
+export async function enfileirarAvisosDeMatch(matchIds: string[], contexto: string): Promise<number> {
+  if (matchIds.length === 0) return 0
+  if (redisConnection.status !== 'ready') {
+    console.warn(`[${contexto}] Redis indisponível: ${matchIds.length} aviso(s) de match não foram enfileirados (os matches foram salvos).`)
+    return 0
+  }
+  let enfileirados = 0
+  for (const tenderMatchId of matchIds) {
+    if (!(await enfileirarSemTravar(notificadorQueue, 'notify-match', { tenderMatchId }, contexto))) break
+    enfileirados++
+  }
+  return enfileirados
 }
 
 export async function buscarLicitacoesDoItem(item: ItemParaRematch, { notificar }: { notificar: boolean }): Promise<ResultadoDaBusca> {
@@ -70,34 +177,18 @@ export async function buscarLicitacoesDoItem(item: ItemParaRematch, { notificar 
   const newCandidates = candidates.filter((c) => !existingSet.has(c.tenderId))
   if (newCandidates.length === 0) return { matchesFound: 0, limitado: false }
 
-  const { selecionados, limitado } = selecionarDentroDoLimite(newCandidates, await contarMatchesAbertosDoItem(item.id))
-  if (selecionados.length === 0) return { matchesFound: 0, limitado }
-
-  const { count } = await prisma.tenderMatch.createMany({
-    data: selecionados.map((c) => ({
-      tenderId: c.tenderId,
-      monitoredItemId: item.id,
-      companyId: item.companyId,
-      userId: item.userId,
-      score: c.score,
-      matchedByCode: c.matchedByCode,
-      matchedKeywords: c.matchedKeywords,
-      dentroDeObraCompleta: c.dentroDeObraCompleta,
-    })),
-    skipDuplicates: true,
-  })
+  const { gravados, criados, limitado } = await gravarMatchesDoItemNoLimite(item, newCandidates)
+  if (gravados.length === 0) return { matchesFound: 0, limitado }
 
   if (notificar) {
     const aNotificar = await prisma.tenderMatch.findMany({
-      where: { monitoredItemId: item.id, tenderId: { in: selecionados.slice(0, MAX_EMAILS_POR_REMATCH).map((c) => c.tenderId) } },
+      where: { monitoredItemId: item.id, tenderId: { in: gravados.slice(0, MAX_EMAILS_POR_REMATCH) } },
       select: { id: true },
     })
-    for (const match of aNotificar) {
-      await enfileirarSemTravar(notificadorQueue, 'notify-match', { tenderMatchId: match.id }, 'Rematch')
-    }
+    await enfileirarAvisosDeMatch(aNotificar.map((m) => m.id), 'Rematch')
   }
 
-  return { matchesFound: count, limitado }
+  return { matchesFound: criados, limitado }
 }
 
 export async function reavaliarEBuscarLicitacoesDoItem(

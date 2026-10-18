@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { MAX_MATCHES_POR_ITEM, avisoDoLimite, compararPorAderenciaEPrazo, selecionarDentroDoLimite, type CandidatoComAderencia } from '../src/lib/limiteDeMatches'
+import {
+  MAX_MATCHES_POR_ITEM,
+  avisoDoLimite,
+  compararPorAderenciaEPrazo,
+  selecionarDentroDoLimite,
+  substituirMenosAderentes,
+  type CandidatoComAderencia,
+  type MatchAbertoNoLimite,
+} from '../src/lib/limiteDeMatches'
 
 const AGORA = new Date('2026-10-18T12:00:00Z').getTime()
 const emDias = (n: number) => new Date(AGORA + n * 86_400_000)
@@ -70,8 +78,53 @@ describe('selecionarDentroDoLimite', () => {
   })
 })
 
+describe('substituirMenosAderentes', () => {
+  const aberto = (tenderId: string, score: number, dias: number, protegido = false): MatchAbertoNoLimite => ({ id: `m-${tenderId}`, tenderId, score, encerramentoAt: emDias(dias), protegido })
+  const cheio = [aberto('a', 0.8, 5), aberto('b', 0.6, 5), aberto('c', 0.6, 20), aberto('d', 0.5, 3)]
+
+  it('licitação nova mais aderente entra no lugar da menos aderente aberta', () => {
+    const nova = candidato('nova', 0.7, emDias(10))
+    expect(substituirMenosAderentes([nova], cheio, 4)).toEqual({ entram: [nova], saem: [cheio[3]], limitado: true })
+  })
+
+  it('com a mesma aderência, sai a de prazo mais distante', () => {
+    const nova = candidato('nova', 0.6, emDias(8))
+    expect(substituirMenosAderentes([nova], cheio.slice(0, 3), 3)).toMatchObject({ entram: [nova], saem: [cheio[2]] })
+  })
+
+  it('licitação nova menos aderente, ou empatada em tudo, não entra e ninguém sai', () => {
+    expect(substituirMenosAderentes([candidato('nova', 0.4, emDias(1))], cheio, 4)).toEqual({ entram: [], saem: [], limitado: true })
+    expect(substituirMenosAderentes([candidato('0-nova', 0.5, emDias(3))], cheio, 4)).toEqual({ entram: [], saem: [], limitado: true })
+  })
+
+  it('nunca tira licitação que a empresa escolheu, e ela continua ocupando vaga', () => {
+    const comEscolhida = [aberto('a', 0.8, 5), aberto('escolhida', 0.1, 30, true), aberto('b', 0.6, 5)]
+    const nova = candidato('nova', 0.7, emDias(10))
+    expect(substituirMenosAderentes([nova], comEscolhida, 3)).toEqual({ entram: [nova], saem: [comEscolhida[2]], limitado: true })
+    const soEscolhidas = [aberto('x', 0.1, 5, true), aberto('y', 0.1, 5, true)]
+    expect(substituirMenosAderentes([nova], soEscolhidas, 2)).toEqual({ entram: [], saem: [], limitado: true })
+  })
+
+  it('abaixo do limite só acrescenta, sem tirar ninguém', () => {
+    const nova = candidato('nova', 0.1, emDias(10))
+    expect(substituirMenosAderentes([nova], cheio, 10)).toEqual({ entram: [nova], saem: [], limitado: false })
+  })
+
+  it('várias novas: fica sempre no máximo o limite, com as mais aderentes', () => {
+    const novas = Array.from({ length: 30 }, (_, i) => candidato(`n${String(i).padStart(2, '0')}`, i / 30, emDias(i + 1)))
+    const { entram, saem, limitado } = substituirMenosAderentes(novas, cheio, 10)
+    expect(limitado).toBe(true)
+    expect(cheio.length - saem.length + entram.length).toBe(10)
+    const ficaram = [...cheio.filter((m) => !saem.includes(m)), ...entram].sort(compararPorAderenciaEPrazo)
+    const todas = [...cheio, ...novas].sort(compararPorAderenciaEPrazo).slice(0, 10)
+    expect(ficaram.map((c) => c.tenderId)).toEqual(todas.map((c) => c.tenderId))
+  })
+})
+
 describe('avisoDoLimite', () => {
-  it('explica o corte com o número formatado e como refinar', () => {
-    expect(avisoDoLimite()).toBe('Palavra muito genérica: mostrando as 2.000 mais aderentes — refine com estados, valor ou palavras de exclusão.')
+  it('explica o corte com o número formatado, que as novas substituem as menos aderentes e como refinar', () => {
+    expect(avisoDoLimite()).toBe(
+      'Palavra muito genérica: mostrando as 2.000 mais aderentes; novas licitações substituem as menos aderentes. Refine com estados, valor ou palavras de exclusão.'
+    )
   })
 })

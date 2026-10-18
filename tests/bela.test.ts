@@ -158,7 +158,7 @@ describe('Bela: pedido de busca falado', () => {
       const r = interpretarPedido(frase)
       expect(r.acao === 'buscar' && r.filtros.municipio, frase).toBeFalsy()
     }
-    expect(interpretarPedido('fornecimento de areia branca em Goiás')).toMatchObject({ filtros: { q: 'fornecimento de areia branca', uf: 'GO' } })
+    expect(interpretarPedido('fornecimento de areia branca em Goiás')).toMatchObject({ filtros: { q: 'areia branca', uf: 'GO' } })
   })
 
   it('estado com nome de município continua sendo o estado', () => {
@@ -175,6 +175,63 @@ describe('Bela: pedido de busca falado', () => {
     const r = interpretarPedido('pavimentação em Vitória da Conquista em Goiás')
     expect(r).toMatchObject({ filtros: { uf: 'GO' } })
     expect(r.acao === 'buscar' && r.filtros.municipio).toBeFalsy()
+  })
+
+  it('cidade grande com nome de palavra comum, no fim do pedido, vale sem o estado', () => {
+    expect(interpretarPedido('alimentação em Santos')).toMatchObject({ filtros: { q: 'alimentação', municipio: 'Santos', uf: 'SP' } })
+    expect(interpretarPedido('alimentação em santos')).toMatchObject({ filtros: { q: 'alimentação', municipio: 'Santos', uf: 'SP' } })
+    expect(interpretarPedido('pneus em Contagem, só as abertas')).toMatchObject({ filtros: { q: 'pneus', municipio: 'Contagem', uf: 'MG', situacao: 'ABERTA' } })
+    expect(interpretarPedido('merenda escolar em Cascavel')).toMatchObject({ filtros: { q: 'merenda escolar', municipio: 'Cascavel', uf: 'PR' } })
+    expect(interpretarPedido('merenda escolar em Cascavel no Ceará')).toMatchObject({ filtros: { q: 'merenda escolar', municipio: 'Cascavel', uf: 'CE' } })
+    for (const [frase, municipio, uf] of [
+      ['uniformes em Canoas', 'Canoas', 'RS'],
+      ['calçados em Franca', 'Franca', 'SP'],
+      ['limpeza na Limeira', 'Limeira', 'SP'],
+      ['asfalto em Imperatriz', 'Imperatriz', 'MA'],
+      ['merenda em Dourados', 'Dourados', 'MS'],
+    ]) {
+      expect(interpretarPedido(frase), frase).toMatchObject({ filtros: { municipio, uf } })
+    }
+  })
+
+  it('cidade grande com nome comum no meio da frase ou depois de "de" continua sendo texto', () => {
+    for (const frase of ['imagens de santos em gesso', 'alimentação em Santos pregão', 'material de cascavel', 'aquisição de canoas', 'contagem de estoque em Goiás']) {
+      const r = interpretarPedido(frase)
+      expect(r.acao === 'buscar' && r.filtros.municipio, frase).toBeFalsy()
+    }
+  })
+
+  it('a lista curada de cidades grandes só tem municípios que existem na tabela do IBGE, no estado certo', async () => {
+    const { grandesMunicipiosComNomeComum } = await import('../src/lib/bela/interpretar')
+    const { ufsDoMunicipio } = await import('../src/lib/bela/municipios')
+    for (const [nome, uf] of grandesMunicipiosComNomeComum()) expect(ufsDoMunicipio(nome), nome).toContain(uf)
+  })
+
+  it('tira "compra de", "aquisição de", "fornecimento de" e "contratação de" do texto buscado', () => {
+    expect(interpretarPedido('compra de café em Brasília')).toMatchObject({ filtros: { q: 'café', municipio: 'Brasília', uf: 'DF' } })
+    expect(interpretarPedido('aquisição de notebooks no DF')).toMatchObject({ filtros: { q: 'notebooks', uf: 'DF' } })
+    expect(interpretarPedido('licitação de compra de café')).toMatchObject({ filtros: { q: 'café' } })
+    expect(interpretarPedido('contratação de serviços de limpeza em Goiás')).toMatchObject({ filtros: { q: 'serviços de limpeza', uf: 'GO' } })
+    expect(interpretarPedido('compra de')).toMatchObject({ filtros: { q: 'compra' } })
+  })
+
+  it('"no interior de São Paulo" busca no estado sem pôr "interior" no texto', () => {
+    expect(interpretarPedido('medicamentos no interior de São Paulo')).toMatchObject({ filtros: { q: 'medicamentos', uf: 'SP' } })
+    expect(interpretarPedido('merenda pelo interior do estado de Goiás')).toMatchObject({ filtros: { q: 'merenda', uf: 'GO' } })
+    expect(interpretarPedido('pintura do interior no DF')).toMatchObject({ filtros: { q: 'pintura do interior', uf: 'DF' } })
+  })
+
+  it('lista de municípios filtra pelos estados deles e diz quais cidades foram pedidas', () => {
+    const r = interpretarPedido('areia em Feira de Santana e Salvador')
+    expect(r).toMatchObject({
+      acao: 'buscar',
+      filtros: { q: 'areia', uf: 'BA', municipios: ['Feira de Santana', 'Salvador'], rotuloDoLocal: 'em BA, onde ficam Feira de Santana e Salvador' },
+      resumo: 'Buscando "areia" em BA, onde ficam Feira de Santana e Salvador.',
+    })
+    expect(r.acao === 'buscar' && r.filtros.municipio).toBeFalsy()
+    expect(interpretarPedido('cimento em Goiânia, Anápolis e Trindade')).toMatchObject({ filtros: { q: 'cimento', uf: 'GO', municipios: ['Goiânia', 'Anápolis', 'Trindade'] } })
+    expect(interpretarPedido('cimento em Goiânia e em Salvador')).toMatchObject({ filtros: { q: 'cimento', ufs: ['GO', 'BA'], municipios: ['Goiânia', 'Salvador'] } })
+    expect(interpretarPedido('cimento em Goiânia e areia')).toMatchObject({ filtros: { q: 'cimento e areia', municipio: 'Goiânia', uf: 'GO' } })
   })
 
   it('pede de novo quando não há o que buscar', () => {

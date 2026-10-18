@@ -13,6 +13,7 @@
 import { Resend } from 'resend'
 import { appUrl } from '../lib/appUrl'
 import { escapeHtml } from '../lib/html'
+import { quantidadeCom } from '../lib/plural'
 
 const EMAIL_FROM = process.env.EMAIL_FROM ?? 'noreply@seudominio.com.br'
 
@@ -57,6 +58,27 @@ function moldura(titulo: string, corpo: string, link: string, rotuloBotao: strin
       <p><a href="${escapeHtml(link)}" style="display:inline-block;background:#4338ca;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none">${escapeHtml(rotuloBotao)}</a></p>
       <p style="color:#64748b;font-size:12px">Se o botão não funcionar, copie este endereço no navegador:<br>${escapeHtml(link)}</p>
     </div>`
+}
+
+export function linkDoAcessoEncerrado(): string {
+  return `${appUrl()}/acesso-encerrado`
+}
+
+export async function enviarAvisoDeAcessoEncerrado(to: string, { licitacoesEsperando, emTeste }: { licitacoesEsperando: number; emTeste: boolean }): Promise<void> {
+  const link = linkDoAcessoEncerrado()
+  const esperando = quantidadeCom(licitacoesEsperando, 'licitação nova esperando', 'licitações novas esperando')
+  await enviar({
+    to,
+    link,
+    subject: `${emTeste ? 'Seu teste terminou' : 'Seu acesso terminou'}: ${esperando} por você`,
+    html: moldura(
+      emTeste ? 'Seu teste grátis terminou' : 'O acesso da sua conta terminou',
+      `<p>O Monitor continua procurando licitações para os itens que você cadastrou: há ${escapeHtml(esperando)} por você, guardadas na sua conta.</p>
+       <p>Enquanto o acesso estiver encerrado, você não recebe os avisos de cada licitação. Veja como continuar ou pedir uma cópia dos seus dados.</p>`,
+      link,
+      'Ver como continuar'
+    ),
+  })
 }
 
 export function linkDeRecuperacao(token: string): string {

@@ -15,6 +15,7 @@ export interface FiltrosDaBusca {
   ufs?: string[]
   rotuloDoLocal?: string
   municipio?: string
+  municipios?: string[]
   modalidade?: ModalidadeFalada
   modalidades?: ModalidadeFalada[]
   situacao?: 'ABERTA'
@@ -73,6 +74,8 @@ const PALAVRAS_DE_COMANDO = new Set([
   'houver', 'existem', 'ha', 'todas', 'todos', 'qualquer', 'aparecer', 'aparece',
 ])
 const LIGACOES_NAS_PONTAS = new Set(['de', 'da', 'do', 'das', 'dos', 'para', 'pra', 'com', 'em', 'no', 'na', 'e', 'a', 'o'])
+const PALAVRAS_DE_COMPRA = new Set(['compra', 'compras', 'aquisicao', 'aquisicoes', 'fornecimento', 'fornecimentos', 'contratacao', 'contratacoes'])
+const LIGACOES_DA_COMPRA = new Set(['de', 'do', 'da', 'dos', 'das'])
 
 export function normalizar(texto: string): string {
   return texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
@@ -333,10 +336,25 @@ const MUNICIPIOS_QUE_SAO_PALAVRAS_COMUNS = new Set([
   'rio novo', 'rio verde', 'terra boa', 'terra nova', 'terra rica', 'terra roxa', 'vista alegre',
 ])
 
+const GRANDES_MUNICIPIOS_COM_NOME_COMUM = new Map<string, string>([
+  ['santos', 'SP'], ['contagem', 'MG'], ['cascavel', 'PR'], ['canoas', 'RS'], ['franca', 'SP'], ['limeira', 'SP'], ['imperatriz', 'MA'],
+  ['dourados', 'MS'], ['americana', 'SP'], ['barreiras', 'BA'], ['toledo', 'PR'], ['sorriso', 'MT'], ['lavras', 'MG'], ['patos', 'PB'],
+  ['passos', 'MG'], ['breves', 'PA'], ['trindade', 'GO'], ['rio verde', 'GO'], ['rio claro', 'SP'], ['porto seguro', 'BA'],
+])
+const PREPOSICOES_DO_GRANDE_MUNICIPIO = new Set(['em', 'no', 'na'])
+
+export function grandesMunicipiosComNomeComum(): ReadonlyMap<string, string> {
+  return GRANDES_MUNICIPIOS_COM_NOME_COMUM
+}
+
 const PROCURA_DE_MUNICIPIO = /\b(em|no|na|nos|nas|de|do|da|dos|das|para)\s+/g
 const SEQUENCIA_DE_PALAVRAS = /^[a-z0-9'’-]+(?: [a-z0-9'’-]+)*/
 const ESTADO_COLADO = new RegExp(`^\\s*(?:[,/-]\\s*)?(?:(${PREPOSICAO})\\s+)?(${UNIDADE})\\b`)
 const NOME_QUE_CONTINUA = /^\s+(?:da|de|do|das|dos)\s+[a-z]/
+const PROXIMO_MUNICIPIO = /^\s*(?:,\s*(?:e\s+)?|\be\s+|\bou\s+)(?:(?:em|no|na|de|do|da)\s+)?/
+
+const INTERIOR_DO_ESTADO = /\b(?:no|pelo|pro|para o)\s+interior\s+(?:de|do|da)\b/
+const NO_INTERIOR = /\b(?:no|pelo|pro|para o)\s+interior\b/
 
 interface MunicipioFalado {
   chave: string
@@ -363,43 +381,100 @@ function nomeParaExibir(municipio: MunicipioFalado, uf: string | undefined): str
     .join(' ')
 }
 
-function municipioAceito(chave: string, preposicao: string, ufs: string[], ufColada: string | null): boolean {
+function soComplementosDepois(resto: string): boolean {
+  return resto
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean)
+    .every((palavra) => PALAVRAS_DE_COMANDO.has(palavra))
+}
+
+function grandeMunicipioNoFimDaFrase(chave: string, preposicao: string, ufs: string[], resto: string): boolean {
+  const uf = GRANDES_MUNICIPIOS_COM_NOME_COMUM.get(chave)
+  return uf !== undefined && ufs.includes(uf) && PREPOSICOES_DO_GRANDE_MUNICIPIO.has(preposicao) && soComplementosDepois(resto)
+}
+
+function municipioAceito(chave: string, preposicao: string, ufs: string[], ufColada: string | null, resto: string): boolean {
   if (ufColada !== null && !ufs.includes(ufColada)) return false
   const forte = PREPOSICOES_FORTES_DE_CIDADE.has(preposicao)
   if (CAPITAIS_QUE_SAO_PALAVRAS.has(chave)) return preposicao === 'em' || (forte && ufColada !== null)
   if (CAPITAIS.some(([c, , uf]) => c === chave && ufs.includes(uf))) return forte || preposicao === 'para' || ufColada !== null
-  if (MUNICIPIOS_QUE_SAO_PALAVRAS_COMUNS.has(chave)) return forte && ufColada !== null
+  if (MUNICIPIOS_QUE_SAO_PALAVRAS_COMUNS.has(chave)) return (forte && ufColada !== null) || grandeMunicipioNoFimDaFrase(chave, preposicao, ufs, resto)
   return forte || chave.includes(' ') || ufColada !== null
+}
+
+function municipioDaListaAceito(chave: string, ufs: string[], ufColada: string | null, resto: string): boolean {
+  if (ufColada !== null && !ufs.includes(ufColada)) return false
+  if (!MUNICIPIOS_QUE_SAO_PALAVRAS_COMUNS.has(chave)) return true
+  return ufColada !== null || grandeMunicipioNoFimDaFrase(chave, 'em', ufs, resto)
+}
+
+interface NomeDeMunicipioNoTexto {
+  chave: string
+  ufs: string[]
+  ufColada: string | null
+  fim: number
+  fimComEstado: number
+  resto: string
+}
+
+function nomeDeMunicipioEm(t: string, inicio: number, original: string): NomeDeMunicipioNoTexto | null {
+  const palavras = (t.slice(inicio).match(SEQUENCIA_DE_PALAVRAS)?.[0] ?? '').split(' ').slice(0, MAX_PALAVRAS_NO_NOME_DE_MUNICIPIO)
+  for (let k = palavras.length; k >= 1; k--) {
+    const chave = palavras.slice(0, k).join(' ')
+    if (NOMES_DE_ESTADO.has(chave)) return null
+    const ufs = ufsDoMunicipio(chave)
+    if (ufs.length === 0) continue
+    const fim = inicio + chave.length
+    const resto = t.slice(fim)
+    const colado = ESTADO_COLADO.exec(resto)
+    const lugarColado = colado ? lerLugar(colado[2], colado[1], false, original) : null
+    const ufColada = lugarColado && !lugarColado.regiao && lugarColado.ufs.length === 1 ? lugarColado.ufs[0] : null
+    if (ufColada === null && NOME_QUE_CONTINUA.test(resto)) return null
+    const fimComEstado = ufColada !== null && colado ? fim + colado[0].length : fim
+    return { chave, ufs, ufColada, fim, fimComEstado, resto: t.slice(fimComEstado) }
+  }
+  return null
+}
+
+function municipioFalado(nome: NomeDeMunicipioNoTexto, inicioDoNome: number, inicioDoTrecho: number, original: string): MunicipioFalado {
+  const mesmoTamanho = normalizar(original).length === original.length
+  return {
+    chave: nome.chave,
+    falado: mesmoTamanho ? original.slice(inicioDoNome, nome.fim) : nome.chave,
+    ufs: nome.ufs,
+    ufColada: nome.ufColada,
+    inicio: inicioDoTrecho,
+    fim: nome.fimComEstado,
+  }
 }
 
 function acharMunicipio(t: string, original: string): MunicipioFalado | null {
   const procura = new RegExp(PROCURA_DE_MUNICIPIO.source, 'g')
-  const mesmoTamanho = normalizar(original).length === original.length
   let encontrado: RegExpExecArray | null
   while ((encontrado = procura.exec(t)) !== null) {
-    const preposicao = encontrado[1]
     const inicio = encontrado.index + encontrado[0].length
-    const palavras = (t.slice(inicio).match(SEQUENCIA_DE_PALAVRAS)?.[0] ?? '').split(' ').slice(0, MAX_PALAVRAS_NO_NOME_DE_MUNICIPIO)
-    for (let k = palavras.length; k >= 1; k--) {
-      const chave = palavras.slice(0, k).join(' ')
-      if (NOMES_DE_ESTADO.has(chave)) break
-      const ufs = ufsDoMunicipio(chave)
-      if (ufs.length === 0) continue
-      const fim = inicio + chave.length
-      const resto = t.slice(fim)
-      const colado = ESTADO_COLADO.exec(resto)
-      const lugarColado = colado ? lerLugar(colado[2], colado[1], false, original) : null
-      const ufColada = lugarColado && !lugarColado.regiao && lugarColado.ufs.length === 1 ? lugarColado.ufs[0] : null
-      if (ufColada === null && NOME_QUE_CONTINUA.test(resto)) break
-      if (municipioAceito(chave, preposicao, ufs, ufColada)) {
-        const fimComEstado = ufColada !== null && colado ? fim + colado[0].length : fim
-        return { chave, falado: mesmoTamanho ? original.slice(inicio, fim) : chave, ufs, ufColada, inicio: encontrado.index, fim: fimComEstado }
-      }
-      procura.lastIndex = fim
-      break
-    }
+    const nome = nomeDeMunicipioEm(t, inicio, original)
+    if (!nome) continue
+    if (municipioAceito(nome.chave, encontrado[1], nome.ufs, nome.ufColada, nome.resto)) return municipioFalado(nome, inicio, encontrado.index, original)
+    procura.lastIndex = nome.fim
   }
   return null
+}
+
+function acharDemaisMunicipiosDaLista(t: string, primeiro: MunicipioFalado, original: string): MunicipioFalado[] {
+  const demais: MunicipioFalado[] = []
+  let fim = primeiro.fim
+  for (;;) {
+    const ligacao = PROXIMO_MUNICIPIO.exec(t.slice(fim))
+    if (!ligacao) break
+    const inicio = fim + ligacao[0].length
+    const nome = nomeDeMunicipioEm(t, inicio, original)
+    if (!nome || !municipioDaListaAceito(nome.chave, nome.ufs, nome.ufColada, nome.resto)) break
+    demais.push(municipioFalado(nome, inicio, fim, original))
+    fim = nome.fimComEstado
+  }
+  return demais
 }
 
 function ufDoMunicipio(municipio: MunicipioFalado, ufsFaladas: string[]): { uf: string | undefined } | null {
@@ -411,7 +486,13 @@ function ufDoMunicipio(municipio: MunicipioFalado, ufsFaladas: string[]): { uf: 
   }
   if (municipio.ufs.length === 1) return { uf: municipio.ufs[0] }
   const capital = CAPITAIS.find(([chave, , uf]) => chave === municipio.chave && municipio.ufs.includes(uf))
-  return { uf: capital?.[2] }
+  if (capital) return { uf: capital[2] }
+  const grande = GRANDES_MUNICIPIOS_COM_NOME_COMUM.get(municipio.chave)
+  return { uf: grande !== undefined && municipio.ufs.includes(grande) ? grande : undefined }
+}
+
+function ufsPossiveisDoMunicipio(municipio: MunicipioFalado, ufsFaladas: string[]): string[] {
+  return ufsFaladas.length > 0 ? municipio.ufs.filter((uf) => ufsFaladas.includes(uf)) : municipio.ufs
 }
 
 function juntarComE(itens: string[]): string {
@@ -440,6 +521,10 @@ function palavrasDoObjeto(original: string, removidos: RegExp[]): string {
   while (inicio < mapa.length && PALAVRAS_DE_COMANDO.has(normalizar(mapa[inicio]))) inicio++
   let fim = mapa.length
   while (fim > inicio && (PALAVRAS_DE_COMANDO.has(normalizar(mapa[fim - 1])) || LIGACOES_NAS_PONTAS.has(normalizar(mapa[fim - 1])))) fim--
+  while (inicio + 2 < fim && PALAVRAS_DE_COMPRA.has(normalizar(mapa[inicio])) && LIGACOES_DA_COMPRA.has(normalizar(mapa[inicio + 1]))) {
+    inicio += 2
+    while (inicio < fim && PALAVRAS_DE_COMANDO.has(normalizar(mapa[inicio]))) inicio++
+  }
   return mapa.slice(inicio, fim).join(' ').toLowerCase().slice(0, 200)
 }
 
@@ -462,18 +547,30 @@ export function interpretarPedido(texto: string, contexto: 'busca' | 'pregao' = 
   const filtros: FiltrosDaBusca = {}
   const partes: string[] = []
 
-  const municipio = acharMunicipio(t, original)
-  const semMunicipio = municipio ? t.slice(0, municipio.inicio) + ' '.repeat(municipio.fim - municipio.inicio) + t.slice(municipio.fim) : t
+  const primeiro = acharMunicipio(t, original)
+  const lista = primeiro ? [primeiro, ...acharDemaisMunicipiosDaLista(t, primeiro, original)] : []
+  const trecho = lista.length > 0 ? { inicio: lista[0].inicio, fim: lista[lista.length - 1].fim } : null
+  const semMunicipio = trecho ? t.slice(0, trecho.inicio) + ' '.repeat(trecho.fim - trecho.inicio) + t.slice(trecho.fim) : t
   const lugares = acharLugares(semMunicipio, original)
-  const escolha = municipio ? ufDoMunicipio(municipio, lugares.ufs) : null
   removidos.push(...lugares.trechos)
-  if (municipio && escolha) {
-    filtros.municipio = nomeParaExibir(municipio, escolha.uf)
-    removidos.push(new RegExp(`\\b${escaparParaRegex(t.slice(municipio.inicio, municipio.fim))}(?![a-z0-9'’-])`))
-  }
-  if (municipio && escolha?.uf) {
-    filtros.uf = escolha.uf
+  if (lugares.ufs.length > 0 && INTERIOR_DO_ESTADO.test(semMunicipio)) removidos.push(NO_INTERIOR)
+  const escolhidos = lista.flatMap((municipio) => {
+    const escolha = ufDoMunicipio(municipio, lugares.ufs)
+    return escolha ? [{ municipio, uf: escolha.uf }] : []
+  })
+  if (trecho && escolhidos.length > 0) removidos.push(new RegExp(`\\b${escaparParaRegex(t.slice(trecho.inicio, trecho.fim))}(?![a-z0-9'’-])`))
+  if (escolhidos.length > 1) {
+    const nomes = escolhidos.map(({ municipio, uf }) => nomeParaExibir(municipio, uf))
+    const ufs = [...new Set(escolhidos.flatMap(({ municipio, uf }) => (uf ? [uf] : ufsPossiveisDoMunicipio(municipio, lugares.ufs))))]
+    filtros.municipios = nomes
+    if (ufs.length === 1) filtros.uf = ufs[0]
+    else filtros.ufs = ufs
+    filtros.rotuloDoLocal = `${rotuloDoLugar(ufs, [])}, onde ficam ${juntarComE(nomes)}`
+  } else if (escolhidos.length === 1 && escolhidos[0].uf) {
+    filtros.municipio = nomeParaExibir(escolhidos[0].municipio, escolhidos[0].uf)
+    filtros.uf = escolhidos[0].uf
   } else {
+    if (escolhidos.length === 1) filtros.municipio = nomeParaExibir(escolhidos[0].municipio, undefined)
     if (lugares.ufs.length === 1 && lugares.regioes.length === 0) filtros.uf = lugares.ufs[0]
     if (lugares.ufs.length > 1 || lugares.regioes.length > 0) {
       filtros.ufs = lugares.ufs

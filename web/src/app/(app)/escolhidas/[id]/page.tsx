@@ -1,6 +1,6 @@
 'use client'
 
-import { formatarData, formatarDataDaLicitacao } from '@/lib/datas'
+import { formatarData, formatarDataDaLicitacao, palavraDias } from '@/lib/datas'
 import { use, useCallback, useEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowRight, FileDown, FileSignature, FolderArchive, Gavel, Plus, RefreshCw, Save, Search, Trash2 } from 'lucide-react'
@@ -674,7 +674,7 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
           </div>
           <div className="flex flex-col gap-1.5 border-t border-line-soft pt-3 text-sm text-ink-2">
             <p>
-              Você precisa de <Valor forte>{resultado.prazo.diasNecessarios}</Valor> dia(s) (<Valor>{dados.prazo.preparoDias}</Valor> de preparo +{' '}
+              Você precisa de <Valor forte>{resultado.prazo.diasNecessarios}</Valor> {palavraDias(resultado.prazo.diasNecessarios)} (<Valor>{dados.prazo.preparoDias}</Valor> de preparo +{' '}
               <Valor>{resultado.prazo.diasDeTransporte}</Valor> de transporte).
             </p>
             {situacao && (
@@ -685,11 +685,11 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
                 <span>
                   {resultado.prazo.folgaDias !== null && resultado.prazo.folgaDias < 0 ? (
                     <>
-                      atraso de <Valor>{Math.abs(resultado.prazo.folgaDias)}</Valor> {Math.abs(resultado.prazo.folgaDias) === 1 ? 'dia' : 'dias'}.
+                      atraso de <Valor>{Math.abs(resultado.prazo.folgaDias)}</Valor> {palavraDias(resultado.prazo.folgaDias)}.
                     </>
                   ) : (
                     <>
-                      folga de <Valor>{resultado.prazo.folgaDias}</Valor> {resultado.prazo.folgaDias === 1 ? 'dia' : 'dias'}.
+                      folga de <Valor>{resultado.prazo.folgaDias}</Valor> {palavraDias(resultado.prazo.folgaDias ?? 0)}.
                     </>
                   )}
                 </span>
