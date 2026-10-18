@@ -6,6 +6,10 @@ import { ehModalidadeCompetitiva } from './dataPlausivel'
 export const SIMILARIDADE_MINIMA_PARA_ESCONDER = 0.4
 export const SIMILARIDADE_QUE_DISPENSA_CONFIRMACAO = 0.7
 const PALAVRAS_EM_COMUM_NO_MESMO_ORGAO = 0.5
+const HORA_DO_FIM_DO_DIA = 23
+const DIA_MS = 86_400_000
+const FONTES_COM_DIA_APROXIMADO = new Set<FonteEnum>(['TCE_TO'])
+const FONTES_COM_MODALIDADE_INCERTA = new Set<FonteEnum>(['TCE_CE', 'TCE_TO'])
 
 export type ComparacaoDoNumero = 'igual' | 'diferente' | 'desconhecido'
 export type ConflitoComOPncp = 'modalidade' | 'numero' | 'dia' | 'orgao'
@@ -101,11 +105,23 @@ function diaEmBrasilia(data: Date): string {
   return new Date(new Date(data).getTime() - DESLOCAMENTO_DE_BRASILIA_MS).toISOString().slice(0, 10)
 }
 
+function encerraNoFimDoDia(data: Date): boolean {
+  return new Date(new Date(data).getTime() - DESLOCAMENTO_DE_BRASILIA_MS).getUTCHours() >= HORA_DO_FIM_DO_DIA
+}
+
+function diasDaSessaoNoPncp(pncp: LicitacaoDoPncpComparavel): string[] {
+  const dias = [pncp.aberturaAt, pncp.encerramentoAt].filter((d): d is Date => d !== null && d !== undefined).map(diaEmBrasilia)
+  if (pncp.encerramentoAt && encerraNoFimDoDia(pncp.encerramentoAt)) dias.push(diaEmBrasilia(new Date(new Date(pncp.encerramentoAt).getTime() + DIA_MS)))
+  return dias
+}
+
 export function comparacaoDoDia(aviso: AvisoDeOutraFonte, pncp: LicitacaoDoPncpComparavel): ComparacaoDoNumero {
   if (!aviso.aberturaAt || !ehModalidadeCompetitiva(aviso.modalidade)) return 'desconhecido'
-  const dias = [pncp.aberturaAt, pncp.encerramentoAt].filter((d): d is Date => d !== null && d !== undefined).map(diaEmBrasilia)
+  const dias = diasDaSessaoNoPncp(pncp)
   if (dias.length === 0) return 'desconhecido'
-  return dias.includes(diaEmBrasilia(aviso.aberturaAt)) ? 'igual' : 'diferente'
+  const folga = FONTES_COM_DIA_APROXIMADO.has(aviso.fonte) ? [-DIA_MS, 0, DIA_MS] : [0]
+  const doAviso = folga.map((ms) => diaEmBrasilia(new Date(new Date(aviso.aberturaAt!).getTime() + ms)))
+  return doAviso.some((dia) => dias.includes(dia)) ? 'igual' : 'diferente'
 }
 
 export function entidadeDoOrgao(orgao: string | null | undefined, municipio?: string | null): EntidadeDoOrgao | null {
@@ -130,8 +146,12 @@ export function orgaosConflitam(a: string | null | undefined, b: string | null |
   return comuns / menor < PALAVRAS_EM_COMUM_NO_MESMO_ORGAO
 }
 
+export function modalidadeIncerta(aviso: Pick<AvisoDeOutraFonte, 'fonte' | 'modalidade'>): boolean {
+  return FONTES_COM_MODALIDADE_INCERTA.has(aviso.fonte) && aviso.modalidade === 'OUTROS'
+}
+
 function modalidadeCompativel(aviso: AvisoDeOutraFonte, pncp: LicitacaoDoPncpComparavel): boolean {
-  if (aviso.fonte === 'TCE_CE' && aviso.modalidade === 'OUTROS') return true
+  if (modalidadeIncerta(aviso)) return true
   return modalidadesEquivalentes(aviso.modalidade).includes(pncp.modalidade)
 }
 

@@ -5,6 +5,7 @@ export const ROTULOS_DE_FONTE: Record<string, string> = {
   DIARIO_MUNICIPAL: 'Diários municipais (associações)',
   TCE_CE: 'TCE-CE (municípios do Ceará)',
   TCE_PI: 'TCE-PI (municípios do Piauí)',
+  TCE_TO: 'TCE-TO (municípios do Tocantins)',
 }
 
 export function fontesComLicitacaoAberta(fontesNaApi: number | null | undefined, fontesNaFaixa: number): number | null {

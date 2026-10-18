@@ -1,0 +1,209 @@
+{
+ "success": true,
+ "raiz": {
+  "DadosUnidadeGestora": {
+   "nomeunidadegestora": "PREFEITURA MUNICIPAL DE TAGUATINGA",
+   "cnpj": "02306900000197",
+   "enderecoUnidade": "AVENIDA AIROSA GODINHO SN CENTRO CEP: 77320000 Taguatinga-TO",
+   "codrelatoria": "4",
+   "sigla": "L",
+   "descricao": "Licitação",
+   "isAtivo": true,
+   "numeroAdministrativo": "975",
+   "anoAdministrativo": "2026",
+   "procedimentoAtivo": true,
+   "emAnalise": false,
+   "isObra": false
+  },
+  "Assinaturas": {
+   "resposta": [],
+   "total": "0"
+  },
+  "sigiloso": "0",
+  "situacao2Fase": null,
+  "Licitacoes": {
+   "idLicitacao": "76777",
+   "idProcedimento": "829301",
+   "numeroAdministrativo": "975",
+   "anoAdministrativo": "2026",
+   "numeroLicitatorio": "4",
+   "anoLicitatorio": "2026",
+   "modalidade": "Concorrência",
+   "isRegistroPreco": "1",
+   "desestatizacao": "",
+   "objeto": "REGISTRO DE PREÇOS PARA FUTURA E EVENTUAL CONTRATAÇÃO DE EMPRESA PARA A EXECUÇÃO DE OBRA COMUM DE ENGENHARIA NA IMPLANTAÇÃO/SUBSTITUIÇÃO, MODERNIZAÇÃO E EFICIENTIZAÇÃO DO SISTEMA DE ILUMINAÇÃO LED DE RUAS, AVENIDAS E PRAÇAS DO MUNICÍPIO DE TAGUATINGA-TO. DE ACORDO COM PROJETOS, ESPECIFICAÇÕES DO MEMORIAL DESCRITIVO, PLANILHA ORÇAMENTARIA E CRONOGRAMA FÍSICO FINANCEIRO.",
+   "valorEstimado": "992536.16",
+   "moeda": "RS",
+   "quantidadeItem": "",
+   "quantidadeLote": "",
+   "irpCompleto": "16",
+   "numeroDeConvidados": "",
+   "dataJulgamentoProposta": "",
+   "quantidadeHabilitados": "",
+   "linksessao": "",
+   "quantidadeLicitantes": "",
+   "dataCadastro": "16/10/26",
+   "dataBaseOrcamento": "01/06/26",
+   "primeiraPublicacao": "15/10/26",
+   "regime": "Contratação por Preço Global",
+   "tipoRegime": "2",
+   "idTipoLicitacao": "2",
+   "TipoLicitacao": "Menor Preço",
+   "dataAberturaEvento": "30/10/26",
+   "situacao": ""
+  },
+  "Publicacoes": {
+   "resposta": [
+    {
+     "id": "938618",
+     "isrepublicacao": 0,
+     "complemento": "nº195",
+     "idveiculopublicacao": "Diário Oficial da União",
+     "datapublicacao": "15/10/2026",
+     "hash": "-",
+     "novovalor": "-",
+     "novoobjeto": "-",
+     "ativo": 1,
+     "listamotivosrepublicacao": "-"
+    },
+    {
+     "id": "938617",
+     "isrepublicacao": 0,
+     "complemento": "folha capital",
+     "idveiculopublicacao": "Jornal de grande circulação *",
+     "datapublicacao": "15/10/2026",
+     "hash": "-",
+     "novovalor": "-",
+     "novoobjeto": "-",
+     "ativo": 1,
+     "listamotivosrepublicacao": "-"
+    },
+    {
+     "id": "938616",
+     "isrepublicacao": 0,
+     "complemento": "7163",
+     "idveiculopublicacao": "Diário Oficial",
+     "datapublicacao": "15/10/2026",
+     "hash": "-",
+     "novovalor": "-",
+     "novoobjeto": "-",
+     "ativo": 1,
+     "listamotivosrepublicacao": "-"
+    },
+    {
+     "id": "938613",
+     "isrepublicacao": 0,
+     "complemento": "-",
+     "idveiculopublicacao": "Website do órgão *",
+     "datapublicacao": "15/10/2026",
+     "hash": "-",
+     "novovalor": "-",
+     "novoobjeto": "-",
+     "ativo": 1,
+     "listamotivosrepublicacao": "-"
+    }
+   ],
+   "total": "4"
+  },
+  "Criterios": {
+   "resposta": [
+    {
+     "id": "488110",
+     "idprocedimento": "829301",
+     "descricao": "O preço de referência será divulgado no edital de licitação?",
+     "idcriterio": 535,
+     "identificador": 11,
+     "identidade": 85,
+     "datacadastro": "16/10/2026",
+     "valorinformado": "Sim",
+     "ativo": 1
+    },
+    {
+     "id": "488109",
+     "idprocedimento": "829301",
+     "descricao": "Estabeleceu limite percentual do objeto para a contratação de ME e EPP",
+     "idcriterio": 529,
+     "identificador": 5,
+     "identidade": 85,
+     "datacadastro": "16/10/2026",
+     "valorinformado": "Não",
+     "ativo": 1
+    }
+   ],
+   "total": "2"
+  },
+  "RecursosOrcamentarios": {
+   "resposta": [
+    {
+     "id": "173177",
+     "unidadeparticipante": "PREFEITURA MUNICIPAL DE TAGUATINGA",
+     "cnpjunidade": "02306900000197",
+     "origemrecurso": "Próprio",
+     "agentefinanciador": "CAIXA",
+     "percentual": 100,
+     "valorporunidade": 992536.16,
+     "percentualvalor": 992536.16,
+     "moedacorrente": "RS",
+     "datacadastro": "16/10/2026",
+     "esferaunidade": 2,
+     "idprocedimento": "829301",
+     "dotacoes": [
+      {
+       "id": "363544",
+       "idrecursoorcamentario": "173177",
+       "orgao": "10",
+       "unidade": "1009",
+       "funcao": "15",
+       "subfuncao": "452",
+       "programa": "0902",
+       "acao": "2055",
+       "ativo": 1,
+       "valor": 992536.16,
+       "moedacorrente": "RS",
+       "naturezadespesa": "4.4.90.51",
+       "fonte": "1.500.0000.000000 - Recursos não vinculados de Impostos (Próprio)"
+      }
+     ],
+     "ativo": 1
+    }
+   ],
+   "total": "1",
+   "somatotal": 100
+  },
+  "Convenios": {
+   "resposta": [],
+   "total": "0"
+  },
+  "ItensLicitação": {
+   "resposta": [],
+   "idUltimoLote": null,
+   "total": "0"
+  },
+  "ProcedimentoNatureza": {
+   "resposta": [
+    {
+     "id": "190071",
+     "idprocedimento": "829301",
+     "descricaonaturezaobjeto": "Aquisição de materiais elétricos/iluminação pública",
+     "ativo": 1
+    }
+   ],
+   "total": "1"
+  },
+  "UnidadesParticipantes": {
+   "resposta": [],
+   "total": "0"
+  },
+  "Comissao": {
+   "resposta": [],
+   "total": "0"
+  },
+  "RecursosInterpostos": {
+   "resposta": [],
+   "total": "0"
+  },
+  "Desestatizacao": {
+   "resposta": []
+  }
+ }
+}

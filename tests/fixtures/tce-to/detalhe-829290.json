@@ -1,0 +1,496 @@
+{
+ "success": true,
+ "raiz": {
+  "DadosUnidadeGestora": {
+   "nomeunidadegestora": "PREFEITURA MUNICIPAL DE MIRACEMA DO TOCANTINS",
+   "cnpj": "02070357000171",
+   "enderecoUnidade": "JOAO RODRIGUES 703 CENTRO CEP: 77650000 Miracema do Tocantins-TO",
+   "codrelatoria": "3",
+   "sigla": "L",
+   "descricao": "Licitação",
+   "isAtivo": true,
+   "numeroAdministrativo": "2340",
+   "anoAdministrativo": "2026",
+   "procedimentoAtivo": true,
+   "emAnalise": false,
+   "isObra": false
+  },
+  "Assinaturas": {
+   "resposta": [],
+   "total": "0"
+  },
+  "sigiloso": "0",
+  "situacao2Fase": null,
+  "Licitacoes": {
+   "idLicitacao": "76774",
+   "idProcedimento": "829290",
+   "numeroAdministrativo": "2340",
+   "anoAdministrativo": "2026",
+   "numeroLicitatorio": "26",
+   "anoLicitatorio": "2026",
+   "modalidade": "Pregão Eletrônico",
+   "isRegistroPreco": "1",
+   "desestatizacao": "",
+   "objeto": "&nbsp;CONTRATAÇÃO DE EMPRESA ESPECIALIZADA PARA PRESTAÇÃO DE SERVIÇOS DE RACRGA DE GÁS E ÁGUA PARA ATENDER ÀS DEMANDAS&nbsp; DO MUNICIPIO DE MIRACEMA DO TOCANTINS.",
+   "valorEstimado": "157905.53",
+   "moeda": "RS",
+   "quantidadeItem": "4",
+   "quantidadeLote": "",
+   "irpCompleto": "4",
+   "numeroDeConvidados": "",
+   "dataJulgamentoProposta": "",
+   "quantidadeHabilitados": "",
+   "linksessao": "",
+   "quantidadeLicitantes": "",
+   "dataCadastro": "16/10/26",
+   "dataBaseOrcamento": "01/08/26",
+   "primeiraPublicacao": "15/10/26",
+   "regime": "Contratação por Preço Unitário ou Item",
+   "tipoRegime": "4",
+   "idTipoLicitacao": "2",
+   "TipoLicitacao": "Menor Preço",
+   "dataAberturaEvento": "06/11/26",
+   "situacao": ""
+  },
+  "Publicacoes": {
+   "resposta": [
+    {
+     "id": "938597",
+     "isrepublicacao": 0,
+     "complemento": "-",
+     "idveiculopublicacao": "DIARIO OFICIAL DO ESTADO DO TOCANTINS",
+     "datapublicacao": "15/10/2026",
+     "hash": "-",
+     "novovalor": "-",
+     "novoobjeto": "-",
+     "ativo": 1,
+     "listamotivosrepublicacao": "-"
+    },
+    {
+     "id": "938595",
+     "isrepublicacao": 0,
+     "complemento": "JORNAL DAQUI",
+     "idveiculopublicacao": "Jornal de grande circulação *",
+     "datapublicacao": "15/10/2026",
+     "hash": "-",
+     "novovalor": "-",
+     "novoobjeto": "-",
+     "ativo": 1,
+     "listamotivosrepublicacao": "-"
+    },
+    {
+     "id": "938594",
+     "isrepublicacao": 0,
+     "complemento": "-",
+     "idveiculopublicacao": "Diário Oficial da União",
+     "datapublicacao": "15/10/2026",
+     "hash": "-",
+     "novovalor": "-",
+     "novoobjeto": "-",
+     "ativo": 1,
+     "listamotivosrepublicacao": "-"
+    },
+    {
+     "id": "938593",
+     "isrepublicacao": 0,
+     "complemento": "-",
+     "idveiculopublicacao": "Diário Oficial",
+     "datapublicacao": "15/10/2026",
+     "hash": "-",
+     "novovalor": "-",
+     "novoobjeto": "-",
+     "ativo": 1,
+     "listamotivosrepublicacao": "-"
+    }
+   ],
+   "total": "4"
+  },
+  "Criterios": {
+   "resposta": [
+    {
+     "id": "488064",
+     "idprocedimento": "829290",
+     "descricao": "O preço de referência será divulgado no edital de licitação?",
+     "idcriterio": 535,
+     "identificador": 11,
+     "identidade": 85,
+     "datacadastro": "16/10/2026",
+     "valorinformado": "Sim",
+     "ativo": 1
+    },
+    {
+     "id": "488063",
+     "idprocedimento": "829290",
+     "descricao": "Estabeleceu limite percentual do objeto para a contratação de ME e EPP",
+     "idcriterio": 529,
+     "identificador": 5,
+     "identidade": 85,
+     "datacadastro": "16/10/2026",
+     "valorinformado": "Não",
+     "ativo": 1
+    }
+   ],
+   "total": "2"
+  },
+  "RecursosOrcamentarios": {
+   "resposta": [
+    {
+     "id": "173161",
+     "unidadeparticipante": "SECRETARIA MUNICIPAL DE EDUCACAO DE MIRACEMA DO TOCANTINS",
+     "cnpjunidade": "06075364000117",
+     "origemrecurso": "Próprio",
+     "agentefinanciador": "-",
+     "percentual": 100,
+     "valorporunidade": 0,
+     "percentualvalor": 0,
+     "moedacorrente": "RS",
+     "datacadastro": "16/10/2026",
+     "esferaunidade": 2,
+     "idprocedimento": "829290",
+     "dotacoes": [
+      {
+       "id": "363522",
+       "idrecursoorcamentario": "173161",
+       "orgao": "15",
+       "unidade": "0042",
+       "funcao": "12",
+       "subfuncao": "361",
+       "programa": "1318",
+       "acao": "2071",
+       "ativo": 1,
+       "valor": 429150.08,
+       "moedacorrente": "RS",
+       "naturezadespesa": "3.3.90.30",
+       "fonte": "1.500.1001.000000 - Recursos não vinculados de Impostos (Próprio)"
+      },
+      {
+       "id": "363521",
+       "idrecursoorcamentario": "173161",
+       "orgao": "15",
+       "unidade": "0042",
+       "funcao": "12",
+       "subfuncao": "122",
+       "programa": "1005",
+       "acao": "2069",
+       "ativo": 1,
+       "valor": 582453.26,
+       "moedacorrente": "RS",
+       "naturezadespesa": "3.3.90.30",
+       "fonte": "1.500.1001.000000 - Recursos não vinculados de Impostos (Próprio)"
+      }
+     ],
+     "ativo": 1
+    },
+    {
+     "id": "173160",
+     "unidadeparticipante": "FUNDO MUNICIPAL DE SAÚDE DE MIRACEMA DO TOCANTINS",
+     "cnpjunidade": "11545460000111",
+     "origemrecurso": "Próprio",
+     "agentefinanciador": "-",
+     "percentual": 100,
+     "valorporunidade": 0,
+     "percentualvalor": 0,
+     "moedacorrente": "RS",
+     "datacadastro": "16/10/2026",
+     "esferaunidade": 2,
+     "idprocedimento": "829290",
+     "dotacoes": [
+      {
+       "id": "363520",
+       "idrecursoorcamentario": "173160",
+       "orgao": "12",
+       "unidade": "0010",
+       "funcao": "10",
+       "subfuncao": "301",
+       "programa": "1321",
+       "acao": "2405",
+       "ativo": 1,
+       "valor": 899617.87,
+       "moedacorrente": "RS",
+       "naturezadespesa": "3.3.90.30",
+       "fonte": "1.500.1002.000000 - Recursos não vinculados de Impostos (Próprio) | 1.600.0000.000000 - Transferências Fundo a Fundo de Recursos do SUS provenientes do Governo Federal - Bloco de Manutenção das Ações e Serviços Públicos de Saúde (Transferência Federal)"
+      },
+      {
+       "id": "363519",
+       "idrecursoorcamentario": "173160",
+       "orgao": "12",
+       "unidade": "0010",
+       "funcao": "10",
+       "subfuncao": "122",
+       "programa": "1322",
+       "acao": "2205",
+       "ativo": 1,
+       "valor": 577461.12,
+       "moedacorrente": "RS",
+       "naturezadespesa": "3.3.90.30",
+       "fonte": "1.500.1002.000000 - Recursos não vinculados de Impostos (Próprio)"
+      }
+     ],
+     "ativo": 1
+    },
+    {
+     "id": "173162",
+     "unidadeparticipante": "FUNDO MUNICIPAL DE ASSISTENCIA SOCIAL DE MIRACEMA DO TOCANTINS",
+     "cnpjunidade": "13450056000190",
+     "origemrecurso": "Próprio",
+     "agentefinanciador": "-",
+     "percentual": 100,
+     "valorporunidade": 0,
+     "percentualvalor": 0,
+     "moedacorrente": "RS",
+     "datacadastro": "16/10/2026",
+     "esferaunidade": 2,
+     "idprocedimento": "829290",
+     "dotacoes": [
+      {
+       "id": "363527",
+       "idrecursoorcamentario": "173162",
+       "orgao": "13",
+       "unidade": "0028",
+       "funcao": "08",
+       "subfuncao": "245",
+       "programa": "0124",
+       "acao": "2350",
+       "ativo": 1,
+       "valor": 20712,
+       "moedacorrente": "RS",
+       "naturezadespesa": "3.3.90.30",
+       "fonte": "1.600.0000.000000 - Transferências Fundo a Fundo de Recursos do SUS provenientes do Governo Federal - Bloco de Manutenção das Ações e Serviços Públicos de Saúde (Transferência Federal)"
+      },
+      {
+       "id": "363526",
+       "idrecursoorcamentario": "173162",
+       "orgao": "13",
+       "unidade": "0028",
+       "funcao": "08",
+       "subfuncao": "245",
+       "programa": "0124",
+       "acao": "2319",
+       "ativo": 1,
+       "valor": 84174.71,
+       "moedacorrente": "RS",
+       "naturezadespesa": "3.3.90.30",
+       "fonte": "1.600.0000.000000 - Transferências Fundo a Fundo de Recursos do SUS provenientes do Governo Federal - Bloco de Manutenção das Ações e Serviços Públicos de Saúde (Transferência Federal)"
+      },
+      {
+       "id": "363525",
+       "idrecursoorcamentario": "173162",
+       "orgao": "13",
+       "unidade": "0028",
+       "funcao": "08",
+       "subfuncao": "244",
+       "programa": "0124",
+       "acao": "2217",
+       "ativo": 1,
+       "valor": 56110.93,
+       "moedacorrente": "RS",
+       "naturezadespesa": "3.3.90.30",
+       "fonte": "1.600.0000.000000 - Transferências Fundo a Fundo de Recursos do SUS provenientes do Governo Federal - Bloco de Manutenção das Ações e Serviços Públicos de Saúde (Transferência Federal)"
+      },
+      {
+       "id": "363524",
+       "idrecursoorcamentario": "173162",
+       "orgao": "13",
+       "unidade": "0028",
+       "funcao": "08",
+       "subfuncao": "243",
+       "programa": "1319",
+       "acao": "2383",
+       "ativo": 1,
+       "valor": 1084.93,
+       "moedacorrente": "RS",
+       "naturezadespesa": "3.3.90.30",
+       "fonte": "1.600.0000.000000 - Transferências Fundo a Fundo de Recursos do SUS provenientes do Governo Federal - Bloco de Manutenção das Ações e Serviços Públicos de Saúde (Transferência Federal)"
+      },
+      {
+       "id": "363523",
+       "idrecursoorcamentario": "173162",
+       "orgao": "13",
+       "unidade": "0028",
+       "funcao": "08",
+       "subfuncao": "122",
+       "programa": "1325",
+       "acao": "2315",
+       "ativo": 1,
+       "valor": 134752.81,
+       "moedacorrente": "RS",
+       "naturezadespesa": "3.3.90.30",
+       "fonte": "1500000000000 - Recursos não vinculados de Impostos (Próprio)"
+      }
+     ],
+     "ativo": 1
+    },
+    {
+     "id": "173158",
+     "unidadeparticipante": "PREFEITURA MUNICIPAL DE MIRACEMA DO TOCANTINS",
+     "cnpjunidade": "02070357000171",
+     "origemrecurso": "Próprio",
+     "agentefinanciador": "-",
+     "percentual": 100,
+     "valorporunidade": 157905.53,
+     "percentualvalor": 157905.53,
+     "moedacorrente": "RS",
+     "datacadastro": "16/10/2026",
+     "esferaunidade": 2,
+     "idprocedimento": "829290",
+     "dotacoes": [
+      {
+       "id": "363518",
+       "idrecursoorcamentario": "173158",
+       "orgao": "10",
+       "unidade": "0048",
+       "funcao": "20",
+       "subfuncao": "606",
+       "programa": "1203",
+       "acao": "2329",
+       "ativo": 1,
+       "valor": 144944.14,
+       "moedacorrente": "RS",
+       "naturezadespesa": "3.3.90.30",
+       "fonte": "1.500.0000.000000 - Recursos não vinculados de Impostos (Próprio)"
+      },
+      {
+       "id": "363517",
+       "idrecursoorcamentario": "173158",
+       "orgao": "10",
+       "unidade": "0047",
+       "funcao": "26",
+       "subfuncao": "782",
+       "programa": "1202",
+       "acao": "2306",
+       "ativo": 1,
+       "valor": 1300000,
+       "moedacorrente": "RS",
+       "naturezadespesa": "3.3.90.30",
+       "fonte": "1.500.0000.000000 - Recursos não vinculados de Impostos (Próprio)"
+      },
+      {
+       "id": "363515",
+       "idrecursoorcamentario": "173158",
+       "orgao": "10",
+       "unidade": "0046",
+       "funcao": "18",
+       "subfuncao": "541",
+       "programa": "1331",
+       "acao": "2154",
+       "ativo": 1,
+       "valor": 551698.23,
+       "moedacorrente": "RS",
+       "naturezadespesa": "3.3.90.30",
+       "fonte": "1.500.0000.000000 - Recursos não vinculados de Impostos (Próprio)"
+      },
+      {
+       "id": "363514",
+       "idrecursoorcamentario": "173158",
+       "orgao": "10",
+       "unidade": "0038",
+       "funcao": "04",
+       "subfuncao": "122",
+       "programa": "1327",
+       "acao": "2371",
+       "ativo": 1,
+       "valor": 688437.18,
+       "moedacorrente": "RS",
+       "naturezadespesa": "3.3.90.30",
+       "fonte": "1.500.0000.000000 - Recursos não vinculados de Impostos (Próprio)"
+      },
+      {
+       "id": "363513",
+       "idrecursoorcamentario": "173158",
+       "orgao": "10",
+       "unidade": "0014",
+       "funcao": "15",
+       "subfuncao": "452",
+       "programa": "1203",
+       "acao": "2280",
+       "ativo": 1,
+       "valor": 440000,
+       "moedacorrente": "RS",
+       "naturezadespesa": "3.3.90.30",
+       "fonte": "1.500.0000.000000 - Recursos não vinculados de Impostos (Próprio)"
+      }
+     ],
+     "ativo": 1
+    }
+   ],
+   "total": "4",
+   "somatotal": 400
+  },
+  "Convenios": {
+   "resposta": [],
+   "total": "0"
+  },
+  "ItensLicitação": {
+   "resposta": [],
+   "idUltimoLote": null,
+   "total": "0"
+  },
+  "ProcedimentoNatureza": {
+   "resposta": [
+    {
+     "id": "190060",
+     "idprocedimento": "829290",
+     "descricaonaturezaobjeto": "Material de Consumo",
+     "ativo": 1
+    }
+   ],
+   "total": "1"
+  },
+  "UnidadesParticipantes": {
+   "resposta": [
+    {
+     "id": "94606",
+     "cnpjunidade": "06075364000117",
+     "nomeunidade": "SECRETARIA MUNICIPAL DE EDUCACAO DE MIRACEMA DO TOCANTINS",
+     "nomemunicipio": "Miracema do Tocantins",
+     "valorestimado": 0,
+     "moedacorrente": "RS",
+     "datacadastro": "16/10/2026",
+     "ativo": 1
+    },
+    {
+     "id": "94605",
+     "cnpjunidade": "11545460000111",
+     "nomeunidade": "FUNDO MUNICIPAL DE SAÚDE DE MIRACEMA DO TOCANTINS",
+     "nomemunicipio": "Miracema do Tocantins",
+     "valorestimado": 0,
+     "moedacorrente": "RS",
+     "datacadastro": "16/10/2026",
+     "ativo": 1
+    },
+    {
+     "id": "94604",
+     "cnpjunidade": "13450056000190",
+     "nomeunidade": "FUNDO MUNICIPAL DE ASSISTENCIA SOCIAL DE MIRACEMA DO TOCANTINS",
+     "nomemunicipio": "Miracema do Tocantins",
+     "valorestimado": 0,
+     "moedacorrente": "RS",
+     "datacadastro": "16/10/2026",
+     "ativo": 1
+    },
+    {
+     "id": null,
+     "cnpjunidade": "02070357000171",
+     "nomeunidade": "PREFEITURA MUNICIPAL DE MIRACEMA DO TOCANTINS (Responsável pelo Processo)",
+     "nomemunicipio": "Miracema do Tocantins",
+     "valorestimado": 157905.53,
+     "moedacorrente": "RS",
+     "datacadastro": "16/10/2026",
+     "ativo": 1
+    }
+   ],
+   "total": "3"
+  },
+  "Comissao": {
+   "resposta": [],
+   "total": "0"
+  },
+  "RecursosInterpostos": {
+   "resposta": [],
+   "total": "0"
+  },
+  "Desestatizacao": {
+   "resposta": []
+  }
+ }
+}

@@ -137,6 +137,7 @@ Ver o cabeçalho de `scripts/enxugarRawJson.ts`.
 | Fonte nova: **TCE-CE** (184 municípios do Ceará) — lista de abertas do Portal de Licitações do TCE, duplicidade com o PNCP antes do detalhe, revisita e sumidas — `docs/MAPA_TCE_CE.md` | branch `fonte-tce-ce` | 🟡 |
 | QA 17/10: fontes que falhavam calado, fim do teste grátis, prazo/local em Meus matches e Escolhidas, e-mail de match com prazo e link, avisos vagos do Querido Diário | branch `qa-fontes-conta-emails` | 🟡 |
 | Fonte nova: **TCE-PI** (Mural de Licitações, 224 municípios + Estado do Piauí) — divulgadas com sessão futura pela sessão JSF (tabela de 100 em 100, planilha exportada de reserva), duplicidade estrita com o PNCP + publicação no PNCP informada ao TCE, revisita e sumidas — `docs/MAPA_TCE_PI.md` | branch `fonte-tce-pi` | 🟡 |
+| Fonte nova: **TCE-TO** (SICAP-LCO, municípios do Tocantins) — API do Módulo Público por data de abertura, duplicidade com o PNCP antes do detalhe, revisita, sumidas e memória no Redis; pesquisa de BA/MA/TO com a FAMEM (MA) como próxima fonte e a Bahia sem fonte aberta — `docs/MAPA_TCE_TO.md` | branch `fonte-prefeituras-ba-ma-to` | 🟡 |
 
 ### Decisão de 17/10: coleta do módulo legado do Compras.gov.br desativada
 

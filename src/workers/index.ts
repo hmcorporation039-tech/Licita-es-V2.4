@@ -17,6 +17,7 @@ import { startColetorInfraeroWorker } from './coletorInfraero'
 import { startColetorDiarioMunicipalWorker } from './coletorDiarioMunicipal'
 import { startColetorTceCeWorker } from './coletorTceCe'
 import { startColetorTcePiWorker } from './coletorTcePi'
+import { startColetorTceToWorker } from './coletorTceTo'
 import { startMatcherWorker } from './matcher'
 import { startNotificadorWorker } from './notificador'
 import { startAnaliseWorker } from './analise'
@@ -46,17 +47,18 @@ async function main() {
   const workerDiarioMunicipal = startColetorDiarioMunicipalWorker()
   const workerTceCe = startColetorTceCeWorker()
   const workerTcePi = startColetorTcePiWorker()
+  const workerTceTo = startColetorTceToWorker()
   const workerMatcher = startMatcherWorker()
   const workerNotificador = startNotificadorWorker()
   const workerAnalise = startAnaliseWorker()
   const workerRematchItem = startRematchItemWorker()
 
-  console.log('✅ Workers ativos: PNCP, Novacap, FIEG, SESC GO, SEST SENAT, SESC Regionais, Querido Diário, Sistema S, Infraero, Diários municipais, TCE-CE, TCE-PI, Matcher, Notificador, Análise, Busca do item')
+  console.log('✅ Workers ativos: PNCP, Novacap, FIEG, SESC GO, SEST SENAT, SESC Regionais, Querido Diário, Sistema S, Infraero, Diários municipais, TCE-CE, TCE-PI, TCE-TO, Matcher, Notificador, Análise, Busca do item')
 
   // Alerta ao administrador só na falha DEFINITIVA (esgotadas as tentativas): uma tentativa
   // que falha e depois dá certo (portal instável) não é motivo para acordar ninguém.
   instalarAlertasDoProcesso('workers')
-  const todos = [workerPNCP, workerNovacap, workerFieg, workerSescGo, workerSestSenat, workerSescRegional, workerQueridoDiario, workerSistemaS, workerInfraero, workerDiarioMunicipal, workerTceCe, workerTcePi, workerMatcher, workerNotificador, workerAnalise, workerRematchItem]
+  const todos = [workerPNCP, workerNovacap, workerFieg, workerSescGo, workerSestSenat, workerSescRegional, workerQueridoDiario, workerSistemaS, workerInfraero, workerDiarioMunicipal, workerTceCe, workerTcePi, workerTceTo, workerMatcher, workerNotificador, workerAnalise, workerRematchItem]
   for (const w of todos) {
     w.on('failed', (job, err) => {
       const tentativas = job?.opts?.attempts ?? 1
@@ -175,6 +177,7 @@ async function main() {
     await workerDiarioMunicipal.close()
     await workerTceCe.close()
     await workerTcePi.close()
+    await workerTceTo.close()
     await workerMatcher.close()
     await workerNotificador.close()
     await workerAnalise.close()
