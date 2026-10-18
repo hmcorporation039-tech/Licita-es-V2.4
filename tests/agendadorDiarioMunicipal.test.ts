@@ -43,4 +43,18 @@ describe('agendador dos diários municipais (SIGPub)', () => {
       },
     ])
   })
+
+  it('a FAMEM roda às 11:10 e 18:10 de Brasília, num horário que nenhuma outra fonte usa', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => undefined)
+    const { scheduleColetorJobs, COLETOR_SCHEDULERS } = await import('../src/queues')
+    await scheduleColetorJobs()
+
+    expect(filas.agendados.get('coletor-famem')?.at(-1)).toEqual({
+      id: 'coleta-famem',
+      opcoes: { pattern: '10 11,18 * * *', tz: 'America/Sao_Paulo' },
+      job: { name: 'coleta-famem', data: { fonte: 'FAMEM' } },
+    })
+    const outras = COLETOR_SCHEDULERS.filter((s) => s.fonte !== 'FAMEM' && s.tz === 'America/Sao_Paulo').map((s) => s.pattern)
+    expect(outras.some((p) => p.startsWith('10 ') && /\b(11|18)\b/.test(p.split(' ')[1]))).toBe(false)
+  })
 })

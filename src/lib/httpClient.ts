@@ -32,6 +32,7 @@ export function ehPaginaDeLimiteDeRequisicoes(corpo: unknown): boolean {
 
 interface OpcoesDoCliente {
   detectarPaginaDeLimite?: boolean
+  repetirEmLimiteOuIndisponivel?: boolean
 }
 
 export function esperaAntesDeTentarDeNovo(tentativa: number, retryAfter?: string | null): number {
@@ -94,7 +95,7 @@ export function createRateLimitedClient(
     async (err: AxiosError) => {
       const config = err.config as ConfigComTentativas | undefined
       const status = err.response?.status
-      if (config && (status === 429 || status === 503)) {
+      if (config && opcoes.repetirEmLimiteOuIndisponivel !== false && (status === 429 || status === 503)) {
         const repetida = await tentarDeNovo(config, `HTTP ${status}`, err.response?.headers?.['retry-after'] as string | undefined)
         if (repetida) return repetida
       }
@@ -190,3 +191,7 @@ tcePiClient.defaults.maxContentLength = 5 * 1024 * 1024
 export const tceRsClient = createRateLimitedClient('https://dados.tce.rs.gov.br', 3000, { Accept: 'application/zip, */*' })
 tceRsClient.defaults.timeout = 60_000
 tceRsClient.defaults.maxRedirects = 0
+export const famemClient = createRateLimitedClient('https://diariooficial.famem.org.br', 2000, HTML_HEADERS, { repetirEmLimiteOuIndisponivel: false })
+famemClient.defaults.timeout = 60_000
+famemClient.defaults.maxContentLength = 5 * 1024 * 1024
+famemClient.defaults.maxRedirects = 0

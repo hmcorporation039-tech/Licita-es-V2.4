@@ -9,8 +9,8 @@ import { objetoSemConteudo } from './queridoDiarioParser'
 import { chaveDoNumero, comparacaoDoNumeroTceCe, numerosDoTender } from './tceCeDuplicidade'
 import { idDaLicitacaoTceCe } from './tceCeParser'
 
-export const FONTES_QUE_REPETEM_O_PNCP: FonteEnum[] = ['QUERIDO_DIARIO', 'DIARIO_MUNICIPAL', 'TCE_CE', 'TCE_PI', 'TCE_TO', 'TCE_RS']
-export const FONTES_DE_DIARIO: FonteEnum[] = ['QUERIDO_DIARIO', 'DIARIO_MUNICIPAL']
+export const FONTES_QUE_REPETEM_O_PNCP: FonteEnum[] = ['QUERIDO_DIARIO', 'DIARIO_MUNICIPAL', 'TCE_CE', 'TCE_PI', 'TCE_TO', 'TCE_RS', 'FAMEM']
+export const FONTES_DE_DIARIO: FonteEnum[] = ['QUERIDO_DIARIO', 'DIARIO_MUNICIPAL', 'FAMEM']
 export const MOTIVO_SEM_OBJETO = 'SEM_OBJETO'
 
 const DIAS_DE_HISTORICO = 180

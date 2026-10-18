@@ -26,6 +26,7 @@ const ROTULO_CURTO_DA_FONTE: Record<string, string> = {
   TCE_PI: 'TCE-PI',
   TCE_TO: 'TCE-TO',
   TCE_RS: 'TCE-RS',
+  FAMEM: 'FAMEM',
 }
 
 export function rotuloCurtoDaFonte(fonte: string): string {
