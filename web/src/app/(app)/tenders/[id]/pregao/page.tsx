@@ -26,6 +26,7 @@ import { formatarData } from "@/lib/datas";
 import type {
   AlvoDoPregao,
   AvaliacaoDoLance,
+  BaseDoValorFinal,
   ConfigDoPregao,
   CriterioDoPregao,
   FaixaDoLance,
@@ -52,12 +53,19 @@ import {
   TextLink,
 } from "@/components/ui";
 import { AvatarDaBela } from "@/components/Bela";
+import { ChecklistDaDisputa, PlanoDoValorFinal } from "@/components/PlanoDeDisputa";
 
 const ALVO_GLOBAL = "global";
 const MAXIMO_DE_ALVOS_EM_BOTOES = 5;
 
 type Acao =
-  "melhor" | "meu" | "desfazer" | "config" | "resultado" | "interpretar";
+  | "melhor"
+  | "meu"
+  | "desfazer"
+  | "config"
+  | "resultado"
+  | "interpretar"
+  | "plano";
 
 const ROTULO_DO_RESULTADO: Record<ResultadoDoPregao, string> = {
   GANHOU: "Ganhou",
@@ -986,6 +994,24 @@ export default function PregaoComABelaPage({
     );
   }
 
+  async function salvarPlano(pedido: {
+    base?: BaseDoValorFinal;
+    cadastradoNoPortal?: boolean;
+  }) {
+    await executar("plano", () =>
+      api.put<PainelDoPregao>(`/api/tenders/${id}/pregao/plano`, {
+        alvo: alvo.id,
+        ...pedido,
+      }),
+    );
+  }
+
+  function avisarCopia(destino: string) {
+    void api
+      .post(`/api/tenders/${id}/pregao/plano/copiado`, { alvo: destino })
+      .catch(() => undefined);
+  }
+
   async function encerrar(
     resultado: ResultadoDoPregao,
     valorFinal: number | null,
@@ -1048,6 +1074,16 @@ export default function PregaoComABelaPage({
       <Notice tone="info">
         A Bela não dá lances: ela calcula e sugere. Você dá o lance no portal.
       </Notice>
+
+      {painelAtual.disputa.vedacaoARobo && (
+        <Notice
+          tone="danger"
+          title="O edital proíbe robô de lances — use só lances manuais"
+        >
+          A análise do edital achou a proibição de lances automatizados. Veja
+          o trecho no checklist da disputa.
+        </Notice>
+      )}
 
       {painelAtual.semCustos && (
         <Notice
@@ -1229,6 +1265,26 @@ export default function PregaoComABelaPage({
         </div>
 
         <div className="flex min-w-0 flex-col gap-4">
+          <PlanoDoValorFinal
+            alvo={alvo}
+            alvos={painelAtual.alvos}
+            baseDoValor={baseDoValor(alvo, config.criterio)}
+            margemDesejadaPct={painelAtual.margemDesejadaPct}
+            vedacaoARobo={painelAtual.disputa.vedacaoARobo}
+            idDoEstudo={id}
+            salvando={enviando === "plano"}
+            desabilitado={encerrado || ocupado}
+            onMudarBase={(base) => void salvarPlano({ base })}
+            onMarcarCadastrado={(cadastradoNoPortal) =>
+              void salvarPlano({ cadastradoNoPortal })
+            }
+            onCopiado={avisarCopia}
+          />
+          <ChecklistDaDisputa disputa={painelAtual.disputa} idDaLicitacao={id} />
+          {painelAtual.disputa.decrementoAjustado &&
+            painelAtual.disputa.avisoDoDecremento && (
+              <Notice tone="warn">{painelAtual.disputa.avisoDoDecremento}</Notice>
+            )}
           <Configuracao
             key={`${config.decrementoPct}-${config.maxLances}-${config.criterio}`}
             config={config}

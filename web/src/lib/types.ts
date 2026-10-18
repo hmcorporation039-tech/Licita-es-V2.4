@@ -389,6 +389,37 @@ export interface AlvoDoPregao {
   equilibrio: number | null
   meusLances: number
   avaliacao: AvaliacaoDoLance | null
+  planoDeDisputa: PlanoDoAlvo
+}
+
+export type BaseDoValorFinal = 'MARGEM' | 'EQUILIBRIO'
+
+export interface PlanoDoAlvo {
+  base: BaseDoValorFinal
+  valorFinalMinimo: number | null
+  lucroZero: boolean
+  cadastradoEm: string | null
+  desatualizado: boolean
+}
+
+export type SituacaoDoChecklist = 'ok' | 'atencao' | 'proibido' | 'desconhecido'
+
+export interface ItemDoChecklistDaDisputa {
+  id: 'modo' | 'intervalo' | 'robo' | 'criterio' | 'exclusao'
+  titulo: string
+  situacao: SituacaoDoChecklist
+  valor: string
+  explicacao: string
+  trecho: string | null
+}
+
+export interface DisputaDoPregao {
+  analise: AnalysisStatus | null
+  analisado: boolean
+  vedacaoARobo: boolean
+  decrementoAjustado: boolean
+  avisoDoDecremento: string | null
+  checklist: ItemDoChecklistDaDisputa[]
 }
 
 export interface LanceDoPregao {
@@ -415,6 +446,8 @@ export interface PainelDoPregao {
   impostosPct: number
   margemDesejadaPct: number
   config: ConfigDoPregao
+  regras: { decrementoPct: number; maxLances: number; intervaloMinimoReais?: number | null }
+  disputa: DisputaDoPregao
   alvos: AlvoDoPregao[]
   lances: LanceDoPregao[]
 }
