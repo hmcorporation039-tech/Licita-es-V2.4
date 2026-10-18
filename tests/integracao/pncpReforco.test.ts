@@ -89,7 +89,7 @@ rodar('PNCP: retenção x recoleta, gravação da varredura e cobertura municipa
     expect(prorrogadaParaTras?.changedFields).toContain('encerramentoAt')
   })
 
-  it('gravação do PNCP: nova entra e enfileira, homologada nova é descartada, repetida não conta como nova', async () => {
+  it('gravação do PNCP: nova entra e enfileira, homologada nova é descartada, aberta com homologado zero entra, repetida não conta como nova', async () => {
     const bruto = (numero: string, over: Record<string, unknown> = {}) => ({
       numeroControlePNCP: `${prefixo}${numero}`,
       modalidadeId: 6,
@@ -104,13 +104,18 @@ rodar('PNCP: retenção x recoleta, gravação da varredura e cobertura municipa
       ...over,
     })
 
+    const lote = () => [
+      bruto('g-aberta'),
+      bruto('g-homologada', { valorTotalHomologado: 900, dataEncerramentoProposta: dias(-2).toISOString().slice(0, 19) }),
+      bruto('g-aberta-homologado-zero', { valorTotalHomologado: 0 }),
+    ]
     const primeira = pncp.contadoresZerados()
-    await coletor.gravarContratacoesPncp([bruto('g-aberta'), bruto('g-homologada', { valorTotalHomologado: 900 })], primeira, 'teste')
-    expect(primeira).toMatchObject({ vistos: 2, novos: 1, descartados: 1, comErro: 0 })
+    await coletor.gravarContratacoesPncp(lote(), primeira, 'teste')
+    expect(primeira).toMatchObject({ vistos: 3, novos: 2, descartados: 1, comErro: 0 })
 
     const segunda = pncp.contadoresZerados()
-    await coletor.gravarContratacoesPncp([bruto('g-aberta'), bruto('g-homologada', { valorTotalHomologado: 900 })], segunda, 'teste')
-    expect(segunda).toMatchObject({ vistos: 2, novos: 0, inalterados: 1, descartados: 1 })
+    await coletor.gravarContratacoesPncp(lote(), segunda, 'teste')
+    expect(segunda).toMatchObject({ vistos: 3, novos: 0, inalterados: 2, descartados: 1 })
 
     const gravada = await tenders.prisma.tender.findUniqueOrThrow({ where: { fonteId: `${prefixo}g-aberta` } })
     expect(gravada.municipioIbge).toBe('3170206')
