@@ -13,6 +13,7 @@ import { registrarAuditoria } from '../../services/auditService'
 import { exigirCota } from '../../services/quotaService'
 import { buscarLicitacoesDoItem, reavaliarEBuscarLicitacoesDoItem } from '../../services/rematchService'
 import { interesseDaOrigem, nomeDoItemDoInteresse } from '../../lib/origemDoCadastro'
+import { temPalavraSignificativa } from '../../lib/matching'
 
 export const monitoredItemsRouter = Router()
 
@@ -52,6 +53,7 @@ const createSchema = z.object({
         .trim()
         .min(MIN_TAM_PALAVRA_CHAVE, `Cada palavra-chave precisa ter ao menos ${MIN_TAM_PALAVRA_CHAVE} caracteres`)
         .max(MAX_TAM_TERMO)
+        .refine(temPalavraSignificativa, 'Palavra-chave só com "de", "para", "com" e afins casa com quase todas as licitações. Use um termo do que você vende.')
     )
     .max(MAX_ITENS_LISTA)
     .default([]),

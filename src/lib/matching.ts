@@ -35,6 +35,10 @@ function pluralDoRadicalEmL(base: string): string | null {
   return null
 }
 
+export function temPalavraSignificativa(keyword: string): boolean {
+  return normalize(keyword).split(/\s+/).some((palavra) => palavra !== '' && !PALAVRAS_DE_LIGACAO.has(palavra))
+}
+
 export function variacoesDaPalavra(palavra: string): string[] {
   if (palavra.length < TAMANHO_MINIMO_DA_VARIACAO || /\d/.test(palavra) || PALAVRAS_DE_LIGACAO.has(palavra)) return [palavra]
   const formas = new Set([palavra])

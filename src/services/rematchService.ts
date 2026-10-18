@@ -32,14 +32,14 @@ export async function buscarLicitacoesDoItem(item: ItemParaRematch, { notificar 
   if (candidates.length === 0) return { matchesFound: 0 }
 
   const existing = await prisma.tenderMatch.findMany({
-    where: { monitoredItemId: item.id, tenderId: { in: candidates.map((c) => c.tenderId) } },
+    where: { monitoredItemId: item.id },
     select: { tenderId: true },
   })
   const existingSet = new Set(existing.map((e) => e.tenderId))
   const newCandidates = candidates.filter((c) => !existingSet.has(c.tenderId))
   if (newCandidates.length === 0) return { matchesFound: 0 }
 
-  await prisma.tenderMatch.createMany({
+  const { count } = await prisma.tenderMatch.createMany({
     data: newCandidates.map((c) => ({
       tenderId: c.tenderId,
       monitoredItemId: item.id,
@@ -53,18 +53,17 @@ export async function buscarLicitacoesDoItem(item: ItemParaRematch, { notificar 
     skipDuplicates: true,
   })
 
-  const created = await prisma.tenderMatch.findMany({
-    where: { monitoredItemId: item.id, tenderId: { in: newCandidates.map((c) => c.tenderId) } },
-    select: { id: true },
-  })
-
   if (notificar) {
-    for (const match of created.slice(0, MAX_EMAILS_POR_REMATCH)) {
+    const aNotificar = await prisma.tenderMatch.findMany({
+      where: { monitoredItemId: item.id, tenderId: { in: newCandidates.slice(0, MAX_EMAILS_POR_REMATCH).map((c) => c.tenderId) } },
+      select: { id: true },
+    })
+    for (const match of aNotificar) {
       await enfileirarSemTravar(notificadorQueue, 'notify-match', { tenderMatchId: match.id }, 'Rematch')
     }
   }
 
-  return { matchesFound: created.length }
+  return { matchesFound: count }
 }
 
 export async function reavaliarEBuscarLicitacoesDoItem(

@@ -121,6 +121,15 @@ describe('documentoSchema', () => {
     expect(documentoSchema.safeParse({ tipo: 'proposta', titulo: 'x', blocos }).success).toBe(false)
     expect(documentoSchema.safeParse({ tipo: 'proposta', titulo: 'x', blocos: [{ tipo: 'paragrafo', texto: 'x'.repeat(5001) }] }).success).toBe(false)
   })
+
+  it('recusa tabelas que somam linhas demais mesmo com células vazias', () => {
+    const tabela = (linhas: number, colunas = 1) => ({ tipo: 'tabela', colunas: Array(colunas).fill('c'), linhas: Array.from({ length: linhas }, () => Array(colunas).fill('')) })
+    expect(documentoSchema.safeParse({ tipo: 'declaracoes', titulo: 'x', blocos: Array.from({ length: 200 }, () => tabela(500)) }).success).toBe(false)
+    expect(documentoSchema.safeParse({ tipo: 'declaracoes', titulo: 'x', blocos: [tabela(500), tabela(500), tabela(1)] }).success).toBe(false)
+    expect(documentoSchema.safeParse({ tipo: 'declaracoes', titulo: 'x', blocos: [tabela(500, 8), tabela(10, 8)] }).success).toBe(false)
+    expect(documentoSchema.safeParse({ tipo: 'proposta', titulo: 'x', blocos: [tabela(500), tabela(500)] }).success).toBe(true)
+    expect(documentoSchema.safeParse({ tipo: 'proposta', titulo: 'x', blocos: [tabela(500, 6)] }).success).toBe(true)
+  })
 })
 
 describe('papel timbrado', () => {

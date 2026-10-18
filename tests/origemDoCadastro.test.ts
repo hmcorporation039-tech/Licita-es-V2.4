@@ -26,6 +26,7 @@ describe('interesseSchema', () => {
     expect(interesseSchema.safeParse({ termo: 'notebook', uf: 'XX' }).success).toBe(false)
     expect(interesseSchema.safeParse({ termo: 'a' }).success).toBe(false)
     expect(interesseSchema.safeParse({ termo: 'a'.repeat(121) }).success).toBe(false)
+    expect(interesseSchema.safeParse({ termo: 'de' }).success).toBe(false)
   })
 
   it('UF é opcional', () => {

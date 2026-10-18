@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { temPalavraSignificativa } from './matching'
 
 export const SIGLAS_DAS_UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'] as const
 
@@ -25,7 +26,7 @@ export const interesseSchema = z.object({
   termo: z
     .string()
     .transform((v) => v.trim().replace(/\s+/g, ' '))
-    .pipe(z.string().min(TAMANHO_MINIMO_DO_TERMO).max(TAMANHO_MAXIMO_DO_TERMO)),
+    .pipe(z.string().min(TAMANHO_MINIMO_DO_TERMO).max(TAMANHO_MAXIMO_DO_TERMO).refine(temPalavraSignificativa)),
   uf: z.string().trim().toUpperCase().pipe(z.enum(SIGLAS_DAS_UFS)).optional(),
 })
 

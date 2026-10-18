@@ -1,12 +1,13 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from './tenderService'
 import { buildKeywordRegex, regexDaPalavraNoPostgres, termosDoPreFiltro, variantesDoOrgao } from '../lib/matching'
+import { literalNoLike } from '../lib/buscaLiteral'
 
 export const MAX_CANDIDATAS_DA_BUSCA_POR_TEXTO = 30_000
 
 export function whereDoPreFiltroDeTexto(texto: string): Prisma.TenderWhereInput {
   return {
-    OR: termosDoPreFiltro(texto).flatMap((termo) => [{ objetoNorm: { contains: termo } }, { objetoResumidoNorm: { contains: termo } }]),
+    OR: termosDoPreFiltro(texto).flatMap((termo) => [{ objetoNorm: { contains: literalNoLike(termo) } }, { objetoResumidoNorm: { contains: literalNoLike(termo) } }]),
   }
 }
 
@@ -54,7 +55,7 @@ export async function idsQueCitamOTexto(
 }
 
 export function whereDoOrgao(orgao: string): Prisma.TenderWhereInput {
-  return { OR: variantesDoOrgao(orgao).map((variante) => ({ orgaoNorm: { contains: variante } })) }
+  return { OR: variantesDoOrgao(orgao).map((variante) => ({ orgaoNorm: { contains: literalNoLike(variante) } })) }
 }
 
 const NUMERO_COM_ANO = /^0*(\d{1,6})\s*\/\s*(\d{4})$/
@@ -63,7 +64,7 @@ const TAMANHOS_DO_NUMERO_DA_COMPRA = [1, 2, 3, 4, 5, 6]
 export function whereDoNumeroDoEdital(numero: string): Prisma.TenderWhereInput {
   const limpo = numero.trim()
   const condicoes: Prisma.TenderWhereInput[] = [
-    { numeroControle: { contains: limpo, mode: 'insensitive' } },
+    { numeroControle: { contains: literalNoLike(limpo), mode: 'insensitive' } },
     { rawJson: { path: ['numeroCompra'], string_contains: limpo } },
     { rawJson: { path: ['processo'], string_contains: limpo } },
   ]

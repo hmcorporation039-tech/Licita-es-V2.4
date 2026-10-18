@@ -7,6 +7,7 @@ import {
   compileKeywordPatterns,
   ehObraCompleta,
   estaDentroDeObraCompleta,
+  temPalavraSignificativa,
   termosDoPreFiltro,
   variacoesDaPalavra,
   keywordFoundIn,
@@ -231,5 +232,19 @@ describe('dentro de obra completa', () => {
   it('não marca quem procura a própria obra', () => {
     expect(dentro(CREAS, ['construção'])).toBe(false)
     expect(dentro(CREAS, ['reforma'])).toBe(false)
+  })
+})
+
+describe('temPalavraSignificativa', () => {
+  it('recusa palavra-chave feita só de palavras de ligação', () => {
+    expect(temPalavraSignificativa('de')).toBe(false)
+    expect(temPalavraSignificativa('  para  com ')).toBe(false)
+    expect(temPalavraSignificativa('DE')).toBe(false)
+  })
+
+  it('aceita termo real, mesmo com ligação no meio', () => {
+    expect(temPalavraSignificativa('material de limpeza')).toBe(true)
+    expect(temPalavraSignificativa('cat6')).toBe(true)
+    expect(temPalavraSignificativa('TI')).toBe(true)
   })
 })

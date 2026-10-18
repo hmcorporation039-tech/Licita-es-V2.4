@@ -33,6 +33,7 @@ import { falhouHaPouco } from '../../lib/esperaDeReanalise'
 import { dataDaSessao } from '../../lib/dataDaSessao'
 
 import { SIGLAS_DAS_UFS } from '../../lib/origemDoCadastro'
+import { literalNoLike } from '../../lib/buscaLiteral'
 
 export const tendersRouter = Router()
 
@@ -127,7 +128,7 @@ tendersRouter.get(
     if (uf?.length) condicoes.push({ uf: uf.length === 1 ? uf[0] : { in: uf } })
     if (modalidade?.length) condicoes.push({ modalidade: modalidade.length === 1 ? (modalidade[0] as ModalidadeEnum) : { in: modalidade as ModalidadeEnum[] } })
     if (orgao) condicoes.push(whereDoOrgao(orgao))
-    if (municipio) condicoes.push({ municipioNorm: { contains: normalize(municipio) } })
+    if (municipio) condicoes.push({ municipioNorm: { contains: literalNoLike(normalize(municipio)) } })
     if (numero) condicoes.push(whereDoNumeroDoEdital(numero))
     if (publicacaoInicio || publicacaoFim) {
       condicoes.push({
