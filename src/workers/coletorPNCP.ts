@@ -22,10 +22,30 @@ import {
   datasDoPncp,
   parametrosDaVarreduraDePropostas,
 } from '../services/pncpColeta'
-import { ColetorJobPayload } from '../types'
+import { ColetorJobPayload, NormalizedTender } from '../types'
+import { esconderRepeticoesDaLicitacaoDoPncp, revisarRepeticoesDoPncp } from '../services/duplicataEntreFontes'
 
 export const WORKER_DA_COLETA_PNCP = 'coletor-pncp'
 export const WORKER_DA_VARREDURA_DE_PROPOSTAS = 'varredura-propostas-pncp'
+
+async function esconderRepeticoesSemTravar(tenderId: string, tender: NormalizedTender, contexto: string): Promise<void> {
+  try {
+    const escondidos = await esconderRepeticoesDaLicitacaoDoPncp(tenderId, tender)
+    if (escondidos > 0) console.log(`[${contexto}] ${escondidos} aviso(s) de diário/TCE-CE escondido(s): a mesma licitação chegou pelo PNCP.`)
+  } catch (err) {
+    console.error(`[${contexto}] Falha ao procurar a mesma licitação em diário/TCE-CE (a do PNCP já foi gravada):`, err)
+  }
+}
+
+async function revisarRepeticoesSemTravar(contexto: string): Promise<void> {
+  try {
+    const escondidos = await revisarRepeticoesDoPncp()
+    const total = Object.values(escondidos).reduce((soma, n) => soma + (n ?? 0), 0)
+    if (total > 0) console.log(`[${contexto}] Avisos repetidos do PNCP escondidos: ${JSON.stringify(escondidos)}`)
+  } catch (err) {
+    console.error(`[${contexto}] Falha ao revisar avisos de diário/TCE-CE repetidos do PNCP:`, err)
+  }
+}
 
 export async function gravarContratacoesPncp(
   itens: ContratacaoPncp[],
@@ -35,13 +55,15 @@ export async function gravarContratacoesPncp(
   for (const rawTender of itens) {
     contadores.vistos++
     try {
-      const result = await saveTenderSeAindaServir(parsePNCPTender(rawTender))
+      const tender = parsePNCPTender(rawTender)
+      const result = await saveTenderSeAindaServir(tender)
 
       if (!result) {
         contadores.descartados++
       } else if (result.isNew) {
         contadores.novos++
         await enfileirarSemTravar(matcherQueue, 'match-tender', { tenderId: result.tenderId }, contexto)
+        await esconderRepeticoesSemTravar(result.tenderId, tender, contexto)
       } else if (result.changed) {
         contadores.atualizados++
         await avisarAlteracaoDeTender(result.tenderId, result.changedFields)
@@ -130,13 +152,15 @@ async function coletarPublicacoes(job: Job<ColetorJobPayload>) {
 
 async function varrerPropostasAbertas(job: Job<ColetorJobPayload>) {
   const parametros = parametrosDaVarreduraDePropostas()
-  return executarColetaPncp(job, {
+  const resumo = await executarColetaPncp(job, {
     worker: WORKER_DA_VARREDURA_DE_PROPOSTAS,
     contexto: 'PNCP Propostas',
     caminho: CAMINHO_PROPOSTA_PNCP,
     parametros,
     descricao: `varredura das contratações recebendo proposta (prazo até ${parametros.dataFinal})`,
   })
+  await revisarRepeticoesSemTravar('PNCP Propostas')
+  return resumo
 }
 
 // Worker principal

@@ -2,6 +2,7 @@ import * as cheerio from 'cheerio'
 import { ModalidadeEnum, NormalizedTender, SituacaoEnum } from '../types'
 import { horaDeBrasilia, inicioDoDiaEmBrasilia } from '../lib/dataDeBrasilia'
 import { parseValorBr } from '../lib/scrapingHelpers'
+import { dataPlausivel } from '../lib/dataPlausivel'
 import { findMunicipioByNomeUf, normalize } from '../lib/geoService'
 import { limparTexto, truncar } from './sescRegional/tipos'
 import { NOMES_DOS_MUNICIPIOS_DO_CEARA } from './tceCeMunicipios'
@@ -139,7 +140,7 @@ export function diaDeBrasilia(data: string | undefined, hora?: string): Date | u
   const minutos = h ? Number(h[2]) : 0
   const valida = horas < 24 && minutos < 60
   const resultado = horaDeBrasilia(Number(m[3]), Number(m[2]) - 1, Number(m[1]), valida ? horas : 0, valida ? minutos : 0)
-  return Number.isNaN(resultado.getTime()) ? undefined : resultado
+  return dataPlausivel(resultado)
 }
 
 export function sessaoDaLinha(linha: LinhaDaListaTceCe): Date | undefined {

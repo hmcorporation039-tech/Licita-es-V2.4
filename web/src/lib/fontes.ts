@@ -10,3 +10,10 @@ export function fontesComLicitacaoAberta(fontesNaApi: number | null | undefined,
   if (typeof fontesNaApi !== 'number' || !Number.isFinite(fontesNaApi) || fontesNaApi < 1) return null
   return Math.min(Math.floor(fontesNaApi), fontesNaFaixa)
 }
+
+export function fontesNaFaixa<T extends { nome: string }>(fontes: T[], marcasComLicitacao: unknown): T[] {
+  if (!Array.isArray(marcasComLicitacao) || marcasComLicitacao.length === 0) return fontes
+  const presentes = new Set(marcasComLicitacao.filter((m): m is string => typeof m === 'string'))
+  const filtradas = fontes.filter((f) => presentes.has(f.nome))
+  return filtradas.length > 0 ? filtradas : fontes
+}

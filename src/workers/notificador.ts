@@ -10,7 +10,8 @@ import { redisConnection } from '../queues'
 import { prisma } from '../services/tenderService'
 import { sendMatchEmail, sendTenderChangedEmail } from '../services/emailService'
 import { NotificadorAlteracaoPayload, NotificadorJobPayload, NotificadorMatchPayload } from '../types'
-import { inicioDoDiaUtc, limites } from '../lib/limites'
+import { limites } from '../lib/limites'
+import { inicioDoDiaEmBrasilia } from '../lib/dataDeBrasilia'
 import { estaAberta } from '../lib/licitacaoAberta'
 
 async function jaNotificado(caminho: string[], valor: string): Promise<boolean> {
@@ -36,7 +37,7 @@ export async function processarMatch(payload: NotificadorMatchPayload): Promise<
   const emailsHojeDaEmpresa = await prisma.notification.count({
     where: {
       type: 'EMAIL',
-      sentAt: { gte: inicioDoDiaUtc() },
+      sentAt: { gte: inicioDoDiaEmBrasilia(new Date()) },
       user: { companyId: match.companyId },
     },
   })
