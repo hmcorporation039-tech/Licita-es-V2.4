@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const filas = vi.hoisted(() => {
-  const porNome = new Map<string, { repetiveis: string[]; removidos: string[]; agendados: { id: string; opcoes: unknown; job: unknown }[]; adicionados: { nome: string; dados: unknown }[] }>()
+  const porNome = new Map<string, { repetiveis: string[]; removidos: string[]; agendados: { id: string; opcoes: unknown; job: unknown }[]; adicionados: { nome: string; dados: unknown }[]; agendadoresRemovidos: string[] }>()
   return { porNome }
 })
 
@@ -12,7 +12,7 @@ vi.mock('bullmq', () => ({
     name: string
     constructor(name: string) {
       this.name = name
-      filas.porNome.set(name, { repetiveis: [], removidos: [], agendados: [], adicionados: [] })
+      filas.porNome.set(name, { repetiveis: [], removidos: [], agendados: [], adicionados: [], agendadoresRemovidos: [] })
     }
     private get estado() {
       return filas.porNome.get(this.name)!
@@ -26,6 +26,10 @@ vi.mock('bullmq', () => ({
     }
     async upsertJobScheduler(id: string, opcoes: unknown, job: unknown) {
       this.estado.agendados.push({ id, opcoes, job })
+    }
+    async removeJobScheduler(id: string) {
+      this.estado.agendadoresRemovidos.push(id)
+      return true
     }
     async add(nome: string, dados: unknown) {
       this.estado.adicionados.push({ nome, dados })
@@ -57,5 +61,16 @@ describe('agendadores do PNCP', () => {
     await dispararColetaInicial()
     const nomes = filas.porNome.get('coletor-pncp')!.adicionados.map((a) => a.nome)
     expect(nomes).toEqual(['coleta-pncp-inicial'])
+  })
+
+  it('o módulo legado do Compras.gov.br não é mais agendado e o agendador antigo sai do Redis', async () => {
+    const { scheduleColetorJobs, dispararColetaInicial, COLETOR_SCHEDULERS } = await import('../src/queues')
+    const comprasnet = filas.porNome.get('coletor-comprasnet')!
+    await scheduleColetorJobs()
+    await dispararColetaInicial()
+    expect(COLETOR_SCHEDULERS.some((s) => s.fonte === 'COMPRASNET')).toBe(false)
+    expect(comprasnet.agendadoresRemovidos).toContain('coleta-comprasnet')
+    expect(comprasnet.agendados).toEqual([])
+    expect(comprasnet.adicionados).toEqual([])
   })
 })

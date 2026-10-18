@@ -50,10 +50,15 @@ export async function processarMatch(payload: NotificadorMatchPayload): Promise<
   await sendMatchEmail({
     to: match.user.email,
     itemName: match.monitoredItem.name,
+    tenderId: match.tender.id,
     tenderObjeto: match.tender.objetoResumido ?? match.tender.objeto,
+    fonte: match.tender.fonte,
     orgao: match.tender.orgao,
+    municipio: match.tender.municipio,
     uf: match.tender.uf,
     valorEstimado: match.tender.valorEstimado ? Number(match.tender.valorEstimado) : null,
+    encerramentoAt: match.tender.encerramentoAt,
+    aberturaAt: match.tender.aberturaAt,
     linkEdital: match.tender.linkEdital,
   })
 

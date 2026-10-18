@@ -134,12 +134,12 @@ export function juntarAmostras(respostas: Array<RespostaDaVitrine | null>, agora
 const EXEMPLOS_DA_LISTA: Array<Omit<AmostraDaVitrine, 'prazo'> & { horas: number }> = [
   { objeto: 'Aquisição de material de limpeza e higienização para escolas da rede municipal', orgao: 'Prefeitura municipal', local: 'Anápolis/GO', fonte: 'PNCP', horas: 26 },
   { objeto: 'Registro de preços para medicamentos da farmácia básica', orgao: 'Secretaria estadual de saúde', local: 'Salvador/BA', fonte: 'PNCP', horas: 3 * 24 },
-  { objeto: 'Aquisição de notebooks e monitores para unidades administrativas', orgao: 'Universidade federal', local: 'Recife/PE', fonte: 'COMPRASNET', horas: 5 * 24 },
+  { objeto: 'Aquisição de notebooks e monitores para unidades administrativas', orgao: 'Universidade federal', local: 'Recife/PE', fonte: 'PNCP', horas: 5 * 24 },
   { objeto: 'Pavimentação asfáltica e drenagem de vias urbanas', orgao: 'Empresa pública distrital', local: 'Brasília/DF', fonte: 'NOVACAP', horas: 9 * 24 },
   { objeto: 'Gêneros alimentícios para alimentação escolar', orgao: 'Prefeitura municipal', local: 'Uberlândia/MG', fonte: 'QUERIDO_DIARIO', horas: 40 },
   { objeto: 'Mobiliário de escritório: cadeiras, mesas e armários', orgao: 'Unidade do Sistema S', local: 'Goiânia/GO', fonte: 'SISTEMA_S', horas: 6 * 24 },
   { objeto: 'Manutenção predial com fornecimento de materiais', orgao: 'Tribunal regional', local: 'Porto Alegre/RS', fonte: 'PNCP', horas: 11 * 24 },
-  { objeto: 'Equipamentos de informática para laboratórios de ensino', orgao: 'Instituto federal', local: 'Campinas/SP', fonte: 'COMPRASNET', horas: 13 * 24 },
+  { objeto: 'Equipamentos de informática para laboratórios de ensino', orgao: 'Instituto federal', local: 'Campinas/SP', fonte: 'PNCP', horas: 13 * 24 },
 ]
 
 export function primeiroPrazoUtil(resposta: RespostaDaVitrine | null, agora: number = Date.now()): string | null {

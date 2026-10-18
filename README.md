@@ -174,7 +174,7 @@ licitacao-platform/
 | Fonte | URL base | Auth |
 |---|---|---|
 | PNCP | `https://pncp.gov.br/api/consulta` | Pública |
-| ComprasNet | `https://dadosabertos.compras.gov.br` | Pública |
+| ComprasNet (módulo legado) | `https://dadosabertos.compras.gov.br` | Pública — coleta desativada em 17/10/2026: o módulo não recebe publicações desde jun/2025 (ver PROGRESSO.md) |
 | CATMAT/CATSER | `https://compras.dados.gov.br` | Pública |
 
 ---

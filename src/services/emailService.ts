@@ -5,6 +5,7 @@
 import { Resend } from 'resend'
 import { escapeHtml, safeHttpUrl } from '../lib/html'
 import { formatarDiaDoCalendario, formatarDiaEHoraDeBrasilia, formatarPrazoDaLicitacao } from '../lib/dataDeBrasilia'
+import { appUrl } from '../lib/appUrl'
 
 const EMAIL_FROM = process.env.EMAIL_FROM ?? 'noreply@seudominio.com.br'
 
@@ -26,11 +27,35 @@ function linkHtml(url: string | null | undefined, rotulo: string): string {
 export interface MatchEmailParams {
   to: string
   itemName: string
+  tenderId: string
   tenderObjeto: string
+  fonte: string
   orgao?: string | null
+  municipio?: string | null
   uf?: string | null
   valorEstimado?: number | null
+  encerramentoAt?: Date | null
+  aberturaAt?: Date | null
   linkEdital?: string | null
+}
+
+const FONTES_COM_ABERTURA_NO_INICIO_DAS_PROPOSTAS = new Set(['PNCP', 'COMPRASNET'])
+
+export function prazoDoEmailDeMatch(p: Pick<MatchEmailParams, 'fonte' | 'encerramentoAt' | 'aberturaAt'>): { rotulo: string; valor: string } {
+  if (p.encerramentoAt) return { rotulo: 'Prazo para enviar a proposta', valor: formatarPrazoDaLicitacao(p.encerramentoAt, p.fonte) }
+  if (p.aberturaAt && !FONTES_COM_ABERTURA_NO_INICIO_DAS_PROPOSTAS.has(p.fonte)) {
+    return { rotulo: 'Data da sessão', valor: formatarPrazoDaLicitacao(p.aberturaAt, p.fonte) }
+  }
+  return { rotulo: 'Prazo', valor: 'não informado pela fonte (confira no edital)' }
+}
+
+function localDaLicitacao(municipio: string | null | undefined, uf: string | null | undefined): { rotulo: string; valor: string } | null {
+  if (municipio) return { rotulo: 'Município', valor: uf ? `${municipio}/${uf}` : municipio }
+  return uf ? { rotulo: 'UF', valor: uf } : null
+}
+
+export function linkDaLicitacaoNoMonitor(tenderId: string, env: NodeJS.ProcessEnv = process.env): string {
+  return `${appUrl(env)}/tenders/${encodeURIComponent(tenderId)}`
 }
 
 export async function sendMatchEmail(params: MatchEmailParams) {
@@ -39,7 +64,9 @@ export async function sendMatchEmail(params: MatchEmailParams) {
     return
   }
 
-  const { to, itemName, tenderObjeto, orgao, uf, valorEstimado, linkEdital } = params
+  const { to, itemName, tenderId, tenderObjeto, orgao, municipio, uf, valorEstimado, linkEdital } = params
+  const prazo = prazoDoEmailDeMatch(params)
+  const local = localDaLicitacao(municipio, uf)
 
   await getResendClient().emails.send({
     from: EMAIL_FROM,
@@ -48,10 +75,12 @@ export async function sendMatchEmail(params: MatchEmailParams) {
     html: `
       <h2>Encontramos uma licitação para "${escapeHtml(itemName)}"</h2>
       <p><strong>Objeto:</strong> ${escapeHtml(tenderObjeto)}</p>
+      <p><strong>${escapeHtml(prazo.rotulo)}:</strong> ${escapeHtml(prazo.valor)}</p>
       ${orgao ? `<p><strong>Órgão:</strong> ${escapeHtml(orgao)}</p>` : ''}
-      ${uf ? `<p><strong>UF:</strong> ${escapeHtml(uf)}</p>` : ''}
+      ${local ? `<p><strong>${escapeHtml(local.rotulo)}:</strong> ${escapeHtml(local.valor)}</p>` : ''}
       ${valorEstimado ? `<p><strong>Valor estimado:</strong> ${escapeHtml(emReais(valorEstimado))}</p>` : ''}
-      ${linkHtml(linkEdital, 'Ver edital')}
+      ${linkHtml(linkDaLicitacaoNoMonitor(tenderId), 'Abrir no Monitor de Licitações')}
+      ${linkHtml(linkEdital, 'Ver edital na fonte')}
     `,
   })
 }

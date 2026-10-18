@@ -52,6 +52,7 @@ export const ACOES = [
   'ESTUDO_PDF_GERADO',
   'EXCLUSAO_SOLICITADA',
   'EMPRESA_EXCLUIDA',
+  'ACESSO_ENCERRADO_PEDIDO',
 ] as const
 export type AcaoAuditoria = (typeof ACOES)[number]
 

@@ -65,6 +65,8 @@ export interface ResultadoDaColeta {
   duplicadosDoPncp: number
   falhasDeTexto: number
   falhasDeBusca: number
+  falhasAoGravar: number
+  buscasComResposta: number
   houveFalhas: boolean
   motivoDaParada: MotivoDaParada
   ufsIncompletas: string[]
@@ -227,6 +229,8 @@ export async function coletarQueridoDiario(
     duplicadosDoPncp: 0,
     falhasDeTexto: 0,
     falhasDeBusca: 0,
+    falhasAoGravar: 0,
+    buscasComResposta: 0,
     houveFalhas: false,
     motivoDaParada: 'concluida',
     ufsIncompletas: [],
@@ -259,7 +263,9 @@ export async function coletarQueridoDiario(
       if (r.buscas > 0) await dep.esperar(ESPACO_ENTRE_BUSCAS_MS)
       r.buscas++
       try {
-        return await dep.buscarDiarios(janela, offset, lote.territorios)
+        const pagina = await dep.buscarDiarios(janela, offset, lote.territorios)
+        r.buscasComResposta++
+        return pagina
       } catch (err) {
         const bloqueio = ehBloqueioDoQueridoDiario(err)
         const semNovaTentativa =
@@ -300,6 +306,7 @@ export async function coletarQueridoDiario(
       } catch (err) {
         completo = false
         r.houveFalhas = true
+        r.falhasAoGravar++
         console.error(`[Querido Diário] Erro ao conferir ${tender.fonteId}:`, mensagemDoErro(err))
       }
     }
@@ -317,6 +324,7 @@ export async function coletarQueridoDiario(
       return completo && salvos.totalNew + salvos.totalDupes === lote.length
     } catch (err) {
       r.houveFalhas = true
+      r.falhasAoGravar += lote.length
       console.error(`[Querido Diário] Erro ao salvar avisos de ${gazeta.territory_name}/${gazeta.state_code}:`, mensagemDoErro(err))
       return false
     }
@@ -432,4 +440,26 @@ export function descricaoDaParada(r: ResultadoDaColeta): string | null {
     r.motivoDaParada === 'bloqueio' ? 'Querido Diário bloqueou as requisições (403/429)' : `orçamento de ${r.motivoDaParada} esgotado`
   const pendentes = [...r.ufsIncompletas, ...r.ufsNaoVisitadas]
   return `${motivo}${pendentes.length > 0 ? ` — ficaram para a próxima coleta: ${pendentes.join(', ')}` : ''}`
+}
+
+export interface DesfechoDaColeta {
+  status: 'SUCCESS' | 'PARTIAL' | 'FAILED'
+  mensagem?: string
+}
+
+export function desfechoDaColeta(r: ResultadoDaColeta): DesfechoDaColeta {
+  if (!r.houveFalhas) return { status: 'SUCCESS' }
+
+  const causas: string[] = []
+  if (r.falhasDeBusca > 0) causas.push(`${r.falhasDeBusca} busca(s) com falha`)
+  if (r.falhasDeTexto > 0) causas.push(`${r.falhasDeTexto} diário(s) sem texto`)
+  if (r.falhasAoGravar > 0) causas.push(`${r.falhasAoGravar} aviso(s) que não deu para conferir ou gravar`)
+  const parada = descricaoDaParada(r)
+  if (parada) causas.push(parada)
+  if (causas.length === 0) causas.push('falha sem detalhe')
+
+  const nadaLido = r.diariosLidos === 0 && r.jaLidosAntes === 0
+  const semResposta = r.buscasComResposta === 0 || r.falhasDeTexto > 0
+  if (nadaLido && semResposta) return { status: 'FAILED', mensagem: `Nenhum diário lido: ${causas.join('; ')} — ver logs do worker` }
+  return { status: 'PARTIAL', mensagem: `Coleta parcial (${r.diariosLidos} diário(s) lido(s)): ${causas.join('; ')} — ver logs do worker` }
 }

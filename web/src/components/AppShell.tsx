@@ -22,6 +22,7 @@ import {
 import { clearSessionUser, getSessionUser, type SessionUser } from '@/lib/session'
 import { api } from '@/lib/api'
 import { MedidorNoMenu } from '@/components/MedidorDeAnalises'
+import { PrazoDoAcessoNoMenu } from '@/components/PrazoDoAcesso'
 import Bela, { BotaoDaBela } from '@/components/Bela'
 import { cx } from '@/components/ui'
 
@@ -101,6 +102,7 @@ function Rodape({ user, onSair }: { user: SessionUser | null; onSair: () => void
   if (!user) return null
   return (
     <div className="flex flex-col gap-2 rounded-xl bg-surface p-2 text-ink shadow-[0_6px_18px_rgb(3_28_85/0.3)]">
+      <PrazoDoAcessoNoMenu />
       <MedidorNoMenu />
       <div className="flex items-center justify-between gap-2 px-2">
         <Link href="/conta" title={user.email} className="min-w-0 text-xs leading-4 text-muted hover:text-ink">

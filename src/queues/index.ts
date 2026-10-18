@@ -99,13 +99,6 @@ export const COLETOR_SCHEDULERS: ColetorScheduler[] = [
     dados: { varredura: 'propostas' },
     disparaNaPartida: false,
   },
-  {
-    queue: coletorComprasnetQueue,
-    schedulerId: 'coleta-comprasnet',
-    jobName: 'coleta-comprasnet',
-    pattern: '0 7,19 * * *',
-    fonte: 'COMPRASNET',
-  },
   // Uma vez por dia — essas 3 não têm filtro de data, então rodar 2x/dia
   // como PNCP/ComprasNet só dobraria o custo sem trazer nada a mais.
   {
@@ -204,7 +197,13 @@ async function removerAgendadoresLegados(scheduler: ColetorScheduler): Promise<n
   return removidos
 }
 
+export const AGENDADORES_DESATIVADOS: { queue: Queue; schedulerId: string }[] = [{ queue: coletorComprasnetQueue, schedulerId: 'coleta-comprasnet' }]
+
 export async function scheduleColetorJobs() {
+  for (const { queue, schedulerId } of AGENDADORES_DESATIVADOS) {
+    if (await queue.removeJobScheduler(schedulerId)) console.log(`[Queue] Agendador desativado removido: ${schedulerId}.`)
+  }
+
   for (const scheduler of COLETOR_SCHEDULERS) {
     const removidos = await removerAgendadoresLegados(scheduler)
     if (removidos > 0) {

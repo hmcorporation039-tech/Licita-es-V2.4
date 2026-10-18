@@ -135,6 +135,11 @@ Ver o cabeçalho de `scripts/enxugarRawJson.ts`.
 | Fonte nova: **Infraero** (fora do PNCP) — varredura por id do portal próprio, revisita das abertas, aeroporto → município — `docs/MAPA_INFRAERO.md` | branch `fonte-infraero` | 🟡 |
 | Fonte nova: **diários municipais do SIGPub** (13 associações, prefeituras ainda fora do PNCP) — busca por termos de aviso, parser compartilhado com o Querido Diário, duplicidade com PNCP (inclusive pelo número) e com o Querido Diário — `docs/MAPA_DIARIOS_MUNICIPAIS.md` | branch `fonte-sigpub` | 🟡 |
 | Fonte nova: **TCE-CE** (184 municípios do Ceará) — lista de abertas do Portal de Licitações do TCE, duplicidade com o PNCP antes do detalhe, revisita e sumidas — `docs/MAPA_TCE_CE.md` | branch `fonte-tce-ce` | 🟡 |
+| QA 17/10: fontes que falhavam calado, fim do teste grátis, prazo/local em Meus matches e Escolhidas, e-mail de match com prazo e link, avisos vagos do Querido Diário | branch `qa-fontes-conta-emails` | 🟡 |
+
+### Decisão de 17/10: coleta do módulo legado do Compras.gov.br desativada
+
+`/modulo-legado/1_consultarLicitacao` e `/5_consultarComprasSemLicitacao` respondem 200 com `totalRegistros: 0` para jul–set/2025, para 2026 inteiro e para outubro/2026; abr–jun/2025 ainda tem 2.624 registros (a última página é de 09/06/2025) e dez/2024 tem 2.054. As 44 coletas "SUCCESS" com 0 licitações eram a API vazia, não um filtro nosso. O que o Compras.gov.br publica pela Lei 14.133 chega pelo PNCP. O agendador saiu de `COLETOR_SCHEDULERS` (e é removido do Redis na subida), o worker não sobe mais e a página de entrada parou de citar o Compras.gov.br como fonte própria. O código do coletor ficou no repositório.
 
 ### Pendente (próxima sessão)
 

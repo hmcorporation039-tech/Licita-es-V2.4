@@ -28,6 +28,7 @@ import BuscarNoRamo from '@/components/entrada/BuscarNoRamo'
 import ChegandoAgora from '@/components/entrada/ChegandoAgora'
 import EfeitosDaEntrada from '@/components/entrada/EfeitosDaEntrada'
 import FaixaDeFontes, { FONTES_OFICIAIS } from '@/components/entrada/FaixaDeFontes'
+import { fontesComLicitacaoAberta } from '@/lib/fontes'
 import FalaDaBelaNoHeroi from '@/components/entrada/FalaDaBelaNoHeroi'
 import LinkDeCadastro from '@/components/entrada/LinkDeCadastro'
 import NumeroQueSobe from '@/components/entrada/NumeroQueSobe'
@@ -41,7 +42,7 @@ export const revalidate = 600
 
 const TITULO = 'Monitor de Licitações: licitações abertas para o que você vende'
 const DESCRICAO =
-  'Busca diária no PNCP, Compras.gov.br, Sistema S e diários oficiais. Aviso do que encerra primeiro, alerta de cláusulas ilegais no edital e proposta no papel timbrado da sua empresa. Teste grátis, sem cartão.'
+  'Busca diária no PNCP, no Sistema S e nos diários oficiais. Aviso do que encerra primeiro, alerta de cláusulas ilegais no edital e proposta no papel timbrado da sua empresa. Teste grátis, sem cartão.'
 const ENDERECO_PADRAO = 'https://licita-es-v2-4.vercel.app'
 const IMAGEM_DE_COMPARTILHAMENTO = { url: '/bela/bela-compartilhar.jpg', width: 1200, height: 670, alt: 'Bela, a assistente do Monitor de Licitações' }
 
@@ -148,7 +149,7 @@ const COMPARATIVO: Array<{ recurso: string; planilha: Celula; comuns: Celula; mo
 ]
 
 const CONFIANCA: Array<{ icone: LucideIcon; titulo: string; texto: string }> = [
-  { icone: Landmark, titulo: 'Dados de fontes públicas oficiais', texto: 'As licitações vêm do PNCP, do Compras.gov.br, dos portais do Sistema S e dos diários oficiais.' },
+  { icone: Landmark, titulo: 'Dados de fontes públicas oficiais', texto: 'As licitações vêm do PNCP, que reúne o que os órgãos publicam no Compras.gov.br e nos demais portais, dos portais do Sistema S e dos diários oficiais.' },
   { icone: LockKeyhole, titulo: 'Seus documentos no seu cofre', texto: 'Só os usuários da sua empresa acessam os documentos, os estudos e as propostas.' },
   { icone: CreditCard, titulo: 'Teste grátis sem cartão', texto: 'Você usa o Monitor sem informar cartão de crédito.' },
   { icone: Building, titulo: 'Feito em Brasília/DF', texto: 'Desenvolvido pela H&M Engenharia e Tecnologia, a partir da rotina real de licitações.' },
@@ -158,7 +159,7 @@ const perguntasFrequentes = (trialDias: number | null): Array<{ pergunta: string
   {
     pergunta: 'Serve para a minha cidade ou o meu estado?',
     resposta:
-      'Sim, o Monitor cobre todo o Brasil. Ele busca no PNCP e no Compras.gov.br, onde publicam órgãos federais, estaduais e municipais, nos portais do Sistema S, na Novacap e na FIEG. Para prefeituras que publicam só no diário oficial, o Monitor lê os diários dos municípios cobertos pelo Querido Diário.',
+      'Sim, o Monitor cobre todo o Brasil. Ele busca no PNCP, onde órgãos federais, estaduais e municipais publicam as licitações (inclusive as feitas pelo Compras.gov.br), nos portais do Sistema S, na Novacap e na FIEG. Para prefeituras que publicam só no diário oficial, o Monitor lê os diários dos municípios cobertos pelo Querido Diário.',
   },
   {
     pergunta: 'Preciso de certificado digital?',
@@ -199,6 +200,7 @@ const perguntasFrequentes = (trialDias: number | null): Array<{ pergunta: string
 ]
 
 const numero = (valor: number) => valor.toLocaleString('pt-BR')
+const textoDasFontesNoHeroi = (fontes: number | null) => (fontes && fontes > 1 ? `em ${fontes} fontes públicas` : 'nas fontes públicas oficiais')
 const brl = (centavos: number) => (centavos / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
 function numeroDoWhatsApp(): string | null {
@@ -255,6 +257,7 @@ function Navegacao() {
 }
 
 function Provas({ estatisticas, trialDias }: { estatisticas: EstatisticasPublicas | null; trialDias: number | null }) {
+  const fontes = fontesComLicitacaoAberta(estatisticas?.fontes, FONTES_OFICIAIS.length)
   return (
     <dl className="az-provas">
       {estatisticas && (
@@ -273,13 +276,15 @@ function Provas({ estatisticas, trialDias }: { estatisticas: EstatisticasPublica
           </dd>
         </div>
       )}
-      <div>
-        <dt className="sr-only">Fontes públicas</dt>
-        <dd>
-          <span className="az-provas-numero">{FONTES_OFICIAIS.length}</span>
-          <span className="az-provas-rotulo">fontes públicas oficiais</span>
-        </dd>
-      </div>
+      {fontes && (
+        <div>
+          <dt className="sr-only">Fontes públicas</dt>
+          <dd>
+            <span className="az-provas-numero">{fontes}</span>
+            <span className="az-provas-rotulo">{fontes === 1 ? 'fonte pública com licitação aberta agora' : 'fontes públicas com licitação aberta agora'}</span>
+          </dd>
+        </div>
+      )}
       <div>
         <dt className="sr-only">Teste</dt>
         <dd>
@@ -323,7 +328,7 @@ function Heroi({
               <span className="az-claro">tudo num lugar só</span>
             </h1>
             <p className="az-heroi-sub">
-              Você diz o que vende. O Monitor encontra as licitações abertas em {FONTES_OFICIAIS.length} fontes públicas, avisa o que encerra primeiro e monta a proposta no papel timbrado da sua empresa.
+              Você diz o que vende. O Monitor encontra as licitações abertas {textoDasFontesNoHeroi(fontesComLicitacaoAberta(estatisticas?.fontes, FONTES_OFICIAIS.length))}, avisa o que encerra primeiro e monta a proposta no papel timbrado da sua empresa.
             </p>
             <VitrineDeBusca />
             <Provas estatisticas={estatisticas} trialDias={trialDias} />
