@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { dataDaLicitacao, ehDataPura, fimDoDiaEmBrasilia, formatarData, formatarDataDaLicitacao, instanteDoPrazo } from '../web/src/lib/datas'
+import { dataDaLicitacao, diasUteis, ehDataPura, faltamDiasUteis, fimDoDiaEmBrasilia, formatarData, formatarDataDaLicitacao, instanteDoPrazo } from '../web/src/lib/datas'
+
+describe('dias úteis no singular e no plural', () => {
+  it('1 dia útil, 2 dias úteis, sem "dia(s) útil(eis)"', () => {
+    expect(diasUteis(1)).toBe('1 dia útil')
+    expect(diasUteis(2)).toBe('2 dias úteis')
+    expect(diasUteis(0)).toBe('0 dias úteis')
+    expect(faltamDiasUteis(1)).toBe('Falta 1 dia útil.')
+    expect(faltamDiasUteis(3)).toBe('Faltam 3 dias úteis.')
+  })
+})
 
 describe('data da licitação no cabeçalho do estudo de custos', () => {
   it('sessão às 21:00 de Brasília gravada como 00:00Z aparece no dia certo, com a hora', () => {

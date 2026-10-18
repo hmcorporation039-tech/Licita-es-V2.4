@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { Circle, CornerDownRight, Paperclip, TriangleAlert } from 'lucide-react'
 import { abrirArquivo, api, ApiRequestError } from '@/lib/api'
 import type { PainelDoFiscal as Painel, RequisitoDeHabilitacao, StatusHabilitacao } from '@/lib/adminTypes'
+import { diasUteis } from '@/lib/datas'
 import { Carregando, ErrorState, Notice, Panel, StatusTag, TextLink, cx, toneText, type Tom } from '@/components/ui'
 import AnexarDocumentoPendente from '@/components/AnexarDocumentoPendente'
 
@@ -118,7 +119,7 @@ export default function PainelDoFiscal({ tenderId }: { tenderId: string }) {
             {prazos && !prazos.sessaoPassou && (
               <p className="border-b border-line-soft px-4 py-2.5 text-sm text-ink-2">
                 Para impugnar ou pedir esclarecimento: até <strong className="font-mono font-semibold text-ink">{dia(prazos.limiteImpugnacao)}</strong>{' '}
-                {prazos.limitePassou ? '(o prazo já terminou)' : `(${prazos.diasUteisAteLimite} dia(s) útil(eis))`}.
+                {prazos.limitePassou ? '(o prazo já terminou)' : `(${diasUteis(prazos.diasUteisAteLimite)})`}.
               </p>
             )}
             <ul className="flex flex-col divide-y divide-line-soft">
