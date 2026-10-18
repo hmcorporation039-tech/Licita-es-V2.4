@@ -19,6 +19,7 @@ export const FONTES_OFICIAIS: FonteOficial[] = [
   { nome: 'Novacap', descricao: 'Companhia Urbanizadora da Nova Capital, Brasília/DF' },
   { nome: 'FIEG', descricao: 'Federação das Indústrias do Estado de Goiás' },
   { nome: 'Infraero', descricao: 'Empresa Brasileira de Infraestrutura Aeroportuária' },
+  { nome: 'Diários municipais', descricao: 'Diários oficiais das associações de municípios (SIGPub)' },
 ]
 
 const ID_DO_LETREIRO = 'letreiro-das-fontes'

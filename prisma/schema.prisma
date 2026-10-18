@@ -282,6 +282,7 @@ enum FonteEnum {
   QUERIDO_DIARIO
   SISTEMA_S
   INFRAERO
+  DIARIO_MUNICIPAL
 }
 
 // ============================================================

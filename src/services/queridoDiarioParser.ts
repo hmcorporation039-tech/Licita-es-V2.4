@@ -1,4 +1,4 @@
-import { ModalidadeEnum, NormalizedTender } from '../types'
+import { FonteEnum, ModalidadeEnum, NormalizedTender } from '../types'
 import { safeHttpUrl } from '../lib/html'
 import { getMunicipioByIbge } from '../lib/geoService'
 import { horaDeBrasilia } from '../lib/dataDeBrasilia'
@@ -19,6 +19,13 @@ export interface ResultadoDoDiario {
   avisos: number
   descartadosPorPncp: number
 }
+
+export interface OrigemDoDiario {
+  fonte: FonteEnum
+  prefixo: string
+}
+
+export const ORIGEM_QUERIDO_DIARIO: OrigemDoDiario = { fonte: 'QUERIDO_DIARIO', prefixo: 'QD' }
 
 export interface BlocoDeAviso {
   texto: string
@@ -71,7 +78,7 @@ const MESES: Record<string, number> = {
   DEZEMBRO: 12,
 }
 
-const MODALIDADES_DO_TITULO = String.raw`(?:LICITACAO|PREGAO|EDITAL|CHAMAMENTO|CHAMADA PUBLICA|CONTRATACAO DIRETA|DISPENSA|CREDENCIAMENTO|CONCORRENCIA|TOMADA DE PRECOS?|LEILAO|COTACAO)`
+const MODALIDADES_DO_TITULO = String.raw`(?:LICITAC(?:AO|OES)|PREGAO|EDITAL|CHAMAMENTO|CHAMADA PUBLICA|CONTRATACAO DIRETA|DISPENSA|CREDENCIAMENTO|CONCORRENCIA|TOMADA DE PRECOS?|LEILAO|COTACAO)`
 const INICIO_DE_AVISO = new RegExp(
   String.raw`^(?:(?:EXTRATO\s*(?:[-–—:]\s*|D[OE]\s+)?)?AVISO DE (?:(?:ABERTURA|PUBLICACAO|REABERTURA|REPUBLICACAO|RETOMADA) DE )?${MODALIDADES_DO_TITULO}\b|EXTRATO D[OE] EDITAL D[EO] ${MODALIDADES_DO_TITULO}\b|TERMO DE ABERTURA(?: D[EO] ${MODALIDADES_DO_TITULO}\b)?$)`
 )
@@ -158,7 +165,7 @@ const FIM_DO_OBJETO_POR_CAMPO =
 const PALAVRA_SOLTA_NO_FIM = /[\s,]+(?:na|no|nas|nos|de|da|do|das|dos|e|em|para|a|o|as|os|com|ao|aos|à|às|pela|pelo)$/i
 
 const MARCADOR_DE_NUMERO = String.raw`(?:N\s*\.?\s*[º°O]?\s*\.?\s*[º°]?\s*\.?|NUMERO|NRO\.?)?\s*:?\s*`
-const NUMERO_COM_ANO = String.raw`(\d{1,3}\.\d{3}|\d{1,6})\s*[\/-]\s*(20\d{2}|\d{2})([A-Z])?(?![\d\/])`
+const NUMERO_COM_ANO = String.raw`(?:[A-Z]{1,4}[-.]?)?(\d{1,3}\.\d{3}|\d{1,6})(?:\s*[-.]\s*[A-Z]{2,12})?\s*[\/-]\s*(20\d{2}|\d{2})([A-Z])?(?!\d|\s*\/\s*\d)`
 const PALAVRAS_DO_QUALIFICADOR = [
   'ELETRONIC[OA]',
   'PRESENCIAL',
@@ -190,7 +197,7 @@ const CORTE_DO_ORGAO =
   /\s+[-–—]\s+|\/|\s+(?:torna|tornam|por meio|atrav[ée]s|inscrit|pessoa jur[íi]dica|com sede|cnpj|situad|neste ato|estado d|realizar[áa]|far[áa]|comunica|avisa|informa|no uso|em cumprimento|em atendimento|de acordo|nos termos|mediante|pretende)(?!\p{L})|(?<=\p{L}{4})\.\s/iu
 const PALAVRAS_MINUSCULAS = new Set(['de', 'da', 'do', 'das', 'dos', 'e'])
 
-const HOSTS_QUE_NAO_SAO_EDITAL = ['planalto.gov.br', 'in.gov.br', 'lexml.gov.br', 'queridodiario.ok.org.br']
+const HOSTS_QUE_NAO_SAO_EDITAL = ['planalto.gov.br', 'in.gov.br', 'lexml.gov.br', 'queridodiario.ok.org.br', 'diariomunicipal.com.br']
 
 const ROTULOS_DA_MODALIDADE: Record<FamiliaDeModalidade, string> = {
   PREGAO: 'Pregão',
@@ -484,6 +491,22 @@ function fimDoObjetoEntreAspas(plano: string, inicio: number, limite: number): n
   return posicao !== -1 && posicao < limite ? posicao : -1
 }
 
+function limparObjeto(trecho: string): string {
+  let objeto = trecho
+    .replace(/\s+/g, ' ')
+    .replace(/^[\s:–—"“”'-]+/, '')
+    .replace(/[\s.,;:–—"“”'-]+$/, '')
+    .trim()
+  while (PALAVRA_SOLTA_NO_FIM.test(objeto)) objeto = objeto.replace(PALAVRA_SOLTA_NO_FIM, '').replace(/[\s.,;:–—-]+$/, '')
+  return objeto
+}
+
+function objetoLegivel(objeto: string): boolean {
+  if (objeto.length < TAMANHO_MINIMO_DO_OBJETO) return false
+  const letras = objeto.match(/\p{L}/gu)?.length ?? 0
+  return letras >= objeto.length * 0.6
+}
+
 export function extrairObjeto(
   plano: string,
   chave: string,
@@ -512,17 +535,14 @@ export function extrairObjeto(
   const corteDaFinalidade = inicioDoObjeto.pelaFinalidade ? FIM_DO_OBJETO_PELA_FINALIDADE.exec(chave.slice(inicio, fim)) : null
   if (corteDaFinalidade) fim = inicio + corteDaFinalidade.index
 
-  let objeto = plano
-    .slice(inicio, fim)
-    .replace(/\s+/g, ' ')
-    .replace(/^[\s:–—"“”'-]+/, '')
-    .replace(/[\s.,;:–—"“”'-]+$/, '')
-    .trim()
-  while (PALAVRA_SOLTA_NO_FIM.test(objeto)) objeto = objeto.replace(PALAVRA_SOLTA_NO_FIM, '').replace(/[\s.,;:–—-]+$/, '')
-
-  if (objeto.length < TAMANHO_MINIMO_DO_OBJETO) return null
-  const letras = objeto.match(/\p{L}/gu)?.length ?? 0
-  if (letras < objeto.length * 0.6) return null
+  let objeto = limparObjeto(plano.slice(inicio, fim))
+  if (!objetoLegivel(objeto)) {
+    const corteDaReferencia = FIM_DO_OBJETO_PELA_FINALIDADE.exec(chave.slice(inicio, fim))
+    if (!corteDaReferencia) return null
+    fim = inicio + corteDaReferencia.index
+    objeto = limparObjeto(plano.slice(inicio, fim))
+    if (!objetoLegivel(objeto)) return null
+  }
 
   const limitado =
     objeto.length > TAMANHO_MAXIMO_DO_OBJETO ? objeto.slice(0, TAMANHO_MAXIMO_DO_OBJETO - 1).trimEnd() + '…' : objeto
@@ -687,7 +707,7 @@ type AvaliacaoDoBloco =
   | { tipo: 'pncp'; fonteId: string }
   | { tipo: 'descartado' }
 
-function avaliarBloco(bloco: BlocoDeAviso, gazeta: GazetaQueridoDiario, agora: Date): AvaliacaoDoBloco {
+function avaliarBloco(bloco: BlocoDeAviso, gazeta: GazetaQueridoDiario, agora: Date, origem: OrigemDoDiario): AvaliacaoDoBloco {
   const plano = compactar(bloco.texto)
   const chave = chaveDeBusca(plano)
 
@@ -713,7 +733,7 @@ function avaliarBloco(bloco: BlocoDeAviso, gazeta: GazetaQueridoDiario, agora: D
     plano.slice(objeto.fim, objeto.fim + TAMANHO_DO_TRECHO_APOS_O_OBJETO)
   )
   const numeroDoId = modalidade.numero.replace('/', '-')
-  const fonteId = `QD-${gazeta.territory_id}:${modalidade.familia}:${numeroDoId}${tipo ? `:${tipo}` : ''}`
+  const fonteId = `${origem.prefixo}-${gazeta.territory_id}:${modalidade.familia}:${numeroDoId}${tipo ? `:${tipo}` : ''}`
 
   if (temIdDoPncp(plano)) return { tipo: 'pncp', fonteId }
 
@@ -724,7 +744,7 @@ function avaliarBloco(bloco: BlocoDeAviso, gazeta: GazetaQueridoDiario, agora: D
   const linkEdital = linkDoBloco ?? safeHttpUrl(gazeta.url) ?? undefined
 
   const tender: NormalizedTender = {
-    fonte: 'QUERIDO_DIARIO',
+    fonte: origem.fonte,
     fonteId,
     modalidade: modalidade.modalidade,
     situacao: !aberturaAt || aberturaAt.getTime() > agora.getTime() ? 'ABERTA' : 'ENCERRADA',
@@ -757,14 +777,15 @@ function avaliarBloco(bloco: BlocoDeAviso, gazeta: GazetaQueridoDiario, agora: D
 export function parseDiarioOficial(
   gazeta: GazetaQueridoDiario,
   texto: string,
-  agora: Date = new Date()
+  agora: Date = new Date(),
+  origem: OrigemDoDiario = ORIGEM_QUERIDO_DIARIO
 ): ResultadoDoDiario {
   const blocos = separarBlocosDeAviso(texto)
   const porFonteId = new Map<string, { tender: NormalizedTender; completude: number }>()
   const doPncp = new Set<string>()
 
   for (const bloco of blocos) {
-    const avaliacao = avaliarBloco(bloco, gazeta, agora)
+    const avaliacao = avaliarBloco(bloco, gazeta, agora, origem)
     if (avaliacao.tipo === 'pncp') {
       doPncp.add(avaliacao.fonteId)
       continue

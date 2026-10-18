@@ -32,6 +32,7 @@ const DIAS_SEM_CURSOR = 5
 const JANELA_MAXIMA_DIAS = 30
 const SIMILARIDADE_MINIMA_COM_O_PNCP = 0.45
 const SIMILARIDADE_MINIMA_NO_MESMO_DIA = 0.2
+const SIMILARIDADE_MINIMA_COM_O_MESMO_NUMERO = 0.1
 const SEMELHANCA_MINIMA_ENTRE_REPUBLICACOES = 0.3
 const DIAS_DE_HISTORICO_DO_PNCP = 180
 const HORAS_DE_BRASILIA_PARA_UTC = 3
@@ -58,6 +59,13 @@ export interface CandidatoDoPncp {
   aberturaAt: Date | null
   encerramentoAt: Date | null
   similaridade: number
+  numeroCompra?: string | null
+  anoCompra?: string | number | null
+}
+
+export interface NumeroDoAviso {
+  sequencial: number
+  ano: string
 }
 
 export interface RegistroJaColetado {
@@ -149,8 +157,28 @@ export function modalidadesEquivalentes(modalidade: ModalidadeEnum): ModalidadeE
   return [modalidade]
 }
 
-export function ehMesmaLicitacaoDoPncp(tender: Pick<NormalizedTender, 'aberturaAt'>, candidato: CandidatoDoPncp): boolean {
+export function numeroDoAviso(fonteId: string | undefined): NumeroDoAviso | null {
+  const m = /:(\d+)-(20\d{2})[A-Z]?(?::|$)/.exec(fonteId ?? '')
+  return m ? { sequencial: Number(m[1]), ano: m[2] } : null
+}
+
+export function mesmoNumeroDoPncp(numero: NumeroDoAviso | null, candidato: CandidatoDoPncp): boolean {
+  if (!numero || !candidato.numeroCompra || String(candidato.anoCompra ?? '') !== numero.ano) return false
+  const digitos = /\d+/.exec(candidato.numeroCompra.replace(/(\d)\.(?=\d{3})/g, '$1'))
+  return digitos !== null && Number(digitos[0]) === numero.sequencial
+}
+
+export function ehMesmaLicitacaoDoPncp(
+  tender: Pick<NormalizedTender, 'aberturaAt'> & Partial<Pick<NormalizedTender, 'fonteId'>>,
+  candidato: CandidatoDoPncp
+): boolean {
   if (Number(candidato.similaridade) >= SIMILARIDADE_MINIMA_COM_O_PNCP) return true
+  if (
+    Number(candidato.similaridade) >= SIMILARIDADE_MINIMA_COM_O_MESMO_NUMERO &&
+    mesmoNumeroDoPncp(numeroDoAviso(tender.fonteId), candidato)
+  ) {
+    return true
+  }
   if (!tender.aberturaAt || Number(candidato.similaridade) < SIMILARIDADE_MINIMA_NO_MESMO_DIA) return false
   const dia = diaEmBrasilia(tender.aberturaAt)
   return [candidato.aberturaAt, candidato.encerramentoAt].some((data) => data !== null && diaEmBrasilia(new Date(data)) === dia)
@@ -164,7 +192,9 @@ export async function existeNoPncp(tender: NormalizedTender, agora: Date = new D
   const candidatos = await prisma.$queryRaw<CandidatoDoPncp[]>`
     SELECT abertura_at AS "aberturaAt",
            encerramento_at AS "encerramentoAt",
-           similarity(coalesce(objeto_norm, ''), ${normalize(tender.objeto)})::float8 AS similaridade
+           similarity(coalesce(objeto_norm, ''), ${normalize(tender.objeto)})::float8 AS similaridade,
+           raw_json->>'numeroCompra' AS "numeroCompra",
+           raw_json->>'anoCompra' AS "anoCompra"
     FROM tenders
     WHERE fonte = 'PNCP'
       AND uf = ${tender.uf}

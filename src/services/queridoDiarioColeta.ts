@@ -110,7 +110,20 @@ function mensagemDoErro(err: unknown): string {
   return err instanceof Error ? err.message : String(err)
 }
 
-export function memoriaDeDiariosNoRedis(redis: ClienteRedisDaMemoria, agora: () => number = Date.now): MemoriaDeDiarios {
+export interface OpcoesDaMemoria {
+  chave: string
+  dias: number
+  rotulo: string
+}
+
+const MEMORIA_DO_QUERIDO_DIARIO: OpcoesDaMemoria = { chave: CHAVE_DOS_DIARIOS_LIDOS, dias: DIAS_NA_MEMORIA, rotulo: 'Querido Diário' }
+
+export function memoriaDeDiariosNoRedis(
+  redis: ClienteRedisDaMemoria,
+  agora: () => number = Date.now,
+  opcoes: OpcoesDaMemoria = MEMORIA_DO_QUERIDO_DIARIO
+): MemoriaDeDiarios {
+  const { chave, dias, rotulo } = opcoes
   let limpou = false
   return {
     async jaLidos(urls) {
@@ -118,22 +131,22 @@ export function memoriaDeDiariosNoRedis(redis: ClienteRedisDaMemoria, agora: () 
       try {
         if (!limpou) {
           limpou = true
-          await redis.zremrangebyscore(CHAVE_DOS_DIARIOS_LIDOS, '-inf', agora() - DIAS_NA_MEMORIA * DIA_MS)
+          await redis.zremrangebyscore(chave, '-inf', agora() - dias * DIA_MS)
         }
         const pipeline = redis.pipeline()
-        for (const url of urls) pipeline.zscore(CHAVE_DOS_DIARIOS_LIDOS, url)
+        for (const url of urls) pipeline.zscore(chave, url)
         const respostas = (await pipeline.exec()) ?? []
         return new Set(urls.filter((_, i) => !respostas[i]?.[0] && respostas[i]?.[1] !== null && respostas[i]?.[1] !== undefined))
       } catch (err) {
-        console.warn('[Querido Diário] Memória de diários lidos indisponível:', mensagemDoErro(err))
+        console.warn(`[${rotulo}] Memória de diários lidos indisponível:`, mensagemDoErro(err))
         return new Set()
       }
     },
     async marcarLido(url) {
       try {
-        await redis.zadd(CHAVE_DOS_DIARIOS_LIDOS, agora(), url)
+        await redis.zadd(chave, agora(), url)
       } catch (err) {
-        console.warn('[Querido Diário] Não foi possível lembrar o diário lido:', mensagemDoErro(err))
+        console.warn(`[${rotulo}] Não foi possível lembrar o diário lido:`, mensagemDoErro(err))
       }
     },
   }

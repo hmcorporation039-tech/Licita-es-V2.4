@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Diário Oficial dos Municípios SIGPub - Sistema Gerenciador de Publicações Legais</title>
+        <link rel="stylesheet" type="text/css" href="/dist/css/externo.min.css">
+        <link rel="stylesheet" type="text/css" href="/dist/css/navegacao.min.css">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico"/>
+
+    <link rel="stylesheet" type="text/css" href="/dist/lib/css/lib.min.css">
+    <link rel="stylesheet" type="text/css" href="/dist/lib/npm/sweetalert2.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.1/css/all.min.css"
+    integrity="sha512-MV7K8+y+gLIBoVD59lQIYicR65iaqukzvf/nwasF0nqhPay5w/9lJmVM2hMDcnK1OnMGCdVK+iQrJ7lzPJQd1w=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"/>
+
+            <!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-KJYBF0PFGT"></script>
+<script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'UA-18200099-1');
+    gtag('config', 'G-KJYBF0PFGT');
+</script>
+    </head>
+<body class="diario-amm-mt">
+
+<input type='hidden' name='gethostname' value='vox-prod-web-08' />
+
+    <section id="popup" class="modal-edicao none" role="dialog" aria-modal="true" aria-labelledby="modal-edicao-titulo">
+    <div class="modal-edicao__fundo" data-fechar-modal></div>
+
+    <div class="modal-edicao__janela">
+        <header class="modal-edicao__cabecalho">
+            <div>
+                <p class="modal-edicao__rotulo">Edição do dia</p>
+                <h1 class="modal-edicao__data" id="modal-edicao-titulo"><span id="dataDiario"></span></h1>
+            </div>
+
+            <a href="#" class="modal-edicao__fechar bt-fechar" title="Fechar" aria-label="Fechar">
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+            </a>
+        </header>
+
+        <div class="modal-edicao__corpo">
+                        <p id="materia-aviso" class="modal-edicao__vazio">
+                <i class="fa-regular fa-calendar-xmark" aria-hidden="true"></i>
+                Nenhuma edição publicada nesta data
+            </p>
+
+                        <div id="containerDownload" class="modal-edicao__bloco">
+                <ul class="modal-edicao__arquivos">
+                    <li>
+                        <a id="btDownloadSimples" href="#" class="botao-edicao" title="Clique aqui para baixar a edição simples">
+                            <i class="fa-solid fa-file-pdf" aria-hidden="true"></i>
+                            <span>
+                                <strong>Baixar a edição</strong>
+                                <small>Arquivo PDF</small>
+                            </span>
+                        </a>
+                    </li>
+                    <li>
+                        <a id="btDownloadCertificada" href="#" class="botao-edicao botao-edicao--secundario" title="Clique aqui para baixar certificada. Requer software">
+                            <i class="fa-solid fa-file-shield" aria-hidden="true"></i>
+                            <span>
+                                <strong>Baixar a versão certificada</strong>
+                                <small>Requer software de leitura</small>
+                            </span>
+                        </a>
+                    </li>
+                </ul>
+
+                <p class="modal-edicao__nota">
+                    As edições publicadas são arquivos em <strong>PDF assinados com certificado digital</strong>, o
+                    que assegura a autenticidade, a integridade e a validade jurídica do documento eletrônico. A
+                    assinatura usa o padrão XML DSIG: para abrir a edição certificada é preciso um leitor próprio.
+                    <a href="#" id="verificar-assinatura" title="Verificar Assinatura Digital">Verificar assinatura digital</a>
+                </p>
+            </div>
+
+                        <div id="containerDownloadNova" class="modal-edicao__bloco none">
+                <ul class="modal-edicao__arquivos">
+                    <li>
+                        <a id="btDownloadSimples2" href="#" class="botao-edicao" title="Clique aqui para baixar a edição simples">
+                            <i class="fa-solid fa-file-pdf" aria-hidden="true"></i>
+                            <span>
+                                <strong>Baixar a edição</strong>
+                                <small>Arquivo PDF assinado digitalmente</small>
+                            </span>
+                        </a>
+                    </li>
+                </ul>
+
+                <p class="modal-edicao__nota">
+                    As edições publicadas são arquivos em <strong>PDF assinados com certificado digital</strong>, o
+                    que assegura a autenticidade, a integridade e a validade jurídica do documento eletrônico.
+                </p>
+            </div>
+
+                        <div id="exibeExtra" class="modal-edicao__extra" style="display:none">
+                <p id="texto-extra" class="modal-edicao__extra-aviso">
+                    <i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i>
+                    Esta data também tem edição extraordinária.
+                </p>
+
+                <ul class="lista-extra modal-edicao__arquivos"></ul>
+            </div>
+        </div>
+    </div>
+</section>
+
+    <!-- container -->
+    <section class="grid-diario" class="diario-amm-mt" data-entity="amm-mt">
+        <!-- header -->
+        <header class="header">
+            <div class="container flex-center">
+                <a href="https://www.diariomunicipal.com.br/amm-mt/" title="Associação Mato-Grossense dos Municípios - AMM-MT">
+                    <img
+                                                alt="Associação Mato-Grossense dos Municípios - AMM-MT"
+                        src="/dist/images/diario/amm-mt/logo.png"
+                    />
+                                    </a>
+                <div class="btn-login">
+                    <a class="flex-center" href="https://autenticacao.diariomunicipal.com.br/selected-system/sigpub-amm-mt" data-url="https://autenticacao.diariomunicipal.com.br/selected-system/sigpub-amm-mt"> <i class="fa-solid fa-lock"></i><span>Acesso Seguro</span></a>
+                    <div class="tooltip">Área restrita para usuários do Diário Oficial Eletrônico</div>
+                </div>
+            </div>
+        </header>
+        <!-- /header -->
+
+        <section class="hero">
+            <div class="container">
+                <div class="orgao-hero">
+                <a href="https://www.diariomunicipal.com.br/amm-mt/" id="orgao-base" title="Associação Mato-Grossense dos Municípios - AMM-MT">
+                    <img alt="Associação Mato-Grossense dos Municípios - AMM-MT" src="/dist/images/diario/amm-mt/bandeira-uf.png" />
+                        <h1><span>Diário</span> Oficial dos Municípios </h1>
+                </a>
+                </div>
+            </div>
+        </section>
+
+        <!--menu-->
+
+                
+        <nav class="menu nav-bar navbar navbar-expand-lg" aria-label="Menu principal">
+            <div class="container justify-center">
+                                <button class="navbar-toggler" type="button"
+                        data-bs-toggle="collapse" data-bs-target="#menu-principal"
+                        aria-controls="menu-principal" aria-expanded="false"
+                        aria-label="Abrir o menu">
+                    <span class="tracos" aria-hidden="true">
+                        <span class="traco"></span>
+                        <span class="traco"></span>
+                        <span class="traco"></span>
+                    </span>
+                    <span class="rotulo">Menu</span>
+                </button>
+
+                <div class="collapse navbar-collapse" id="menu-principal">
+                                        <div class="menu-topo">
+                        <span class="menu-titulo">Menu</span>
+                        <button class="menu-fechar" type="button"
+                                data-bs-toggle="collapse" data-bs-target="#menu-principal"
+                                aria-controls="menu-principal" aria-expanded="false"
+                                aria-label="Fechar o menu">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+
+                    <ul class="navbar-nav small-caps">
+                        <li class="nav-item dropdown">
+                            <a href="#" class="nav-link dropdown-toggle item-parent"
+                               role="button" data-bs-toggle="dropdown" aria-expanded="false"
+                               title="O Diário Oficial">O Diário Oficial</a>
+                            <ul class="dropdown-menu sub-menu">
+                                <li>
+                                    <a class="dropdown-item"
+                                                                              href="https://www.diariomunicipal.com.br/amm-mt/o-que-e"
+                                       title="O que é o Diário Oficial Eletrônico">O que é</a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item"
+                                                                              href="https://www.diariomunicipal.com.br/amm-mt/como-funciona"
+                                       title="Como funciona o Diário Oficial Eletrônico">Como funciona</a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item"
+                                                                              href="https://www.diariomunicipal.com.br/amm-mt/beneficios"
+                                       title="Benefícios do Diário Oficial Eletrônico">Benefícios</a>
+                                </li>
+                            </ul>
+                        </li>
+
+                                                    <li class="nav-item">
+                                <a class="nav-link mn-legislacao"
+                                                                      href="https://www.diariomunicipal.com.br/amm-mt/legislacao"
+                                   title="Legislação">Legislação</a>
+                            </li>
+                        
+                        <li class="nav-item">
+                            <a class="nav-link mn-publicado"
+                                                              href="https://www.diariomunicipal.com.br/amm-mt/atos"
+                               title="Atos que podem ser publicados neste Diário Oficial Eletrônico">O Que Pode Ser Publicado</a>
+                        </li>
+
+                                                                                <li class="nav-item mn-adesao">
+                                <a class="nav-link mn-adesao"
+                                                                      href="https://www.diariomunicipal.com.br/amm-mt/adesao"
+                                   title="Faça sua Adesão">Faça sua Adesão</a>
+                            </li>
+                                            </ul>
+                </div>
+            </div>
+        </nav><!--/menu-->
+
+                <div class="menu-backdrop" data-menu-backdrop></div>
+
+        <!-- content -->
+        <section class="container mobile-container">
+                <div class="conteudo-interna busca-avancada">
+
+        <header class="busca-avancada__cabecalho">
+            <h1 id="tit-sessao"><strong>Busca</strong> completa por publicações</h1>
+            <p class="busca-avancada__ajuda">
+                A busca cobre todas as matérias publicadas desde 2009.
+                Informe ao menos um filtro além do período: palavra-chave, título, município ou
+                órgão. Com a palavra-chave preenchida, deixar o município e o órgão em branco
+                procura no diário inteiro.
+            </p>
+        </header>
+
+        <form name="busca_avancada" method="get" class="form-busca" id="form-busca">
+            
+
+            <div class="form-busca__linha">
+                <div class="form-busca__campo form-busca__campo--largo">
+                    <label for="busca_avancada_texto">Palavra-chave no texto</label>
+                    <input type="search" id="busca_avancada_texto" name="busca_avancada[texto]" class="campo-texto" placeholder="Ex.: reajuste salarial" value="pregão eletrônico" />
+                    
+                </div>
+                <div class="form-busca__campo form-busca__campo--largo">
+                    <label for="busca_avancada_titulo">Título da matéria</label>
+                    <input type="search" id="busca_avancada_titulo" name="busca_avancada[titulo]" class="campo-texto" placeholder="Ex.: portaria, decreto" />
+                    
+                </div>
+            </div>
+
+            <div class="form-busca__linha">
+                <div class="form-busca__campo">
+                    <label for="busca_avancada_entidade">Município (entidade)</label>
+                    <select id="busca_avancada_entidade" name="busca_avancada[entidade]" class="campo-texto" data-busca="entidade"><option value="">Todos os municípios</option><option value="11362">Amptur Associação dos Municipios com Potencial Turistico</option><option value="592">Associação Mato-Grossense dos Municípios - AMM-MT</option><option value="1947">Consórcio Inter. de Des. Econômico, Social e Ambiental da Região Sul</option><option value="1921">Consórcio Inter. de Saúde da Região Norte Matogrossense</option><option value="1970">Consórcio Inter. de Saúde do Vale do Juruena</option><option value="1943">Consórcio Intermunicipal &quot;Alto do Rio Paraguai&quot;</option><option value="1951">Consórcio Intermunicipal &quot;Complexo Nascentes do Pantanal</option><option value="1961">Consórcio Intermunicipal &quot;Médio Araguaia&quot;</option><option value="1955">Consórcio Intermunicipal &quot;Portal da Amazônia&quot;</option><option value="1959">Consórcio Intermunicipal &quot;Portal do Araguaia&quot;</option><option value="1932">Consórcio Intermunicipal de Desenvolvimento Econômico, Social e Ambiental &quot;Nascentes do Araguaia&quot;</option><option value="1920">Consórcio Intermunicipal de Desenvolvimento Econômico e Social do Vale do Rio Cuiabá – CIDES-VRC</option><option value="1934">Consórcio Intermunicipal de Desenvolvimento Sócio-Econômico e Ambiental do &quot;Vale do Arinos&quot;</option><option value="7325">Consorcio Intermunicipal de Saúde da Regiao do Vale do Arinos</option><option value="4742">Consórcio Intermunicipal de Saúde da Região do Vale do Guaporé</option><option value="11336">Consorcio Intermunicipal de Saúde da Região Teles Pires</option><option value="8044">Consorcio Intermunicipal de Saúde do Araguaia e Xingu-Mt</option><option value="4329">Consórcio Intermunicipal de Saúde do Médio Araguaia</option><option value="14756">Consorcio Intermunicipal de Saúde do Oeste de Mato Grosso</option><option value="1957">Consórcio Intermunicipal Desenvolvimento Econômico, Social e Ambiental do Vale do Guaporé</option><option value="1945">Consórcio Intermunicipal do &quot;Vale do Teles Pires&quot;</option><option value="1953">Consórcio Intermunicipal do Alto Teles Pires</option><option value="1963">Consórcio Intermunicipal do Araguaia</option><option value="1965">Consórcio Intermunicipal do Norte Araguaia</option><option value="1949">Consórcio Intermunicipal do Vale do Juruena</option><option value="8774">Consórcio Regional de Saúde Sul de Mato Grosso – CORESS/MT</option><option value="600">Prefeitura Municipal de Acorizal</option><option value="601">Prefeitura Municipal de Água Boa</option><option value="602">Prefeitura Municipal de Alta Floresta</option><option value="603">Prefeitura Municipal de Alto Araguaia</option><option value="604">Prefeitura Municipal de Alto Boa Vista</option><option value="605">Prefeitura Municipal de Alto Garças</option><option value="606">Prefeitura Municipal de Alto Paraguai</option><option value="607">Prefeitura Municipal de Alto Taquari</option><option value="608">Prefeitura Municipal de Apiacás</option><option value="609">Prefeitura Municipal de Araguaiana</option><option value="610">Prefeitura Municipal de Araguainha</option><option value="611">Prefeitura Municipal de Araputanga</option><option value="612">Prefeitura Municipal de Arenápolis</option><option value="613">Prefeitura Municipal de Aripuanã</option><option value="614">Prefeitura Municipal de Barão de Melgaço</option><option value="615">Prefeitura Municipal de Barra do Bugres</option><option value="616">Prefeitura Municipal de Barra do Garças</option><option value="617">Prefeitura Municipal de Bom Jesus do Araguaia</option><option value="618">Prefeitura Municipal de Brasnorte</option><option value="619">Prefeitura Municipal de Cáceres</option><option value="620">Prefeitura Municipal de Campinápolis</option><option value="621">Prefeitura Municipal de Campo Novo do Parecis</option><option value="623">Prefeitura Municipal de Campos de Júlio</option><option value="622">Prefeitura Municipal de Campo Verde</option><option value="624">Prefeitura Municipal de Canabrava do Norte</option><option value="625">Prefeitura Municipal de Canarana</option><option value="626">Prefeitura Municipal de Carlinda</option><option value="627">Prefeitura Municipal de Castanheira</option><option value="628">Prefeitura Municipal de Chapada dos Guimarães</option><option value="629">Prefeitura Municipal de Cláudia</option><option value="630">Prefeitura Municipal de Cocalinho</option><option value="631">Prefeitura Municipal de Colíder</option><option value="632">Prefeitura Municipal de Colniza</option><option value="633">Prefeitura Municipal de Comodoro</option><option value="634">Prefeitura Municipal de Confresa</option><option value="635">Prefeitura Municipal de Conquista D`Oeste</option><option value="636">Prefeitura Municipal de Cotriguaçu</option><option value="637">Prefeitura Municipal de Cuiabá</option><option value="638">Prefeitura Municipal de Curvelândia</option><option value="639">Prefeitura Municipal de Denise</option><option value="640">Prefeitura Municipal de Diamantino</option><option value="641">Prefeitura Municipal de Dom Aquino</option><option value="642">Prefeitura Municipal de Feliz Natal</option><option value="643">Prefeitura Municipal de Figueirópolis d´Oeste</option><option value="644">Prefeitura Municipal de Gaúcha do Norte</option><option value="645">Prefeitura Municipal de General Carneiro</option><option value="646">Prefeitura Municipal de Glória d´Oeste</option><option value="647">Prefeitura Municipal de Guarantã do Norte</option><option value="648">Prefeitura Municipal de Guiratinga</option><option value="649">Prefeitura Municipal de Indiavaí</option><option value="650">Prefeitura Municipal de Ipiranga do Norte</option><option value="651">Prefeitura Municipal de Itanhangá</option><option value="652">Prefeitura Municipal de Itaúba</option><option value="653">Prefeitura Municipal de Itiquira</option><option value="654">Prefeitura Municipal de Jaciara</option><option value="655">Prefeitura Municipal de Jangada</option><option value="656">Prefeitura Municipal de Jauru</option><option value="657">Prefeitura Municipal de Juara</option><option value="658">Prefeitura Municipal de Juína</option><option value="659">Prefeitura Municipal de Juruena</option><option value="660">Prefeitura Municipal de Juscimeira</option><option value="661">Prefeitura Municipal de Lambari d´Oeste</option><option value="662">Prefeitura Municipal de Lucas do Rio Verde</option><option value="663">Prefeitura Municipal de Luciara</option><option value="664">Prefeitura Municipal de Marcelândia</option><option value="665">Prefeitura Municipal de Matupá</option><option value="666">Prefeitura Municipal de Mirassol d´Oeste</option><option value="667">Prefeitura Municipal de Nobres</option><option value="668">Prefeitura Municipal de Nortelândia</option><option value="669">Prefeitura Municipal de Nossa Senhora do Livramento</option><option value="670">Prefeitura Municipal de Nova Bandeirantes</option><option value="671">Prefeitura Municipal de Nova Brasilândia</option><option value="672">Prefeitura Municipal de Nova Canaã do Norte</option><option value="673">Prefeitura Municipal de Nova Guarita</option><option value="674">Prefeitura Municipal de Nova Lacerda</option><option value="675">Prefeitura Municipal de Nova Marilândia</option><option value="676">Prefeitura Municipal de Nova Maringá</option><option value="677">Prefeitura Municipal de Nova Monte Verde</option><option value="678">Prefeitura Municipal de Nova Mutum</option><option value="679">Prefeitura Municipal de Nova Nazaré</option><option value="680">Prefeitura Municipal de Nova Olímpia</option><option value="681">Prefeitura Municipal de Nova Santa Helena</option><option value="682">Prefeitura Municipal de Nova Ubiratã</option><option value="683">Prefeitura Municipal de Nova Xavantina</option><option value="684">Prefeitura Municipal de Novo Horizonte do Norte</option><option value="685">Prefeitura Municipal de Novo Mundo</option><option value="686">Prefeitura Municipal de Novo Santo Antônio</option><option value="687">Prefeitura Municipal de Novo São Joaquim</option><option value="688">Prefeitura Municipal de Paranaíta</option><option value="689">Prefeitura Municipal de Paranatinga</option><option value="690">Prefeitura Municipal de Pedra Preta</option><option value="691">Prefeitura Municipal de Peixoto de Azevedo</option><option value="692">Prefeitura Municipal de Planalto da Serra</option><option value="693">Prefeitura Municipal de Poconé</option><option value="694">Prefeitura Municipal de Pontal do Araguaia</option><option value="695">Prefeitura Municipal de Ponte Branca</option><option value="696">Prefeitura Municipal de Pontes e Lacerda</option><option value="697">Prefeitura Municipal de Porto Alegre do Norte</option><option value="698">Prefeitura Municipal de Porto dos Gaúchos</option><option value="699">Prefeitura Municipal de Porto Esperidião</option><option value="700">Prefeitura Municipal de Porto Estrela</option><option value="701">Prefeitura Municipal de Poxoréu</option><option value="702">Prefeitura Municipal de Primavera do Leste</option><option value="703">Prefeitura Municipal de Querência</option><option value="704">Prefeitura Municipal de Reserva do Cabaçal</option><option value="705">Prefeitura Municipal de Ribeirão Cascalheira</option><option value="706">Prefeitura Municipal de Ribeirãozinho</option><option value="707">Prefeitura Municipal de Rio Branco</option><option value="708">Prefeitura Municipal de Rondolândia</option><option value="709">Prefeitura Municipal de Rondonópolis</option><option value="710">Prefeitura Municipal de Rosário Oeste</option><option value="711">Prefeitura Municipal de Salto do Céu</option><option value="712">Prefeitura Municipal de Santa Carmem</option><option value="713">Prefeitura Municipal de Santa Cruz do Xingu</option><option value="714">Prefeitura Municipal de Santa Rita do Trivelato</option><option value="715">Prefeitura Municipal de Santa Terezinha</option><option value="716">Prefeitura Municipal de Santo Afonso</option><option value="718">Prefeitura Municipal de Santo Antônio de Leverger</option><option value="717">Prefeitura Municipal de Santo Antônio do Leste</option><option value="719">Prefeitura Municipal de São Félix do Araguaia</option><option value="720">Prefeitura Municipal de São José do Povo</option><option value="721">Prefeitura Municipal de São José do Rio Claro</option><option value="723">Prefeitura Municipal de São José dos Quatro Marcos</option><option value="722">Prefeitura Municipal de São José do Xingu</option><option value="724">Prefeitura Municipal de São Pedro da Cipa</option><option value="725">Prefeitura Municipal de Sapezal</option><option value="726">Prefeitura Municipal de Serra Nova Dourada</option><option value="727">Prefeitura Municipal de Sinop</option><option value="728">Prefeitura Municipal de Sorriso</option><option value="729">Prefeitura Municipal de Tabaporã</option><option value="730">Prefeitura Municipal de Tangará da Serra</option><option value="731">Prefeitura Municipal de Tapurah</option><option value="732">Prefeitura Municipal de Terra Nova do Norte</option><option value="733">Prefeitura Municipal de Tesouro</option><option value="734">Prefeitura Municipal de Torixoréu</option><option value="735">Prefeitura Municipal de União do Sul</option><option value="736">Prefeitura Municipal de Vale de São Domingos</option><option value="737">Prefeitura Municipal de Várzea Grande</option><option value="738">Prefeitura Municipal de Vera</option><option value="739">Prefeitura Municipal de Vila Bela da Santíssima Trindade</option><option value="740">Prefeitura Municipal de Vila Rica</option></select>
+                    
+                </div>
+                <div class="form-busca__campo">
+                    <label for="busca_avancada_orgao">Órgão</label>
+                    <select id="busca_avancada_orgao" name="busca_avancada[orgao]" class="campo-texto" data-busca="orgao"><option value="">Todos os órgãos</option></select>
+                    
+                </div>
+            </div>
+
+            <div class="form-busca__linha">
+                <div class="form-busca__campo form-busca__campo--data">
+                    <label for="busca_avancada_dataInicio" class="required">Circulação de</label>
+                    <input type="date" id="busca_avancada_dataInicio" name="busca_avancada[dataInicio]" required="required" class="campo-texto" value="2026-10-15" />
+                    
+                </div>
+                <div class="form-busca__campo form-busca__campo--data">
+                    <label for="busca_avancada_dataFim" class="required">até</label>
+                    <input type="date" id="busca_avancada_dataFim" name="busca_avancada[dataFim]" required="required" class="campo-texto" value="2026-10-17" />
+                    
+                </div>
+                <div class="form-busca__campo">
+                    <label for="busca_avancada_ordenacao">Ordenar por</label>
+                    <select id="busca_avancada_ordenacao" name="busca_avancada[ordenacao]" class="campo-texto" data-busca="ordenacao"><option value="recente" selected="selected">Mais recentes primeiro</option><option value="antiga">Mais antigas primeiro</option><option value="relevancia">Mais relevantes primeiro</option></select>
+                </div>
+                <div class="form-busca__acoes">
+                    <button type="submit" id="busca_avancada_Enviar" name="busca_avancada[Enviar]" class="botoes sprite bt-pesquisar">Pesquisar</button>
+                </div>
+            </div>
+
+            <input type="hidden" id="busca_avancada_pagina" name="busca_avancada[pagina]" value="1" />
+            
+        </form>
+
+        
+                            <p class="busca-avancada__aviso">
+                    Nenhuma matéria encontrada com esses filtros. Tente ampliar o período ou usar
+                    menos palavras na busca.
+                </p>
+                    
+                <div class="compartilhar" data-compartilhar-painel role="dialog" aria-modal="false"
+             aria-labelledby="compartilhar-titulo" hidden>
+            <div class="compartilhar__topo">
+                <h2 class="compartilhar__titulo" id="compartilhar-titulo">Compartilhar em</h2>
+                <button type="button" class="compartilhar__fechar" data-compartilhar-fechar
+                        aria-label="Fechar">&times;</button>
+            </div>
+
+            <p class="compartilhar__materia" data-compartilhar-materia></p>
+
+            <ul class="compartilhar__destinos">
+                <li>
+                    <a class="compartilhar__destino" data-destino="whatsapp" target="_blank" rel="noopener">
+                        <i class="fa-brands fa-whatsapp" aria-hidden="true"></i><span>WhatsApp</span>
+                    </a>
+                </li>
+                <li>
+                    <a class="compartilhar__destino" data-destino="telegram" target="_blank" rel="noopener">
+                        <i class="fa-brands fa-telegram" aria-hidden="true"></i><span>Telegram</span>
+                    </a>
+                </li>
+                <li>
+                    <a class="compartilhar__destino" data-destino="facebook" target="_blank" rel="noopener">
+                        <i class="fa-brands fa-facebook-f" aria-hidden="true"></i><span>Facebook</span>
+                    </a>
+                </li>
+                <li>
+                    <a class="compartilhar__destino" data-destino="twitter" target="_blank" rel="noopener">
+                        <i class="fa-brands fa-twitter" aria-hidden="true"></i><span>X</span>
+                    </a>
+                </li>
+                <li>
+                    <button type="button" class="compartilhar__destino" data-destino="instagram">
+                        <i class="fa-brands fa-instagram" aria-hidden="true"></i><span>Instagram</span>
+                    </button>
+                </li>
+                <li>
+                    <a class="compartilhar__destino" data-destino="email">
+                        <i class="fa-solid fa-envelope" aria-hidden="true"></i><span>E-mail</span>
+                    </a>
+                </li>
+                <li>
+                    <button type="button" class="compartilhar__destino" data-destino="copiar">
+                        <i class="fa-solid fa-link" aria-hidden="true"></i><span>Copiar link</span>
+                    </button>
+                </li>
+                <li data-compartilhar-nativo hidden>
+                    <button type="button" class="compartilhar__destino" data-destino="nativo">
+                        <i class="fa-solid fa-ellipsis" aria-hidden="true"></i><span>Mais</span>
+                    </button>
+                </li>
+            </ul>
+
+            <p class="compartilhar__aviso" data-compartilhar-aviso role="status"></p>
+        </div>
+
+        <div class="compartilhar-fundo" data-compartilhar-fundo hidden></div>
+    </div>
+        </section>
+        <!-- /content -->
+        <!--footer -->
+        <footer class="rodape">
+        <div class="container">
+            <address class="endereco">
+                                Av. Rubens de Mendonça, 3920
+                - CPA
+                            - Cuiabá
+                - MT
+                            - 78050-902 <br/>
+                                Fone: (65) 2123-1200 
+                                            </address>
+                <a href="http://www.voxtecnologia.com.br" title="Vox Tecnologia" >
+                    <img src="/dist/images/comum/logo-vox.svg">
+                </a>
+
+        </div>
+        </footer>
+        <!-- /footer -->
+    </section><!-- /container -->
+
+<script src="/dist/lib/npm/bootstrap.bundle.min.js"></script>
+<script src="/dist/lib/npm/jquery.min.js"></script>
+<script src="/dist/lib/js/lib.min.js"></script>
+<script src="/dist/lib/npm/jquery.mask.min.js"></script>
+<script src="/dist/lib/npm/parsley.min.js"></script>
+<script src="/dist/lib/npm/sweetalert2.min.js"></script>
+<script src="/dist/js/pt-br.js"></script>
+<script src="/dist/js/index.js"></script>
+<script src="/dist/js/valida-mask.js"></script>
+<script src="/dist/js/popup-homepage.js"></script>
+<script src="/dist/js/menu.js"></script>
+<script src="/dist/js/compartilhar.js"></script>
+<script>
+    (function () {
+        /*
+         * Tarduzindo os avisos do ParsleyValidator para portugues
+        */
+        window.ParsleyValidator.setLocale('pt-br');
+
+        /*
+         * Valida os formulários com o parsley
+         */
+
+        $('.form-base').parsley();
+
+        $('#formCalendario').submit(function (e) {
+            e.preventDefault();
+            return false;
+        });
+        
+    })($);
+</script>
+
+    <script src="/dist/js/search-materias.js"></script>
+
+</body>
+</html>

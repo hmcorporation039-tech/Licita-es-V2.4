@@ -21,6 +21,7 @@ const ROTULO_CURTO_DA_FONTE: Record<string, string> = {
   NOVACAP: 'Novacap',
   FIEG: 'FIEG',
   INFRAERO: 'Infraero',
+  DIARIO_MUNICIPAL: 'Diário municipal',
 }
 
 export function rotuloCurtoDaFonte(fonte: string): string {
