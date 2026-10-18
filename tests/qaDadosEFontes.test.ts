@@ -184,6 +184,13 @@ describe('N5: mesma licitação em mais de uma fonte', () => {
     expect(ehRepeticaoDaLicitacaoDoPncp(credenciamento, { ...pncp, modalidade: 'INEXIGIBILIDADE' }, 0.9)).toBe(true)
   })
 
+  it('para esconder, mesmo dia com objeto pouco parecido não basta: "banda no baile" não esconde "carga e descarga"', () => {
+    const diario = registro({ fonte: 'QUERIDO_DIARIO', fonteId: 'QD-2900000:PREGAO:9-2026', uf: 'BA', municipio: 'Itiruçu', municipioIbge: '2917003', numeroControle: 'Pregão nº 9/2026', aberturaAt: dias(10) })
+    const pncp = { fonte: 'PNCP' as const, fonteId: 'p2', modalidade: 'PREGAO_ELETRONICO' as const, objeto: 'Serviço de carga e descarga', uf: 'BA', encerramentoAt: dias(10), rawJson: { numeroCompra: '77', anoCompra: 2026 } }
+    expect(ehRepeticaoDaLicitacaoDoPncp(diario, pncp, 0.24)).toBe(false)
+    expect(ehRepeticaoDaLicitacaoDoPncp(diario, pncp, 0.41)).toBe(true)
+  })
+
   it('TCE-CE: a publicação repetida (mesmo município, número e ano) esconde a mais antiga e fica a mais recente', () => {
     const antiga = registro({ id: 'antiga', fonteId: 'TCE-CE-189922', numeroControle: '14.018/2026-PE (republicado)' })
     const recente = registro({ id: 'recente', fonteId: 'TCE-CE-190443' })

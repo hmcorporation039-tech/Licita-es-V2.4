@@ -32,6 +32,7 @@ const DIAS_SEM_CURSOR = 5
 const JANELA_MAXIMA_DIAS = 30
 const SIMILARIDADE_MINIMA_COM_O_PNCP = 0.45
 const SIMILARIDADE_MINIMA_NO_MESMO_DIA = 0.2
+export const SIMILARIDADE_MINIMA_PARA_ESCONDER_NO_MESMO_DIA = 0.4
 const SIMILARIDADE_MINIMA_COM_O_MESMO_NUMERO = 0.1
 const SEMELHANCA_MINIMA_ENTRE_REPUBLICACOES = 0.3
 const DIAS_DE_HISTORICO_DO_PNCP = 180
@@ -171,7 +172,8 @@ export function mesmoNumeroDoPncp(numero: NumeroDoAviso | null, candidato: Candi
 
 export function ehMesmaLicitacaoDoPncp(
   tender: Pick<NormalizedTender, 'aberturaAt'> & Partial<Pick<NormalizedTender, 'fonteId'>>,
-  candidato: CandidatoDoPncp
+  candidato: CandidatoDoPncp,
+  similaridadeMinimaNoMesmoDia: number = SIMILARIDADE_MINIMA_NO_MESMO_DIA
 ): boolean {
   if (Number(candidato.similaridade) >= SIMILARIDADE_MINIMA_COM_O_PNCP) return true
   if (
@@ -180,7 +182,7 @@ export function ehMesmaLicitacaoDoPncp(
   ) {
     return true
   }
-  if (!tender.aberturaAt || Number(candidato.similaridade) < SIMILARIDADE_MINIMA_NO_MESMO_DIA) return false
+  if (!tender.aberturaAt || Number(candidato.similaridade) < similaridadeMinimaNoMesmoDia) return false
   const dia = diaEmBrasilia(tender.aberturaAt)
   return [candidato.aberturaAt, candidato.encerramentoAt].some((data) => data !== null && diaEmBrasilia(new Date(data)) === dia)
 }

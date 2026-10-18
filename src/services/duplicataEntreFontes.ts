@@ -3,7 +3,7 @@ import { NormalizedTender } from '../types'
 import { prisma } from './tenderService'
 import { normalize } from '../lib/geoService'
 import { whereLicitacaoAberta } from '../lib/licitacaoAberta'
-import { ehMesmaLicitacaoDoPncp, licitacaoDoPncpEquivalente, modalidadesEquivalentes, objetosCompativeis } from './queridoDiarioService'
+import { SIMILARIDADE_MINIMA_PARA_ESCONDER_NO_MESMO_DIA, ehMesmaLicitacaoDoPncp, licitacaoDoPncpEquivalente, modalidadesEquivalentes, objetosCompativeis } from './queridoDiarioService'
 import { chaveDoNumero, duplicataNoPncpTceCe, motivoDaDuplicidade, numerosDoTender } from './tceCeDuplicidade'
 import { idDaLicitacaoTceCe } from './tceCeParser'
 
@@ -93,7 +93,7 @@ export function ehRepeticaoDaLicitacaoDoPncp(registro: RegistroDeOutraFonte, pnc
     if (registro.modalidade !== 'OUTROS' && !modalidadesEquivalentes(registro.modalidade).includes(pncp.modalidade)) return false
     return motivoDaDuplicidade(tender, numerosDoTender(tender), { ...candidato, objeto: pncp.objeto, processo: textoOuNulo(raw.processo) }) !== null
   }
-  return modalidadesEquivalentes(registro.modalidade).includes(pncp.modalidade) && ehMesmaLicitacaoDoPncp(tender, candidato)
+  return modalidadesEquivalentes(registro.modalidade).includes(pncp.modalidade) && ehMesmaLicitacaoDoPncp(tender, candidato, SIMILARIDADE_MINIMA_PARA_ESCONDER_NO_MESMO_DIA)
 }
 
 export async function esconderRepeticoesDaLicitacaoDoPncp(pncpId: string, pncp: NormalizedTender, agora: Date = new Date()): Promise<number> {
