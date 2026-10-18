@@ -1,3 +1,4 @@
+import type { Prisma } from '@prisma/client'
 import { Router } from 'express'
 import { z } from 'zod'
 import { prisma } from '../../services/tenderService'
@@ -6,6 +7,9 @@ import { estudoCalculoLimiter } from '../rateLimit'
 import { calcularEstudo } from '../../lib/estudoDeCustos'
 import { avaliarLance, avaliarMeuLance, limitesDoAlvo, type Avaliacao } from '../../lib/bela/copiloto'
 import { alvosDoPregao } from '../../lib/alvosDoPregao'
+import { regrasDoEdital } from '../../lib/bela/regrasDoEdital'
+import { checklistDaDisputa, desatualizado, escolhaDe, lerPlanoSalvo, passoDosLances, regrasEfetivas, valorFinalMinimo } from '../../lib/bela/planoDeDisputa'
+import { registrarAuditoria } from '../../services/auditService'
 import { carregar, dadosSalvos } from './estudos'
 
 export const pregaoRouter = Router({ mergeParams: true })
@@ -36,7 +40,14 @@ async function montarPainel(companyId: string, tenderId: string) {
   const base = resultado.custoItens + resultado.custoDeslocamento + resultado.custoOutros
   const alvos = alvosDoPregao(ctx.itens, dados, resultado, acompanhamento.criterio)
 
-  const regras = { decrementoPct: Number(acompanhamento.decrementoPct), maxLances: acompanhamento.maxLances }
+  const doEdital = regrasDoEdital({
+    analise: ctx.tender.analysis ? { status: ctx.tender.analysis.status, resultado: ctx.tender.analysis.resultado } : null,
+    rawJson: ctx.tender.rawJson,
+    criteriosDosItens: ctx.tender.items.map((i) => i.criterioJulgamento),
+  })
+  const passo = passoDosLances(Number(acompanhamento.decrementoPct), doEdital.intervaloMinimo)
+  const regras = regrasEfetivas({ decrementoPct: Number(acompanhamento.decrementoPct), maxLances: acompanhamento.maxLances }, passo)
+  const planoSalvo = lerPlanoSalvo(acompanhamento.planoDeDisputa)
   const painelDosAlvos = alvos.map((a) => {
     const doAlvo = lances.filter((l) => l.alvo === a.id)
     const maisRecente = doAlvo[0]
@@ -48,6 +59,8 @@ async function montarPainel(companyId: string, tenderId: string) {
       : maisRecente.origem === 'MEU_LANCE'
         ? avaliarMeuLance(Number(maisRecente.valor), a.limites, regras, meus)
         : avaliarLance(Number(maisRecente.valor), a.limites, regras, meus, meuMenor)
+    const escolha = escolhaDe(planoSalvo, a.id)
+    const valorFinal = valorFinalMinimo(a.limites, escolha.base)
     return {
       id: a.id,
       rotulo: a.rotulo,
@@ -58,6 +71,13 @@ async function montarPainel(companyId: string, tenderId: string) {
       ...limitesDoAlvo(a.limites),
       meusLances: meus,
       avaliacao,
+      planoDeDisputa: {
+        base: escolha.base,
+        valorFinalMinimo: valorFinal.valor,
+        lucroZero: valorFinal.lucroZero,
+        cadastradoEm: escolha.cadastradoEm,
+        desatualizado: desatualizado(escolha, valorFinal.valor),
+      },
     }
   })
 
@@ -67,12 +87,21 @@ async function montarPainel(companyId: string, tenderId: string) {
     impostosPct: dados.impostosPct,
     margemDesejadaPct: dados.margemDesejadaPct,
     config: {
-      decrementoPct: regras.decrementoPct,
+      decrementoPct: passo.configuradoPct,
       maxLances: regras.maxLances,
       criterio: acompanhamento.criterio,
       resultado: acompanhamento.resultado,
       valorFinal: num(acompanhamento.valorFinal),
       encerradoEm: acompanhamento.encerradoEm,
+    },
+    regras,
+    disputa: {
+      analise: ctx.tender.analysis?.status ?? null,
+      analisado: doEdital.analisado,
+      vedacaoARobo: doEdital.vedacaoARobo !== null,
+      decrementoAjustado: passo.ajustado,
+      avisoDoDecremento: passo.aviso,
+      checklist: checklistDaDisputa(doEdital, passo),
     },
     alvos: painelDosAlvos,
     lances: lances.map((l) => ({ id: l.id, alvo: l.alvo, origem: l.origem, valor: Number(l.valor), margemPct: num(l.margemPct), createdAt: l.createdAt })),
@@ -115,7 +144,7 @@ pregaoRouter.post(
 
     const valor = Math.round(pedido.valor * 100) / 100
     const meus = painel.alvos.find((a) => a.id === alvo.id)?.meusLances ?? 0
-    const avaliacao = avaliarLance(valor, alvo.limites, { decrementoPct: painel.config.decrementoPct, maxLances: painel.config.maxLances }, meus)
+    const avaliacao = avaliarLance(valor, alvo.limites, painel.regras, meus)
     await prisma.pregaoLance.create({
       data: { acompanhamentoId: acompanhamento.id, alvo: alvo.id, origem: pedido.origem, valor, margemPct: alvo.limites.custoComRateio > 0 ? avaliacao.margemPct : null, userId: req.userId ?? null },
     })
@@ -169,5 +198,62 @@ pregaoRouter.put(
       data: { resultado, valorFinal: resultado ? (valorFinal ?? null) : null, encerradoEm: resultado ? new Date() : null },
     })
     res.json(publico(await montarPainel(req.companyId!, req.params.id)))
+  })
+)
+
+const planoSchema = z
+  .object({
+    alvo: z.string().min(1).max(64),
+    base: z.enum(['MARGEM', 'EQUILIBRIO']).optional(),
+    cadastradoNoPortal: z.boolean().optional(),
+  })
+  .refine((p) => p.base !== undefined || p.cadastradoNoPortal !== undefined, { message: 'Informe o que mudar no plano de disputa.' })
+
+pregaoRouter.put(
+  '/plano',
+  estudoCalculoLimiter,
+  asyncHandler(async (req, res) => {
+    const pedido = planoSchema.parse(req.body)
+    const painel = await montarPainel(req.companyId!, req.params.id)
+    const alvo = painel.alvosConhecidos.find((a) => a.id === pedido.alvo)
+    if (!alvo) throw new ApiError(400, 'Item do pregão não encontrado')
+    if (painel.config.encerradoEm) throw new ApiError(409, 'Este pregão já foi encerrado. Reabra para mudar o plano de disputa.')
+
+    const acompanhamento = await acompanhamentoDe(req.companyId!, req.params.id)
+    const plano = lerPlanoSalvo(acompanhamento.planoDeDisputa)
+    const anterior = escolhaDe(plano, alvo.id)
+    const base = pedido.base ?? anterior.base
+    const valor = valorFinalMinimo(alvo.limites, base).valor
+    const mudouBase = base !== anterior.base
+    const estavaCadastrado = anterior.cadastradoEm !== null
+    if (pedido.cadastradoNoPortal && valor === null) throw new ApiError(409, 'Preencha os custos no estudo de custos antes de definir o valor final mínimo.')
+    plano[alvo.id] =
+      pedido.cadastradoNoPortal === true
+        ? { base, cadastradoEm: new Date().toISOString(), valorCadastrado: valor }
+        : pedido.cadastradoNoPortal === false
+          ? { base, cadastradoEm: null, valorCadastrado: null }
+          : { ...anterior, base }
+    await prisma.pregaoAcompanhamento.update({ where: { id: acompanhamento.id }, data: { planoDeDisputa: plano as unknown as Prisma.InputJsonValue } })
+
+    const entidade = { entityType: 'tender', entityId: req.params.id }
+    if (mudouBase) await registrarAuditoria(req, { action: 'PREGAO_PLANO_ALTERADO', ...entidade, metadata: { alvo: alvo.id, base } })
+    if (pedido.cadastradoNoPortal === true) await registrarAuditoria(req, { action: 'PREGAO_VALOR_FINAL_MINIMO_DEFINIDO', ...entidade, metadata: { alvo: alvo.id, base } })
+    else if (pedido.cadastradoNoPortal === false && estavaCadastrado) await registrarAuditoria(req, { action: 'PREGAO_VALOR_FINAL_MINIMO_DESMARCADO', ...entidade, metadata: { alvo: alvo.id } })
+    res.json(publico(await montarPainel(req.companyId!, req.params.id)))
+  })
+)
+
+const copiaSchema = z.object({ alvo: z.string().min(1).max(64) })
+
+pregaoRouter.post(
+  '/plano/copiado',
+  estudoCalculoLimiter,
+  asyncHandler(async (req, res) => {
+    const { alvo } = copiaSchema.parse(req.body)
+    const painel = await montarPainel(req.companyId!, req.params.id)
+    const doAlvo = painel.alvos.find((a) => a.id === alvo)
+    if (!doAlvo) throw new ApiError(400, 'Item do pregão não encontrado')
+    await registrarAuditoria(req, { action: 'PREGAO_VALOR_FINAL_MINIMO_COPIADO', entityType: 'tender', entityId: req.params.id, metadata: { alvo, base: doAlvo.planoDeDisputa.base } })
+    res.status(204).end()
   })
 )

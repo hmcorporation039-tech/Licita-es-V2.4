@@ -837,17 +837,18 @@ enum OrigemDoLance {
 }
 
 model PregaoAcompanhamento {
-  id            String             @id @default(uuid())
-  companyId     String             @map("company_id")
-  tenderId      String             @map("tender_id")
-  decrementoPct Decimal            @default(0.5) @map("decremento_pct") @db.Decimal(5, 2)
-  maxLances     Int                @default(2) @map("max_lances")
-  criterio      CriterioDoLance    @default(UNITARIO)
-  resultado     ResultadoDoPregao?
-  valorFinal    Decimal?           @map("valor_final") @db.Decimal(16, 2)
-  encerradoEm   DateTime?          @map("encerrado_em")
-  createdAt     DateTime           @default(now()) @map("created_at")
-  updatedAt     DateTime           @updatedAt @map("updated_at")
+  id             String             @id @default(uuid())
+  companyId      String             @map("company_id")
+  tenderId       String             @map("tender_id")
+  decrementoPct  Decimal            @default(0.5) @map("decremento_pct") @db.Decimal(5, 2)
+  maxLances      Int                @default(2) @map("max_lances")
+  criterio       CriterioDoLance    @default(UNITARIO)
+  resultado      ResultadoDoPregao?
+  valorFinal     Decimal?           @map("valor_final") @db.Decimal(16, 2)
+  encerradoEm    DateTime?          @map("encerrado_em")
+  planoDeDisputa Json?              @map("plano_de_disputa")
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
 
   company Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
   tender  Tender        @relation(fields: [tenderId], references: [id], onDelete: Cascade)

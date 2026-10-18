@@ -407,4 +407,98 @@ rodar('Estudo de custos', () => {
     const deNovo = await http('POST', `/api/tenders/${unico.id}/documentos/previa`, { tipo: 'proposta', readequada: true }, tokenA)
     expect(deNovo.body.documento.blocos.find((b: { tipo: string }) => b.tipo === 'tabela').linhas[0][4]).toBe('45,90')
   })
+  it('plano de disputa: valor final mínimo igual ao do estudo, checklist do edital e auditoria sem o valor', async () => {
+    const comEdital = await prisma.tender.create({
+      data: {
+        fonte: 'FIEG', fonteId: `estudo-plano-${sufixo}`, modalidade: 'PREGAO_ELETRONICO', situacao: 'ABERTA',
+        objeto: `Aquisição de papel ${sufixo}`, objetoNorm: `aquisicao de papel ${sufixo}`,
+        valorEstimado: 200, municipio: 'Anápolis', uf: 'GO', encerramentoAt: futuro, rawJson: { modoDisputaId: 3 },
+        items: { create: [{ numeroItem: 1, descricao: 'Resma de papel', quantidade: 10, valorUnitario: 20, valorTotal: 200, unidadeMedida: 'UN' }] },
+        analysis: {
+          create: {
+            status: 'DONE',
+            resultado: {
+              criterioJulgamento: 'Menor preço por item',
+              documentosExigidos: ['O intervalo mínimo de diferença de valores entre os lances será de 1% (um por cento).'],
+              riscos: [{ titulo: 'Lances', descricao: 'É vedada a utilização de robôs ou de qualquer ferramenta de envio automático de lances.', severidade: 'media' }],
+            },
+          },
+        },
+      },
+      include: { items: true },
+    })
+    const itemId = comEdital.items[0].id as string
+    expect((await marcar('VOU_PARTICIPAR', tokenA, comEdital.id)).status).toBe(200)
+    const semDeslocamento = { ...dadosBase({}).deslocamento, valorPorKm: 0, pedagioPorViagem: 0 }
+    const dados = { ...dadosBase({ [itemId]: { custoUnit: 7.77, precoVendaUnit: null } }), deslocamento: semDeslocamento, impostosPct: 8.65, margemDesejadaPct: 10 }
+    expect((await http('PUT', `/api/estudos/${comEdital.id}`, { dados }, tokenA)).status).toBe(200)
+
+    const painel = await http('GET', `/api/tenders/${comEdital.id}/pregao`, undefined, tokenA)
+    expect(painel.status).toBe(200)
+    const global = painel.body.alvos.find((a: { id: string }) => a.id === 'global')
+    const doItem = painel.body.alvos.find((a: { id: string }) => a.id === itemId)
+    expect(global.planoDeDisputa).toMatchObject({ base: 'MARGEM', valorFinalMinimo: 95.6, lucroZero: false, cadastradoEm: null, desatualizado: false })
+    expect(doItem.planoDeDisputa.valorFinalMinimo).toBe(9.56)
+    expect(global.minimoComMargem).toBe(95.6)
+
+    const disputa = painel.body.disputa
+    expect(disputa).toMatchObject({ analise: 'DONE', analisado: true, vedacaoARobo: true, decrementoAjustado: true })
+    const por = Object.fromEntries(disputa.checklist.map((c: { id: string }) => [c.id, c]))
+    expect(por.modo).toMatchObject({ situacao: 'ok', valor: 'Aberto e fechado' })
+    expect(por.intervalo).toMatchObject({ situacao: 'atencao', valor: '1%' })
+    expect(por.robo).toMatchObject({ situacao: 'proibido' })
+    expect(por.robo.trecho).toContain('vedada a utilização de robôs')
+    expect(por.criterio.valor).toBe('Menor preço por item')
+    expect(painel.body.config.decrementoPct).toBe(0.5)
+    expect(painel.body.regras.decrementoPct).toBe(1)
+
+    const lance = await http('POST', `/api/tenders/${comEdital.id}/pregao/lances`, { alvo: 'global', origem: 'MELHOR_LANCE', valor: 120 }, tokenA)
+    expect(lance.body.alvos.find((a: { id: string }) => a.id === 'global').avaliacao.sugestao.valor).toBe(118.8)
+
+    const equilibrio = await http('PUT', `/api/tenders/${comEdital.id}/pregao/plano`, { alvo: 'global', base: 'EQUILIBRIO' }, tokenA)
+    expect(equilibrio.status).toBe(200)
+    expect(equilibrio.body.alvos.find((a: { id: string }) => a.id === 'global').planoDeDisputa).toMatchObject({ base: 'EQUILIBRIO', valorFinalMinimo: 85.06, lucroZero: true })
+    expect(equilibrio.body.alvos.find((a: { id: string }) => a.id === itemId).planoDeDisputa.base).toBe('MARGEM')
+
+    const cadastrado = await http('PUT', `/api/tenders/${comEdital.id}/pregao/plano`, { alvo: 'global', cadastradoNoPortal: true }, tokenA)
+    const planoCadastrado = cadastrado.body.alvos.find((a: { id: string }) => a.id === 'global').planoDeDisputa
+    expect(planoCadastrado.cadastradoEm).not.toBeNull()
+    expect(planoCadastrado.desatualizado).toBe(false)
+    const voltou = await http('PUT', `/api/tenders/${comEdital.id}/pregao/plano`, { alvo: 'global', base: 'MARGEM' }, tokenA)
+    expect(voltou.body.alvos.find((a: { id: string }) => a.id === 'global').planoDeDisputa).toMatchObject({ valorFinalMinimo: 95.6, desatualizado: true })
+
+    expect((await http('POST', `/api/tenders/${comEdital.id}/pregao/plano/copiado`, { alvo: itemId }, tokenA)).status).toBe(204)
+    expect((await http('POST', `/api/tenders/${comEdital.id}/pregao/plano/copiado`, { alvo: 'inexistente' }, tokenA)).status).toBe(400)
+    expect((await http('PUT', `/api/tenders/${comEdital.id}/pregao/plano`, { alvo: 'inexistente', base: 'MARGEM' }, tokenA)).status).toBe(400)
+    expect((await http('PUT', `/api/tenders/${comEdital.id}/pregao/plano`, { alvo: 'global' }, tokenA)).status).toBe(400)
+    expect((await http('PUT', `/api/tenders/${comEdital.id}/pregao/plano`, { alvo: 'global', base: 'EQUILIBRIO' }, tokenB)).status).toBe(409)
+
+    const registros = await prisma.auditLog.findMany({ where: { companyId: companyA, action: { startsWith: 'PREGAO_' }, entityId: comEdital.id } })
+    expect(registros.map((r: { action: string }) => r.action).sort()).toEqual(['PREGAO_PLANO_ALTERADO', 'PREGAO_PLANO_ALTERADO', 'PREGAO_VALOR_FINAL_MINIMO_COPIADO', 'PREGAO_VALOR_FINAL_MINIMO_DEFINIDO'])
+    const textoDosRegistros = JSON.stringify(registros.map((r: { metadata: unknown }) => r.metadata))
+    for (const valor of ['95.6', '95,6', '85.06', '85,06', '9.56', '9,56']) expect(textoDosRegistros).not.toContain(valor)
+
+    const fim = await http('PUT', `/api/tenders/${comEdital.id}/pregao/resultado`, { resultado: 'PERDEU', valorFinal: null }, tokenA)
+    expect(fim.status).toBe(200)
+    expect((await http('PUT', `/api/tenders/${comEdital.id}/pregao/plano`, { alvo: 'global', base: 'EQUILIBRIO' }, tokenA)).status).toBe(409)
+  })
+
+  it('plano de disputa sem análise do edital: checklist genérico com tudo a conferir', async () => {
+    const semAnalise = await prisma.tender.create({
+      data: {
+        fonte: 'FIEG', fonteId: `estudo-sem-analise-${sufixo}`, modalidade: 'PREGAO_ELETRONICO', situacao: 'ABERTA',
+        objeto: `Aquisição de toner ${sufixo}`, objetoNorm: `aquisicao de toner ${sufixo}`,
+        valorEstimado: 1000, municipio: 'Anápolis', uf: 'GO', encerramentoAt: futuro, rawJson: {},
+      },
+    })
+    expect((await marcar('VOU_PARTICIPAR', tokenA, semAnalise.id)).status).toBe(200)
+    const painel = await http('GET', `/api/tenders/${semAnalise.id}/pregao`, undefined, tokenA)
+    expect(painel.status).toBe(200)
+    expect(painel.body.disputa).toMatchObject({ analise: null, analisado: false, vedacaoARobo: false, decrementoAjustado: false })
+    for (const id of ['modo', 'intervalo', 'robo', 'criterio']) {
+      expect(painel.body.disputa.checklist.find((c: { id: string }) => c.id === id).valor).toBe('não identificado — confira no edital')
+    }
+    expect(painel.body.alvos.find((a: { id: string }) => a.id === 'global').planoDeDisputa.valorFinalMinimo).toBeNull()
+    expect((await http('PUT', `/api/tenders/${semAnalise.id}/pregao/plano`, { alvo: 'global', cadastradoNoPortal: true }, tokenA)).status).toBe(409)
+  })
 })

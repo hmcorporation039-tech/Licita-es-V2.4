@@ -12,6 +12,7 @@ export interface LimitesDoAlvo {
 export interface RegrasDoPregao {
   decrementoPct: number
   maxLances: number
+  intervaloMinimoReais?: number | null
 }
 
 export interface Avaliacao {
@@ -29,6 +30,15 @@ export interface Avaliacao {
 const arred = (n: number) => Math.round(n * 100) / 100
 const reais = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const pct = (n: number) => `${n.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`
+
+export function proximoLance(valor: number, regras: RegrasDoPregao): number {
+  const pelaPorcentagem = Math.floor(valor * (1 - regras.decrementoPct / 100) * 100 + 1e-6) / 100
+  return regras.intervaloMinimoReais ? Math.min(pelaPorcentagem, arred(valor - regras.intervaloMinimoReais)) : pelaPorcentagem
+}
+
+function passoDescrito(regras: RegrasDoPregao): string {
+  return regras.intervaloMinimoReais ? `${pct(regras.decrementoPct)} (e pelo menos ${reais(regras.intervaloMinimoReais)})` : pct(regras.decrementoPct)
+}
 
 export function limitesDoAlvo(l: LimitesDoAlvo): { minimoComMargem: number | null; equilibrio: number | null } {
   const imp = l.impostosPct / 100
@@ -76,12 +86,12 @@ export function avaliarLance(valor: number, l: LimitesDoAlvo, regras: RegrasDoPr
   if (lancesRestantes === 0) {
     frases.push(`Você já deu ${regras.maxLances} ${regras.maxLances === 1 ? 'lance' : 'lances'}, o limite combinado. Recomendo parar aqui.`)
   } else if (minimoComMargem !== null && faixa !== 'vermelha') {
-    const cobrir = Math.floor(valor * (1 - regras.decrementoPct / 100) * 100 + 1e-6) / 100
+    const cobrir = proximoLance(valor, regras)
     if (cobrir >= minimoComMargem) {
       sugestao = { valor: cobrir, margemPct: resultadoEm(cobrir, l).margemPct, ultimo: lancesRestantes === 1 }
       frases.push(`Sugiro cobrir com ${reais(cobrir)}, margem de ${pct(sugestao.margemPct)}.`)
     } else if (valor > minimoComMargem) {
-      frases.push(`Seu limite de ${reais(minimoComMargem)} fica a menos de ${pct(regras.decrementoPct)} do melhor lance: o próximo lance teria de ser de no máximo ${reais(cobrir)} e não cabe no intervalo mínimo exigido. Recomendo não cobrir.`)
+      frases.push(`Seu limite de ${reais(minimoComMargem)} fica a menos de ${passoDescrito(regras)} do melhor lance: o próximo lance teria de ser de no máximo ${reais(cobrir)} e não cabe no intervalo mínimo exigido. Recomendo não cobrir.`)
     } else if (valor === minimoComMargem) {
       frases.push(`O melhor lance já está no seu limite de ${reais(minimoComMargem)}. Recomendo não cobrir.`)
     } else {
