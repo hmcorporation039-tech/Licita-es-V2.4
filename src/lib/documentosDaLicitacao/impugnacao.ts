@@ -9,7 +9,7 @@ export interface PrazoDaImpugnacao {
 
 export const PEDIDOS_POR_ALERTA: Record<IdDoAlerta, string> = {
   'garantia-proposta': 'limitar a garantia de proposta a até 1% (um por cento) do valor estimado da contratação, nos termos do art. 58, §1º, da Lei nº 14.133/2021',
-  'garantia-contratual': 'adequar a garantia contratual aos limites do art. 98 da Lei nº 14.133/2021 ou apresentar a justificativa técnica que a fundamente',
+  'garantia-contratual': 'adequar a garantia contratual aos limites dos arts. 98 e 99 da Lei nº 14.133/2021 ou apresentar a justificativa técnica que a fundamente',
   'patrimonio-liquido': 'limitar a exigência de capital mínimo ou de patrimônio líquido mínimo a até 10% (dez por cento) do valor estimado da contratação, nos termos do art. 69, §4º, da Lei nº 14.133/2021',
   'visita-tecnica': 'admitir a substituição da visita técnica por declaração formal do responsável técnico de que conhece as condições locais, nos termos do art. 63, §2º, da Lei nº 14.133/2021',
   'indice-contabil': 'adotar os índices contábeis usualmente praticados (iguais ou superiores a 1,0) ou demonstrar, no processo, a justificativa técnica para o valor exigido',
@@ -22,7 +22,7 @@ export const PEDIDOS_POR_ALERTA: Record<IdDoAlerta, string> = {
 
 const ARGUMENTOS_POR_ALERTA: Record<IdDoAlerta, string> = {
   'garantia-proposta': 'A garantia de proposta exigida supera o limite de 1% (um por cento) do valor estimado da contratação fixado pelo art. 58, §1º, da Lei nº 14.133/2021.',
-  'garantia-contratual': 'O percentual de garantia contratual exigido excede os limites do art. 98 da Lei nº 14.133/2021, sem que conste do edital a justificativa de complexidade técnica e de riscos que o admitiria.',
+  'garantia-contratual': 'O percentual de garantia contratual exigido excede os limites dos arts. 98 e 99 da Lei nº 14.133/2021 (até 5%, ou até 10% com justificativa de complexidade técnica e de riscos; até 30% apenas em obras e serviços de engenharia de grande vulto), sem que conste do edital a justificativa que o admitiria.',
   'patrimonio-liquido': 'A exigência de capital mínimo ou de patrimônio líquido mínimo supera o limite de 10% (dez por cento) do valor estimado da contratação previsto no art. 69, §4º, da Lei nº 14.133/2021.',
   'visita-tecnica': 'O edital torna obrigatória a visita técnica sem admitir sua substituição por declaração formal do responsável técnico de que conhece as condições locais, alternativa assegurada pelo art. 63, §2º, da Lei nº 14.133/2021.',
   'indice-contabil': 'Os índices contábeis exigidos superam os valores usualmente adotados (1,0), sem que conste do processo justificativa técnica fundamentada em parâmetros de mercado e nas características do objeto, como exigem o art. 69 da Lei nº 14.133/2021 e a Súmula nº 289 do TCU.',

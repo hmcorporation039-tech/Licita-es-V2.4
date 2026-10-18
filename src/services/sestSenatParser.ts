@@ -153,6 +153,7 @@ export function normalizarRegistroSestSenat(r: RegistroSestSenat): NormalizedTen
     orgao: NOME_POR_EMPRESA[empresa],
     orgaoCnpj: CNPJ_POR_EMPRESA[empresa],
     unidade: (r.nomeFilial ?? '').trim() || undefined,
+    aberturaAt: parseDataBr(r.dataAbertura),
     encerramentoAt: parseDataBr(r.dataProposta) ?? parseDataBr(r.dataHomologacao),
     numeroControle: r.codigoEdital?.trim(),
     rawJson: {},

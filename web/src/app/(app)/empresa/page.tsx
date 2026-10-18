@@ -424,22 +424,15 @@ export default function EmpresaPage() {
     if (docArquivoErro) return
     setCreatingDoc(true)
     try {
-      const criado = await api.post<CompanyDocument>('/api/company-documents', {
+      const metadados = {
         tipo: docTipo || null,
         nome: docNome,
         dataEmissao: docDataEmissao || null,
         dataValidade: docDataValidade || null,
         observacao: docObservacao.trim() || null,
-      })
-      if (docArquivo) {
-        try {
-          await enviarArquivo(`/api/company-documents/${criado.id}/arquivo`, docArquivo)
-        } catch (err) {
-          setDocsError(
-            `Documento cadastrado, mas o arquivo não foi enviado: ${err instanceof ApiRequestError ? err.message : 'erro ao enviar'}. Use “Anexar” na lista para tentar de novo.`,
-          )
-        }
       }
+      if (docArquivo) await enviarArquivo<CompanyDocument>('/api/company-documents/com-arquivo', docArquivo, { metodo: 'POST', metadados })
+      else await api.post<CompanyDocument>('/api/company-documents', metadados)
       setDocTipo('')
       setDocNome('')
       setDocDataEmissao('')

@@ -51,7 +51,7 @@ export default function EscolhidasPage() {
         description={
           <p className="max-w-3xl">
             Licitações em que você decidiu concorrer. Para incluir uma, use “Escolher esta licitação” no detalhe da licitação ou “Marcar como interessado” em “Meus matches”.
-            aqui. Em cada uma, o estudo de custos calcula preços de mercado, deslocamento, prazo, lucro ou prejuízo e gera o PDF.
+            Em cada uma, o estudo de custos calcula preços de mercado, deslocamento, prazo, lucro ou prejuízo e gera o PDF.
           </p>
         }
       />

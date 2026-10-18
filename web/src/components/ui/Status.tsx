@@ -70,10 +70,10 @@ export function tomDoPrazo(data: Date | null, agora: Date = new Date()): Tom {
   return 'neutral'
 }
 
-export function textoDoPrazo(data: Date | null, agora: Date = new Date()): string {
+export function textoDoPrazo(data: Date | null, agora: Date = new Date(), rotuloDoPassado = 'Encerrado'): string {
   if (!data) return 'Sem data'
   const restante = data.getTime() - agora.getTime()
-  if (restante < 0) return 'Encerrado'
+  if (restante < 0) return rotuloDoPassado
   const horas = Math.floor(restante / HORA)
   if (horas < 1) return 'em menos de 1 h'
   if (restante <= 48 * HORA) return `em ${horas} h`
@@ -85,17 +85,19 @@ export function Prazo({
   data,
   layout = 'stack',
   semHora = false,
+  rotuloDoPassado,
   className,
 }: {
   data: Date | string | null | undefined
   layout?: 'stack' | 'inline'
   semHora?: boolean
+  rotuloDoPassado?: string
   className?: string
 }) {
   const pura = typeof data === 'string' || data instanceof Date ? ehDataPura(data) : false
   const valida = instanteDoPrazo(data)
   const tom = tomDoPrazo(valida)
-  const relativo = textoDoPrazo(valida)
+  const relativo = textoDoPrazo(valida, new Date(), rotuloDoPassado)
   const absoluto = valida ? formatarData(data, { comHora: !semHora && !pura }) : '—'
 
   return (

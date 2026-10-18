@@ -233,6 +233,7 @@ model Tender {
   publicadoAt        DateTime?      @map("publicado_at")
   linkEdital         String?        @map("link_edital")
   numeroControle     String?        @map("numero_controle")
+  anoDoProcesso      Int?           @map("ano_do_processo")
   rawJson            Json           @map("raw_json")
   // Impressao digital dos campos que importam (ver lib/tenderContentHash.ts).
   // Orgaos republicam licitacao o tempo todo; comparar o hash deixa a coleta

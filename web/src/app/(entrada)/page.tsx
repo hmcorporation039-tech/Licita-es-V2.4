@@ -93,7 +93,7 @@ const COMANDOS_DA_BELA: Array<{ pedido: string; resposta: ReactNode }> = [
     pedido: 'Bela, o melhor lance agora é 3.112 reais',
     resposta: (
       <>
-        Sugiro cobrir com <b>R$ 3.084,50</b>. Sua margem fica em <b>17,7%</b>, acima do seu mínimo.
+        Sugiro cobrir com <b>R$ 3.096,44</b>. Sua margem fica em <b>15,4%</b>, acima do seu mínimo.
       </>
     ),
   },
@@ -421,9 +421,9 @@ function ConhecaABela({ trialDias }: { trialDias: number | null }) {
           <div aria-hidden className="revela-direita az-bela-cartao" style={atraso(600)}>
             <small>Pregão · item 1</small>
             <strong>
-              Margem <b>17,7%</b>
+              Margem <b>15,4%</b>
             </strong>
-            <span>Cobrir com R$ 3.084,50</span>
+            <span>Cobrir com R$ 3.096,44</span>
           </div>
         </Revelar>
         <div className="az-bela-texto">

@@ -11,6 +11,7 @@ import {
   RECURSOS,
   ROTULO_RECURSO,
   Recurso,
+  quantidadeDoRecurso,
   excedeu,
   inicioDoMesBrasilia,
   inicioDoProximoMesBrasilia,
@@ -93,10 +94,10 @@ export async function exigirCota(companyId: string, recurso: Recurso, isAdmin = 
   if (isAdmin) return
   const [{ planName, limites }, uso] = await Promise.all([limitesDaEmpresa(companyId), usoDaEmpresa(companyId)])
   const limite = limites[recurso]
-  if (!excedeu(uso[recurso], limite)) return
+  if (limite === null || !excedeu(uso[recurso], limite)) return
   throw new ApiError(
     402,
-    `Limite do plano ${planName} atingido: ${limite} ${ROTULO_RECURSO[recurso]}. Fale com o administrador para ampliar o plano.`,
+    `Limite do plano ${planName} atingido: ${quantidadeDoRecurso(recurso, limite)}. Fale com o administrador para ampliar o plano.`,
     { code: 'COTA_EXCEDIDA', recurso, limite, usado: uso[recurso] }
   )
 }

@@ -1,5 +1,19 @@
 import { describe, expect, it } from 'vitest'
-import { dataDaLicitacao, ehDataPura, fimDoDiaEmBrasilia, formatarData, instanteDoPrazo } from '../web/src/lib/datas'
+import { dataDaLicitacao, ehDataPura, fimDoDiaEmBrasilia, formatarData, formatarDataDaLicitacao, instanteDoPrazo } from '../web/src/lib/datas'
+
+describe('data da licitação no cabeçalho do estudo de custos', () => {
+  it('sessão às 21:00 de Brasília gravada como 00:00Z aparece no dia certo, com a hora', () => {
+    expect(formatarData('2026-10-21T00:00:00.000Z')).toBe('21/10/2026')
+    expect(formatarDataDaLicitacao('2026-10-21T00:00:00.000Z', 'PNCP')).toBe('20/10/2026 21:00')
+    expect(formatarDataDaLicitacao('2026-10-21T00:00:00.000Z', 'PNCP', { comHora: false })).toBe('20/10/2026')
+  })
+
+  it('dia sem hora de portal continua só com o dia', () => {
+    expect(formatarDataDaLicitacao('2026-10-20T03:00:00.000Z', 'SESC_REGIONAL')).toBe('20/10/2026')
+    expect(formatarDataDaLicitacao('2026-10-20T12:30:00.000Z', 'NOVACAP')).toBe('20/10/2026 09:30')
+    expect(formatarDataDaLicitacao(null, 'PNCP')).toBe('—')
+  })
+})
 
 describe('datas das licitações no painel', () => {
   it('prazo do PNCP às 21:00 de Brasília aparece com a hora e conta até 21:00', () => {

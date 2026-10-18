@@ -41,6 +41,7 @@ const TENDER_SELECT = {
   aberturaAt: true,
   publicadoAt: true,
   createdAt: true,
+  anoDoProcesso: true,
   valorHomologado: true,
   municipioLat: true,
   municipioLng: true,

@@ -188,8 +188,8 @@ const CUSTOS = [
   { rotulo: 'Frete', valor: 'R$ 96,40' },
   { rotulo: 'Impostos estimados', valor: 'R$ 344,25' },
   { rotulo: 'Custo por unidade', valor: 'R$ 2.620,65', destaque: true },
-  { rotulo: 'Preço mínimo (margem 15%)', valor: 'R$ 3.013,75' },
-  { rotulo: 'Preço proposto · margem 29%', valor: 'R$ 3.380,00', destaque: true },
+  { rotulo: 'Preço mínimo (margem 15%)', valor: 'R$ 3.083,12' },
+  { rotulo: 'Preço proposto · margem 22,5%', valor: 'R$ 3.380,00', destaque: true },
 ]
 
 const DOCUMENTOS = ['Proposta comercial', 'Declarações do edital', 'Pedido de impugnação']
@@ -266,7 +266,7 @@ export function PreviaDisputar() {
           <div className="az-app-celular-corpo">
             <div className="revela az-margem">
               <small>Margem dentro do desejado</small>
-              <NumeroQueSobe valor={17.7} casas={1} sufixo="%" atrasoMs={250} className="az-margem-numero" />
+              <NumeroQueSobe valor={15.4} casas={1} sufixo="%" atrasoMs={250} className="az-margem-numero" />
               <span>margem no lance sugerido</span>
             </div>
             <dl className="az-lances">
@@ -276,11 +276,11 @@ export function PreviaDisputar() {
               </div>
               <div className="revela" style={atraso(320)}>
                 <dt>Seu mínimo</dt>
-                <dd>R$ 3.013,75</dd>
+                <dd>R$ 3.083,12</dd>
               </div>
             </dl>
             <p className="revela az-sugestao" style={atraso(1200)}>
-              Sugiro cobrir com <b>R$ 3.084,50</b>.
+              Sugiro cobrir com <b>R$ 3.096,44</b>.
             </p>
             <span className="revela az-app-botao az-app-botao-cheio" style={atraso(1400)}>
               <Check size={14} strokeWidth={3} />

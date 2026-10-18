@@ -80,6 +80,11 @@ describe('normalizarRegistroSestSenat', () => {
     expect(tender.encerramentoAt?.toISOString().slice(0, 10)).toBe('2021-05-06')
   })
 
+  it('guarda a data de abertura da sessão quando o portal informa', () => {
+    expect(normalizarRegistroSestSenat(registro({ dataProposta: null, dataAbertura: '20/10/2026 09:00' })).aberturaAt?.toISOString()).toBe('2026-10-20T12:00:00.000Z')
+    expect(normalizarRegistroSestSenat(registro({})).aberturaAt).toBeUndefined()
+  })
+
   it('usa o CNPJ certo pro SENAT', () => {
     const tender = normalizarRegistroSestSenat(registro({ empresa: 'SENAT' }))
     expect(tender.orgaoCnpj).toBe('73471963000147')

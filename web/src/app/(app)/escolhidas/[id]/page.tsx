@@ -1,6 +1,6 @@
 'use client'
 
-import { formatarData } from '@/lib/datas'
+import { formatarData, formatarDataDaLicitacao } from '@/lib/datas'
 import { use, useCallback, useEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowRight, FileDown, FileSignature, FolderArchive, Gavel, Plus, RefreshCw, Save, Search, Trash2 } from 'lucide-react'
@@ -310,7 +310,7 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
                   </>,
                   dataDaSessao && (
                     <>
-                      sessão: <Valor>{formatarData(dataDaSessao)}</Valor>
+                      sessão: <Valor>{formatarDataDaLicitacao(dataDaSessao, t.fonte)}</Valor>
                     </>
                   ),
                 ].filter(Boolean)}

@@ -107,13 +107,14 @@ export async function abrirArquivo(path: string): Promise<void> {
   }
 }
 
-export async function enviarArquivo<T>(path: string, arquivo: File): Promise<T> {
+export async function enviarArquivo<T>(path: string, arquivo: File, opcoes: { metodo?: 'PUT' | 'POST'; metadados?: unknown } = {}): Promise<T> {
   const token = getSessionToken()
   const res = await fetch(`${API_URL}${path}`, {
-    method: 'PUT',
+    method: opcoes.metodo ?? 'PUT',
     headers: {
       'Content-Type': arquivo.type || 'application/octet-stream',
       'X-Nome-Arquivo': encodeURIComponent(arquivo.name),
+      ...(opcoes.metadados !== undefined ? { 'X-Documento': encodeURIComponent(JSON.stringify(opcoes.metadados)) } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: arquivo,

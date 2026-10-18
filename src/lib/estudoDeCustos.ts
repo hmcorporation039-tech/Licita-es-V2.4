@@ -145,6 +145,11 @@ const arred = (n: number) => Math.round(n * 100) / 100
 const arredParaCima = (n: number) => Math.ceil(Number((n * 100).toFixed(6))) / 100
 const num = (v: number | null | undefined) => (typeof v === 'number' && Number.isFinite(v) ? v : 0)
 
+export function precoMinimoComMargem(custoComRateio: number, impostosPct: number, margemDesejadaPct: number): number | null {
+  const divisor = 1 - impostosPct / 100 - margemDesejadaPct / 100
+  return divisor > 0 && custoComRateio > 0 ? arredParaCima(custoComRateio / divisor) : null
+}
+
 function margem(lucro: number, receita: number): number | null {
   return receita > 0 ? Math.round((lucro / receita) * 10_000) / 100 : null
 }
@@ -216,14 +221,14 @@ export function calcularEstudo(itens: ItemDaLicitacao[], dados: DadosDoEstudo, c
 
   // ---- Preço mínimo (para a margem desejada) ----
   const divisor = 1 - imp - mar
-  const receitaMinima = divisor > 0 && base > 0 ? arred(base / divisor) : null
+  const receitaMinima = precoMinimoComMargem(base, num(dados.impostosPct), num(dados.margemDesejadaPct))
   if (divisor <= 0) avisos.push('Impostos + margem desejada somam 100% ou mais: não existe preço que cumpra a margem.')
   if (divisor > 0 && custoItens > 0) {
     // Custos que não são dos itens (deslocamento, outros) são rateados pelo custo de cada item.
     const rateio = 1 + (custoDeslocamento + custoOutros) / custoItens
     itens.forEach((it, i) => {
       const c = dados.itens[it.id]?.custoUnit
-      if (c !== null && c !== undefined && c > 0) linhas[i].precoMinimoUnit = arredParaCima((c * rateio) / divisor)
+      if (c !== null && c !== undefined && c > 0) linhas[i].precoMinimoUnit = precoMinimoComMargem(c * rateio, num(dados.impostosPct), num(dados.margemDesejadaPct))
     })
   }
 

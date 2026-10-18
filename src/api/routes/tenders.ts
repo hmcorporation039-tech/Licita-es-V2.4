@@ -45,7 +45,12 @@ const querySchema = z.object({
     .transform((v) => [...new Set(v.toUpperCase().split(/[\s,;]+/).filter(Boolean))])
     .pipe(z.array(z.enum(SIGLAS_DAS_UFS)).max(SIGLAS_DAS_UFS.length))
     .optional(),
-  modalidade: z.enum(MODALIDADE_VALUES).optional(),
+  modalidade: z
+    .string()
+    .max(400)
+    .transform((v) => [...new Set(v.toUpperCase().split(/[\s,;]+/).filter(Boolean))])
+    .pipe(z.array(z.enum(MODALIDADE_VALUES)).max(MODALIDADE_VALUES.length))
+    .optional(),
   situacao: z.enum(SITUACAO_VALUES).optional(),
   orgao: z.string().trim().min(1).max(200).optional(),
   municipio: z.string().trim().min(1).max(200).optional(),
@@ -120,7 +125,7 @@ tendersRouter.get(
 
     const condicoes: Prisma.TenderWhereInput[] = [whereLicitacaoAberta()]
     if (uf?.length) condicoes.push({ uf: uf.length === 1 ? uf[0] : { in: uf } })
-    if (modalidade) condicoes.push({ modalidade: modalidade as ModalidadeEnum })
+    if (modalidade?.length) condicoes.push({ modalidade: modalidade.length === 1 ? (modalidade[0] as ModalidadeEnum) : { in: modalidade as ModalidadeEnum[] } })
     if (orgao) condicoes.push(whereDoOrgao(orgao))
     if (municipio) condicoes.push({ municipioNorm: { contains: normalize(municipio) } })
     if (numero) condicoes.push(whereDoNumeroDoEdital(numero))

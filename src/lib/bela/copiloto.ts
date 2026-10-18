@@ -1,3 +1,5 @@
+import { precoMinimoComMargem } from '../estudoDeCustos'
+
 export type Faixa = 'verde' | 'amarela' | 'vermelha'
 
 export interface LimitesDoAlvo {
@@ -29,10 +31,9 @@ const pct = (n: number) => `${n.toLocaleString('pt-BR', { maximumFractionDigits:
 
 export function limitesDoAlvo(l: LimitesDoAlvo): { minimoComMargem: number | null; equilibrio: number | null } {
   const imp = l.impostosPct / 100
-  const mar = l.margemDesejadaPct / 100
   if (l.custoComRateio <= 0) return { minimoComMargem: null, equilibrio: null }
   return {
-    minimoComMargem: 1 - imp - mar > 0 ? arred(l.custoComRateio / (1 - imp - mar)) : null,
+    minimoComMargem: precoMinimoComMargem(l.custoComRateio, l.impostosPct, l.margemDesejadaPct),
     equilibrio: 1 - imp > 0 ? arred(l.custoComRateio / (1 - imp)) : null,
   }
 }

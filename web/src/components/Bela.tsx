@@ -36,13 +36,27 @@ function rotuloDaModalidade(valor: string): string {
   return MODALIDADE_OPTIONS.find((o) => o.value === valor)?.label ?? valor
 }
 
+const DISPENSAS = ['DISPENSA_COM_DISPUTA', 'DISPENSA_SEM_DISPUTA']
+
+function modalidadesDoFiltro(filtros: FiltrosDaBela): string[] {
+  return filtros.modalidades?.length ? filtros.modalidades : filtros.modalidade ? [filtros.modalidade] : []
+}
+
+function rotuloDasModalidades(filtros: FiltrosDaBela): string | null {
+  const modalidades = modalidadesDoFiltro(filtros)
+  if (modalidades.length === 0) return null
+  if (modalidades.length === DISPENSAS.length && DISPENSAS.every((d) => modalidades.includes(d))) return 'Dispensa'
+  return modalidades.map(rotuloDaModalidade).join(' ou ')
+}
+
 function parametrosDosFiltros(filtros: FiltrosDaBela): URLSearchParams {
   const qs = new URLSearchParams()
   if (filtros.q) qs.set('q', filtros.q)
   if (filtros.ufs?.length) qs.set('uf', filtros.ufs.join(','))
   else if (filtros.uf) qs.set('uf', filtros.uf)
   if (filtros.municipio) qs.set('municipio', filtros.municipio)
-  if (filtros.modalidade) qs.set('modalidade', filtros.modalidade)
+  const modalidades = modalidadesDoFiltro(filtros)
+  if (modalidades.length) qs.set('modalidade', modalidades.join(','))
   if (filtros.situacao) qs.set('situacao', filtros.situacao)
   return qs
 }
@@ -62,7 +76,8 @@ function localDoFiltro(filtros: FiltrosDaBela): string | null {
 }
 
 function fraseDoResultado(filtros: FiltrosDaBela, total: number, primeira: Tender | undefined): string {
-  const assunto = [filtros.q ? `de ${filtros.q}` : null, filtros.modalidade ? `por ${rotuloDaModalidade(filtros.modalidade).toLowerCase()}` : null, localDoFiltro(filtros)]
+  const modalidade = rotuloDasModalidades(filtros)
+  const assunto = [filtros.q ? `de ${filtros.q}` : null, modalidade ? `por ${modalidade.toLowerCase()}` : null, localDoFiltro(filtros)]
     .filter(Boolean)
     .join(' ')
   if (total === 0) return `Não encontrei licitações ${assunto}. Tente outras palavras.`.replace(/\s+\./, '.')
@@ -75,7 +90,7 @@ function FiltrosAplicados({ filtros }: { filtros: FiltrosDaBela }) {
   const chips = [
     filtros.q ? `Objeto: “${filtros.q}”` : null,
     filtros.municipio ? `${filtros.municipio}/${filtros.uf ?? ''}` : filtros.rotuloDoLocal ? `Local: ${filtros.rotuloDoLocal.replace(/^(no|em) /, '')}` : filtros.uf ? `UF ${filtros.uf}` : null,
-    filtros.modalidade ? rotuloDaModalidade(filtros.modalidade) : null,
+    rotuloDasModalidades(filtros),
     filtros.situacao === 'ABERTA' ? 'Abertas' : null,
   ].filter((c): c is string => Boolean(c))
   return (
