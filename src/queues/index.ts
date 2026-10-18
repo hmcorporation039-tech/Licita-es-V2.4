@@ -42,6 +42,7 @@ export const coletorQueridoDiarioQueue = new Queue('coletor-querido-diario', def
 export const coletorSistemaSQueue = new Queue('coletor-sistema-s', defaultQueueOptions)
 export const coletorInfraeroQueue = new Queue('coletor-infraero', defaultQueueOptions)
 export const coletorDiarioMunicipalQueue = new Queue('coletor-diario-municipal', defaultQueueOptions)
+export const coletorTceCeQueue = new Queue('coletor-tce-ce', defaultQueueOptions)
 
 // Fila de matching (disparada após salvar cada licitação nova)
 export const matcherQueue = new Queue('matcher', defaultQueueOptions)
@@ -175,6 +176,14 @@ export const COLETOR_SCHEDULERS: ColetorScheduler[] = [
     pattern: '35 5,17 * * *',
     tz: 'America/Sao_Paulo',
     fonte: 'DIARIO_MUNICIPAL',
+  },
+  {
+    queue: coletorTceCeQueue,
+    schedulerId: 'coleta-tce-ce',
+    jobName: 'coleta-tce-ce',
+    pattern: '30 10,17 * * *',
+    tz: 'America/Sao_Paulo',
+    fonte: 'TCE_CE',
   },
 ]
 

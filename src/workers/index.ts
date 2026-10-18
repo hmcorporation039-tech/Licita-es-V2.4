@@ -16,6 +16,7 @@ import { startColetorQueridoDiarioWorker } from './coletorQueridoDiario'
 import { startColetorSistemaSWorker } from './coletorSistemaS'
 import { startColetorInfraeroWorker } from './coletorInfraero'
 import { startColetorDiarioMunicipalWorker } from './coletorDiarioMunicipal'
+import { startColetorTceCeWorker } from './coletorTceCe'
 import { startMatcherWorker } from './matcher'
 import { startNotificadorWorker } from './notificador'
 import { startAnaliseWorker } from './analise'
@@ -41,16 +42,17 @@ async function main() {
   const workerSistemaS = startColetorSistemaSWorker()
   const workerInfraero = startColetorInfraeroWorker()
   const workerDiarioMunicipal = startColetorDiarioMunicipalWorker()
+  const workerTceCe = startColetorTceCeWorker()
   const workerMatcher = startMatcherWorker()
   const workerNotificador = startNotificadorWorker()
   const workerAnalise = startAnaliseWorker()
 
-  console.log('✅ Workers ativos: PNCP, ComprasNet, Novacap, FIEG, SESC GO, SEST SENAT, SESC Regionais, Querido Diário, Sistema S, Infraero, Diários municipais, Matcher, Notificador, Análise')
+  console.log('✅ Workers ativos: PNCP, ComprasNet, Novacap, FIEG, SESC GO, SEST SENAT, SESC Regionais, Querido Diário, Sistema S, Infraero, Diários municipais, TCE-CE, Matcher, Notificador, Análise')
 
   // Alerta ao administrador só na falha DEFINITIVA (esgotadas as tentativas): uma tentativa
   // que falha e depois dá certo (portal instável) não é motivo para acordar ninguém.
   instalarAlertasDoProcesso('workers')
-  const todos = [workerPNCP, workerComprasnet, workerNovacap, workerFieg, workerSescGo, workerSestSenat, workerSescRegional, workerQueridoDiario, workerSistemaS, workerInfraero, workerDiarioMunicipal, workerMatcher, workerNotificador, workerAnalise]
+  const todos = [workerPNCP, workerComprasnet, workerNovacap, workerFieg, workerSescGo, workerSestSenat, workerSescRegional, workerQueridoDiario, workerSistemaS, workerInfraero, workerDiarioMunicipal, workerTceCe, workerMatcher, workerNotificador, workerAnalise]
   for (const w of todos) {
     w.on('failed', (job, err) => {
       const tentativas = job?.opts?.attempts ?? 1
@@ -150,6 +152,7 @@ async function main() {
     await workerSistemaS.close()
     await workerInfraero.close()
     await workerDiarioMunicipal.close()
+    await workerTceCe.close()
     await workerMatcher.close()
     await workerNotificador.close()
     await workerAnalise.close()

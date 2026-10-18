@@ -134,6 +134,7 @@ Ver o cabeçalho de `scripts/enxugarRawJson.ts`.
 | Fonte nova: Sistema S — SENAC (API nacional, 28 unidades), SESI/SENAI/federações (Portal de Licitações da indústria, 13 portais; Paradigma, 9 federações) | #42 | 🟡 |
 | Fonte nova: **Infraero** (fora do PNCP) — varredura por id do portal próprio, revisita das abertas, aeroporto → município — `docs/MAPA_INFRAERO.md` | branch `fonte-infraero` | 🟡 |
 | Fonte nova: **diários municipais do SIGPub** (13 associações, prefeituras ainda fora do PNCP) — busca por termos de aviso, parser compartilhado com o Querido Diário, duplicidade com PNCP (inclusive pelo número) e com o Querido Diário — `docs/MAPA_DIARIOS_MUNICIPAIS.md` | branch `fonte-sigpub` | 🟡 |
+| Fonte nova: **TCE-CE** (184 municípios do Ceará) — lista de abertas do Portal de Licitações do TCE, duplicidade com o PNCP antes do detalhe, revisita e sumidas — `docs/MAPA_TCE_CE.md` | branch `fonte-tce-ce` | 🟡 |
 
 ### Pendente (próxima sessão)
 
