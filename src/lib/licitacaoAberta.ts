@@ -14,10 +14,10 @@
 //   + Homologada (valorHomologado preenchido) nunca está aberta.
 // ============================================================
 
-import { FonteEnum, Prisma, SituacaoEnum } from '@prisma/client'
+import { FonteEnum, ModalidadeEnum, Prisma, SituacaoEnum } from '@prisma/client'
 import { inicioDoDiaEmBrasilia } from './dataDeBrasilia'
 import { FONTES_COM_ANO_NO_NUMERO, anoEmBrasilia } from './anoDoProcesso'
-import { limiteDeDataPlausivel } from './dataPlausivel'
+import { limiteDeDataPlausivel, prazoImprovavel } from './dataPlausivel'
 
 export const DIAS_SEM_PRAZO = 30
 
@@ -30,12 +30,13 @@ function inicioDoDia(agora: Date): Date {
 }
 
 function semDataUtil(campo: 'encerramentoAt' | 'aberturaAt', limite: Date): Prisma.TenderWhereInput {
-  return { OR: [{ [campo]: null }, { [campo]: { gt: limite } }] }
+  const descartes: Prisma.TenderWhereInput[] = [{ [campo]: null }, { [campo]: { gt: limite } }]
+  return { OR: campo === 'encerramentoAt' ? [...descartes, { prazoImprovavel: true }] : descartes }
 }
 
 function comPrazoConfirmado(agora: Date, limite: Date): Prisma.TenderWhereInput[] {
   return [
-    { encerramentoAt: { gte: agora, lte: limite } },
+    { encerramentoAt: { gte: agora, lte: limite }, prazoImprovavel: false },
     {
       fonte: { notIn: FONTES_ABERTURA_E_INICIO },
       aberturaAt: { gte: inicioDoDia(agora), lte: limite },
@@ -52,6 +53,7 @@ export function whereLicitacaoAberta(agora: Date = new Date()): Prisma.TenderWhe
     situacao: 'ABERTA',
     valorHomologado: null,
     duplicataDe: null,
+    motivoOculta: null,
     OR: [
       ...comPrazoConfirmado(agora, limite),
       {
@@ -79,12 +81,14 @@ export function whereLicitacaoComPrazoConfirmado(agora: Date = new Date()): Pris
     situacao: 'ABERTA',
     valorHomologado: null,
     duplicataDe: null,
+    motivoOculta: null,
     OR: comPrazoConfirmado(agora, limiteDeDataPlausivel(agora)),
   }
 }
 
 export interface DatasDaLicitacao {
   fonte: FonteEnum
+  modalidade?: ModalidadeEnum | null
   situacao: SituacaoEnum
   valorHomologado: unknown
   encerramentoAt: Date | null
@@ -93,6 +97,7 @@ export interface DatasDaLicitacao {
   createdAt: Date
   anoDoProcesso?: number | null
   duplicataDe?: string | null
+  motivoOculta?: string | null
 }
 
 function dentroDoLimite(data: Date | null, limite: Date): Date | null {
@@ -102,9 +107,9 @@ function dentroDoLimite(data: Date | null, limite: Date): Date | null {
 // Mesma regra de whereLicitacaoAberta, para quem já tem a licitação em memória.
 export function estaAberta(t: DatasDaLicitacao, agora: Date = new Date()): boolean {
   if (t.situacao !== 'ABERTA' || (t.valorHomologado !== null && t.valorHomologado !== undefined)) return false
-  if (t.duplicataDe) return false
+  if (t.duplicataDe || t.motivoOculta) return false
   const limite = limiteDeDataPlausivel(agora)
-  const encerramento = dentroDoLimite(t.encerramentoAt, limite)
+  const encerramento = prazoImprovavel(t) ? null : dentroDoLimite(t.encerramentoAt, limite)
   const abertura = dentroDoLimite(t.aberturaAt, limite)
   if (encerramento) return encerramento.getTime() >= agora.getTime()
   if (abertura && !FONTES_ABERTURA_E_INICIO.includes(t.fonte)) return abertura.getTime() >= inicioDoDia(agora).getTime()

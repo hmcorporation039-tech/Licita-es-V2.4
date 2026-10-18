@@ -26,6 +26,8 @@ import AvisoDeClausulas from '@/components/AvisoDeClausulas'
 import MatrizDeExigencias from '@/components/MatrizDeExigencias'
 import RelatorioDaRevisao from '@/components/RelatorioDaRevisao'
 import DocumentosDaLicitacao from '@/components/DocumentosDaLicitacao'
+import AvisoDeVersaoDoPncp from '@/components/AvisoDeVersaoDoPncp'
+import { versaoDoPncp } from '@/lib/licitacaoNaTela'
 import {
   Button,
   buttonClasses,
@@ -475,7 +477,7 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
   const total = items.length
   const done = items.filter((i) => i.checked).length
   const modalidadeLabel = MODALIDADE_OPTIONS.find((o) => o.value === tender.modalidade)?.label ?? tender.modalidade
-  const situacaoLabel = SITUACAO_OPTIONS.find((o) => o.value === tender.situacao)?.label ?? tender.situacao
+  const situacaoLabel = versaoDoPncp(tender) ? 'Também no PNCP' : (SITUACAO_OPTIONS.find((o) => o.value === tender.situacao)?.label ?? tender.situacao)
   const local = tender.municipio ? `${tender.municipio}/${tender.uf ?? ''}` : tender.uf
   const cnpj = cnpjDoProcesso(tender.numeroControle)
   const linkEdital = safeHttpUrl(tender.linkEdital)
@@ -571,6 +573,8 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
           </>
         }
       />
+
+      <AvisoDeVersaoDoPncp tender={tender} />
 
       <Panel>
         <DescriptionList

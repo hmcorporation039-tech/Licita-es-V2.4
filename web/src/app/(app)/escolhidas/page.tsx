@@ -9,6 +9,7 @@ import { ParticipationPlanListItem } from '@/lib/types'
 import { Button, Carregando, EmptyState, ErrorState, LinkButton, PageHeader, Prazo, StatusTag, Table, TableWrap, Td, Th, THead, Tr } from '@/components/ui'
 import { ROTULOS_DE_FONTE } from '@/lib/fontes'
 import { fimDasPropostas, localDaLicitacao } from '@/lib/licitacaoNaTela'
+import AvisoDeVersaoDoPncp from '@/components/AvisoDeVersaoDoPncp'
 
 function formatValor(v: string | null) {
   if (!v) return '—'
@@ -96,6 +97,7 @@ export default function EscolhidasPage() {
                   </Link>
                   <p className="mt-0.5 text-xs break-words text-muted">{p.tender.orgao ?? 'órgão n/d'}</p>
                 </div>
+                <AvisoDeVersaoDoPncp tender={p.tender} />
                 <dl className="grid grid-cols-1 gap-2 text-sm min-[420px]:grid-cols-2">
                   <div className="min-w-0">
                     <dt className="text-xs text-muted">Local</dt>
@@ -142,6 +144,7 @@ export default function EscolhidasPage() {
                         {p.tender.objetoResumido ?? p.tender.objeto}
                       </Link>
                       <p className="mt-0.5 truncate text-xs text-muted">{p.tender.orgao ?? 'órgão n/d'}</p>
+                      <AvisoDeVersaoDoPncp tender={p.tender} className="mt-2" />
                     </Td>
                     <Td>
                       <StatusTag mono>{rotuloDaFonte(p.tender.fonte)}</StatusTag>

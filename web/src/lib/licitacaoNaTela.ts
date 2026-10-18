@@ -18,3 +18,7 @@ export function localDaLicitacao(t: { municipio?: string | null; uf?: string | n
   if (t.municipio) return t.uf ? `${t.municipio}/${t.uf}` : t.municipio
   return t.uf ?? 'UF n/d'
 }
+
+export function versaoDoPncp(t: { duplicataDe?: string | null }): string | null {
+  return t.duplicataDe ? `/tenders/${encodeURIComponent(t.duplicataDe)}` : null
+}

@@ -16,7 +16,7 @@ export function whereDaLicitacaoNoFeed({ incluirInativas = false, incluirForaDoP
   if (!incluirForaDoPrazo) {
     const limite = new Date(agora.getTime() + PRAZO_MAX_DIAS_DO_FEED * 24 * 60 * 60 * 1000)
     recorte.push({ publicadoAt: { not: null } })
-    recorte.push({ OR: [{ encerramentoAt: null }, { encerramentoAt: { gte: agora, lte: limite } }] })
+    recorte.push({ OR: [{ encerramentoAt: null }, { prazoImprovavel: true }, { encerramentoAt: { gte: agora, lte: limite } }] })
   }
   return { AND: [whereLicitacaoAberta(agora), ...recorte] }
 }

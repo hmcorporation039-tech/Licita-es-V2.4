@@ -13,7 +13,6 @@ import { analiseHabilitada } from '../../services/editalAnalysisService'
 import { analiseQueue } from '../../queues'
 import { enfileirarSemTravar } from '../../queues/enfileirar'
 import { MODALIDADE_VALUES } from './monitoredItems'
-import { normalize } from '../../lib/geoService'
 import { buildAutoMilestones, PlanMilestone } from '../../lib/participationPlanTemplate'
 import { calcularPrazosDaSessao, lerDataTexto } from '../../lib/diasUteis'
 import { exigirCotaDaRequisicao } from '../cotas'
@@ -24,7 +23,7 @@ import type { EditalAnalysisResult } from '../../services/llm/types'
 import { chaveDaExigencia, ExigenciaVerificada, resumoDaVerificacao } from '../../lib/matrizExigencias'
 import { analiseParaResposta } from '../../lib/analiseParaResposta'
 import { whereLicitacaoAberta, whereLicitacaoComPrazoConfirmado } from '../../lib/licitacaoAberta'
-import { idsQueCitamOTexto, whereDoNumeroDoEdital, whereDoOrgao } from '../../services/buscaDeLicitacoes'
+import { idsQueCitamOTexto, whereDoMunicipio, whereDoNumeroDoEdital, whereDoOrgao } from '../../services/buscaDeLicitacoes'
 import { fatiasDaPagina } from '../../lib/paginacaoEmGrupos'
 import { TENDER_PUBLICO, semRawJson } from '../../lib/tenderPublico'
 import { MAX_ANALISES_POR_HORA, pedidosDeAnaliseNaUltimaHora } from '../../services/quotaService'
@@ -33,7 +32,6 @@ import { falhouHaPouco } from '../../lib/esperaDeReanalise'
 import { dataDaSessao } from '../../lib/dataDaSessao'
 
 import { SIGLAS_DAS_UFS } from '../../lib/origemDoCadastro'
-import { literalNoLike } from '../../lib/buscaLiteral'
 import { temPalavraSignificativa } from '../../lib/matching'
 
 export const MENSAGEM_DE_BUSCA_SEM_PALAVRA = 'Digite pelo menos uma palavra do que você procura, como "cimento" ou "merenda". Só "de", "para", "com" e afins não filtram nada.'
@@ -132,7 +130,7 @@ tendersRouter.get(
     if (uf?.length) condicoes.push({ uf: uf.length === 1 ? uf[0] : { in: uf } })
     if (modalidade?.length) condicoes.push({ modalidade: modalidade.length === 1 ? (modalidade[0] as ModalidadeEnum) : { in: modalidade as ModalidadeEnum[] } })
     if (orgao) condicoes.push(whereDoOrgao(orgao))
-    if (municipio) condicoes.push({ municipioNorm: { contains: literalNoLike(normalize(municipio)) } })
+    if (municipio) condicoes.push(whereDoMunicipio(municipio))
     if (numero) condicoes.push(whereDoNumeroDoEdital(numero))
     if (publicacaoInicio || publicacaoFim) {
       condicoes.push({

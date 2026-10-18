@@ -247,6 +247,8 @@ model Tender {
   numeroControle     String?        @map("numero_controle")
   anoDoProcesso      Int?           @map("ano_do_processo")
   duplicataDe        String?        @map("duplicata_de")
+  motivoOculta       String?        @map("motivo_oculta")
+  prazoImprovavel    Boolean        @default(dbgenerated("false")) @map("prazo_improvavel")
   rawJson            Json           @map("raw_json")
   // Impressao digital dos campos que importam (ver lib/tenderContentHash.ts).
   // Orgaos republicam licitacao o tempo todo; comparar o hash deixa a coleta

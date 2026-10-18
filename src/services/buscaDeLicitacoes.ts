@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client'
 import { prisma } from './tenderService'
 import { buildKeywordRegex, regexDaPalavraNoPostgres, termosDoPreFiltro, variantesDoOrgao } from '../lib/matching'
 import { literalNoLike } from '../lib/buscaLiteral'
+import { normalize } from '../lib/geoService'
 
 export const MAX_CANDIDATAS_DA_BUSCA_POR_TEXTO = 30_000
 
@@ -52,6 +53,14 @@ export async function idsQueCitamOTexto(
     ids: candidatas.filter((c) => citaOTexto(regex, c)).map((c) => c.id),
     limitada: candidatas.length === MAX_CANDIDATAS_DA_BUSCA_POR_TEXTO,
   }
+}
+
+const CODIGO_IBGE = /^\d{7}$/
+
+export function whereDoMunicipio(municipio: string): Prisma.TenderWhereInput {
+  const texto = municipio.trim()
+  if (CODIGO_IBGE.test(texto)) return { municipioIbge: texto }
+  return { municipioNorm: normalize(texto).replace(/\s+/g, ' ') }
 }
 
 export function whereDoOrgao(orgao: string): Prisma.TenderWhereInput {

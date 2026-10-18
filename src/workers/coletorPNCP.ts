@@ -39,9 +39,11 @@ async function esconderRepeticoesSemTravar(tenderId: string, tender: NormalizedT
 
 async function revisarRepeticoesSemTravar(contexto: string): Promise<void> {
   try {
-    const escondidos = await revisarRepeticoesDoPncp()
-    const total = Object.values(escondidos).reduce((soma, n) => soma + (n ?? 0), 0)
-    if (total > 0) console.log(`[${contexto}] Avisos repetidos do PNCP escondidos: ${JSON.stringify(escondidos)}`)
+    const { escondidos, restaurados, semObjeto, comObjetoDeVolta } = await revisarRepeticoesDoPncp()
+    const soma = (contagem: Partial<Record<string, number>>) => Object.values(contagem).reduce<number>((total, n) => total + (n ?? 0), 0)
+    if (soma(escondidos) > 0) console.log(`[${contexto}] Avisos repetidos do PNCP escondidos: ${JSON.stringify(escondidos)}`)
+    console.log(`[${contexto}] Avisos escondidos antes que voltaram a aparecer (não se confirmaram como repetição do PNCP): ${soma(restaurados)} ${JSON.stringify(restaurados)}`)
+    if (semObjeto > 0 || comObjetoDeVolta > 0) console.log(`[${contexto}] Avisos de diário sem objeto: ${semObjeto} escondido(s), ${comObjetoDeVolta} de volta com objeto.`)
   } catch (err) {
     console.error(`[${contexto}] Falha ao revisar avisos de diário/TCE-CE repetidos do PNCP:`, err)
   }

@@ -173,11 +173,11 @@ describe('N5: mesma licitação em mais de uma fonte', () => {
     numeroControle: '14.018/2026-PE', rawJson: {}, createdAt: dias(-5), ...o,
   })
 
-  it('a licitação nova do PNCP reconhece o aviso de diário gravado antes dela pelos mesmos critérios da coleta do diário', () => {
+  it('a licitação nova do PNCP reconhece o aviso de diário gravado antes dela, mas só esconde com objeto parecido e sem conflito', () => {
     const diario = registro({ fonte: 'QUERIDO_DIARIO', fonteId: 'QD-2606200:PREGAO:31-2026', uf: 'PE', municipio: 'Gameleira', municipioIbge: '2606200', numeroControle: 'Pregão Eletrônico nº 31/2026' })
     const pncp = { fonte: 'PNCP' as const, fonteId: 'p', modalidade: 'PREGAO_ELETRONICO' as const, objeto: diario.objeto, uf: 'PE', encerramentoAt: dias(10), rawJson: { numeroCompra: '31', anoCompra: 2026 } }
     expect(ehRepeticaoDaLicitacaoDoPncp(diario, pncp, 0.95)).toBe(true)
-    expect(ehRepeticaoDaLicitacaoDoPncp(diario, pncp, 0.12)).toBe(true)
+    expect(ehRepeticaoDaLicitacaoDoPncp(diario, pncp, 0.12)).toBe(false)
     expect(ehRepeticaoDaLicitacaoDoPncp(diario, { ...pncp, rawJson: { numeroCompra: '32', anoCompra: 2026 } }, 0.12)).toBe(false)
     expect(ehRepeticaoDaLicitacaoDoPncp(diario, { ...pncp, modalidade: 'CONCORRENCIA' }, 0.95)).toBe(false)
     const credenciamento = registro({ fonte: 'DIARIO_MUNICIPAL', fonteId: 'DM-1:CREDENCIAMENTO:4-2026', modalidade: 'CREDENCIAMENTO' })
@@ -188,7 +188,8 @@ describe('N5: mesma licitação em mais de uma fonte', () => {
     const diario = registro({ fonte: 'QUERIDO_DIARIO', fonteId: 'QD-2900000:PREGAO:9-2026', uf: 'BA', municipio: 'Itiruçu', municipioIbge: '2917003', numeroControle: 'Pregão nº 9/2026', aberturaAt: dias(10) })
     const pncp = { fonte: 'PNCP' as const, fonteId: 'p2', modalidade: 'PREGAO_ELETRONICO' as const, objeto: 'Serviço de carga e descarga', uf: 'BA', encerramentoAt: dias(10), rawJson: { numeroCompra: '77', anoCompra: 2026 } }
     expect(ehRepeticaoDaLicitacaoDoPncp(diario, pncp, 0.24)).toBe(false)
-    expect(ehRepeticaoDaLicitacaoDoPncp(diario, pncp, 0.41)).toBe(true)
+    expect(ehRepeticaoDaLicitacaoDoPncp(diario, pncp, 0.41)).toBe(false)
+    expect(ehRepeticaoDaLicitacaoDoPncp(diario, { ...pncp, rawJson: { numeroCompra: '9', anoCompra: 2026 } }, 0.41)).toBe(true)
   })
 
   it('TCE-CE: a publicação repetida (mesmo município, número e ano) esconde a mais antiga e fica a mais recente', () => {
