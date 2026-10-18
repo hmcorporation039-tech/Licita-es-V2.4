@@ -1,6 +1,6 @@
 import type { MonitoredItem } from '@prisma/client'
 import { prisma } from './tenderService'
-import { findMatchingTendersForItem } from './matcherService'
+import { entradaDoItem, findMatchingTendersForItem, reavaliarMatchesDoItem, type ResultadoDaReavaliacao } from './matcherService'
 import { notificadorQueue } from '../queues'
 import { enfileirarSemTravar } from '../queues/enfileirar'
 
@@ -28,24 +28,7 @@ type ItemParaRematch = Pick<
 >
 
 export async function buscarLicitacoesDoItem(item: ItemParaRematch, { notificar }: { notificar: boolean }): Promise<{ matchesFound: number }> {
-  const candidates = await findMatchingTendersForItem(
-    {
-      keywords: item.keywords,
-      palavrasDeExclusao: item.palavrasDeExclusao,
-      catmatCodes: item.catmatCodes,
-      catserCodes: item.catserCodes,
-      ufs: item.ufs,
-      modalidades: item.modalidades,
-      orgaos: item.orgaos,
-      uasgCodes: item.uasgCodes,
-      valorMin: item.valorMin ? Number(item.valorMin) : null,
-      valorMax: item.valorMax ? Number(item.valorMax) : null,
-      raioKm: item.raioKm,
-      origemLat: item.origemLat,
-      origemLng: item.origemLng,
-    },
-    JANELA_DO_REMATCH_EM_DIAS
-  )
+  const candidates = await findMatchingTendersForItem(entradaDoItem(item), JANELA_DO_REMATCH_EM_DIAS)
   if (candidates.length === 0) return { matchesFound: 0 }
 
   const existing = await prisma.tenderMatch.findMany({
@@ -82,4 +65,12 @@ export async function buscarLicitacoesDoItem(item: ItemParaRematch, { notificar 
   }
 
   return { matchesFound: created.length }
+}
+
+export async function reavaliarEBuscarLicitacoesDoItem(
+  item: ItemParaRematch & { active: boolean }
+): Promise<ResultadoDaReavaliacao & { matchesFound: number }> {
+  const reavaliacao = await reavaliarMatchesDoItem({ ...entradaDoItem(item), id: item.id, companyId: item.companyId })
+  const { matchesFound } = item.active ? await buscarLicitacoesDoItem(item, { notificar: false }) : { matchesFound: 0 }
+  return { ...reavaliacao, matchesFound }
 }

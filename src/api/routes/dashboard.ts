@@ -8,15 +8,23 @@ import { Router } from 'express'
 import { prisma } from '../../services/tenderService'
 import { buildAutoMilestones } from '../../lib/participationPlanTemplate'
 import { asyncHandler } from '../asyncHandler'
-import { whereLicitacaoAberta } from '../../lib/licitacaoAberta'
+import { whereDaLicitacaoNoFeed } from '../../lib/feedDeMatches'
 import { TENDER_PUBLICO } from '../../lib/tenderPublico'
-import { fimDoPrazoDaLicitacao } from '../../lib/dataDeBrasilia'
+import { fimDoPrazoDaLicitacao, horaDeBrasilia } from '../../lib/dataDeBrasilia'
+import { dataDaSessao } from '../../lib/dataDaSessao'
+import { calcularPrazosDaSessao, lerDataTexto, type Dia } from '../../lib/diasUteis'
 import { prazoNoMapa, urgenciaDoEstado, type UrgenciaNoMapa } from '../../lib/prazoNoMapa'
 
 export const dashboardRouter = Router()
 
 const DOC_ALERT_DAYS = 15
 const PRAZO_JANELA_DIAS = 14
+export const ROTULO_DO_LIMITE_DE_IMPUGNACAO = 'Limite para impugnar ou pedir esclarecimento'
+
+function inicioDoDiaDeBrasilia(dia: Dia): Date {
+  const [ano, mes, diaDoMes] = dia.split('-').map(Number)
+  return horaDeBrasilia(ano, mes - 1, diaDoMes)
+}
 
 dashboardRouter.get(
   '/',
@@ -25,10 +33,10 @@ dashboardRouter.get(
 
     const [itensAtivos, matchesNaoLidos, matchesTotal, ultimosMatches, documentos, planos] = await Promise.all([
       prisma.monitoredItem.count({ where: { companyId, active: true } }),
-      prisma.tenderMatch.count({ where: { companyId, read: false, tender: whereLicitacaoAberta() } }),
-      prisma.tenderMatch.count({ where: { companyId, tender: whereLicitacaoAberta() } }),
+      prisma.tenderMatch.count({ where: { companyId, read: false, tender: whereDaLicitacaoNoFeed() } }),
+      prisma.tenderMatch.count({ where: { companyId, tender: whereDaLicitacaoNoFeed() } }),
       prisma.tenderMatch.findMany({
-        where: { companyId, tender: whereLicitacaoAberta() },
+        where: { companyId, tender: whereDaLicitacaoNoFeed() },
         orderBy: [{ dentroDeObraCompleta: 'asc' }, { createdAt: 'desc' }],
         take: 5,
         include: { tender: { select: TENDER_PUBLICO }, monitoredItem: { select: { name: true } } },
@@ -64,6 +72,22 @@ dashboardRouter.get(
         analysis?.resultado
           ? (analysis.resultado as unknown as { prazoImpugnacao: string; prazoEsclarecimento: string })
           : null
+      if (plano.status === 'VOU_PARTICIPAR') {
+        const sessao = dataDaSessao(plano.tender) ?? lerDataTexto((analysis?.resultado as { dataSessao?: string } | null | undefined)?.dataSessao)
+        if (sessao) {
+          const prazos = calcularPrazosDaSessao(sessao, new Date(now))
+          const limite = inicioDoDiaDeBrasilia(prazos.limiteImpugnacao)
+          if (!prazos.limitePassou && limite.getTime() <= prazoCutoff) {
+            proximosPrazos.push({
+              tenderId: plano.tender.id,
+              tenderObjeto: plano.tender.objetoResumido ?? plano.tender.objeto,
+              fonte: plano.tender.fonte,
+              label: ROTULO_DO_LIMITE_DE_IMPUGNACAO,
+              date: limite.toISOString(),
+            })
+          }
+        }
+      }
       const milestones = buildAutoMilestones(plano.tender, analysisPrazos)
       for (const m of milestones) {
         if (m.done || !m.date) continue

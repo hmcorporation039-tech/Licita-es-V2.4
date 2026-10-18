@@ -119,13 +119,17 @@ function TenderRow({ t, somenteRelacionadas }: { t: TenderComEncerramento; somen
 
 const SIGLAS_DAS_UFS = new Set(ESTADOS.map((estado) => estado.sigla))
 
+interface ListaDeLicitacoes extends Paginated<Tender> {
+  totais?: { comPrazoConfirmado: number; semDataInformada: number }
+}
+
 function siglasValidas(texto: string): string[] {
   return [...new Set(texto.toUpperCase().split(/[\s,;]+/).filter((sigla) => SIGLAS_DAS_UFS.has(sigla)))]
 }
 
 export default function TendersPage() {
   const user = useRequireSession()
-  const [data, setData] = useState<Paginated<Tender> | null>(null)
+  const [data, setData] = useState<ListaDeLicitacoes | null>(null)
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
   const [tentativa, setTentativa] = useState(0)
@@ -179,7 +183,7 @@ export default function TendersPage() {
       if (somenteRelacionadas) qs.set('somenteRelacionadas', 'true')
       if (agrupar) qs.set('agrupar', 'true')
       api
-        .get<Paginated<Tender>>(`/api/tenders?${qs.toString()}`)
+        .get<ListaDeLicitacoes>(`/api/tenders?${qs.toString()}`)
         .then(setData)
         .catch((e) => setErro(e instanceof ApiRequestError ? e.message : 'Não foi possível carregar as licitações.'))
         .finally(() => setLoading(false))
@@ -230,6 +234,13 @@ export default function TendersPage() {
           data ? (
             <>
               <span className="font-mono">{data.total.toLocaleString('pt-BR')}</span> {data.total === 1 ? 'licitação encontrada' : 'licitações encontradas'}
+              {data.totais && data.totais.semDataInformada > 0 && (
+                <>
+                  {' '}
+                  · <span className="font-mono">{data.totais.comPrazoConfirmado.toLocaleString('pt-BR')}</span> com prazo confirmado ·{' '}
+                  <span className="font-mono">{data.totais.semDataInformada.toLocaleString('pt-BR')}</span> sem data informada (publicadas nos últimos 30 dias)
+                </>
+              )}
             </>
           ) : (
             'Buscando licitações'
@@ -241,7 +252,7 @@ export default function TendersPage() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <Field label="Órgão" className="lg:col-span-2">
             <Input
-              placeholder="Ex: Prefeitura de Uberlândia"
+              placeholder="Ex: Prefeitura de Uberlândia ou Município de Uberlândia"
               value={orgao}
               onChange={(e) => {
                 setPage(1)
@@ -251,6 +262,7 @@ export default function TendersPage() {
           </Field>
           <Field label="Nº edital / processo">
             <Input
+              placeholder="Ex: 112/2026"
               value={numero}
               onChange={(e) => {
                 setPage(1)

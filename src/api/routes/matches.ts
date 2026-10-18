@@ -9,17 +9,11 @@ import { prisma } from '../../services/tenderService'
 import { asyncHandler, ApiError } from '../asyncHandler'
 import { requireCompanyOwner } from '../authMiddleware'
 import { registrarAuditoria } from '../../services/auditService'
-import { whereLicitacaoAberta } from '../../lib/licitacaoAberta'
+import { whereDaLicitacaoNoFeed } from '../../lib/feedDeMatches'
 import { TENDER_PUBLICO } from '../../lib/tenderPublico'
 import { Aderencia, calcularAderencia } from '../../lib/aderencia'
 
 export const matchesRouter = Router()
-
-// Teto GLOBAL de dias até o encerramento da proposta. Uma proposta que só
-// encerra daqui a muito tempo (ou já encerrou) é descartada do pool por padrão
-// — instruções 3.1.1 (prazo > 30/60 dias) e 3.1.2 (data já vencida). Ajustável
-// por COLETA_PRAZO_MAX_DIAS no .env (padrão 30).
-const PRAZO_MAX_DIAS = Number(process.env.COLETA_PRAZO_MAX_DIAS ?? 30)
 
 const querySchema = z.object({
   unreadOnly: z
@@ -87,36 +81,15 @@ function aderenciaDoMatch(m: MatchParaNota): Aderencia {
   })
 }
 
-// Situações em que a licitação deixou de ser oportunidade viável — ocultadas
-// por padrão no feed de matches (instruções 3.1.4/3.1.5).
-const SITUACOES_INATIVAS = ['REVOGADA', 'SUSPENSA', 'ANULADA', 'CANCELADA'] as const
-
 matchesRouter.get(
   '/',
   asyncHandler(async (req, res) => {
     const { unreadOnly, incluirInativas, incluirForaDoPrazo, ordem, page, pageSize } = querySchema.parse(req.query)
 
-    // Recorte no nível da licitação relacionada ao match.
-    const tenderWhere: Prisma.TenderWhereInput = {}
-    if (!incluirInativas) tenderWhere.situacao = { notIn: [...SITUACOES_INATIVAS] }
-    if (!incluirForaDoPrazo) {
-      const agora = new Date()
-      const limite = new Date(Date.now() + PRAZO_MAX_DIAS * 24 * 60 * 60 * 1000)
-      // Pendente de publicação (3.1.3): sem data de publicação, fica de fora.
-      tenderWhere.publicadoAt = { not: null }
-      // Janela de proposta: sem data de encerramento (comum em dispensa) fica no
-      // pool; com data, só se encerra de agora até o teto de dias (3.1.1/3.1.2).
-      tenderWhere.OR = [
-        { encerramentoAt: null },
-        { encerramentoAt: { gte: agora, lte: limite } },
-      ]
-    }
-
     const where = {
       companyId: req.companyId!,
       ...(unreadOnly ? { read: false } : {}),
-      // Só matches de licitações ainda abertas (ver lib/licitacaoAberta.ts).
-      tender: { AND: [whereLicitacaoAberta(), ...(Object.keys(tenderWhere).length > 0 ? [tenderWhere] : [])] },
+      tender: whereDaLicitacaoNoFeed({ incluirInativas, incluirForaDoPrazo }),
     }
 
     let items: MatchComTudo[]

@@ -129,11 +129,10 @@ rodar('Nota de aderência', () => {
     // 1 de 1 palavra: 35 + 20 + 8 + 8 = 71
     expect(porPalavra.score).toBeCloseTo(0.71, 5)
 
-    for (const c of candidatos) {
-      await prisma.tenderMatch.create({
-        data: { tenderId, monitoredItemId: c.monitoredItemId, companyId: c.companyId, userId: c.userId, score: c.score, matchedKeywords: c.matchedKeywords, matchedByCode: c.matchedByCode },
-      })
-    }
+    const gravados = await prisma.tenderMatch.findMany({ where: { tenderId, monitoredItemId: { in: [itemCodigo, itemPalavra] } } })
+    expect(gravados.map((m: { monitoredItemId: string; score: number; matchedByCode: boolean }) => [m.monitoredItemId, m.score, m.matchedByCode]).sort()).toEqual(
+      candidatos.map((c: { monitoredItemId: string; score: number; matchedByCode: boolean }) => [c.monitoredItemId, c.score, c.matchedByCode]).sort()
+    )
   })
 
   it('o feed devolve a nota ao vivo com o motivo de cada critério', async () => {

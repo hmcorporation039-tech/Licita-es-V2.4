@@ -11,7 +11,7 @@ import { exigirCotaDaRequisicao } from '../cotas'
 import { rematchLimiter } from '../rateLimit'
 import { registrarAuditoria } from '../../services/auditService'
 import { exigirCota } from '../../services/quotaService'
-import { buscarLicitacoesDoItem } from '../../services/rematchService'
+import { buscarLicitacoesDoItem, reavaliarEBuscarLicitacoesDoItem } from '../../services/rematchService'
 import { interesseDaOrigem, nomeDoItemDoInteresse } from '../../lib/origemDoCadastro'
 
 export const monitoredItemsRouter = Router()
@@ -77,6 +77,8 @@ const createSchema = z.object({
 })
 
 const updateSchema = createSchema.partial().extend({ active: z.boolean().optional() })
+
+const CAMPOS_QUE_MUDAM_O_MATCH = ['keywords', 'palavrasDeExclusao', 'catmatCodes', 'catserCodes', 'ufs', 'valorMin', 'valorMax', 'modalidades', 'orgaos', 'uasgCodes', 'raioKm', 'origemMunicipio', 'origemUf', 'active'] as const
 
 // Resolve nome+UF de cidade em lat/lng usando a base do IBGE
 function geocodeOrigem(municipio: string, uf: string): { lat: number; lng: number } {
@@ -154,7 +156,8 @@ monitoredItemsRouter.post(
       entityId: item.id,
       metadata: { nome: item.name },
     })
-    res.status(201).json(item)
+    const { matchesFound } = await buscarLicitacoesDoItem(item, { notificar: false })
+    res.status(201).json({ ...item, matchesEncontrados: matchesFound })
   })
 )
 
@@ -211,7 +214,13 @@ monitoredItemsRouter.patch(
       entityId: updated.id,
       metadata: { nome: updated.name, campos: Object.keys(data) },
     })
-    res.json(updated)
+    const mudouORecorte = CAMPOS_QUE_MUDAM_O_MATCH.some((campo) => data[campo] !== undefined)
+    if (!mudouORecorte) {
+      res.json(updated)
+      return
+    }
+    const { removidos, matchesFound } = await reavaliarEBuscarLicitacoesDoItem(updated)
+    res.json({ ...updated, matchesRemovidos: removidos, matchesEncontrados: matchesFound })
   })
 )
 
