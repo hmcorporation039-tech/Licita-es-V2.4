@@ -23,6 +23,7 @@ export const FONTES_OFICIAIS: FonteOficial[] = [
   { nome: 'TCE-CE', descricao: 'Portal de Licitações dos Municípios do Ceará' },
   { nome: 'TCE-PI', descricao: 'Mural de Licitações do Tribunal de Contas do Piauí' },
   { nome: 'TCE-TO', descricao: 'SICAP-LCO, licitações dos municípios do Tocantins' },
+  { nome: 'TCE-RS', descricao: 'LicitaCon, dados abertos do Tribunal de Contas do Rio Grande do Sul' },
 ]
 
 const ID_DO_LETREIRO = 'letreiro-das-fontes'
