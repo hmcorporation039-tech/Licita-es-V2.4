@@ -112,6 +112,11 @@ function maiorPercentualExigido(texto: string, valorEstimado: number | null): nu
 
 const f = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 2 })
 
+export const VALOR_MINIMO_DE_GRANDE_VULTO = 200_000_000
+const FUNDAMENTO_DA_GARANTIA_CONTRATUAL =
+  'Lei 14.133/2021, art. 98 (obras, serviços e fornecimentos: até 5% do valor do contrato, ou até 10% com justificativa de complexidade técnica e riscos) e art. 99 (obras e serviços de engenharia de grande vulto: até 30%, com cláusula de retomada pela seguradora)'
+const CONFIRA_COM_O_ADVOGADO = 'Verifique com seu advogado antes de impugnar.'
+
 export function calcularAlertasLegais(e: EntradaDeAlertas): AlertaLegal[] {
   const alertas: AlertaLegal[] = []
 
@@ -134,25 +139,35 @@ export function calcularAlertasLegais(e: EntradaDeAlertas): AlertaLegal[] {
   // Garantia contratual: até 5%, podendo chegar a 10% se justificada (art. 98).
   if (deveAvaliar(e.garantiaContratual)) {
     const p = maiorPercentualExigido(e.garantiaContratual, e.valorEstimado)
-    if (p !== null && p > 10.0001) {
+    const abaixoDoGrandeVulto = e.valorEstimado !== null && e.valorEstimado > 0 && e.valorEstimado < VALOR_MINIMO_DE_GRANDE_VULTO
+    const base = { id: 'garantia-contratual' as const, chave: 'garantia-contratual', fundamento: FUNDAMENTO_DA_GARANTIA_CONTRATUAL, trecho: recorte(e.garantiaContratual) }
+    if (p !== null && p > 30.0001) {
       alertas.push({
-        id: 'garantia-contratual',
-        chave: 'garantia-contratual',
+        ...base,
+        titulo: 'Garantia contratual acima de 30%',
+        gravidade: 'alta',
+        detalhe: `O edital parece exigir garantia contratual de cerca de ${f(p)}% do valor do contrato, acima até do teto de 30% que a lei admite para obras e serviços de engenharia de grande vulto. ${CONFIRA_COM_O_ADVOGADO}`,
+      })
+    } else if (p !== null && p > 10.0001 && abaixoDoGrandeVulto) {
+      alertas.push({
+        ...base,
         titulo: 'Garantia contratual acima de 10%',
         gravidade: 'alta',
-        detalhe: `O edital parece exigir garantia contratual de cerca de ${f(p)}% do valor do contrato, acima do máximo de 10% previsto para obras e serviços de engenharia.`,
-        fundamento: 'Lei 14.133/2021, art. 98 (a regra de até 5%, ou 10% se justificada, trata de obras e serviços de engenharia; confira o regime do objeto)',
-        trecho: recorte(e.garantiaContratual),
+        detalhe: `O edital parece exigir garantia contratual de cerca de ${f(p)}% do valor do contrato. A regra geral é até 5%, ou até 10% com justificativa; acima disso, só obras e serviços de engenharia de grande vulto, e o valor estimado desta licitação fica abaixo desse patamar. ${CONFIRA_COM_O_ADVOGADO}`,
+      })
+    } else if (p !== null && p > 10.0001) {
+      alertas.push({
+        ...base,
+        titulo: 'Garantia contratual acima de 10%',
+        gravidade: 'media',
+        detalhe: `O edital parece exigir garantia contratual de cerca de ${f(p)}% do valor do contrato. A regra geral é até 5%, ou até 10% com justificativa; até 30% só é admitido em obras e serviços de engenharia de grande vulto: confira se é de grande vulto e se o edital traz a cláusula de retomada pela seguradora. ${CONFIRA_COM_O_ADVOGADO}`,
       })
     } else if (p !== null && p > 5.0001) {
       alertas.push({
-        id: 'garantia-contratual',
-        chave: 'garantia-contratual',
+        ...base,
         titulo: 'Garantia contratual acima de 5%',
         gravidade: 'media',
-        detalhe: `O edital parece exigir garantia contratual de cerca de ${f(p)}%. Acima de 5% só é admitido, até 10%, com justificativa de complexidade e riscos: confira se o edital a apresenta.`,
-        fundamento: 'Lei 14.133/2021, art. 98 (obras e serviços de engenharia)',
-        trecho: recorte(e.garantiaContratual),
+        detalhe: `O edital parece exigir garantia contratual de cerca de ${f(p)}%. Acima de 5% só é admitido, até 10%, com justificativa de complexidade técnica e riscos: confira se o edital a apresenta. ${CONFIRA_COM_O_ADVOGADO}`,
       })
     }
   }

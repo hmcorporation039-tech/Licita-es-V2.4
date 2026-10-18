@@ -24,6 +24,7 @@ import { checkExpiringDocuments } from '../services/documentAlertService'
 import { configuracaoDeIa } from '../services/analiseEmDupla'
 import { textoDoDiagnostico } from '../lib/diagnosticoDeChave'
 import { alertarFalha, instalarAlertasDoProcesso } from '../services/alertaOperacional'
+import { preencherAnoDoProcesso } from '../services/anoDoProcessoBackfill'
 
 async function main() {
   console.log('🚀 Iniciando workers da plataforma de licitações...')
@@ -87,6 +88,12 @@ async function main() {
   // coleta só grava o status no momento da publicação e nunca mais. Não usa
   // fila do BullMQ de propósito (varredura simples, o Redis já está no
   // limite do plano gratuito — ver situacaoUpdateService.ts).
+  preencherAnoDoProcesso()
+    .then((preenchidos) => {
+      if (preenchidos > 0) console.log(`[AnoDoProcesso] ${preenchidos} licitação(ões) com o ano do processo preenchido.`)
+    })
+    .catch((err) => console.error('[AnoDoProcesso] Erro ao preencher o ano do processo:', err))
+
   async function runSituacaoRefresh() {
     console.log('[SituaçãoUpdate] Iniciando varredura de situação...')
     try {

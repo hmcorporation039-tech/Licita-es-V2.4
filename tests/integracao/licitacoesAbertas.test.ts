@@ -18,6 +18,7 @@ rodar('Somente licitações abertas', () => {
   const sufixo = randomUUID().slice(0, 8)
   const agora = new Date()
   const dias = (n: number) => new Date(agora.getTime() + n * 86_400_000)
+  const anoAtual = new Date(agora.getTime() - 3 * 3_600_000).getUTCFullYear()
   let token = ''
 
   const casos: Record<string, Record<string, unknown>> = {
@@ -25,12 +26,19 @@ rodar('Somente licitações abertas', () => {
     prazoVencido: { encerramentoAt: dias(-1) },
     homologada: { encerramentoAt: dias(5), valorHomologado: 1000 },
     revogada: { encerramentoAt: dias(5), situacao: 'REVOGADA' },
-    dispensaRecente: { publicadoAt: dias(-3), aberturaAt: dias(-3), uf: 'DF' },
+    dispensaRecente: { publicadoAt: dias(-3), aberturaAt: dias(-3), uf: 'DF', modalidade: 'DISPENSA_SEM_DISPUTA' },
     dispensaDeAnoPassado: { publicadoAt: dias(-500), aberturaAt: dias(-500) },
-    sessaoFiegFutura: { fonte: 'FIEG', aberturaAt: dias(2), publicadoAt: dias(-60), uf: 'SP' },
+    sessaoFiegFutura: { fonte: 'FIEG', aberturaAt: dias(2), publicadoAt: dias(-60), uf: 'SP', modalidade: 'DISPENSA_COM_DISPUTA' },
     sessaoFiegPassada: { fonte: 'FIEG', aberturaAt: dias(-2), publicadoAt: dias(-3) },
+    sestSenatDe2016SemData: { fonte: 'SEST_SENAT', numeroControle: '089/2016' },
+    sestSenatDesteAnoSemData: { fonte: 'SEST_SENAT', numeroControle: `DL008868-0/${anoAtual}`, uf: 'SP' },
+    sestSenatSemAnoSemData: { fonte: 'SEST_SENAT', numeroControle: 'VES6201200101' },
+    sescGoDe2017SemData: { fonte: 'SESC_GO', numeroControle: '17/01.00120-DL' },
+    sescRegionalPublicadaHaPouco: { fonte: 'SESC_REGIONAL', publicadoAt: dias(-3), uf: 'SP' },
+    sescRegionalDeAnoPassadoPublicadaHaPouco: { fonte: 'SESC_REGIONAL', publicadoAt: dias(-3), numeroControle: `001/${anoAtual - 1}` },
+    novacapComPrazoENumeroAntigo: { fonte: 'NOVACAP', encerramentoAt: dias(10), numeroControle: `00006/${anoAtual - 1}`, uf: 'SP' },
   }
-  const abertas = ['prazoFuturo', 'dispensaRecente', 'sessaoFiegFutura']
+  const abertas = ['prazoFuturo', 'dispensaRecente', 'sessaoFiegFutura', 'sestSenatDesteAnoSemData', 'sescRegionalPublicadaHaPouco', 'novacapComPrazoENumeroAntigo']
 
   beforeAll(async () => {
     process.env.DATABASE_URL = URL_BANCO
@@ -51,6 +59,8 @@ rodar('Somente licitações abertas', () => {
         },
       })
     }
+    const { preencherAnoDoProcesso } = await import('../../src/services/anoDoProcessoBackfill')
+    await preencherAnoDoProcesso()
     const { hashPassword } = await import('../../src/services/authService')
     await prisma.user.create({
       data: { email: `abertas-${sufixo}@teste.local`, passwordHash: await hashPassword('Senha-forte-123'), emailVerifiedAt: new Date(), company: { create: { name: `E ${sufixo}` } } },
@@ -66,6 +76,14 @@ rodar('Somente licitações abertas', () => {
 
   it('o filtro do banco e a regra em memória concordam em todos os casos', async () => {
     const { whereLicitacaoAberta, estaAberta } = await import('../../src/lib/licitacaoAberta')
+    const anos = await prisma.tender.findMany({ where: { fonteId: { endsWith: sufixo }, anoDoProcesso: { not: null } }, select: { fonteId: true, anoDoProcesso: true } })
+    expect(Object.fromEntries(anos.map((t: { fonteId: string; anoDoProcesso: number }) => [t.fonteId.replace(`-${sufixo}`, ''), t.anoDoProcesso]))).toEqual({
+      sestSenatDe2016SemData: 2016,
+      sestSenatDesteAnoSemData: anoAtual,
+      sescGoDe2017SemData: 2017,
+      sescRegionalDeAnoPassadoPublicadaHaPouco: anoAtual - 1,
+      novacapComPrazoENumeroAntigo: anoAtual - 1,
+    })
     const todas = await prisma.tender.findMany({ where: { fonteId: { endsWith: sufixo } } })
     const noBanco = await prisma.tender.findMany({ where: { fonteId: { endsWith: sufixo }, ...whereLicitacaoAberta() }, select: { fonteId: true } })
     const nomes = (l: { fonteId: string }[]) => l.map((t) => t.fonteId.replace(`-${sufixo}`, '')).sort()
@@ -86,5 +104,13 @@ rodar('Somente licitações abertas', () => {
     expect(await nomes('GO,DF')).toEqual(['dispensaRecente', 'prazoFuturo'])
     expect(await nomes('GO, DF, SP')).toEqual([...abertas].sort())
     expect((await buscar('GO,XX')).status).toBe(400)
+  })
+
+  it('GET /api/tenders filtra por uma ou várias modalidades e recusa modalidade que não existe', async () => {
+    const buscar = async (modalidade: string) => fetch(`${base}/api/tenders?q=${sufixo}&pageSize=50&modalidade=${encodeURIComponent(modalidade)}`, { headers: { Authorization: `Bearer ${token}` } })
+    const nomes = async (modalidade: string) => ((await (await buscar(modalidade)).json()) as { items: { fonteId: string }[] }).items.map((t) => t.fonteId.replace(`-${sufixo}`, '')).sort()
+    expect(await nomes('DISPENSA_SEM_DISPUTA')).toEqual(['dispensaRecente'])
+    expect(await nomes('DISPENSA_COM_DISPUTA,DISPENSA_SEM_DISPUTA')).toEqual(['dispensaRecente', 'sessaoFiegFutura'])
+    expect((await buscar('DISPENSA_COM_DISPUTA,LEILAO_FALSO')).status).toBe(400)
   })
 })

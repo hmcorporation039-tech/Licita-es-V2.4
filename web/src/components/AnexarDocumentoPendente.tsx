@@ -33,10 +33,15 @@ export default function AnexarDocumentoPendente({ requisito, aoConcluir }: { req
     setEnviando(true)
     setErro(null)
     try {
-      const idDoDocumento = documentoExistente
-        ? (await api.patch<{ id: string }>(`/api/company-documents/${documentoExistente.id}`, { dataValidade: validade || null })).id
-        : (await api.post<{ id: string }>('/api/company-documents', { tipo: requisito.id, nome: requisito.label, dataValidade: validade || null })).id
-      await enviarArquivo(`/api/company-documents/${idDoDocumento}/arquivo`, arquivo)
+      if (documentoExistente) {
+        await enviarArquivo(`/api/company-documents/${documentoExistente.id}/arquivo`, arquivo)
+        await api.patch(`/api/company-documents/${documentoExistente.id}`, { dataValidade: validade || null })
+      } else {
+        await enviarArquivo('/api/company-documents/com-arquivo', arquivo, {
+          metodo: 'POST',
+          metadados: { tipo: requisito.id, nome: requisito.label, dataValidade: validade || null },
+        })
+      }
       setAberto(false)
       setArquivo(null)
       setValidade('')

@@ -39,14 +39,18 @@ async function assertOwnership(docId: string, companyId: string) {
   return doc
 }
 
+async function exigirEspacoParaMaisUmDocumento(companyId: string) {
+  if ((await prisma.companyDocument.count({ where: { companyId } })) >= MAX_DOCUMENTOS_POR_EMPRESA) {
+    throw new ApiError(422, `Limite de ${MAX_DOCUMENTOS_POR_EMPRESA} documentos por empresa atingido. Remova algum para cadastrar outro.`)
+  }
+}
+
 companyDocumentsRouter.post(
   '/',
   asyncHandler(async (req, res) => {
     const body = createSchema.parse(req.body)
     // Teto por empresa: um teste grátis do cadastro público não pode criar linhas sem fim.
-    if ((await prisma.companyDocument.count({ where: { companyId: req.companyId! } })) >= MAX_DOCUMENTOS_POR_EMPRESA) {
-      throw new ApiError(422, `Limite de ${MAX_DOCUMENTOS_POR_EMPRESA} documentos por empresa atingido. Remova algum para cadastrar outro.`)
-    }
+    await exigirEspacoParaMaisUmDocumento(req.companyId!)
     const doc = await prisma.companyDocument.create({
       data: { ...body, companyId: req.companyId!, userId: req.userId! },
     })
@@ -115,33 +119,80 @@ function nomeDoCabecalho(valor: string | undefined): string {
 
 const lerArquivo = express.raw({ type: () => true, limit: TAMANHO_MAXIMO_ARQUIVO })
 
+async function arquivoValidado(req: express.Request, tamanhoQueSeraSubstituido: number) {
+  const conteudo = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0)
+  if (conteudo.length === 0) throw new ApiError(400, 'Nenhum arquivo foi enviado')
+
+  const tipo = detectarTipoDeArquivo(conteudo)
+  if (!tipo) throw new ApiError(415, 'Envie o documento em PDF, JPG ou PNG')
+
+  const usado = await prisma.companyDocumentFile.aggregate({ where: { companyId: req.companyId! }, _sum: { tamanho: true } })
+  const limite = limiteDeArmazenamentoPorEmpresa()
+  if ((usado._sum.tamanho ?? 0) - tamanhoQueSeraSubstituido + conteudo.length > limite) {
+    throw new ApiError(422, `O espaço de arquivos da empresa (${Math.round(limite / 1024 / 1024)} MB) acabou. Remova arquivos antigos para enviar este.`)
+  }
+
+  const nomeRecebido = nomeDoCabecalho(req.header('x-nome-arquivo')).slice(0, 200)
+  return {
+    nomeArquivo: nomeDeArquivoSeguro(nomeRecebido, tipo),
+    mimeType: tipo,
+    tamanho: conteudo.length,
+    sha256: createHash('sha256').update(conteudo).digest('hex'),
+    conteudo,
+  }
+}
+
+function metadadosDoCabecalho(valor: string | undefined): unknown {
+  try {
+    return JSON.parse(nomeDoCabecalho(valor) || 'null')
+  } catch {
+    throw new ApiError(400, 'Dados do documento inválidos')
+  }
+}
+
+companyDocumentsRouter.post(
+  '/com-arquivo',
+  escritaSensivelLimiter,
+  lerArquivo,
+  asyncHandler(async (req, res) => {
+    const metadados = createSchema.safeParse(metadadosDoCabecalho(req.header('x-documento')))
+    if (!metadados.success) throw new ApiError(400, 'Informe o nome do documento')
+    await exigirEspacoParaMaisUmDocumento(req.companyId!)
+    const dados = await arquivoValidado(req, 0)
+
+    const doc = await prisma.companyDocument.create({
+      data: {
+        ...metadados.data,
+        companyId: req.companyId!,
+        userId: req.userId!,
+        arquivo: { create: { ...dados, companyId: req.companyId! } },
+      },
+      include: { arquivo: { select: { nomeArquivo: true, mimeType: true, tamanho: true, updatedAt: true } } },
+    })
+    await registrarAuditoria(req, {
+      action: 'DOCUMENTO_CRIADO',
+      entityType: 'documento',
+      entityId: doc.id,
+      metadata: { nome: doc.nome, tipo: doc.tipo },
+    })
+    await registrarAuditoria(req, {
+      action: 'DOCUMENTO_ARQUIVO_ENVIADO',
+      entityType: 'documento',
+      entityId: doc.id,
+      metadata: { nome: doc.nome, arquivo: dados.nomeArquivo, tamanho: dados.tamanho, sha256: dados.sha256 },
+    })
+    res.status(201).json(doc)
+  })
+)
+
 companyDocumentsRouter.put(
   '/:id/arquivo',
   escritaSensivelLimiter,
   lerArquivo,
   asyncHandler(async (req, res) => {
     const doc = await assertOwnership(req.params.id, req.companyId!)
-    const conteudo = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0)
-    if (conteudo.length === 0) throw new ApiError(400, 'Nenhum arquivo foi enviado')
-
-    const tipo = detectarTipoDeArquivo(conteudo)
-    if (!tipo) throw new ApiError(415, 'Envie o documento em PDF, JPG ou PNG')
-
     const atual = await prisma.companyDocumentFile.findUnique({ where: { documentId: doc.id }, select: { tamanho: true } })
-    const usado = await prisma.companyDocumentFile.aggregate({ where: { companyId: req.companyId! }, _sum: { tamanho: true } })
-    const limite = limiteDeArmazenamentoPorEmpresa()
-    if ((usado._sum.tamanho ?? 0) - (atual?.tamanho ?? 0) + conteudo.length > limite) {
-      throw new ApiError(422, `O espaço de arquivos da empresa (${Math.round(limite / 1024 / 1024)} MB) acabou. Remova arquivos antigos para enviar este.`)
-    }
-
-    const nomeRecebido = nomeDoCabecalho(req.header('x-nome-arquivo')).slice(0, 200)
-    const dados = {
-      nomeArquivo: nomeDeArquivoSeguro(nomeRecebido, tipo),
-      mimeType: tipo,
-      tamanho: conteudo.length,
-      sha256: createHash('sha256').update(conteudo).digest('hex'),
-      conteudo,
-    }
+    const dados = await arquivoValidado(req, atual?.tamanho ?? 0)
     const arquivo = await prisma.companyDocumentFile.upsert({
       where: { documentId: doc.id },
       update: dados,

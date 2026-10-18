@@ -16,6 +16,16 @@ export const ROTULO_RECURSO: Record<Recurso, string> = {
   analisesIaMes: 'análises de edital no mês',
 }
 
+const ROTULO_RECURSO_NO_SINGULAR: Record<Recurso, string> = {
+  itensMonitorados: 'item monitorado',
+  usuarios: 'usuário',
+  analisesIaMes: 'análise de edital no mês',
+}
+
+export function quantidadeDoRecurso(recurso: Recurso, quantidade: number): string {
+  return `${quantidade} ${quantidade === 1 ? ROTULO_RECURSO_NO_SINGULAR[recurso] : ROTULO_RECURSO[recurso]}`
+}
+
 // Rede de segurança caso a tabela `plans` esteja vazia ou o plano da empresa
 // tenha sido removido: o mais restritivo, nunca "ilimitado" por acidente.
 export const LIMITES_PADRAO: LimitesDoPlano = {

@@ -64,9 +64,25 @@ describe('garantia contratual (art. 98: até 5%, 10% se justificada)', () => {
     expect(a[0].detalhe).toMatch(/justificativa/)
   })
 
-  it('acima de 10%: alto', () => {
-    const a = calcularAlertasLegais({ garantiaContratual: '15% do valor contratado', valorEstimado: null })
-    expect(a[0]).toMatchObject({ id: 'garantia-contratual', gravidade: 'alta' })
+  it('acima de 10% com valor abaixo do grande vulto: alto, citando os arts. 98 e 99', () => {
+    const a = calcularAlertasLegais({ garantiaContratual: '15% do valor contratado', valorEstimado: 3_000_000 })
+    expect(a[0]).toMatchObject({ id: 'garantia-contratual', gravidade: 'alta', titulo: 'Garantia contratual acima de 10%' })
+    expect(a[0].fundamento).toMatch(/art\. 98 \(obras, serviços e fornecimentos/)
+    expect(a[0].fundamento).toMatch(/art\. 99 \(obras e serviços de engenharia de grande vulto: até 30%/)
+    expect(a[0].detalhe).toContain('Verifique com seu advogado')
+  })
+
+  it('acima de 10% sem valor ou de grande vulto: médio, pedindo para conferir se é de grande vulto', () => {
+    for (const valorEstimado of [null, 300_000_000]) {
+      const a = calcularAlertasLegais({ garantiaContratual: '15% do valor contratado', valorEstimado })
+      expect(a[0]).toMatchObject({ id: 'garantia-contratual', gravidade: 'media' })
+      expect(a[0].detalhe).toMatch(/confira se é de grande vulto/)
+    }
+  })
+
+  it('acima de 30%: alto mesmo em grande vulto', () => {
+    const a = calcularAlertasLegais({ garantiaContratual: '35% do valor do contrato', valorEstimado: 300_000_000 })
+    expect(a[0]).toMatchObject({ id: 'garantia-contratual', gravidade: 'alta', titulo: 'Garantia contratual acima de 30%' })
   })
 
   it('até 5% não alerta', () => {

@@ -36,4 +36,24 @@ describe('estaAberta', () => {
     expect(estaAberta(base({ publicadoAt: null, createdAt: dias(-3) }), AGORA)).toBe(true)
     expect(estaAberta(base({ publicadoAt: null, createdAt: dias(-90) }), AGORA)).toBe(false)
   })
+
+  it('portais sem data: processo de ano anterior nunca está aberto, nem coletado há pouco', () => {
+    const sestDe2016 = base({ fonte: 'SEST_SENAT', publicadoAt: null, createdAt: dias(-19), anoDoProcesso: 2016 })
+    expect(estaAberta(sestDe2016, AGORA)).toBe(false)
+    expect(estaAberta(base({ fonte: 'SESC_GO', publicadoAt: null, createdAt: dias(-1), anoDoProcesso: 2022 }), AGORA)).toBe(false)
+    expect(estaAberta(base({ fonte: 'SESC_REGIONAL', publicadoAt: dias(-3), anoDoProcesso: 2025 }), AGORA)).toBe(false)
+  })
+
+  it('portais sem data: vale a publicação ou o ano do número, nunca a data da coleta', () => {
+    expect(estaAberta(base({ fonte: 'SEST_SENAT', publicadoAt: null, createdAt: dias(-1), anoDoProcesso: 2026 }), AGORA)).toBe(true)
+    expect(estaAberta(base({ fonte: 'SEST_SENAT', publicadoAt: null, createdAt: dias(-1), anoDoProcesso: null }), AGORA)).toBe(false)
+    expect(estaAberta(base({ fonte: 'SEST_SENAT', publicadoAt: null, createdAt: dias(-1) }), AGORA)).toBe(false)
+    expect(estaAberta(base({ fonte: 'SESC_REGIONAL', publicadoAt: dias(-3), anoDoProcesso: null }), AGORA)).toBe(true)
+    expect(estaAberta(base({ fonte: 'SESC_REGIONAL', publicadoAt: dias(-60), anoDoProcesso: 2026 }), AGORA)).toBe(false)
+  })
+
+  it('portais com prazo ou sessão futura seguem abertos mesmo com número de ano anterior', () => {
+    expect(estaAberta(base({ fonte: 'NOVACAP', encerramentoAt: dias(40), publicadoAt: null, anoDoProcesso: 2025 }), AGORA)).toBe(true)
+    expect(estaAberta(base({ fonte: 'SEST_SENAT', aberturaAt: dias(3), publicadoAt: null, anoDoProcesso: 2025 }), AGORA)).toBe(true)
+  })
 })

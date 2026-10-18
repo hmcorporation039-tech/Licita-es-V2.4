@@ -7,6 +7,7 @@
 import PDFDocument from 'pdfkit'
 import { DadosDoEstudo, ItemDaLicitacao, ResultadoDoEstudo } from '../lib/estudoDeCustos'
 import type { DossieDaLicitacao } from './dossieDaLicitacao'
+import { formatarCnpj, formatarCpf } from '../lib/documentosDaLicitacao/proponente'
 
 export interface EntradaDoPdf {
   empresa: { nome: string; documento: string | null; base: string | null }
@@ -62,6 +63,13 @@ const TOPO = 100 // espaço do papel timbrado do Monitor de Licitações no alto
 const seguro = (t: string) => t.replace(/[^\x20-\x7E\u00A0-\u00FF\u2013\u2014\u2018\u2019\u201C\u201D\u2022\u2026\u20AC]/g, ' ').replace(/\s+/g, ' ').trim()
 const ROTULO_CATEGORIA: Record<string, string> = { juridica: 'Jurídica', fiscal: 'Fiscal', economica: 'Econômico-financeira', tecnica: 'Técnica', proposta: 'Proposta', outra: 'Outra' }
 const ROTULO_RESPONSAVEL: Record<string, string> = { fiscal: 'documentos', calculista: 'preços', redator: 'proposta' }
+
+export function identificacaoDaEmpresa(empresa: { nome: string; documento: string | null }): string {
+  if (!empresa.documento) return seguro(empresa.nome)
+  const ehCnpj = empresa.documento.replace(/\D/g, '').length === 14
+  const documento = ehCnpj ? `CNPJ ${formatarCnpj(empresa.documento)}` : `CPF ${formatarCpf(empresa.documento)}`
+  return `${seguro(empresa.nome)}  -  ${seguro(documento)}`
+}
 
 export function gerarPdfDoEstudo(e: EntradaDoPdf): Promise<Buffer> {
   return new Promise((resolve, reject) => {
@@ -303,7 +311,7 @@ export function gerarPdfDoEstudo(e: EntradaDoPdf): Promise<Buffer> {
     }
     par('Viagens', String(e.dados.deslocamento.viagens))
     if (dl.litrosPorViagem !== null) {
-      par('Combustível por viagem', `${dl.litrosPorViagem.toLocaleString('pt-BR')} litros x ${brlPorLitro(e.dados.deslocamento.precoLitro)} =${brl(dl.combustivelPorViagem)} (${e.dados.deslocamento.consumoKmPorLitro.toLocaleString('pt-BR')} km/l)`)
+      par('Combustível por viagem', `${dl.litrosPorViagem.toLocaleString('pt-BR')} litros x ${brlPorLitro(e.dados.deslocamento.precoLitro)}  = ${brl(dl.combustivelPorViagem)} (${e.dados.deslocamento.consumoKmPorLitro.toLocaleString('pt-BR')} km/l)`)
     }
     par('Outro custo por km / pedágio / hospedagem', `${brl(e.dados.deslocamento.valorPorKm)} / ${brl(e.dados.deslocamento.pedagioPorViagem)} / ${brl(e.dados.deslocamento.hospedagemPorViagem)}`)
     par('Custo por viagem', brl(dl.custoPorViagem))
@@ -355,7 +363,7 @@ export function gerarPdfDoEstudo(e: EntradaDoPdf): Promise<Buffer> {
       doc.font('Helvetica-Bold').fontSize(17).fillColor(COR.titulo).text('Monitor de Licitações', MARGEM, 26, { width: largura, lineBreak: false })
       doc.font('Helvetica').fontSize(8).fillColor(COR.suave).text('Acompanhamento, análise e estudo de viabilidade de licitações públicas', MARGEM, 47, { width: largura, lineBreak: false })
       doc.font('Helvetica-Bold').fontSize(9).fillColor(COR.texto).text(
-        seguro(e.empresa.nome) + (e.empresa.documento ? '  -  ' + (e.empresa.documento.replace(/\D/g, '').length === 14 ? 'CNPJ ' : 'CPF ') + seguro(e.empresa.documento) : ''),
+        identificacaoDaEmpresa(e.empresa),
         MARGEM,
         62,
         { width: largura, lineBreak: false, ellipsis: true }

@@ -56,3 +56,7 @@ export function formatarData(valor: EntradaDeData, opcoes: { comHora?: boolean; 
   })
   return formato.format(data).replace(',', '')
 }
+
+export function formatarDataDaLicitacao(valor: EntradaDeData, fonte: string, opcoes: { comHora?: boolean; anoCurto?: boolean } = { comHora: true }): string {
+  return formatarData(dataDaLicitacao(valor, fonte), opcoes)
+}

@@ -12,6 +12,7 @@ import * as cheerio from 'cheerio'
 import { NormalizedTender } from '../types'
 import { SESCGO_MODALIDADE_MAP } from '../types'
 import { parseDataBr } from '../lib/scrapingHelpers'
+import { horaDeBrasilia } from '../lib/dataDeBrasilia'
 
 function truncate(str: string, max = 500): string {
   if (!str) return ''
@@ -24,6 +25,16 @@ function truncate(str: string, max = 500): string {
 // amostra real) — por segurança, a regra é por exclusão dos que reconhecemos
 // claramente como estado final, não por uma lista fechada do que é "aberto".
 const SITUACAO_FECHADA = /encerrad|cancelad|revogad|anulad|homologad|fracassad|conclu[íi]d|finalizad|suspens|deserta/i
+
+const DATA_DO_ANEXO = /\s*-\s*(\d{2})\/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2})\s*$/
+
+function dataDoAnexo(titulo: string): Date | undefined {
+  const m = titulo.match(DATA_DO_ANEXO)
+  if (!m) return undefined
+  const [, dia, mes, ano, hora, minuto] = m.map(Number)
+  const data = horaDeBrasilia(2000 + ano, mes - 1, dia, hora, minuto)
+  return Number.isNaN(data.getTime()) ? undefined : data
+}
 
 export const SESCGO_CNPJ = '03671444000147'
 export const SESCGO_RAZAO_SOCIAL = 'Serviço Social do Comércio - SESC - Administração Regional no Estado de Goiás'
@@ -77,11 +88,14 @@ export function parseSescGoListagem(html: string): NormalizedTender[] {
     // pra buscar sob demanda como as outras (é tudo uma página só). Só o
     // link e o nome do arquivo, nada de peso (ver análise de edital por IA).
     const anexos: { uri: string; titulo: string }[] = []
+    let publicadoAt: Date | undefined
     el.find('nav a[href*="/licitacao/download/"]').each((__, a) => {
       const uri = $(a).attr('href')
       if (!uri) return
       const bruto = $(a).text().replace(/\s+/g, ' ').trim()
-      const titulo = bruto.replace(/\s*-\s*\d{2}\/\d{2}\/\d{2}\s+\d{2}:\d{2}\s*$/, '').trim()
+      const titulo = bruto.replace(DATA_DO_ANEXO, '').trim()
+      const enviadoEm = dataDoAnexo(bruto)
+      if (enviadoEm && (!publicadoAt || enviadoEm < publicadoAt)) publicadoAt = enviadoEm
       anexos.push({ uri, titulo: titulo || 'Anexo' })
     })
 
@@ -95,6 +109,7 @@ export function parseSescGoListagem(html: string): NormalizedTender[] {
       orgao: SESCGO_RAZAO_SOCIAL,
       orgaoCnpj: SESCGO_CNPJ,
       encerramentoAt: parseDataBr(campos['abertura']),
+      publicadoAt,
       linkEdital: anexos[0]?.uri,
       numeroControle: processo,
       rawJson: { anexos },

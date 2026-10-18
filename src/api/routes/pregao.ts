@@ -59,7 +59,7 @@ async function montarPainel(companyId: string, tenderId: string) {
         numero: it.numero,
         quantidade: it.quantidade,
         precoProposto: venda === null ? null : Math.round(venda * fator * 100) / 100,
-        limites: { custoComRateio: Math.round(custoUnit * rateio * fator * 100) / 100, ...comum },
+        limites: { custoComRateio: custoUnit * rateio * fator, ...comum },
       }
     }),
   ]
@@ -82,7 +82,7 @@ async function montarPainel(companyId: string, tenderId: string) {
       numero: a.numero,
       quantidade: a.quantidade,
       precoProposto: a.precoProposto,
-      custo: a.limites.custoComRateio,
+      custo: Math.round(a.limites.custoComRateio * 100) / 100,
       ...limitesDoAlvo(a.limites),
       meusLances: meus,
       avaliacao,

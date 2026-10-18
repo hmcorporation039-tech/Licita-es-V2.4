@@ -157,12 +157,28 @@ rodar('Cadastro público e recuperação de senha', () => {
       expect(desconhecido.body).toEqual(conhecido.body) // não revela se o e-mail tem conta
     })
 
-    it('confirma com o código certo, uma vez só; reusar falha; depois o login funciona', async () => {
+    it('confirma com o código certo, uma vez só; reusar falha; depois o login funciona; os 7 dias contam da confirmação', async () => {
+      await prisma.user.update({ where: { email: email('fulano') }, data: { accessExpiresAt: new Date(Date.now() + 4 * 86_400_000) } })
       expect((await http('POST', '/api/auth/verify-email', { email: email('fulano'), codigo: codigoInicial })).status).toBe(200)
+      const confirmado = await prisma.user.findUnique({ where: { email: email('fulano') } })
+      const dias = (confirmado.accessExpiresAt.getTime() - Date.now()) / 86_400_000
+      expect(dias).toBeGreaterThan(6.9)
+      expect(dias).toBeLessThan(7.1)
       expect((await http('POST', '/api/auth/verify-email', { email: email('fulano'), codigo: codigoInicial })).status).toBe(400)
       const login = await http('POST', '/api/auth/login', { email: email('fulano'), password: SENHA })
       expect(login.status).toBe(200)
       expect(login.body.token).toBeTruthy()
+    })
+
+    it('o teste recomeça na confirmação só para o plano TESTE com prazo, e nunca encurta um prazo maior', async () => {
+      const { fimDoTesteNaConfirmacao } = await import('../../src/services/contaService')
+      const agora = new Date('2026-10-17T12:00:00Z')
+      const doCadastro = new Date('2026-10-20T12:00:00Z')
+      expect(fimDoTesteNaConfirmacao(doCadastro, 'TESTE', agora, 7)?.toISOString()).toBe('2026-10-24T12:00:00.000Z')
+      expect(fimDoTesteNaConfirmacao(null, 'TESTE', agora, 7)).toBeNull()
+      expect(fimDoTesteNaConfirmacao(doCadastro, 'ESSENCIAL', agora, 7)).toBe(doCadastro)
+      const prazoMaior = new Date('2026-12-31T12:00:00Z')
+      expect(fimDoTesteNaConfirmacao(prazoMaior, 'TESTE', agora, 7)).toBe(prazoMaior)
     })
 
     it('e-mail já cadastrado: a tela é AVISADA (409), nenhuma conta nova, e o dono também recebe aviso por e-mail', async () => {

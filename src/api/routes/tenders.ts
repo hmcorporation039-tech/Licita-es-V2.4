@@ -42,7 +42,12 @@ const querySchema = z.object({
     .transform((v) => [...new Set(v.toUpperCase().split(/[\s,;]+/).filter(Boolean))])
     .pipe(z.array(z.enum(SIGLAS_DAS_UFS)).max(SIGLAS_DAS_UFS.length))
     .optional(),
-  modalidade: z.enum(MODALIDADE_VALUES).optional(),
+  modalidade: z
+    .string()
+    .max(400)
+    .transform((v) => [...new Set(v.toUpperCase().split(/[\s,;]+/).filter(Boolean))])
+    .pipe(z.array(z.enum(MODALIDADE_VALUES)).max(MODALIDADE_VALUES.length))
+    .optional(),
   situacao: z.enum(SITUACAO_VALUES).optional(),
   orgao: z.string().trim().min(1).max(200).optional(),
   municipio: z.string().trim().min(1).max(200).optional(),
@@ -96,8 +101,7 @@ tendersRouter.get(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: Record<string, any> = {}
     if (uf?.length) where.uf = uf.length === 1 ? uf[0] : { in: uf }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if (modalidade) where.modalidade = modalidade as any
+    if (modalidade?.length) where.modalidade = modalidade.length === 1 ? modalidade[0] : { in: modalidade }
     // Só licitações abertas para concorrência (ver lib/licitacaoAberta.ts). O filtro
     // `situacao` antigo foi aposentado: encerradas não aparecem mais nas buscas.
     void situacao

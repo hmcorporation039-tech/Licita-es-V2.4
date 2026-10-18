@@ -1,4 +1,11 @@
-export type ModalidadeFalada = 'PREGAO_ELETRONICO' | 'PREGAO_PRESENCIAL' | 'CONCORRENCIA' | 'DISPENSA_COM_DISPUTA' | 'INEXIGIBILIDADE' | 'CREDENCIAMENTO'
+export type ModalidadeFalada =
+  | 'PREGAO_ELETRONICO'
+  | 'PREGAO_PRESENCIAL'
+  | 'CONCORRENCIA'
+  | 'DISPENSA_COM_DISPUTA'
+  | 'DISPENSA_SEM_DISPUTA'
+  | 'INEXIGIBILIDADE'
+  | 'CREDENCIAMENTO'
 
 export interface FiltrosDaBusca {
   q?: string
@@ -7,6 +14,7 @@ export interface FiltrosDaBusca {
   rotuloDoLocal?: string
   municipio?: string
   modalidade?: ModalidadeFalada
+  modalidades?: ModalidadeFalada[]
   situacao?: 'ABERTA'
 }
 
@@ -43,13 +51,15 @@ const REGIOES: Array<[RegExp, string, string[]]> = [
 const SIGLAS = new Set(['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'])
 const SIGLAS_QUE_SAO_PALAVRAS = new Set(['SE', 'TO', 'MA', 'PA', 'ES'])
 
-const MODALIDADES: Array<[RegExp, ModalidadeFalada, string]> = [
-  [/\bpregao presencial\b/, 'PREGAO_PRESENCIAL', 'pregão presencial'],
-  [/\bpregao( eletronico)?\b/, 'PREGAO_ELETRONICO', 'pregão eletrônico'],
-  [/\bconcorrencias?\b/, 'CONCORRENCIA', 'concorrência'],
-  [/\bdispensas?( eletronicas?)?\b/, 'DISPENSA_COM_DISPUTA', 'dispensa eletrônica'],
-  [/\binexigibilidades?\b/, 'INEXIGIBILIDADE', 'inexigibilidade'],
-  [/\bcredenciamentos?\b/, 'CREDENCIAMENTO', 'credenciamento'],
+const MODALIDADES: Array<[RegExp, ModalidadeFalada[], string]> = [
+  [/\bpregao presencial\b/, ['PREGAO_PRESENCIAL'], 'pregão presencial'],
+  [/\bpregao( eletronico)?\b/, ['PREGAO_ELETRONICO'], 'pregão eletrônico'],
+  [/\bconcorrencias?\b/, ['CONCORRENCIA'], 'concorrência'],
+  [/\bdispensas?( de licitacao)? (com disputa|eletronicas?)\b/, ['DISPENSA_COM_DISPUTA'], 'dispensa com disputa'],
+  [/\bdispensas?( de licitacao)? sem disputa\b/, ['DISPENSA_SEM_DISPUTA'], 'dispensa sem disputa'],
+  [/\bdispensas?\b/, ['DISPENSA_COM_DISPUTA', 'DISPENSA_SEM_DISPUTA'], 'dispensa'],
+  [/\binexigibilidades?\b/, ['INEXIGIBILIDADE'], 'inexigibilidade'],
+  [/\bcredenciamentos?\b/, ['CREDENCIAMENTO'], 'credenciamento'],
 ]
 
 const PALAVRAS_DE_COMANDO = new Set([
@@ -57,7 +67,8 @@ const PALAVRAS_DE_COMANDO = new Set([
   'busca', 'buscar', 'encontre', 'encontra', 'encontrar', 'ache', 'acha', 'achar', 'mostre', 'mostra', 'mostrar', 'me', 'ver', 'veja', 'liste',
   'lista', 'listar', 'tem', 'tenha', 'existe', 'alguma', 'algum', 'uma', 'umas', 'um', 'uns', 'as', 'os', 'a', 'o', 'de', 'da', 'do', 'das', 'dos',
   'licitacao', 'licitacoes', 'edital', 'editais', 'oportunidade', 'oportunidades', 'pra', 'para', 'sobre', 'com', 'que', 'esteja', 'estejam',
-  'aberta', 'abertas', 'aberto', 'abertos', 'em', 'no', 'na', 'nos', 'nas', 'e', 'ai', 'ja',
+  'aberta', 'abertas', 'aberto', 'abertos', 'em', 'no', 'na', 'nos', 'nas', 'e', 'ai', 'ja', 'so', 'somente', 'apenas', 'se', 'tiver', 'tiverem',
+  'houver', 'existem', 'ha', 'todas', 'todos', 'qualquer', 'aparecer', 'aparece',
 ])
 const LIGACOES_NAS_PONTAS = new Set(['de', 'da', 'do', 'das', 'dos', 'para', 'pra', 'com', 'em', 'no', 'na', 'e', 'a', 'o'])
 
@@ -77,9 +88,13 @@ function numeroEscrito(bruto: string): number | null {
   if (ultimaVirgula > -1 && ultimoPonto > -1) {
     normal = ultimaVirgula > ultimoPonto ? s.replace(/\./g, '').replace(',', '.') : s.replace(/,/g, '')
   } else if (ultimaVirgula > -1) {
-    normal = s.length - ultimaVirgula - 1 === 3 && s.indexOf(',') !== ultimaVirgula ? s.replace(/,/g, '') : s.replace(',', '.')
+    const variasVirgulas = s.indexOf(',') !== ultimaVirgula
+    const casasDepoisDaVirgula = s.length - ultimaVirgula - 1
+    if (!variasVirgulas && casasDepoisDaVirgula > 2) return null
+    normal = casasDepoisDaVirgula === 3 && variasVirgulas ? s.replace(/,/g, '') : s.replace(',', '.')
   } else if (ultimoPonto > -1) {
     const partes = s.split('.')
+    if (partes.length === 2 && partes[1].length > 3) return null
     normal = partes.length > 2 || partes[partes.length - 1].length === 3 ? s.replace(/\./g, '') : s
   } else {
     normal = s
@@ -198,6 +213,7 @@ const NOMES_DE_LUGAR = [...ESTADOS.map(([nome]) => nome), 'centro[- ]?oeste', 'n
   .join('|')
 const UNIDADE = `(?:regiao\\s+)?(?:estado (?:de |do |da )?)?(?:${NOMES_DE_LUGAR}|[a-z]{2})`
 const PRIMEIRO_LUGAR = new RegExp(`\\b(${PREPOSICAO})\\s+(${UNIDADE})\\b`, 'g')
+const ESTADO_DENTRO_DA_REGIAO = new RegExp(`^\\s+(?:de|do|da)\\s+(${UNIDADE})\\b`)
 const PROXIMO_LUGAR = new RegExp(`^\\s*(?:,|\\be\\b|\\bou\\b)\\s*(?:(${PREPOSICAO})\\s+)?(${UNIDADE})\\b`)
 const PARA_COM_ACENTO = /(^|[^\p{L}])pará($|[^\p{L}])/iu
 
@@ -246,20 +262,43 @@ function acharLugares(t: string, original: string): { ufs: string[]; regioes: st
       procura.lastIndex = encontrado.index + 1
       continue
     }
-    somar(primeiro)
     let fim = encontrado.index + encontrado[0].length
+    const somarAte = (lugar: LugarFalado) => {
+      const estado = lugar.regiao ? ESTADO_DENTRO_DA_REGIAO.exec(t.slice(fim)) : null
+      const lugarDoEstado = estado ? lerLugar(estado[1], 'de', false, original) : null
+      if (estado && lugarDoEstado && !lugarDoEstado.regiao) {
+        somar(lugarDoEstado)
+        fim += estado[0].length
+      } else {
+        somar(lugar)
+      }
+    }
+    somarAte(primeiro)
     for (;;) {
       const proximo = PROXIMO_LUGAR.exec(t.slice(fim))
       if (!proximo) break
       const lugar = lerLugar(proximo[2], proximo[1], true, original)
       if (!lugar) break
-      somar(lugar)
       fim += proximo[0].length
+      somarAte(lugar)
     }
     trechos.push(new RegExp(`\\b${escaparParaRegex(t.slice(encontrado.index, fim))}\\b`))
     procura.lastIndex = fim
   }
   return { ufs, regioes, trechos }
+}
+
+const CAPITAIS_QUE_SAO_PALAVRAS = new Set(['natal', 'vitoria', 'palmas', 'salvador', 'boa vista', 'campo grande', 'rio branco'])
+const PREPOSICAO_DE_CIDADE = '(?:em|no|na|para)'
+const NOME_QUE_CONTINUA = '(?!\\s+(?:da|de|do|das|dos)\\s+[a-z])(?!-)'
+
+function acharCapital(t: string): { nome: string; uf: string; trecho: RegExp } | null {
+  for (const [chave, nome, uf] of CAPITAIS) {
+    const preposicao = CAPITAIS_QUE_SAO_PALAVRAS.has(chave) ? '(?:em)' : PREPOSICAO_DE_CIDADE
+    const trecho = new RegExp(`\\b${preposicao}\\s+${chave}\\b${NOME_QUE_CONTINUA}`)
+    if (trecho.test(t)) return { nome, uf, trecho }
+  }
+  return null
 }
 
 function juntarComE(itens: string[]): string {
@@ -310,17 +349,13 @@ export function interpretarPedido(texto: string, contexto: 'busca' | 'pregao' = 
   const filtros: FiltrosDaBusca = {}
   const partes: string[] = []
 
-  for (const [chave, nome, uf] of CAPITAIS) {
-    const re = new RegExp(`\\b(?:em|de|da|do|no|na|para)\\s+${chave}\\b`)
-    if (re.test(t)) {
-      filtros.municipio = nome
-      filtros.uf = uf
-      removidos.push(re)
-      break
-    }
-  }
-  if (!filtros.uf) {
-    const lugares = acharLugares(t, original)
+  const lugares = acharLugares(t, original)
+  const capital = acharCapital(t)
+  if (capital && (lugares.ufs.length === 0 || lugares.ufs.includes(capital.uf))) {
+    filtros.municipio = capital.nome
+    filtros.uf = capital.uf
+    removidos.push(capital.trecho, ...lugares.trechos)
+  } else {
     removidos.push(...lugares.trechos)
     if (lugares.ufs.length === 1 && lugares.regioes.length === 0) filtros.uf = lugares.ufs[0]
     if (lugares.ufs.length > 1 || lugares.regioes.length > 0) {
@@ -329,9 +364,10 @@ export function interpretarPedido(texto: string, contexto: 'busca' | 'pregao' = 
     }
   }
 
-  for (const [re, modalidade, nome] of MODALIDADES) {
+  for (const [re, modalidades, nome] of MODALIDADES) {
     if (re.test(t)) {
-      filtros.modalidade = modalidade
+      if (modalidades.length === 1) filtros.modalidade = modalidades[0]
+      else filtros.modalidades = modalidades
       removidos.push(re)
       partes.push(nome)
       break
@@ -347,7 +383,7 @@ export function interpretarPedido(texto: string, contexto: 'busca' | 'pregao' = 
   const objeto = palavrasDoObjeto(original, removidos)
   if (objeto) filtros.q = objeto
 
-  if (!filtros.q && !filtros.uf && !filtros.ufs && !filtros.modalidade) {
+  if (!filtros.q && !filtros.uf && !filtros.ufs && !filtros.modalidade && !filtros.modalidades) {
     return { acao: 'desconhecida', resumo: 'Não entendi o que buscar. Diga, por exemplo: "licitação de estrutura metálica no DF".' }
   }
 

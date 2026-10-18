@@ -163,6 +163,22 @@ describe('parseSescGoListagem', () => {
     expect(tender.rawJson).toEqual({ anexos: [{ uri: 'https://www3.sescgo.com.br/licitacao/download/50015', titulo: 'Edital.pdf' }] })
   })
 
+  it('usa a data do anexo mais antigo como publicação', () => {
+    const comDatas = html.replace(
+      '>Edital.pdf</a>',
+      '>Edital.pdf - 22/09/26 14:30</a><a href="https://www3.sescgo.com.br/licitacao/download/50016" class="item">Errata.pdf - 01/10/26 09:00</a>',
+    )
+    const [tender] = parseSescGoListagem(comDatas)
+    expect(tender.publicadoAt?.toISOString()).toBe('2026-09-22T17:30:00.000Z')
+    expect(tender.rawJson).toEqual({
+      anexos: [
+        { uri: 'https://www3.sescgo.com.br/licitacao/download/50015', titulo: 'Edital.pdf' },
+        { uri: 'https://www3.sescgo.com.br/licitacao/download/50016', titulo: 'Errata.pdf' },
+      ],
+    })
+    expect(parseSescGoListagem(html)[0].publicadoAt).toBeUndefined()
+  })
+
   it('pula card sem "Processo n°" em vez de quebrar', () => {
     const semProcesso = `<div class="accordion" id="licitacoes"><div class="card"><div class="card-body"></div></div></div>`
     expect(parseSescGoListagem(semProcesso)).toHaveLength(0)

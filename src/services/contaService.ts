@@ -47,6 +47,18 @@ export function trialDias(env: NodeJS.ProcessEnv = process.env): number {
   return Number.isInteger(n) && n >= 1 && n <= 90 ? n : TRIAL_DIAS_PADRAO
 }
 
+export function fimDoTesteNaConfirmacao(acessoAte: Date | null, planCode: string, agora: Date, dias: number = trialDias()): Date | null {
+  if (acessoAte === null || planCode !== 'TESTE') return acessoAte
+  const aPartirDaConfirmacao = new Date(agora.getTime() + dias * 24 * 60 * 60 * 1000)
+  return aPartirDaConfirmacao > acessoAte ? aPartirDaConfirmacao : acessoAte
+}
+
+async function acessoAoConfirmar(user: { accessExpiresAt: Date | null; companyId: string }, agora: Date): Promise<{ accessExpiresAt?: Date | null }> {
+  if (user.accessExpiresAt === null) return {}
+  const empresa = await prisma.company.findUnique({ where: { id: user.companyId }, select: { planCode: true } })
+  return empresa ? { accessExpiresAt: fimDoTesteNaConfirmacao(user.accessExpiresAt, empresa.planCode, agora) } : {}
+}
+
 // Emite um token novo e invalida os anteriores ainda não usados do mesmo tipo.
 // Devolve null se já foi emitido um há menos de um minuto (evita spam de e-mail).
 async function emitirToken(userId: string, tipo: TipoDeToken, agora = new Date()): Promise<string | null> {
@@ -283,7 +295,7 @@ export async function confirmarEmail(emailBruto: string, codigo: string, agora =
   // Uso único: o "marcar como usado" é condicional, então dois envios simultâneos não passam os dois.
   const { count } = await prisma.authToken.updateMany({ where: { id: registro.id, usedAt: null }, data: { usedAt: agora } })
   if (count !== 1) return { ok: false, erro: 'codigo', userId: user.id, companyId: user.companyId }
-  await prisma.user.update({ where: { id: user.id }, data: { emailVerifiedAt: agora } })
+  await prisma.user.update({ where: { id: user.id }, data: { emailVerifiedAt: agora, ...(await acessoAoConfirmar(user, agora)) } })
   return { ok: true, userId: user.id, companyId: user.companyId }
 }
 
@@ -304,6 +316,8 @@ export async function redefinirSenha(
   const passwordHash = await hashPassword(novaSenha)
   const antes = await prisma.user.findUnique({ where: { id: userId } })
   if (!antes || !antes.active) return null
+  const agora = new Date()
+  const confirmacao = antes.emailVerifiedAt ? {} : { emailVerifiedAt: agora, ...(await acessoAoConfirmar(antes, agora)) }
 
   await prisma.$transaction([
     prisma.user.update({
@@ -313,7 +327,7 @@ export async function redefinirSenha(
         // Derruba todas as sessões abertas: se alguém roubou a conta, perde o acesso.
         tokenVersion: { increment: 1 },
         // Receber o link no e-mail prova que a pessoa controla o endereço.
-        emailVerifiedAt: antes.emailVerifiedAt ?? new Date(),
+        ...confirmacao,
       },
     }),
     // Outros links de recuperação pendentes deixam de valer.
