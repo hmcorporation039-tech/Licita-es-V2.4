@@ -313,13 +313,13 @@ export function calcularEstudo(itens: ItemDaLicitacao[], dados: DadosDoEstudo, c
 export function lerPrazoEmDias(texto: string | null | undefined): { dias: number; uteis: boolean } | null {
   if (!texto) return null
   const t = texto.toLowerCase()
-  const emDias = [...t.matchAll(/(\d{1,4})\s*(?:\([^)]*\)\s*)?dias?\b(\s+(?:úteis|uteis|corridos))?/g)]
+  const emDias = [...t.matchAll(/(\d{1,4})\s*(?:\([^)]*\)\s*)?dias?\b(\s+(?:úteis|uteis|útil|util|corridos?))?/g)]
   if (emDias.length > 0) {
     const valores = new Set(emDias.map((m) => Number(m[1])))
     if (valores.size > 1) return null
-    return { dias: Number(emDias[0][1]), uteis: emDias.some((m) => /[uú]teis/.test(m[2] ?? '')) }
+    return { dias: Number(emDias[0][1]), uteis: emDias.some((m) => /[uú]t(?:eis|il)/.test(m[2] ?? '')) }
   }
-  const emMeses = [...t.matchAll(/(\d{1,3})\s*(?:\([^)]*\)\s*)?(?:mes|meses|mês)\b/g)]
+  const emMeses = [...t.matchAll(/(\d{1,3})\s*(?:\([^)]*\)\s*)?(?:meses|mês|mes)(?![a-z])/g)]
   const meses = new Set(emMeses.map((m) => Number(m[1])))
   if (meses.size !== 1) return null
   return { dias: Number(emMeses[0][1]) * 30, uteis: false }

@@ -11,6 +11,7 @@ import { prisma } from '../services/tenderService'
 import { sendMatchEmail, sendTenderChangedEmail } from '../services/emailService'
 import { NotificadorAlteracaoPayload, NotificadorJobPayload, NotificadorMatchPayload } from '../types'
 import { inicioDoDiaUtc, limites } from '../lib/limites'
+import { estaAberta } from '../lib/licitacaoAberta'
 
 async function jaNotificado(caminho: string[], valor: string): Promise<boolean> {
   const existente = await prisma.notification.findFirst({
@@ -20,7 +21,7 @@ async function jaNotificado(caminho: string[], valor: string): Promise<boolean> 
   return existente !== null
 }
 
-async function processarMatch(payload: NotificadorMatchPayload): Promise<void> {
+export async function processarMatch(payload: NotificadorMatchPayload): Promise<void> {
   const { tenderMatchId } = payload
 
   if (await jaNotificado(['tenderMatchId'], tenderMatchId)) return
@@ -30,6 +31,7 @@ async function processarMatch(payload: NotificadorMatchPayload): Promise<void> {
     include: { tender: true, monitoredItem: true, user: true },
   })
   if (!match || !match.user.active) return
+  if (!estaAberta(match.tender)) return
 
   const emailsHojeDaEmpresa = await prisma.notification.count({
     where: {

@@ -14,6 +14,8 @@ import { normalize } from '../../lib/geoService'
 import { whereLicitacaoComPrazoConfirmado } from '../../lib/licitacaoAberta'
 import { dataDaSessao } from '../../lib/dataDaSessao'
 import { vitrineLimiter } from '../rateLimit'
+import { idsQueCitamOTexto } from '../../services/buscaDeLicitacoes'
+import { Prisma } from '@prisma/client'
 
 export const publicRouter = Router()
 
@@ -77,6 +79,9 @@ publicRouter.get(
   })
 )
 
+const AMOSTRAS_DA_VITRINE = 3
+const ORDEM_DA_VITRINE: Prisma.TenderOrderByWithRelationInput[] = [{ encerramentoAt: { sort: 'asc', nulls: 'last' } }, { aberturaAt: 'asc' }, { id: 'asc' }]
+
 const vitrineSchema = z.object({
   q: z.string().trim().min(3).max(60),
   uf: z.string().trim().toUpperCase().length(2).optional(),
@@ -94,18 +99,15 @@ publicRouter.get(
       res.json(emCache)
       return
     }
-    const where = {
-      AND: [whereLicitacaoComPrazoConfirmado(), { OR: [{ objetoNorm: { contains: qNorm } }, { objetoResumidoNorm: { contains: qNorm } }] }, ...(uf ? [{ uf }] : [])],
-    }
-    const [total, amostras] = await Promise.all([
-      prisma.tender.count({ where }),
-      prisma.tender.findMany({
-        where,
-        orderBy: [{ encerramentoAt: { sort: 'asc', nulls: 'last' } }, { aberturaAt: 'asc' }],
-        take: 3,
-        select: { objeto: true, objetoResumido: true, orgao: true, uf: true, municipio: true, encerramentoAt: true, aberturaAt: true, fonte: true },
-      }),
-    ])
+    const { ids } = await idsQueCitamOTexto(q, { AND: [whereLicitacaoComPrazoConfirmado(), ...(uf ? [{ uf }] : [])] }, ORDEM_DA_VITRINE)
+    const total = ids.length
+    const idsDasAmostras = ids.slice(0, AMOSTRAS_DA_VITRINE)
+    const encontradas = await prisma.tender.findMany({
+      where: { id: { in: idsDasAmostras } },
+      select: { id: true, objeto: true, objetoResumido: true, orgao: true, uf: true, municipio: true, encerramentoAt: true, aberturaAt: true, fonte: true },
+    })
+    const porId = new Map(encontradas.map((t) => [t.id, t]))
+    const amostras = idsDasAmostras.map((id) => porId.get(id)).filter((t): t is (typeof encontradas)[number] => t !== undefined)
     const valor = {
       total,
       amostras: amostras.map((t) => {
