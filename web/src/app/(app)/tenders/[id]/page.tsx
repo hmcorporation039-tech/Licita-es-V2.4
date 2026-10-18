@@ -607,7 +607,7 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
                         ? 'O prazo já terminou.'
                         : prazos.diasUteisAteLimite === 0
                           ? 'Termina hoje.'
-                          : faltamDiasUteis(prazos.diasUteisAteLimite)}
+                          : faltamDiasUteis(prazos.diasUteisAteLimite ?? 0)}
                   </p>
                   {prazos.aviso && <p className="mt-1 text-xs text-muted">{prazos.aviso}</p>}
                 </Notice>
