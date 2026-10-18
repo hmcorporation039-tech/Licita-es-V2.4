@@ -173,3 +173,8 @@ sistemaSHtmlClient.defaults.timeout = 60_000
 sistemaSHtmlClient.defaults.maxContentLength = 20 * 1024 * 1024
 
 export const infraeroClient = createRateLimitedClient('https://licitacao.infraero.gov.br', 1500, { Accept: 'text/html,application/xhtml+xml' })
+
+export const diarioMunicipalClient = createRateLimitedClient('https://www.diariomunicipal.com.br', 2000, HTML_HEADERS)
+diarioMunicipalClient.defaults.timeout = 60_000
+diarioMunicipalClient.defaults.maxContentLength = 5 * 1024 * 1024
+diarioMunicipalClient.defaults.maxRedirects = 0

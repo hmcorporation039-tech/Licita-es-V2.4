@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Diário Oficial dos Municípios SIGPub - Sistema Gerenciador de Publicações Legais</title>
+        <link rel="stylesheet" type="text/css" href="/dist/css/externo.min.css">
+        <link rel="stylesheet" type="text/css" href="/dist/css/navegacao.min.css">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico"/>
+
+    <link rel="stylesheet" type="text/css" href="/dist/lib/css/lib.min.css">
+    <link rel="stylesheet" type="text/css" href="/dist/lib/npm/sweetalert2.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.1/css/all.min.css"
+    integrity="sha512-MV7K8+y+gLIBoVD59lQIYicR65iaqukzvf/nwasF0nqhPay5w/9lJmVM2hMDcnK1OnMGCdVK+iQrJ7lzPJQd1w=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"/>
+
+            <!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-KJYBF0PFGT"></script>
+<script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'UA-18200099-1');
+    gtag('config', 'G-KJYBF0PFGT');
+</script>
+    </head>
+<body class="diario-famup">
+
+<input type='hidden' name='gethostname' value='vox-prod-web-06' />
+
+    <section id="popup" class="modal-edicao none" role="dialog" aria-modal="true" aria-labelledby="modal-edicao-titulo">
+    <div class="modal-edicao__fundo" data-fechar-modal></div>
+
+    <div class="modal-edicao__janela">
+        <header class="modal-edicao__cabecalho">
+            <div>
+                <p class="modal-edicao__rotulo">Edição do dia</p>
+                <h1 class="modal-edicao__data" id="modal-edicao-titulo"><span id="dataDiario"></span></h1>
+            </div>
+
+            <a href="#" class="modal-edicao__fechar bt-fechar" title="Fechar" aria-label="Fechar">
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+            </a>
+        </header>
+
+        <div class="modal-edicao__corpo">
+                        <p id="materia-aviso" class="modal-edicao__vazio">
+                <i class="fa-regular fa-calendar-xmark" aria-hidden="true"></i>
+                Nenhuma edição publicada nesta data
+            </p>
+
+                        <div id="containerDownload" class="modal-edicao__bloco">
+                <ul class="modal-edicao__arquivos">
+                    <li>
+                        <a id="btDownloadSimples" href="#" class="botao-edicao" title="Clique aqui para baixar a edição simples">
+                            <i class="fa-solid fa-file-pdf" aria-hidden="true"></i>
+                            <span>
+                                <strong>Baixar a edição</strong>
+                                <small>Arquivo PDF</small>
+                            </span>
+                        </a>
+                    </li>
+                    <li>
+                        <a id="btDownloadCertificada" href="#" class="botao-edicao botao-edicao--secundario" title="Clique aqui para baixar certificada. Requer software">
+                            <i class="fa-solid fa-file-shield" aria-hidden="true"></i>
+                            <span>
+                                <strong>Baixar a versão certificada</strong>
+                                <small>Requer software de leitura</small>
+                            </span>
+                        </a>
+                    </li>
+                </ul>
+
+                <p class="modal-edicao__nota">
+                    As edições publicadas são arquivos em <strong>PDF assinados com certificado digital</strong>, o
+                    que assegura a autenticidade, a integridade e a validade jurídica do documento eletrônico. A
+                    assinatura usa o padrão XML DSIG: para abrir a edição certificada é preciso um leitor próprio.
+                    <a href="#" id="verificar-assinatura" title="Verificar Assinatura Digital">Verificar assinatura digital</a>
+                </p>
+            </div>
+
+                        <div id="containerDownloadNova" class="modal-edicao__bloco none">
+                <ul class="modal-edicao__arquivos">
+                    <li>
+                        <a id="btDownloadSimples2" href="#" class="botao-edicao" title="Clique aqui para baixar a edição simples">
+                            <i class="fa-solid fa-file-pdf" aria-hidden="true"></i>
+                            <span>
+                                <strong>Baixar a edição</strong>
+                                <small>Arquivo PDF assinado digitalmente</small>
+                            </span>
+                        </a>
+                    </li>
+                </ul>
+
+                <p class="modal-edicao__nota">
+                    As edições publicadas são arquivos em <strong>PDF assinados com certificado digital</strong>, o
+                    que assegura a autenticidade, a integridade e a validade jurídica do documento eletrônico.
+                </p>
+            </div>
+
+                        <div id="exibeExtra" class="modal-edicao__extra" style="display:none">
+                <p id="texto-extra" class="modal-edicao__extra-aviso">
+                    <i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i>
+                    Esta data também tem edição extraordinária.
+                </p>
+
+                <ul class="lista-extra modal-edicao__arquivos"></ul>
+            </div>
+        </div>
+    </div>
+</section>
+
+    <!-- container -->
+    <section class="grid-diario" class="diario-famup" data-entity="famup">
+        <!-- header -->
+        <header class="header">
+            <div class="container flex-center">
+                <a href="https://www.diariomunicipal.com.br/famup/" title="Federação das Associações de Municípios da Paraíba - FAMUP">
+                    <img
+                                                alt="Federação das Associações de Municípios da Paraíba - FAMUP"
+                        src="/dist/images/diario/famup/logo.png"
+                    />
+                                    </a>
+                <div class="btn-login">
+                    <a class="flex-center" href="https://autenticacao.diariomunicipal.com.br/selected-system/sigpub-famup" data-url="https://autenticacao.diariomunicipal.com.br/selected-system/sigpub-famup"> <i class="fa-solid fa-lock"></i><span>Acesso Seguro</span></a>
+                    <div class="tooltip">Área restrita para usuários do Diário Oficial Eletrônico</div>
+                </div>
+            </div>
+        </header>
+        <!-- /header -->
+
+        <section class="hero">
+            <div class="container">
+                <div class="orgao-hero">
+                <a href="https://www.diariomunicipal.com.br/famup/" id="orgao-base" title="Federação das Associações de Municípios da Paraíba - FAMUP">
+                    <img alt="Federação das Associações de Municípios da Paraíba - FAMUP" src="/dist/images/diario/famup/bandeira-uf.png" />
+                        <h1><span>Diário</span> Oficial dos Municípios </h1>
+                </a>
+                </div>
+            </div>
+        </section>
+
+        <!--menu-->
+
+                
+        <nav class="menu nav-bar navbar navbar-expand-lg" aria-label="Menu principal">
+            <div class="container justify-center">
+                                <button class="navbar-toggler" type="button"
+                        data-bs-toggle="collapse" data-bs-target="#menu-principal"
+                        aria-controls="menu-principal" aria-expanded="false"
+                        aria-label="Abrir o menu">
+                    <span class="tracos" aria-hidden="true">
+                        <span class="traco"></span>
+                        <span class="traco"></span>
+                        <span class="traco"></span>
+                    </span>
+                    <span class="rotulo">Menu</span>
+                </button>
+
+                <div class="collapse navbar-collapse" id="menu-principal">
+                                        <div class="menu-topo">
+                        <span class="menu-titulo">Menu</span>
+                        <button class="menu-fechar" type="button"
+                                data-bs-toggle="collapse" data-bs-target="#menu-principal"
+                                aria-controls="menu-principal" aria-expanded="false"
+                                aria-label="Fechar o menu">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+
+                    <ul class="navbar-nav small-caps">
+                        <li class="nav-item dropdown">
+                            <a href="#" class="nav-link dropdown-toggle item-parent"
+                               role="button" data-bs-toggle="dropdown" aria-expanded="false"
+                               title="O Diário Oficial">O Diário Oficial</a>
+                            <ul class="dropdown-menu sub-menu">
+                                <li>
+                                    <a class="dropdown-item"
+                                                                              href="https://www.diariomunicipal.com.br/famup/o-que-e"
+                                       title="O que é o Diário Oficial Eletrônico">O que é</a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item"
+                                                                              href="https://www.diariomunicipal.com.br/famup/como-funciona"
+                                       title="Como funciona o Diário Oficial Eletrônico">Como funciona</a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item"
+                                                                              href="https://www.diariomunicipal.com.br/famup/beneficios"
+                                       title="Benefícios do Diário Oficial Eletrônico">Benefícios</a>
+                                </li>
+                            </ul>
+                        </li>
+
+                                                    <li class="nav-item">
+                                <a class="nav-link mn-legislacao"
+                                                                      href="https://www.diariomunicipal.com.br/famup/legislacao"
+                                   title="Legislação">Legislação</a>
+                            </li>
+                        
+                        <li class="nav-item">
+                            <a class="nav-link mn-publicado"
+                                                              href="https://www.diariomunicipal.com.br/famup/atos"
+                               title="Atos que podem ser publicados neste Diário Oficial Eletrônico">O Que Pode Ser Publicado</a>
+                        </li>
+
+                                                                                <li class="nav-item mn-adesao">
+                                <a class="nav-link mn-adesao"
+                                                                      href="https://www.diariomunicipal.com.br/famup/adesao"
+                                   title="Faça sua Adesão">Faça sua Adesão</a>
+                            </li>
+                                            </ul>
+                </div>
+            </div>
+        </nav><!--/menu-->
+
+                <div class="menu-backdrop" data-menu-backdrop></div>
+
+        <!-- content -->
+        <section class="container mobile-container">
+                <div class="conteudo-interna busca-avancada">
+
+        <header class="busca-avancada__cabecalho">
+            <h1 id="tit-sessao"><strong>Busca</strong> completa por publicações</h1>
+            <p class="busca-avancada__ajuda">
+                A busca cobre todas as matérias publicadas desde 2009.
+                Informe ao menos um filtro além do período: palavra-chave, título, município ou
+                órgão. Com a palavra-chave preenchida, deixar o município e o órgão em branco
+                procura no diário inteiro.
+            </p>
+        </header>
+
+        <form name="busca_avancada" method="get" class="form-busca" id="form-busca">
+            
+
+            <div class="form-busca__linha">
+                <div class="form-busca__campo form-busca__campo--largo">
+                    <label for="busca_avancada_texto">Palavra-chave no texto</label>
+                    <input type="search" id="busca_avancada_texto" name="busca_avancada[texto]" class="campo-texto" placeholder="Ex.: reajuste salarial" value="aviso de licitação" />
+                    
+                </div>
+                <div class="form-busca__campo form-busca__campo--largo">
+                    <label for="busca_avancada_titulo">Título da matéria</label>
+                    <input type="search" id="busca_avancada_titulo" name="busca_avancada[titulo]" class="campo-texto" placeholder="Ex.: portaria, decreto" />
+                    
+                </div>
+            </div>
+
+            <div class="form-busca__linha">
+                <div class="form-busca__campo">
+                    <label for="busca_avancada_entidade">Município (entidade)</label>
+                    <select id="busca_avancada_entidade" name="busca_avancada[entidade]" class="campo-texto" data-busca="entidade"><option value="">Todos os municípios</option><option value="2101564">Consorcio Publico Intermunicpal de Segurança Pública da Paraíba – UNISEG</option><option value="334">Federação das Associações de Municípios da Paraíba - FAMUP</option><option value="53328">Município de Aguiar</option><option value="1216820">Município de Areia de Baraúnas</option><option value="58999">Município de Caaporã</option><option value="6279">Município de Cabaceiras</option><option value="581">Município de Conceição</option><option value="68023">Município de Condado</option><option value="59715">Município de Ibiara</option><option value="909950">Município de Jericó</option><option value="254922">Município de Juarez Távora</option><option value="2160">Município de Junco do Seridó</option><option value="2222013">Município de Lagoa</option><option value="65374">Município de Livramento</option><option value="309524">Município de Nova Palmeira</option><option value="53212">Município de Olho d&#039;Água</option><option value="80053">Município de Patos</option><option value="424">Município de Pedra Branca</option><option value="252325">Município de Remígio</option><option value="309507">Município de Salgadinho</option><option value="65362">Município de Santa Luzia</option><option value="59303">Município de Santana de Mangueira</option><option value="37182">Município de Santa Teresinha</option><option value="1095911">Município de São José de Piranhas</option><option value="1582">Município de São Mamede</option><option value="249533">Município de Serra Redonda</option><option value="2671044">Município de Sossêgo</option><option value="1864296">Municipio de Vista Serrana</option><option value="79225">Prefeitura de São João do Rio do Peixe</option><option value="1279900">Prefeitura de São José de Princesa</option><option value="76771">Prefeitura de São José dos Cordeiros</option><option value="74368">Prefeitura Municipal de Água Branca</option><option value="71156">Prefeitura Municipal de Alagoa Grande</option><option value="6740">Prefeitura Municipal de Alagoa Nova</option><option value="12734">Prefeitura Municipal de Alhandra</option><option value="13340">Prefeitura Municipal de Aparecida</option><option value="114712">Prefeitura Municipal de Arara</option><option value="14886">Prefeitura Municipal de Areial</option><option value="13140">Prefeitura Municipal de Bananeiras</option><option value="78797">Prefeitura Municipal de Barra de Santa Rosa</option><option value="1502">Prefeitura Municipal de Barra de São Miguel</option><option value="8049">Prefeitura Municipal de Bayeux</option><option value="15186">Prefeitura Municipal de Bernardino Batista</option><option value="5935">Prefeitura Municipal de Boa Vista</option><option value="69740">Prefeitura Municipal de Bom Sucesso</option><option value="553">Prefeitura Municipal de Bonito de Santa Fé</option><option value="1573484">Prefeitura Municipal de Brejo dos Santos</option><option value="37326">Prefeitura Municipal de Cacimba de Areia</option><option value="856273">Prefeitura Municipal de Cacimba de Dentro</option><option value="1086">Prefeitura Municipal de Cacimbas</option><option value="41127">Prefeitura Municipal de Caiçara</option><option value="13455">Prefeitura Municipal de Cajazeirinhas</option><option value="80699">Prefeitura Municipal de Camalaú</option><option value="36976">Prefeitura Municipal de Catingueira</option><option value="14084">Prefeitura Municipal de Congo</option><option value="55574">Prefeitura Municipal de Coremas</option><option value="75782">Prefeitura Municipal de Cubati</option><option value="55950">Prefeitura Municipal de Curral Velho</option><option value="68606">Prefeitura Municipal de Diamante</option><option value="55995">Prefeitura Municipal de Emas</option><option value="6738">Prefeitura Municipal de Esperança</option><option value="1020319">Prefeitura Municipal de Igaracy</option><option value="526">Prefeitura Municipal de Imaculada</option><option value="8499">Prefeitura Municipal de Itaporanga</option><option value="83125">Prefeitura Municipal de Jacaraú</option><option value="79508">Prefeitura Municipal de Joca Claudino</option><option value="449">Prefeitura Municipal de Juazeirinho</option><option value="15758">Prefeitura Municipal de Juripiranga</option><option value="77731">Prefeitura Municipal de Lagoa de Dentro</option><option value="14992">Prefeitura Municipal de Lastro</option><option value="89782">Prefeitura Municipal de Logradouro</option><option value="79812">Prefeitura Municipal de Malta</option><option value="37180">Prefeitura Municipal de Manaíra</option><option value="19060">Prefeitura Municipal de Marizópolis</option><option value="13886">Prefeitura Municipal de Massaranduba</option><option value="3473">Prefeitura Municipal de Mataraca</option><option value="8056">Prefeitura Municipal de Matinhas</option><option value="1356804">Prefeitura Municipal de Mato Grosso</option><option value="74773">Prefeitura Municipal de Mogeiro</option><option value="837">Prefeitura Municipal de Montadas</option><option value="7194">Prefeitura Municipal de Monte Horebe</option><option value="13668">Prefeitura Municipal de Monteiro</option><option value="56594">Prefeitura Municipal de Natuba</option><option value="13329">Prefeitura Municipal de Nazarezinho</option><option value="750">Prefeitura Municipal de Olivedos</option><option value="37908">Prefeitura Municipal de Ouro Velho</option><option value="557">Prefeitura Municipal de Paulista</option><option value="75820">Prefeitura Municipal de Pedra Lavrada</option><option value="1467">Prefeitura Municipal de Piancó</option><option value="415">Prefeitura Municipal de Picuí</option><option value="551">Prefeitura Municipal de Pirpirituba</option><option value="160048">Prefeitura Municipal de Pocinhos</option><option value="922977">Prefeitura Municipal de Poço Dantas</option><option value="13431">Prefeitura Municipal de Poço de Jose de Moura</option><option value="396">Prefeitura Municipal de Pombal</option><option value="11219">Prefeitura Municipal de Princesa Isabel</option><option value="811952">Prefeitura Municipal de Quixaba</option><option value="13497">Prefeitura Municipal de Riacho dos Cavalos</option><option value="12556">Prefeitura Municipal de Rio Tinto</option><option value="15056">Prefeitura Municipal de Santa Cecília</option><option value="69226">Prefeitura Municipal de Santa Cruz</option><option value="1923929">Prefeitura Municipal de Santa Helena</option><option value="867616">Prefeitura Municipal de Santana dos Garrotes</option><option value="13600">Prefeitura Municipal de São Bentinho</option><option value="99142">Prefeitura Municipal de São Domingos</option><option value="69432">Prefeitura Municipal de São Francisco</option><option value="143791">Prefeitura Municipal de São João do Tigre</option><option value="15390">Prefeitura Municipal de São Jose da Lagoa Tapada</option><option value="15451">Prefeitura Municipal de São José de Espinharas</option><option value="1355643">Prefeitura municipal de São José do Bonfim</option><option value="42228">Prefeitura Municipal de São José do Brejo do Cruz</option><option value="18542">Prefeitura Municipal de São José do Sabugi</option><option value="197024">Prefeitura Municipal de São Miguel de Taipu</option><option value="11886">Prefeitura Municipal de São Sebastião de Lagoa de Roça</option><option value="13587">Prefeitura Municipal de São Sebastião do Umbuzeiro</option><option value="1341">Prefeitura Municipal de Sapé</option><option value="7941">Prefeitura Municipal de Serra Grande</option><option value="429">Prefeitura Municipal de Soledade</option><option value="76579">Prefeitura Municipal de Taperoá</option><option value="14292">Prefeitura Municipal de Tavares</option><option value="13549">Prefeitura Municipal de Uirauna</option><option value="15021">Prefeitura Municipal de Vieirópolis</option><option value="74952">Prefeitura Municipal Salgado de São Félix</option></select>
+                    
+                </div>
+                <div class="form-busca__campo">
+                    <label for="busca_avancada_orgao">Órgão</label>
+                    <select id="busca_avancada_orgao" name="busca_avancada[orgao]" class="campo-texto" data-busca="orgao"><option value="">Todos os órgãos</option></select>
+                    
+                </div>
+            </div>
+
+            <div class="form-busca__linha">
+                <div class="form-busca__campo form-busca__campo--data">
+                    <label for="busca_avancada_dataInicio" class="required">Circulação de</label>
+                    <input type="date" id="busca_avancada_dataInicio" name="busca_avancada[dataInicio]" required="required" class="campo-texto" value="2026-10-12" />
+                    
+                </div>
+                <div class="form-busca__campo form-busca__campo--data">
+                    <label for="busca_avancada_dataFim" class="required">até</label>
+                    <input type="date" id="busca_avancada_dataFim" name="busca_avancada[dataFim]" required="required" class="campo-texto" value="2026-10-17" />
+                    
+                </div>
+                <div class="form-busca__campo">
+                    <label for="busca_avancada_ordenacao">Ordenar por</label>
+                    <select id="busca_avancada_ordenacao" name="busca_avancada[ordenacao]" class="campo-texto" data-busca="ordenacao"><option value="recente" selected="selected">Mais recentes primeiro</option><option value="antiga">Mais antigas primeiro</option><option value="relevancia">Mais relevantes primeiro</option></select>
+                </div>
+                <div class="form-busca__acoes">
+                    <button type="submit" id="busca_avancada_Enviar" name="busca_avancada[Enviar]" class="botoes sprite bt-pesquisar">Pesquisar</button>
+                </div>
+            </div>
+
+            <input type="hidden" id="busca_avancada_pagina" name="busca_avancada[pagina]" value="3" />
+            
+        </form>
+
+        
+                            <p class="busca-avancada__resumo">
+                    Mostrando <strong>51</strong> a
+                    <strong>58</strong>
+                    de <strong>58</strong>
+                    matérias.
+                                    </p>
+
+                <ul class="lista-materias">
+                                                                    <li class="materia-card">
+                            <h2 class="materia-card__titulo">
+                                <a href="/famup/materia/0CC79DB2" target="_blank" rel="noopener">AVISO DE LICITAÇÃO</a>
+                            </h2>
+
+                            <p class="materia-card__origem">
+                                <span class="materia-card__entidade">Prefeitura Municipal de Natuba</span>
+                                <span class="materia-card__separador">•</span>
+                                <span class="materia-card__orgao">COMISSÃO PERMANENTE DE LICITAÇÃO</span>
+                            </p>
+
+                                                                                            <p class="materia-card__trecho">COMISSÃO PERMANENTE <mark>DE</mark> LICITAÇÃOAVISO <mark>DE</mark> <mark>LICITAÇÃO</mark> PREGÃO ELETRÔNICO Nº 00029/2026 Torna público que fará realizar através do Pregoeiro Oficial e Equipe <mark>de</mark> Apoio, sediada na Rua Presidente … Epitácio Pessoa, 209 - Centro - Natuba - PB, por meio do site https://www.portaldecompraspublicas.com.br, <mark>licitação</mark> modalidade Pregão Eletrônico, do tipo menor preço, para: Contratação</p>
+                            
+                            <dl class="materia-card__dados">
+                                <div>
+                                    <dt>Circulação</dt>
+                                    <dd>13/10/2026</dd>
+                                </div>
+                                <div>
+                                    <dt>Edição</dt>
+                                    <dd>
+                                        4227                                    </dd>
+                                </div>
+                                <div>
+                                    <dt>Código identificador</dt>
+                                    <dd><code>0CC79DB2</code></dd>
+                                </div>
+                            </dl>
+
+                            <p class="materia-card__acoes">
+                                <a class="acao acao--principal" href="/famup/materia/0CC79DB2" target="_blank" rel="noopener">
+                                    <i class="fa-solid fa-up-right-from-square" aria-hidden="true"></i> Abrir matéria
+                                </a>
+                                <a class="acao" href="/famup/download/materia/0CC79DB2">
+                                    <i class="fa-solid fa-file-arrow-down" aria-hidden="true"></i> Baixar matéria (HTML)
+                                </a>
+                                                                    <a class="acao" href="/famup/download/edicao/0CC79DB2">
+                                        <i class="fa-solid fa-file-pdf" aria-hidden="true"></i> Baixar edição (PDF)
+                                    </a>
+                                                                                                <button type="button" class="acao acao--compartilhar"
+                                        data-compartilhar
+                                        data-url="https://www.diariomunicipal.com.br/famup/materia/0CC79DB2"
+                                        data-titulo="AVISO&#x20;DE&#x20;LICITA&#x00C7;&#x00C3;O"
+                                        aria-haspopup="dialog" aria-expanded="false">
+                                    <i class="fa-solid fa-share-nodes" aria-hidden="true"></i> Compartilhar
+                                </button>
+                            </p>
+                        </li>
+                                                                    <li class="materia-card">
+                            <h2 class="materia-card__titulo">
+                                <a href="/famup/materia/5F573112" target="_blank" rel="noopener">AVISO DE LICITAÇÃO</a>
+                            </h2>
+
+                            <p class="materia-card__origem">
+                                <span class="materia-card__entidade">Município de Salgadinho</span>
+                                <span class="materia-card__separador">•</span>
+                                <span class="materia-card__orgao">PREFEITURA MUNICIPAL DE SALGADINHO</span>
+                            </p>
+
+                                                                                            <p class="materia-card__trecho">PREFEITURA MUNICIPAL <mark>DE</mark> SALGADINHOAVISO <mark>DE</mark> <mark>LICITAÇÃO</mark> table.mat td td.mat div.mat, b, i, u, em, p, span, li td p, td b, td i, td u, td em, td li <mark>AVISO</mark> <mark>DE</mark> <mark>LICITAÇÃO</mark> – CONCORRÊNCIA ELETRÔNICA … Oedital está disponível nos sites: www.portaldecompraspublicas.com.br, www.salgadinho.pb.gov.br ou Mural <mark>de</mark> <mark>Licitações</mark> do TCE-PB.</p>
+                            
+                            <dl class="materia-card__dados">
+                                <div>
+                                    <dt>Circulação</dt>
+                                    <dd>13/10/2026</dd>
+                                </div>
+                                <div>
+                                    <dt>Edição</dt>
+                                    <dd>
+                                        4227                                    </dd>
+                                </div>
+                                <div>
+                                    <dt>Código identificador</dt>
+                                    <dd><code>5F573112</code></dd>
+                                </div>
+                            </dl>
+
+                            <p class="materia-card__acoes">
+                                <a class="acao acao--principal" href="/famup/materia/5F573112" target="_blank" rel="noopener">
+                                    <i class="fa-solid fa-up-right-from-square" aria-hidden="true"></i> Abrir matéria
+                                </a>
+                                <a class="acao" href="/famup/download/materia/5F573112">
+                                    <i class="fa-solid fa-file-arrow-down" aria-hidden="true"></i> Baixar matéria (HTML)
+                                </a>
+                                                                    <a class="acao" href="/famup/download/edicao/5F573112">
+                                        <i class="fa-solid fa-file-pdf" aria-hidden="true"></i> Baixar edição (PDF)
+                                    </a>
+                                                                                                <button type="button" class="acao acao--compartilhar"
+                                        data-compartilhar
+                                        data-url="https://www.diariomunicipal.com.br/famup/materia/5F573112"
+                                        data-titulo="AVISO&#x20;DE&#x20;LICITA&#x00C7;&#x00C3;O"
+                                        aria-haspopup="dialog" aria-expanded="false">
+                                    <i class="fa-solid fa-share-nodes" aria-hidden="true"></i> Compartilhar
+                                </button>
+                            </p>
+                        </li>
+                                                                    <li class="materia-card">
+                            <h2 class="materia-card__titulo">
+                                <a href="/famup/materia/B61D43EC" target="_blank" rel="noopener">AVISO DE LICITAÇÃO DA CONCORRÊNCIA ELETRÔNICA Nº 008/2026</a>
+                            </h2>
+
+                            <p class="materia-card__origem">
+                                <span class="materia-card__entidade">Prefeitura Municipal de Princesa Isabel</span>
+                                <span class="materia-card__separador">•</span>
+                                <span class="materia-card__orgao">Prefeitura Municipal de Princesa Isabel</span>
+                            </p>
+
+                                                                                            <p class="materia-card__trecho">PREFEITURA MUNICIPAL <mark>DE</mark> PRINCESA ISABELAVISO <mark>DE</mark> <mark>LICITAÇÃO</mark> DA CONCORRÊNCIA ELETRÔNICA Nº 008/2026 table.mat td td.mat div.mat, b, i, u, em, p, span, li td p, td b, td i, td u, td em, … portaldecompraspublicas.com.br, <mark>licitação</mark> modalidade Concorrência Eletrônica, do tipo menor preço, para: Contratação <mark>de</mark> empresa especializada em engenharia para execução dos serviços</p>
+                            
+                            <dl class="materia-card__dados">
+                                <div>
+                                    <dt>Circulação</dt>
+                                    <dd>13/10/2026</dd>
+                                </div>
+                                <div>
+                                    <dt>Edição</dt>
+                                    <dd>
+                                        4227                                    </dd>
+                                </div>
+                                <div>
+                                    <dt>Código identificador</dt>
+                                    <dd><code>B61D43EC</code></dd>
+                                </div>
+                            </dl>
+
+                            <p class="materia-card__acoes">
+                                <a class="acao acao--principal" href="/famup/materia/B61D43EC" target="_blank" rel="noopener">
+                                    <i class="fa-solid fa-up-right-from-square" aria-hidden="true"></i> Abrir matéria
+                                </a>
+                                <a class="acao" href="/famup/download/materia/B61D43EC">
+                                    <i class="fa-solid fa-file-arrow-down" aria-hidden="true"></i> Baixar matéria (HTML)
+                                </a>
+                                                                    <a class="acao" href="/famup/download/edicao/B61D43EC">
+                                        <i class="fa-solid fa-file-pdf" aria-hidden="true"></i> Baixar edição (PDF)
+                                    </a>
+                                                                                                <button type="button" class="acao acao--compartilhar"
+                                        data-compartilhar
+                                        data-url="https://www.diariomunicipal.com.br/famup/materia/B61D43EC"
+                                        data-titulo="AVISO&#x20;DE&#x20;LICITA&#x00C7;&#x00C3;O&#x20;DA&#x20;CONCORR&#x00CA;NCIA&#x20;ELETR&#x00D4;NICA&#x20;N&#x00BA;&#x20;008&#x2F;2026"
+                                        aria-haspopup="dialog" aria-expanded="false">
+                                    <i class="fa-solid fa-share-nodes" aria-hidden="true"></i> Compartilhar
+                                </button>
+                            </p>
+                        </li>
+                                                                    <li class="materia-card">
+                            <h2 class="materia-card__titulo">
+                                <a href="/famup/materia/3C40E635" target="_blank" rel="noopener">PREGÃO ELETRÔNICO Nº 00027/2026</a>
+                            </h2>
+
+                            <p class="materia-card__origem">
+                                <span class="materia-card__entidade">PREFEITURA MUNICIPAL DE CATINGUEIRA</span>
+                                <span class="materia-card__separador">•</span>
+                                <span class="materia-card__orgao">COMISSÃO PERMANENTE DE LICITAÇÃO</span>
+                            </p>
+
+                                                                                            <p class="materia-card__trecho">COMISSÃO PERMANENTE <mark>DE</mark> LICITAÇÃOPREGÃO ELETRÔNICO Nº 00027/2026 PREFEITURA MUNICIPAL <mark>DE</mark> CATINGUEIRA <mark>AVISO</mark> <mark>DE</mark> <mark>LICITAÇÃO</mark> PREGÃO ELETRÔNICO Nº 00027/2026 PROCESSO ADMINISTRATIVO Nº 000121 … A <mark>licitação</mark> será do tipo menor preço, com critério <mark>de</mark> disputa aberta.</p>
+                            
+                            <dl class="materia-card__dados">
+                                <div>
+                                    <dt>Circulação</dt>
+                                    <dd>13/10/2026</dd>
+                                </div>
+                                <div>
+                                    <dt>Edição</dt>
+                                    <dd>
+                                        4227                                    </dd>
+                                </div>
+                                <div>
+                                    <dt>Código identificador</dt>
+                                    <dd><code>3C40E635</code></dd>
+                                </div>
+                            </dl>
+
+                            <p class="materia-card__acoes">
+                                <a class="acao acao--principal" href="/famup/materia/3C40E635" target="_blank" rel="noopener">
+                                    <i class="fa-solid fa-up-right-from-square" aria-hidden="true"></i> Abrir matéria
+                                </a>
+                                <a class="acao" href="/famup/download/materia/3C40E635">
+                                    <i class="fa-solid fa-file-arrow-down" aria-hidden="true"></i> Baixar matéria (HTML)
+                                </a>
+                                                                    <a class="acao" href="/famup/download/edicao/3C40E635">
+                                        <i class="fa-solid fa-file-pdf" aria-hidden="true"></i> Baixar edição (PDF)
+                                    </a>
+                                                                                                <button type="button" class="acao acao--compartilhar"
+                                        data-compartilhar
+                                        data-url="https://www.diariomunicipal.com.br/famup/materia/3C40E635"
+                                        data-titulo="PREG&#x00C3;O&#x20;ELETR&#x00D4;NICO&#x20;N&#x00BA;&#x20;00027&#x2F;2026"
+                                        aria-haspopup="dialog" aria-expanded="false">
+                                    <i class="fa-solid fa-share-nodes" aria-hidden="true"></i> Compartilhar
+                                </button>
+                            </p>
+                        </li>
+                                                                    <li class="materia-card">
+                            <h2 class="materia-card__titulo">
+                                <a href="/famup/materia/79DCD78C" target="_blank" rel="noopener">AVISO DE DECISÃO DE RECURSO PREGÃO ELETRÔNICO N° 00015/2026</a>
+                            </h2>
+
+                            <p class="materia-card__origem">
+                                <span class="materia-card__entidade">PREFEITURA MUNICIPAL DE SÃO JOSÉ DE ESPINHARAS</span>
+                                <span class="materia-card__separador">•</span>
+                                <span class="materia-card__orgao">GABINETE DO PREFEITO</span>
+                            </p>
+
+                                                                                            <p class="materia-card__trecho">GABINETE DO PREFEITOAVISO <mark>DE</mark> DECISÃO <mark>DE</mark> RECURSO PREGÃO ELETRÔNICO N° 00015/2026 PREFEITURA MUNICIPAL <mark>DE</mark> SÃO JOSÉ <mark>DE</mark> ESPINHARAS - PB <mark>AVISO</mark> <mark>DE</mark> DECISÃO <mark>DE</mark> RECURSO PREGÃO ELETRÔNICO N° … Outros esclarecimentos poderão ser fornecidos na sede da Prefeitura Municipal, das 08:00 às 12:00hs, através do Setor <mark>de</mark> <mark>Licitação</mark>, na Praça Bossuet Wanderley, 61 - Centro - São José</p>
+                            
+                            <dl class="materia-card__dados">
+                                <div>
+                                    <dt>Circulação</dt>
+                                    <dd>13/10/2026</dd>
+                                </div>
+                                <div>
+                                    <dt>Edição</dt>
+                                    <dd>
+                                        4227                                    </dd>
+                                </div>
+                                <div>
+                                    <dt>Código identificador</dt>
+                                    <dd><code>79DCD78C</code></dd>
+                                </div>
+                            </dl>
+
+                            <p class="materia-card__acoes">
+                                <a class="acao acao--principal" href="/famup/materia/79DCD78C" target="_blank" rel="noopener">
+                                    <i class="fa-solid fa-up-right-from-square" aria-hidden="true"></i> Abrir matéria
+                                </a>
+                                <a class="acao" href="/famup/download/materia/79DCD78C">
+                                    <i class="fa-solid fa-file-arrow-down" aria-hidden="true"></i> Baixar matéria (HTML)
+                                </a>
+                                                                    <a class="acao" href="/famup/download/edicao/79DCD78C">
+                                        <i class="fa-solid fa-file-pdf" aria-hidden="true"></i> Baixar edição (PDF)
+                                    </a>
+                                                                                                <button type="button" class="acao acao--compartilhar"
+                                        data-compartilhar
+                                        data-url="https://www.diariomunicipal.com.br/famup/materia/79DCD78C"
+                                        data-titulo="AVISO&#x20;DE&#x20;DECIS&#x00C3;O&#x20;DE&#x20;RECURSO&#x20;PREG&#x00C3;O&#x20;ELETR&#x00D4;NICO&#x20;N&#x00B0;&#x20;00015&#x2F;2026"
+                                        aria-haspopup="dialog" aria-expanded="false">
+                                    <i class="fa-solid fa-share-nodes" aria-hidden="true"></i> Compartilhar
+                                </button>
+                            </p>
+                        </li>
+                                                                    <li class="materia-card">
+                            <h2 class="materia-card__titulo">
+                                <a href="/famup/materia/CE29E01D" target="_blank" rel="noopener">AVISO DE LICITAÇÃO FRACASSADA - CONCORRÊNCIA ELETRÔNICA Nº 90004/2026 – 981911</a>
+                            </h2>
+
+                            <p class="materia-card__origem">
+                                <span class="materia-card__entidade">PREFEITURA MUNICIPAL DE ALHANDRA</span>
+                                <span class="materia-card__separador">•</span>
+                                <span class="materia-card__orgao">COMISSÃO PERMANENTE DE LICITAÇÃO</span>
+                            </p>
+
+                                                                                            <p class="materia-card__trecho">COMISSÃO PERMANENTE <mark>DE</mark> LICITAÇÃOAVISO <mark>DE</mark> <mark>LICITAÇÃO</mark> FRACASSADA - CONCORRÊNCIA ELETRÔNICA Nº 90004/2026 – 981911 A Prefeitura Municipal <mark>de</mark> Alhandra/PB torna público que a Concorrência … Alhandra – PB, 09 <mark>de</mark> outubro <mark>de</mark> 2026. HILTON PAULINO <mark>DE</mark> SOUZA JUNIOR Secretário <mark>de</mark> Infraestrutura</p>
+                            
+                            <dl class="materia-card__dados">
+                                <div>
+                                    <dt>Circulação</dt>
+                                    <dd>13/10/2026</dd>
+                                </div>
+                                <div>
+                                    <dt>Edição</dt>
+                                    <dd>
+                                        4227                                    </dd>
+                                </div>
+                                <div>
+                                    <dt>Código identificador</dt>
+                                    <dd><code>CE29E01D</code></dd>
+                                </div>
+                            </dl>
+
+                            <p class="materia-card__acoes">
+                                <a class="acao acao--principal" href="/famup/materia/CE29E01D" target="_blank" rel="noopener">
+                                    <i class="fa-solid fa-up-right-from-square" aria-hidden="true"></i> Abrir matéria
+                                </a>
+                                <a class="acao" href="/famup/download/materia/CE29E01D">
+                                    <i class="fa-solid fa-file-arrow-down" aria-hidden="true"></i> Baixar matéria (HTML)
+                                </a>
+                                                                    <a class="acao" href="/famup/download/edicao/CE29E01D">
+                                        <i class="fa-solid fa-file-pdf" aria-hidden="true"></i> Baixar edição (PDF)
+                                    </a>
+                                                                                                <button type="button" class="acao acao--compartilhar"
+                                        data-compartilhar
+                                        data-url="https://www.diariomunicipal.com.br/famup/materia/CE29E01D"
+                                        data-titulo="AVISO&#x20;DE&#x20;LICITA&#x00C7;&#x00C3;O&#x20;FRACASSADA&#x20;-&#x20;CONCORR&#x00CA;NCIA&#x20;ELETR&#x00D4;NICA&#x20;N&#x00BA;&#x20;90004&#x2F;2026&#x20;&#x2013;&#x20;981911"
+                                        aria-haspopup="dialog" aria-expanded="false">
+                                    <i class="fa-solid fa-share-nodes" aria-hidden="true"></i> Compartilhar
+                                </button>
+                            </p>
+                        </li>
+                                                                    <li class="materia-card">
+                            <h2 class="materia-card__titulo">
+                                <a href="/famup/materia/7A6FC3CA" target="_blank" rel="noopener">AVISO DE PRETENSA CONTRATAÇÃO DIRETA - DISPENSA DE LICITAÇÃO Nº 90040/2026</a>
+                            </h2>
+
+                            <p class="materia-card__origem">
+                                <span class="materia-card__entidade">PREFEITURA MUNICIPAL DE ALHANDRA</span>
+                                <span class="materia-card__separador">•</span>
+                                <span class="materia-card__orgao">COMISSÃO PERMANENTE DE LICITAÇÃO</span>
+                            </p>
+
+                                                                                            <p class="materia-card__trecho">COMISSÃO PERMANENTE <mark>DE</mark> LICITAÇÃOAVISO <mark>DE</mark> PRETENSA CONTRATAÇÃO DIRETA - DISPENSA <mark>DE</mark> <mark>LICITAÇÃO</mark> Nº 90040/2026 A Prefeitura Municipal <mark>de</mark> Alhandra manifesta o interesse em obter propostas … Alhandra - PB, 09 <mark>de</mark> Outubro <mark>de</mark> 2026 FERNANDO FRANCISCO <mark>DE</mark> LIMA Secretário <mark>de</mark> Educação</p>
+                            
+                            <dl class="materia-card__dados">
+                                <div>
+                                    <dt>Circulação</dt>
+                                    <dd>13/10/2026</dd>
+                                </div>
+                                <div>
+                                    <dt>Edição</dt>
+                                    <dd>
+                                        4227                                    </dd>
+                                </div>
+                                <div>
+                                    <dt>Código identificador</dt>
+                                    <dd><code>7A6FC3CA</code></dd>
+                                </div>
+                            </dl>
+
+                            <p class="materia-card__acoes">
+                                <a class="acao acao--principal" href="/famup/materia/7A6FC3CA" target="_blank" rel="noopener">
+                                    <i class="fa-solid fa-up-right-from-square" aria-hidden="true"></i> Abrir matéria
+                                </a>
+                                <a class="acao" href="/famup/download/materia/7A6FC3CA">
+                                    <i class="fa-solid fa-file-arrow-down" aria-hidden="true"></i> Baixar matéria (HTML)
+                                </a>
+                                                                    <a class="acao" href="/famup/download/edicao/7A6FC3CA">
+                                        <i class="fa-solid fa-file-pdf" aria-hidden="true"></i> Baixar edição (PDF)
+                                    </a>
+                                                                                                <button type="button" class="acao acao--compartilhar"
+                                        data-compartilhar
+                                        data-url="https://www.diariomunicipal.com.br/famup/materia/7A6FC3CA"
+                                        data-titulo="AVISO&#x20;DE&#x20;PRETENSA&#x20;CONTRATA&#x00C7;&#x00C3;O&#x20;DIRETA&#x20;-&#x20;DISPENSA&#x20;DE&#x20;LICITA&#x00C7;&#x00C3;O&#x20;N&#x00BA;&#x20;90040&#x2F;2026"
+                                        aria-haspopup="dialog" aria-expanded="false">
+                                    <i class="fa-solid fa-share-nodes" aria-hidden="true"></i> Compartilhar
+                                </button>
+                            </p>
+                        </li>
+                                                                    <li class="materia-card">
+                            <h2 class="materia-card__titulo">
+                                <a href="/famup/materia/21A226F8" target="_blank" rel="noopener">PREGÃO ELETRÔNICO 030/2026 - PROCESSO ADMINISTRATIVO 121/2026</a>
+                            </h2>
+
+                            <p class="materia-card__origem">
+                                <span class="materia-card__entidade">PREFEITURA MUNICIPAL DE ITAPORANGA</span>
+                                <span class="materia-card__separador">•</span>
+                                <span class="materia-card__orgao">COMISSÃO PERMANENTE DE LICITAÇÃO</span>
+                            </p>
+
+                                                                                            <p class="materia-card__trecho">COMISSÃO PERMANENTE <mark>DE</mark> LICITAÇÃOPREGÃO ELETRÔNICO 030/2026 - PROCESSO ADMINISTRATIVO 121/2026 ESTADO DA PARAÍBA PREFEITURA MUNICIPAL <mark>DE</mark> ITAPORANGA <mark>AVISO</mark> <mark>DE</mark> <mark>LICITAÇÕES</mark> PREGÃO ELETRÔNICO … O EDITAL E SEUS ANEXOS PODERÃO SER OBTIDOS NOS SEGUINTES ENDEREÇOS: WWW.PORTALDECOMPRASPUBLICAS.COM.BR E HTTP://ITAPORANGA.PB.GOV.BR/ACESSO-A-INFORMACAO/<mark>LICITACOES</mark>.</p>
+                            
+                            <dl class="materia-card__dados">
+                                <div>
+                                    <dt>Circulação</dt>
+                                    <dd>13/10/2026</dd>
+                                </div>
+                                <div>
+                                    <dt>Edição</dt>
+                                    <dd>
+                                        4227                                    </dd>
+                                </div>
+                                <div>
+                                    <dt>Código identificador</dt>
+                                    <dd><code>21A226F8</code></dd>
+                                </div>
+                            </dl>
+
+                            <p class="materia-card__acoes">
+                                <a class="acao acao--principal" href="/famup/materia/21A226F8" target="_blank" rel="noopener">
+                                    <i class="fa-solid fa-up-right-from-square" aria-hidden="true"></i> Abrir matéria
+                                </a>
+                                <a class="acao" href="/famup/download/materia/21A226F8">
+                                    <i class="fa-solid fa-file-arrow-down" aria-hidden="true"></i> Baixar matéria (HTML)
+                                </a>
+                                                                    <a class="acao" href="/famup/download/edicao/21A226F8">
+                                        <i class="fa-solid fa-file-pdf" aria-hidden="true"></i> Baixar edição (PDF)
+                                    </a>
+                                                                                                <button type="button" class="acao acao--compartilhar"
+                                        data-compartilhar
+                                        data-url="https://www.diariomunicipal.com.br/famup/materia/21A226F8"
+                                        data-titulo="PREG&#x00C3;O&#x20;ELETR&#x00D4;NICO&#x20;030&#x2F;2026&#x20;-&#x20;PROCESSO&#x20;ADMINISTRATIVO&#x20;121&#x2F;2026"
+                                        aria-haspopup="dialog" aria-expanded="false">
+                                    <i class="fa-solid fa-share-nodes" aria-hidden="true"></i> Compartilhar
+                                </button>
+                            </p>
+                        </li>
+                                    </ul>
+
+                                                                            <div class="paginacao" role="navigation" aria-label="Páginas de resultados">
+                        <p class="paginacao__posicao">
+                            Página <strong>3</strong> de
+                            <strong>3</strong>
+                        </p>
+
+                        <div class="paginacao__botoes">
+                                                                                        <a class="paginacao__item paginacao__item--passo" rel="prev"
+                                   href="/famup/pesquisar?busca_avancada%5Btexto%5D=aviso%20de%20licita%C3%A7%C3%A3o&amp;busca_avancada%5BdataInicio%5D=2026-10-12&amp;busca_avancada%5BdataFim%5D=2026-10-17&amp;busca_avancada%5Bordenacao%5D=recente&amp;busca_avancada%5Bpagina%5D=2">
+                                    <span aria-hidden="true">‹</span> Anterior
+                                </a>
+                            
+                            
+                            
+                                                                                                <a class="paginacao__item paginacao__item--numero"
+                                       href="/famup/pesquisar?busca_avancada%5Btexto%5D=aviso%20de%20licita%C3%A7%C3%A3o&amp;busca_avancada%5BdataInicio%5D=2026-10-12&amp;busca_avancada%5BdataFim%5D=2026-10-17&amp;busca_avancada%5Bordenacao%5D=recente&amp;busca_avancada%5Bpagina%5D=1">1</a>
+                                                                                                                                <a class="paginacao__item paginacao__item--numero"
+                                       href="/famup/pesquisar?busca_avancada%5Btexto%5D=aviso%20de%20licita%C3%A7%C3%A3o&amp;busca_avancada%5BdataInicio%5D=2026-10-12&amp;busca_avancada%5BdataFim%5D=2026-10-17&amp;busca_avancada%5Bordenacao%5D=recente&amp;busca_avancada%5Bpagina%5D=2">2</a>
+                                                                                                                                <span class="paginacao__item paginacao__item--numero paginacao__item--atual"
+                                          aria-current="page">3</span>
+                                                            
+                            
+                                                                                        <span class="paginacao__item paginacao__item--passo paginacao__item--inativo">
+                                    Próxima <span aria-hidden="true">›</span>
+                                </span>
+                                                    </div>
+                    </div>
+                                    
+                <div class="compartilhar" data-compartilhar-painel role="dialog" aria-modal="false"
+             aria-labelledby="compartilhar-titulo" hidden>
+            <div class="compartilhar__topo">
+                <h2 class="compartilhar__titulo" id="compartilhar-titulo">Compartilhar em</h2>
+                <button type="button" class="compartilhar__fechar" data-compartilhar-fechar
+                        aria-label="Fechar">&times;</button>
+            </div>
+
+            <p class="compartilhar__materia" data-compartilhar-materia></p>
+
+            <ul class="compartilhar__destinos">
+                <li>
+                    <a class="compartilhar__destino" data-destino="whatsapp" target="_blank" rel="noopener">
+                        <i class="fa-brands fa-whatsapp" aria-hidden="true"></i><span>WhatsApp</span>
+                    </a>
+                </li>
+                <li>
+                    <a class="compartilhar__destino" data-destino="telegram" target="_blank" rel="noopener">
+                        <i class="fa-brands fa-telegram" aria-hidden="true"></i><span>Telegram</span>
+                    </a>
+                </li>
+                <li>
+                    <a class="compartilhar__destino" data-destino="facebook" target="_blank" rel="noopener">
+                        <i class="fa-brands fa-facebook-f" aria-hidden="true"></i><span>Facebook</span>
+                    </a>
+                </li>
+                <li>
+                    <a class="compartilhar__destino" data-destino="twitter" target="_blank" rel="noopener">
+                        <i class="fa-brands fa-twitter" aria-hidden="true"></i><span>X</span>
+                    </a>
+                </li>
+                <li>
+                    <button type="button" class="compartilhar__destino" data-destino="instagram">
+                        <i class="fa-brands fa-instagram" aria-hidden="true"></i><span>Instagram</span>
+                    </button>
+                </li>
+                <li>
+                    <a class="compartilhar__destino" data-destino="email">
+                        <i class="fa-solid fa-envelope" aria-hidden="true"></i><span>E-mail</span>
+                    </a>
+                </li>
+                <li>
+                    <button type="button" class="compartilhar__destino" data-destino="copiar">
+                        <i class="fa-solid fa-link" aria-hidden="true"></i><span>Copiar link</span>
+                    </button>
+                </li>
+                <li data-compartilhar-nativo hidden>
+                    <button type="button" class="compartilhar__destino" data-destino="nativo">
+                        <i class="fa-solid fa-ellipsis" aria-hidden="true"></i><span>Mais</span>
+                    </button>
+                </li>
+            </ul>
+
+            <p class="compartilhar__aviso" data-compartilhar-aviso role="status"></p>
+        </div>
+
+        <div class="compartilhar-fundo" data-compartilhar-fundo hidden></div>
+    </div>
+        </section>
+        <!-- /content -->
+        <!--footer -->
+        <footer class="rodape">
+        <div class="container">
+            <address class="endereco">
+                                Rua Lauro Torres, 110
+                - Tambauzinho
+                            - João Pessoa
+                - PB
+                            - 58042-030 <br/>
+                                Fone: (83) 3044-7401 
+                                            </address>
+                <a href="http://www.voxtecnologia.com.br" title="Vox Tecnologia" >
+                    <img src="/dist/images/comum/logo-vox.svg">
+                </a>
+
+        </div>
+        </footer>
+        <!-- /footer -->
+    </section><!-- /container -->
+
+<script src="/dist/lib/npm/bootstrap.bundle.min.js"></script>
+<script src="/dist/lib/npm/jquery.min.js"></script>
+<script src="/dist/lib/js/lib.min.js"></script>
+<script src="/dist/lib/npm/jquery.mask.min.js"></script>
+<script src="/dist/lib/npm/parsley.min.js"></script>
+<script src="/dist/lib/npm/sweetalert2.min.js"></script>
+<script src="/dist/js/pt-br.js"></script>
+<script src="/dist/js/index.js"></script>
+<script src="/dist/js/valida-mask.js"></script>
+<script src="/dist/js/popup-homepage.js"></script>
+<script src="/dist/js/menu.js"></script>
+<script src="/dist/js/compartilhar.js"></script>
+<script>
+    (function () {
+        /*
+         * Tarduzindo os avisos do ParsleyValidator para portugues
+        */
+        window.ParsleyValidator.setLocale('pt-br');
+
+        /*
+         * Valida os formulários com o parsley
+         */
+
+        $('.form-base').parsley();
+
+        $('#formCalendario').submit(function (e) {
+            e.preventDefault();
+            return false;
+        });
+        
+    })($);
+</script>
+
+    <script src="/dist/js/search-materias.js"></script>
+
+</body>
+</html>

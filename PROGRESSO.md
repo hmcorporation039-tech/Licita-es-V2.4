@@ -133,6 +133,7 @@ Ver o cabeçalho de `scripts/enxugarRawJson.ts`.
 | Correções do teste de ponta a ponta: **fuso do PNCP** (horários 3 h adiantados; migration 27 corrige 47.966 registros), deslocamento até o local de execução, número real do edital, avisos de preço acima do estimado, alterações não salvas | #41 | ✅ |
 | Fonte nova: Sistema S — SENAC (API nacional, 28 unidades), SESI/SENAI/federações (Portal de Licitações da indústria, 13 portais; Paradigma, 9 federações) | #42 | 🟡 |
 | Fonte nova: **Infraero** (fora do PNCP) — varredura por id do portal próprio, revisita das abertas, aeroporto → município — `docs/MAPA_INFRAERO.md` | branch `fonte-infraero` | 🟡 |
+| Fonte nova: **diários municipais do SIGPub** (13 associações, prefeituras ainda fora do PNCP) — busca por termos de aviso, parser compartilhado com o Querido Diário, duplicidade com PNCP (inclusive pelo número) e com o Querido Diário — `docs/MAPA_DIARIOS_MUNICIPAIS.md` | branch `fonte-sigpub` | 🟡 |
 
 ### Pendente (próxima sessão)
 
