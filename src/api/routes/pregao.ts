@@ -4,24 +4,15 @@ import { prisma } from '../../services/tenderService'
 import { asyncHandler, ApiError } from '../asyncHandler'
 import { estudoCalculoLimiter } from '../rateLimit'
 import { calcularEstudo } from '../../lib/estudoDeCustos'
-import { avaliarLance, avaliarMeuLance, limitesDoAlvo, type Avaliacao, type LimitesDoAlvo } from '../../lib/bela/copiloto'
+import { avaliarLance, avaliarMeuLance, limitesDoAlvo, type Avaliacao } from '../../lib/bela/copiloto'
+import { alvosDoPregao } from '../../lib/alvosDoPregao'
 import { carregar, dadosSalvos } from './estudos'
 
 export const pregaoRouter = Router({ mergeParams: true })
 
 const MAX_LANCES_REGISTRADOS = 2000
-const ALVO_GLOBAL = 'global'
 
 const num = (v: unknown) => (v === null || v === undefined ? null : Number(v))
-
-interface AlvoDoPregao {
-  id: string
-  rotulo: string
-  numero: number | null
-  quantidade: number
-  precoProposto: number | null
-  limites: LimitesDoAlvo
-}
 
 async function acompanhamentoDe(companyId: string, tenderId: string) {
   return prisma.pregaoAcompanhamento.upsert({
@@ -43,26 +34,7 @@ async function montarPainel(companyId: string, tenderId: string) {
   })
 
   const base = resultado.custoItens + resultado.custoDeslocamento + resultado.custoOutros
-  const rateio = resultado.custoItens > 0 ? 1 + (resultado.custoDeslocamento + resultado.custoOutros) / resultado.custoItens : 1
-  const comum = { impostosPct: dados.impostosPct, margemDesejadaPct: dados.margemDesejadaPct }
-  const porTotal = acompanhamento.criterio === 'TOTAL_DO_ITEM'
-
-  const alvos: AlvoDoPregao[] = [
-    { id: ALVO_GLOBAL, rotulo: 'Valor global', numero: null, quantidade: 1, precoProposto: resultado.receita > 0 ? resultado.receita : null, limites: { custoComRateio: base, ...comum } },
-    ...ctx.itens.map((it) => {
-      const custoUnit = dados.itens[it.id]?.custoUnit ?? 0
-      const venda = dados.itens[it.id]?.precoVendaUnit ?? null
-      const fator = porTotal ? it.quantidade : 1
-      return {
-        id: it.id,
-        rotulo: `Item ${it.numero ?? '?'}: ${it.descricao.slice(0, 90)}`,
-        numero: it.numero,
-        quantidade: it.quantidade,
-        precoProposto: venda === null ? null : Math.round(venda * fator * 100) / 100,
-        limites: { custoComRateio: custoUnit * rateio * fator, ...comum },
-      }
-    }),
-  ]
+  const alvos = alvosDoPregao(ctx.itens, dados, resultado, acompanhamento.criterio)
 
   const regras = { decrementoPct: Number(acompanhamento.decrementoPct), maxLances: acompanhamento.maxLances }
   const painelDosAlvos = alvos.map((a) => {

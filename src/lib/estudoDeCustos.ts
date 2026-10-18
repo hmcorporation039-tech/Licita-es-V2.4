@@ -221,7 +221,7 @@ export function calcularEstudo(itens: ItemDaLicitacao[], dados: DadosDoEstudo, c
 
   // ---- Preço mínimo (para a margem desejada) ----
   const divisor = 1 - imp - mar
-  const receitaMinima = precoMinimoComMargem(base, num(dados.impostosPct), num(dados.margemDesejadaPct))
+  let receitaMinima = precoMinimoComMargem(base, num(dados.impostosPct), num(dados.margemDesejadaPct))
   if (divisor <= 0) avisos.push('Impostos + margem desejada somam 100% ou mais: não existe preço que cumpra a margem.')
   if (divisor > 0 && custoItens > 0) {
     // Custos que não são dos itens (deslocamento, outros) são rateados pelo custo de cada item.
@@ -230,6 +230,8 @@ export function calcularEstudo(itens: ItemDaLicitacao[], dados: DadosDoEstudo, c
       const c = dados.itens[it.id]?.custoUnit
       if (c !== null && c !== undefined && c > 0) linhas[i].precoMinimoUnit = precoMinimoComMargem(c * rateio, num(dados.impostosPct), num(dados.margemDesejadaPct))
     })
+    const somaDosMinimosUnitarios = arred(itens.reduce((s, it, i) => s + it.quantidade * (linhas[i].precoMinimoUnit ?? 0), 0))
+    if (receitaMinima !== null && somaDosMinimosUnitarios > receitaMinima) receitaMinima = somaDosMinimosUnitarios
   }
 
   // ---- Cenários de lance ----

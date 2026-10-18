@@ -6,6 +6,7 @@ export interface LimitesDoAlvo {
   custoComRateio: number
   impostosPct: number
   margemDesejadaPct: number
+  minimoComMargem?: number | null
 }
 
 export interface RegrasDoPregao {
@@ -33,7 +34,7 @@ export function limitesDoAlvo(l: LimitesDoAlvo): { minimoComMargem: number | nul
   const imp = l.impostosPct / 100
   if (l.custoComRateio <= 0) return { minimoComMargem: null, equilibrio: null }
   return {
-    minimoComMargem: precoMinimoComMargem(l.custoComRateio, l.impostosPct, l.margemDesejadaPct),
+    minimoComMargem: l.minimoComMargem !== undefined ? l.minimoComMargem : precoMinimoComMargem(l.custoComRateio, l.impostosPct, l.margemDesejadaPct),
     equilibrio: 1 - imp > 0 ? arred(l.custoComRateio / (1 - imp)) : null,
   }
 }

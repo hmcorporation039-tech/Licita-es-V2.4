@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { DadosDoEstudo, FATOR_ESTRADA, ItemDaLicitacao, calcularEstudo, dadosIniciais, lerPrazoEmDias, precoMinimoComMargem } from '../src/lib/estudoDeCustos'
-import { limitesDoAlvo } from '../src/lib/bela/copiloto'
+import { avaliarLance, limitesDoAlvo } from '../src/lib/bela/copiloto'
+import { ALVO_GLOBAL, alvosDoPregao } from '../src/lib/alvosDoPregao'
 import { estatisticasDePrecos, estatisticasPorUnidade, normalizarRegistroDePreco, normalizarUnidade } from '../src/lib/precosDeMercado'
 import { limparCachePrecos, pesquisarPrecos, PrecosIndisponiveisError } from '../src/services/pesquisaDePrecosService'
 import { gerarPdfDoEstudo } from '../src/services/estudoPdf'
@@ -145,7 +146,9 @@ describe('calcularEstudo: preço mínimo por item e avisos', () => {
       const doPregao = limitesDoAlvo({ custoComRateio: d.itens[id].custoUnit! * rateio, impostosPct: d.impostosPct, margemDesejadaPct: d.margemDesejadaPct }).minimoComMargem
       expect(doPregao).toBe(r.itens[i].precoMinimoUnit)
     }
-    expect(limitesDoAlvo({ custoComRateio: r.custoItens + r.custoDeslocamento + r.custoOutros, impostosPct: 6.5, margemDesejadaPct: 7 }).minimoComMargem).toBe(r.receitaMinima)
+    const somaDosMinimos = Math.round((3 * r.itens[0].precoMinimoUnit! + 7 * r.itens[1].precoMinimoUnit! + 2 * r.itens[2].precoMinimoUnit!) * 100) / 100
+    expect(r.receitaMinima).toBe(somaDosMinimos)
+    expect(r.receitaMinima!).toBeGreaterThanOrEqual(limitesDoAlvo({ custoComRateio: r.custoItens + r.custoDeslocamento + r.custoOutros, impostosPct: 6.5, margemDesejadaPct: 7 }).minimoComMargem!)
     expect(precoMinimoComMargem(3.33, 0, 7)).toBe(3.59)
     expect(limitesDoAlvo({ custoComRateio: 3.33, impostosPct: 0, margemDesejadaPct: 7 }).minimoComMargem).toBe(3.59)
   })
@@ -164,6 +167,68 @@ describe('calcularEstudo: preço mínimo por item e avisos', () => {
     const mercado = { mediana: 31, minimo: 30, maximo: 35, amostras: 4, uf: null, meses: 12, consultadoEm: '2026-10-05T10:00:00Z', unidade: 'CX', unidadeConfere: false }
     const r = calcularEstudo([item('a', 1)], dados({ itens: { a: { custoUnit: 10, precoVendaUnit: 20 } }, mercado: { a: mercado } }), ctx)
     expect(r.avisos.join(' ')).toMatch(/unidade diferente/)
+  })
+})
+
+describe('preço mínimo: soma dos mínimos unitários e pregão por total do item', () => {
+  const papel = (qtd: number) => ({
+    itens: [item('a', qtd)],
+    dados: dados({ itens: { a: { custoUnit: 7.77, precoVendaUnit: null } }, impostosPct: 8.65, margemDesejadaPct: 10 }),
+  })
+  const regras = { decrementoPct: 0.5, maxLances: 5 }
+
+  it('o mínimo global do estudo é o mínimo unitário arredondado vezes a quantidade', () => {
+    const { itens, dados: d } = papel(10)
+    const r = calcularEstudo(itens, d, ctx)
+    expect(precoMinimoComMargem(77.7, 8.65, 10)).toBe(95.52)
+    expect(r.itens[0].precoMinimoUnit).toBe(9.56)
+    expect(r.receitaMinima).toBe(95.6)
+    const cenario = r.cenarios.find((c) => c.nome.startsWith('No preço mínimo'))!
+    expect(cenario.receita).toBe(95.6)
+    expect(cenario.margemPct!).toBeGreaterThanOrEqual(10)
+  })
+
+  it('com 1.000 unidades a diferença não cresce com a quantidade', () => {
+    const { itens, dados: d } = papel(1000)
+    const r = calcularEstudo(itens, d, ctx)
+    expect(precoMinimoComMargem(7770, 8.65, 10)).toBe(9551.33)
+    expect(r.receitaMinima).toBe(9560)
+  })
+
+  it('vários itens: o global é a soma dos mínimos unitários x quantidade, nunca abaixo do mínimo pelo custo total', () => {
+    const its = [item('a', 3), item('b', 7)]
+    const r = calcularEstudo(its, dados({ itens: { a: { custoUnit: 10, precoVendaUnit: null }, b: { custoUnit: 3.33, precoVendaUnit: null } }, margemDesejadaPct: 7 }), ctx)
+    expect(precoMinimoComMargem(53.31, 0, 7)).toBe(57.33)
+    expect(r.receitaMinima).toBe(57.41)
+    expect(r.cenarios.find((c) => c.nome.startsWith('No preço mínimo'))!.margemPct!).toBeGreaterThanOrEqual(7)
+  })
+
+  it('pregão por total do item: mínimo = mínimo unitário do estudo x quantidade', () => {
+    for (const [qtd, esperado] of [[10, 95.6], [1000, 9560]] as const) {
+      const { itens, dados: d } = papel(qtd)
+      const r = calcularEstudo(itens, d, ctx)
+      const alvos = alvosDoPregao(itens, d, r, 'TOTAL_DO_ITEM')
+      const doItem = alvos.find((a) => a.id === 'a')!
+      expect(limitesDoAlvo(doItem.limites).minimoComMargem).toBe(esperado)
+      expect(limitesDoAlvo(alvos.find((a) => a.id === ALVO_GLOBAL)!.limites).minimoComMargem).toBe(r.receitaMinima)
+    }
+  })
+
+  it('pregão unitário continua usando o mínimo unitário do estudo', () => {
+    const { itens, dados: d } = papel(10)
+    const r = calcularEstudo(itens, d, ctx)
+    const doItem = alvosDoPregao(itens, d, r, 'UNITARIO').find((a) => a.id === 'a')!
+    expect(limitesDoAlvo(doItem.limites).minimoComMargem).toBe(9.56)
+  })
+
+  it('lance por total abaixo do mínimo arredondado não é tratado como dentro da margem', () => {
+    const { itens, dados: d } = papel(10)
+    const r = calcularEstudo(itens, d, ctx)
+    const doItem = alvosDoPregao(itens, d, r, 'TOTAL_DO_ITEM').find((a) => a.id === 'a')!
+    const avaliacao = avaliarLance(95.55, doItem.limites, regras, 0)
+    expect(avaliacao.minimoComMargem).toBe(95.6)
+    expect(avaliacao.faixa).toBe('amarela')
+    expect(avaliarLance(100, doItem.limites, regras, 0).sugestao!.valor).toBeGreaterThanOrEqual(95.6)
   })
 })
 
