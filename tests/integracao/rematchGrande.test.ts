@@ -22,7 +22,7 @@ rodar('Rematch de item com palavra-chave muito comum', () => {
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: corpo === undefined ? undefined : JSON.stringify(corpo),
     })
-    return { status: r.status, body: (await r.json().catch(() => ({}))) as { id: string; matchesFound: number } }
+    return { status: r.status, body: (await r.json().catch(() => ({}))) as { id: string; matchesFound: number; matchesEncontrados: number } }
   }
 
   beforeAll(async () => {
@@ -62,14 +62,13 @@ rodar('Rematch de item com palavra-chave muito comum', () => {
     desconectar()
   }, 120_000)
 
-  it('grava mais de 32.767 oportunidades sem estourar o limite de parâmetros do Postgres', async () => {
+  it('grava mais de 32.767 oportunidades ao criar o item sem estourar o limite de parâmetros do Postgres, e o rematch seguinte não duplica', async () => {
     const item = await http('POST', '/api/monitored-items', { name: 'Parafusos', keywords: [termo] })
     expect(item.status).toBe(201)
-    const primeira = await http('POST', `/api/monitored-items/${item.body.id}/rematch`)
-    expect(primeira.status).toBe(200)
-    expect(primeira.body.matchesFound).toBe(LICITACOES)
-    const segunda = await http('POST', `/api/monitored-items/${item.body.id}/rematch`)
-    expect(segunda.status).toBe(200)
-    expect(segunda.body.matchesFound).toBe(0)
+    expect(item.body.matchesEncontrados).toBe(LICITACOES)
+    expect(await prisma.tenderMatch.count({ where: { monitoredItemId: item.body.id } })).toBe(LICITACOES)
+    const repetida = await http('POST', `/api/monitored-items/${item.body.id}/rematch`)
+    expect(repetida.status).toBe(200)
+    expect(repetida.body.matchesFound).toBe(0)
   }, 180_000)
 })
