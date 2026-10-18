@@ -61,6 +61,10 @@ export function formatarDataDaLicitacao(valor: EntradaDeData, fonte: string, opc
   return formatarData(dataDaLicitacao(valor, fonte), opcoes)
 }
 
+export function palavraDias(quantidade: number): string {
+  return Math.abs(quantidade) === 1 ? 'dia' : 'dias'
+}
+
 export function diasUteis(quantidade: number): string {
   return `${quantidade.toLocaleString('pt-BR')} ${quantidade === 1 ? 'dia útil' : 'dias úteis'}`
 }

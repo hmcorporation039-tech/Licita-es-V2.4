@@ -305,6 +305,8 @@ describe('calcularEstudo: prazo', () => {
     const inviavel = com({ exigidoDias: 5, preparoDias: 10 })
     expect(inviavel.prazo).toMatchObject({ situacao: 'inviavel', folgaDias: -7 })
     expect(inviavel.avisos.join(' ')).toMatch(/Prazo inviável/)
+    expect(inviavel.avisos).toContain('Prazo inviável: você precisa de 12 dias e o edital dá 5 dias.')
+    expect(com({ exigidoDias: 1, preparoDias: 2 }, null).avisos).toContain('Prazo inviável: você precisa de 2 dias e o edital dá 1 dia.')
   })
   it('sem prazo no edital não inventa situação', () => {
     expect(com({ exigidoDias: null }).prazo.situacao).toBeNull()

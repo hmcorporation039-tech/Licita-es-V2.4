@@ -8,6 +8,7 @@
 // ============================================================
 
 import { Dia, somarDias, somarDiasUteis } from './diasUteis'
+import { emDias } from './plural'
 
 // A estrada é mais longa que a linha reta; 1,3 é uma correção usual para rodovias brasileiras.
 export const FATOR_ESTRADA = 1.3
@@ -279,7 +280,7 @@ export function calcularEstudo(itens: ItemDaLicitacao[], dados: DadosDoEstudo, c
   if (p.exigidoDias !== null && p.exigidoDias >= 0) {
     folgaDias = p.exigidoDias - diasNecessarios
     situacao = folgaDias < 0 ? 'inviavel' : folgaDias <= FOLGA_APERTADA_DIAS ? 'apertado' : 'ok'
-    if (situacao === 'inviavel') avisos.push(`Prazo inviável: você precisa de ${diasNecessarios} dia(s) e o edital dá ${p.exigidoDias}.`)
+    if (situacao === 'inviavel') avisos.push(`Prazo inviável: você precisa de ${emDias(diasNecessarios)} e o edital dá ${emDias(p.exigidoDias)}.`)
   }
   if (p.assinatura && /^\d{4}-\d{2}-\d{2}$/.test(p.assinatura)) {
     const somar = (dias: number) => (p.exigidoEmDiasUteis ? somarDiasUteis(p.assinatura as Dia, dias) : somarDias(p.assinatura as Dia, dias))

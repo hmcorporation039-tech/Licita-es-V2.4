@@ -8,6 +8,7 @@ import PDFDocument from 'pdfkit'
 import { DadosDoEstudo, ItemDaLicitacao, ResultadoDoEstudo } from '../lib/estudoDeCustos'
 import type { DossieDaLicitacao } from './dossieDaLicitacao'
 import { formatarCnpj, formatarCpf } from '../lib/documentosDaLicitacao/proponente'
+import { emDias } from '../lib/plural'
 
 export interface EntradaDoPdf {
   empresa: { nome: string; documento: string | null; base: string | null }
@@ -325,14 +326,14 @@ export function gerarPdfDoEstudo(e: EntradaDoPdf): Promise<Buffer> {
     // ---- Prazo ----
     titulo('Prazo de entrega ou execução')
     const p = r.prazo
-    par('Prazo do edital', e.dados.prazo.exigidoDias === null ? 'não informado' : `${e.dados.prazo.exigidoDias} dia(s) ${e.dados.prazo.exigidoEmDiasUteis ? 'úteis' : 'corridos'}`)
-    par('Preparo (compra/produção)', `${e.dados.prazo.preparoDias} dia(s)`)
-    par('Transporte estimado', `${p.diasDeTransporte} dia(s)`)
-    par('Total necessário', `${p.diasNecessarios} dia(s)`)
+    par('Prazo do edital', e.dados.prazo.exigidoDias === null ? 'não informado' : `${emDias(e.dados.prazo.exigidoDias)} ${e.dados.prazo.exigidoEmDiasUteis ? (e.dados.prazo.exigidoDias === 1 ? 'útil' : 'úteis') : e.dados.prazo.exigidoDias === 1 ? 'corrido' : 'corridos'}`)
+    par('Preparo (compra/produção)', emDias(e.dados.prazo.preparoDias))
+    par('Transporte estimado', emDias(p.diasDeTransporte))
+    par('Total necessário', emDias(p.diasNecessarios))
     if (p.situacao) {
       const cor = p.situacao === 'ok' ? COR.bom : p.situacao === 'apertado' ? COR.alerta : COR.ruim
       const folga = p.folgaDias ?? 0
-      const detalhe = folga < 0 ? `atraso de ${Math.abs(folga)} ${Math.abs(folga) === 1 ? 'dia' : 'dias'}` : `folga de ${folga} ${folga === 1 ? 'dia' : 'dias'}`
+      const detalhe = folga < 0 ? `atraso de ${emDias(Math.abs(folga))}` : `folga de ${emDias(folga)}`
       par('Situação', `${p.situacao === 'ok' ? 'Cabe no prazo' : p.situacao === 'apertado' ? 'Prazo apertado' : 'Prazo inviável'} (${detalhe})`, cor)
     }
     if (e.dados.prazo.assinatura) {

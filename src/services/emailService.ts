@@ -6,6 +6,7 @@ import { Resend } from 'resend'
 import { escapeHtml, safeHttpUrl } from '../lib/html'
 import { formatarDiaDoCalendario, formatarDiaEHoraDeBrasilia, formatarPrazoDaLicitacao } from '../lib/dataDeBrasilia'
 import { appUrl } from '../lib/appUrl'
+import { quandoVence } from '../lib/plural'
 
 const EMAIL_FROM = process.env.EMAIL_FROM ?? 'noreply@seudominio.com.br'
 
@@ -105,13 +106,11 @@ export async function sendDocumentExpiryEmail(params: DocumentExpiryEmailParams)
   await getResendClient().emails.send({
     from: EMAIL_FROM,
     to,
-    subject: vencido
-      ? `Documento vencido: ${documentName}`
-      : `Documento vencendo em ${diasRestantes} dia(s): ${documentName}`,
+    subject: vencido ? `Documento vencido: ${documentName}` : `Documento ${quandoVence(diasRestantes)}: ${documentName}`,
     html: `
       <h2>${vencido ? 'Documento vencido' : 'Documento próximo do vencimento'}</h2>
       <p><strong>Documento:</strong> ${escapeHtml(documentName)}</p>
-      <p><strong>Validade:</strong> ${escapeHtml(dataFormatada)} ${vencido ? '(já venceu)' : `(em ${diasRestantes} dia(s))`}</p>
+      <p><strong>Validade:</strong> ${escapeHtml(dataFormatada)} ${vencido ? '(já venceu)' : `(${quandoVence(diasRestantes)})`}</p>
       <p>Renove esse documento pra não perder o prazo de nenhuma licitação em andamento.</p>
     `,
   })

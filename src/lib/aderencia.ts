@@ -18,6 +18,7 @@
 // ============================================================
 
 import { haversineKm } from './geoService'
+import { emDias } from './plural'
 
 export interface CriterioDeAderencia {
   id: 'objeto' | 'prazo' | 'valor' | 'localizacao'
@@ -90,12 +91,12 @@ function critPrazo(e: EntradaDeAderencia, agora: Date): CriterioDeAderencia {
   const dias = (fim.getTime() - agora.getTime()) / MS_DIA
   if (dias < 0) return { ...base, pontos: 0, motivo: 'O prazo para propostas já encerrou.' }
   const arred = Math.floor(dias)
-  const quando = dias < 1 ? 'menos de 1 dia' : `${arred} dia(s)`
-  if (dias >= 15) return { ...base, pontos: 20, motivo: `Faltam ${quando}: tempo de sobra para preparar a proposta.` }
-  if (dias >= 7) return { ...base, pontos: 16, motivo: `Faltam ${quando}.` }
-  if (dias >= 3) return { ...base, pontos: 10, motivo: `Faltam ${quando}: prazo apertado.` }
-  if (dias >= 1) return { ...base, pontos: 5, motivo: `Faltam ${quando}: prazo muito curto.` }
-  return { ...base, pontos: 2, motivo: `Faltam ${quando}: encerra quase agora.` }
+  const quando = `${dias < 2 ? 'Falta' : 'Faltam'} ${dias < 1 ? 'menos de 1 dia' : emDias(arred)}`
+  if (dias >= 15) return { ...base, pontos: 20, motivo: `${quando}: tempo de sobra para preparar a proposta.` }
+  if (dias >= 7) return { ...base, pontos: 16, motivo: `${quando}.` }
+  if (dias >= 3) return { ...base, pontos: 10, motivo: `${quando}: prazo apertado.` }
+  if (dias >= 1) return { ...base, pontos: 5, motivo: `${quando}: prazo muito curto.` }
+  return { ...base, pontos: 2, motivo: `${quando}: encerra quase agora.` }
 }
 
 function critValor(e: EntradaDeAderencia): CriterioDeAderencia {

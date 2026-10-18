@@ -348,6 +348,7 @@ export interface FiltrosDaBela {
   ufs?: string[]
   rotuloDoLocal?: string
   municipio?: string
+  municipios?: string[]
   modalidade?: ModalidadeFalada
   modalidades?: ModalidadeFalada[]
   situacao?: 'ABERTA'

@@ -11,6 +11,8 @@
 import { prisma } from './tenderService'
 import { sendDocumentExpiryEmail } from './emailService'
 import { formatarDiaDoCalendario } from '../lib/dataDeBrasilia'
+import { quandoVence } from '../lib/plural'
+import { SELECT_DO_DESTINATARIO, acessoDoDestinatarioComEmpresa } from './avisoDeAcessoEncerrado'
 
 export const ALERT_THRESHOLD_DAYS = 15
 export const ALERT_COOLDOWN_DAYS = 7
@@ -25,12 +27,13 @@ export async function checkExpiringDocuments(): Promise<{ checked: number; alert
       dataValidade: { lte: threshold },
       OR: [{ lastAlertedAt: null }, { lastAlertedAt: { lte: cooldownCutoff } }],
     },
-    include: { user: { select: { id: true, email: true } } },
+    include: { user: { select: SELECT_DO_DESTINATARIO } },
   })
 
   let alerted = 0
   for (const doc of docs) {
     if (!doc.dataValidade) continue
+    if (acessoDoDestinatarioComEmpresa(doc.user, now.getTime()).situacao !== 'ativo') continue
     const diasRestantes = Math.ceil((doc.dataValidade.getTime() - now.getTime()) / (24 * 60 * 60 * 1000))
 
     try {
@@ -45,7 +48,7 @@ export async function checkExpiringDocuments(): Promise<{ checked: number; alert
         data: {
           userId: doc.userId,
           type: 'EMAIL',
-          title: diasRestantes < 0 ? `Documento vencido: ${doc.nome}` : `Documento vencendo em ${diasRestantes} dia(s): ${doc.nome}`,
+          title: diasRestantes < 0 ? `Documento vencido: ${doc.nome}` : `Documento ${quandoVence(diasRestantes)}: ${doc.nome}`,
           body: `Validade: ${formatarDiaDoCalendario(doc.dataValidade)}`,
           sentAt: now,
           metadata: { companyDocumentId: doc.id },

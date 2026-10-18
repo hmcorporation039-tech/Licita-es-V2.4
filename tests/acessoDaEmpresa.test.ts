@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { empresaTemDonoComAcesso } from '../src/lib/acessoDaEmpresa'
+import { acessoDoDestinatario, empresaTemDonoComAcesso } from '../src/lib/acessoDaEmpresa'
 
 const agora = new Date('2026-10-13T12:00:00Z').getTime()
 const dono = { active: true, disabledByAdmin: false, accessExpiresAt: null as Date | null }
@@ -19,5 +19,28 @@ describe('empresaTemDonoComAcesso', () => {
   it('bloqueia empresa sem dono e libera se ao menos um dono tiver acesso', () => {
     expect(empresaTemDonoComAcesso([], agora)).toBe(false)
     expect(empresaTemDonoComAcesso([{ ...dono, active: false }, dono], agora)).toBe(true)
+  })
+})
+
+describe('acessoDoDestinatario: quem pode receber e-mail de aviso', () => {
+  const ontem = new Date(agora - 86_400_000)
+  const amanha = new Date(agora + 86_400_000)
+  const membro = { ...dono, isAdmin: false, companyRole: 'MEMBER' }
+  const donoDaConta = { ...membro, companyRole: 'OWNER' }
+
+  it('conta no prazo recebe', () => {
+    expect(acessoDoDestinatario(donoDaConta, [dono], agora)).toEqual({ situacao: 'ativo' })
+    expect(acessoDoDestinatario({ ...donoDaConta, accessExpiresAt: amanha }, [dono], agora)).toEqual({ situacao: 'ativo' })
+    expect(acessoDoDestinatario(membro, [dono], agora)).toEqual({ situacao: 'ativo' })
+  })
+
+  it('teste vencido não recebe e informa até quando valeu', () => {
+    expect(acessoDoDestinatario({ ...donoDaConta, accessExpiresAt: ontem }, [{ ...dono, accessExpiresAt: ontem }], agora)).toEqual({ situacao: 'encerrado', acessoAte: ontem })
+    expect(acessoDoDestinatario(membro, [{ ...dono, accessExpiresAt: ontem }], agora)).toEqual({ situacao: 'encerrado', acessoAte: ontem })
+  })
+
+  it('conta desativada ou empresa com dono bloqueado não recebe nem aviso de fim de teste', () => {
+    expect(acessoDoDestinatario({ ...donoDaConta, active: false }, [dono], agora)).toEqual({ situacao: 'bloqueado' })
+    expect(acessoDoDestinatario(membro, [{ ...dono, disabledByAdmin: true }], agora)).toEqual({ situacao: 'bloqueado' })
   })
 })

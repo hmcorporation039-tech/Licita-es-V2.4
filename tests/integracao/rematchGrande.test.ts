@@ -107,9 +107,8 @@ rodar('Rematch de item com palavra-chave muito comum', () => {
     expect(await prisma.tenderMatch.count({ where: { monitoredItemId: itemId } })).toBe(limite)
   }, 180_000)
 
-  it('o matcher de licitação nova também respeita o limite do item', async () => {
-    const { findMatchCandidates } = await import('../../src/services/matcherService')
-    const { descartarItensNoLimite } = await import('../../src/services/rematchService')
+  it('o matcher de licitação nova no limite: a menos aderente não entra, não tira ninguém e não avisa', async () => {
+    const { processarLicitacaoNoMatcher } = await import('../../src/workers/matcher')
     await prisma.monitoredItem.update({ where: { id: itemId }, data: { buscaLimitada: false } })
     const nova = await prisma.tender.create({
       data: {
@@ -117,12 +116,12 @@ rodar('Rematch de item com palavra-chave muito comum', () => {
         objeto: `Aquisição de ${termo} lote novo`, objetoNorm: `aquisicao de ${termo} lote novo`, rawJson: {}, encerramentoAt: new Date(Date.now() + 30 * DIA_MS), publicadoAt: new Date(),
       },
     })
-    const candidatas = await findMatchCandidates(nova.id)
-    expect(candidatas.map((c) => c.monitoredItemId)).toContain(itemId)
-    expect((await descartarItensNoLimite(candidatas)).map((c) => c.monitoredItemId)).not.toContain(itemId)
+    expect(await processarLicitacaoNoMatcher(nova.id)).toEqual([])
+    expect(await prisma.tenderMatch.count({ where: { monitoredItemId: itemId, tenderId: nova.id } })).toBe(0)
+    expect(await prisma.tenderMatch.count({ where: { monitoredItemId: itemId } })).toBe(limite)
     expect((await prisma.monitoredItem.findUnique({ where: { id: itemId } }))!.buscaLimitada).toBe(true)
 
     await prisma.tender.updateMany({ where: { fonteId: { startsWith: `rematch-${sufixo}-` }, tenderMatches: { some: { monitoredItemId: itemId } } }, data: { encerramentoAt: new Date(Date.now() - DIA_MS) } })
-    expect((await descartarItensNoLimite(candidatas)).map((c) => c.monitoredItemId)).toContain(itemId)
+    expect(await processarLicitacaoNoMatcher(nova.id)).toHaveLength(1)
   }, 180_000)
 })
