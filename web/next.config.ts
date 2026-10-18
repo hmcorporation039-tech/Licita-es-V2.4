@@ -41,6 +41,7 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  poweredByHeader: false,
   turbopack: {
     root: path.join(__dirname),
   },

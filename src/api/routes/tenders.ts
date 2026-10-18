@@ -30,6 +30,7 @@ import { falhouHaPouco } from '../../lib/esperaDeReanalise'
 import { dataDaSessao } from '../../lib/dataDaSessao'
 
 import { SIGLAS_DAS_UFS } from '../../lib/origemDoCadastro'
+import { literalNoLike } from '../../lib/buscaLiteral'
 
 export const tendersRouter = Router()
 
@@ -105,9 +106,9 @@ tendersRouter.get(
     // Busca contra as colunas *_norm (minúsculas, sem acento) em vez das colunas
     // originais — assim "uberlandia" encontra "Uberlândia" sem depender da
     // extensão unaccent do Postgres (ver comentário no schema.prisma).
-    if (orgao) where.orgaoNorm = { contains: normalize(orgao) }
-    if (municipio) where.municipioNorm = { contains: normalize(municipio) }
-    if (numero) where.numeroControle = { contains: numero, mode: 'insensitive' }
+    if (orgao) where.orgaoNorm = { contains: literalNoLike(normalize(orgao)) }
+    if (municipio) where.municipioNorm = { contains: literalNoLike(normalize(municipio)) }
+    if (numero) where.numeroControle = { contains: literalNoLike(numero), mode: 'insensitive' }
     if (publicacaoInicio || publicacaoFim) {
       where.publicadoAt = {
         ...(publicacaoInicio ? { gte: publicacaoInicio } : {}),
@@ -115,7 +116,7 @@ tendersRouter.get(
       }
     }
     if (q) {
-      const qNorm = normalize(q)
+      const qNorm = literalNoLike(normalize(q))
       where.OR = [{ objetoNorm: { contains: qNorm } }, { objetoResumidoNorm: { contains: qNorm } }]
     }
     if (companyId) where.tenderMatches = { some: { companyId } }

@@ -26,6 +26,10 @@ export const CODE_MATCH_SCORE = 1
 const PALAVRAS_DE_LIGACAO = new Set(['de', 'da', 'do', 'das', 'dos', 'e', 'em', 'para', 'com', 'por', 'a', 'o', 'as', 'os', 'ou', 'no', 'na', 'nos', 'nas'])
 const TAMANHO_MINIMO_DA_VARIACAO = 3
 
+export function temPalavraSignificativa(keyword: string): boolean {
+  return normalize(keyword).split(/\s+/).some((palavra) => palavra !== '' && !PALAVRAS_DE_LIGACAO.has(palavra))
+}
+
 export function variacoesDaPalavra(palavra: string): string[] {
   if (palavra.length < TAMANHO_MINIMO_DA_VARIACAO || /\d/.test(palavra) || PALAVRAS_DE_LIGACAO.has(palavra)) return [palavra]
   const formas = new Set([palavra])

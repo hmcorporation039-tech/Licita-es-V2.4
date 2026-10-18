@@ -115,6 +115,13 @@ describe('parseInfraeroDetalhe com páginas reais', () => {
     expect(t.publicadoAt).toBeUndefined()
   })
 
+  it('recusa na hora página com aninhamento ou tamanho fora do normal', () => {
+    const inicio = Date.now()
+    expect(() => parseInfraeroDetalhe(`<html><body>${'<div>'.repeat(50_000)}</body></html>`, 1)).toThrow('fora do formato esperado')
+    expect(() => parseInfraeroDetalhe(`<html><body>${'x'.repeat(2 * 1024 * 1024)}</body></html>`, 1)).toThrow('fora do formato esperado')
+    expect(Date.now() - inicio).toBeLessThan(1000)
+  })
+
   it('id inexistente devolve nao_encontrado', () => {
     expect(parseInfraeroDetalhe(fixture('detalhe-178200-nao-encontrado.html'), 178200)).toEqual({ tipo: 'nao_encontrado' })
   })

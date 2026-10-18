@@ -7,6 +7,7 @@
 import { ModalidadeEnum, Prisma } from '@prisma/client'
 import { prisma } from './tenderService'
 import { normalize } from '../lib/geoService'
+import { literalNoLike } from '../lib/buscaLiteral'
 import { calcularAderencia } from '../lib/aderencia'
 import { estaAberta, whereLicitacaoAberta } from '../lib/licitacaoAberta'
 import {
@@ -236,8 +237,8 @@ function whereDoRematch(item: RematchInput, cutoff: Date): Prisma.TenderWhereInp
   // licitações que dariam match pela descrição do item.
   const termos = [...new Set(item.keywords.flatMap(termosDoPreFiltro))]
   const filtroDeTexto: Prisma.TenderWhereInput[] = termos.flatMap((termo) => [
-    { objetoNorm: { contains: termo } },
-    { items: { some: { descricaoNorm: { contains: termo } } } },
+    { objetoNorm: { contains: literalNoLike(termo) } },
+    { items: { some: { descricaoNorm: { contains: literalNoLike(termo) } } } },
   ])
 
   if (filtroDeTexto.length > 0 && item.catmatCodes.length === 0 && item.catserCodes.length === 0) {

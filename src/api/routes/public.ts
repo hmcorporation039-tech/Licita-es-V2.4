@@ -14,6 +14,7 @@ import { normalize } from '../../lib/geoService'
 import { whereLicitacaoComPrazoConfirmado } from '../../lib/licitacaoAberta'
 import { dataDaSessao } from '../../lib/dataDaSessao'
 import { vitrineLimiter } from '../rateLimit'
+import { literalNoLike } from '../../lib/buscaLiteral'
 
 export const publicRouter = Router()
 
@@ -95,7 +96,7 @@ publicRouter.get(
       return
     }
     const where = {
-      AND: [whereLicitacaoComPrazoConfirmado(), { OR: [{ objetoNorm: { contains: qNorm } }, { objetoResumidoNorm: { contains: qNorm } }] }, ...(uf ? [{ uf }] : [])],
+      AND: [whereLicitacaoComPrazoConfirmado(), { OR: [{ objetoNorm: { contains: literalNoLike(qNorm) } }, { objetoResumidoNorm: { contains: literalNoLike(qNorm) } }] }, ...(uf ? [{ uf }] : [])],
     }
     const [total, amostras] = await Promise.all([
       prisma.tender.count({ where }),

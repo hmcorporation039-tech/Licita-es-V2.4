@@ -173,3 +173,4 @@ sistemaSHtmlClient.defaults.timeout = 60_000
 sistemaSHtmlClient.defaults.maxContentLength = 20 * 1024 * 1024
 
 export const infraeroClient = createRateLimitedClient('https://licitacao.infraero.gov.br', 1500, { Accept: 'text/html,application/xhtml+xml' })
+infraeroClient.defaults.maxContentLength = 2 * 1024 * 1024
