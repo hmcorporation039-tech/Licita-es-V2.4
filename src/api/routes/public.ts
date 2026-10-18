@@ -16,6 +16,7 @@ import { dataDaSessao } from '../../lib/dataDaSessao'
 import { vitrineLimiter } from '../rateLimit'
 import { idsQueCitamOTexto } from '../../services/buscaDeLicitacoes'
 import { Prisma } from '@prisma/client'
+import { marcasComLicitacao } from '../../lib/marcasDasFontes'
 
 export const publicRouter = Router()
 
@@ -67,12 +68,18 @@ publicRouter.get(
       res.json(emCache)
       return
     }
-    const [abertas, porFonte, ultimaColeta] = await Promise.all([
-      prisma.tender.count({ where: whereLicitacaoComPrazoConfirmado() }),
-      prisma.tender.groupBy({ by: ['fonte'], where: whereLicitacaoComPrazoConfirmado(), _count: { _all: true } }),
+    const comPrazo = whereLicitacaoComPrazoConfirmado()
+    const [abertas, porFonte, doSistemaS, ultimaColeta] = await Promise.all([
+      prisma.tender.count({ where: comPrazo }),
+      prisma.tender.groupBy({ by: ['fonte'], where: { AND: [comPrazo, { fonte: { not: 'SISTEMA_S' } }] }, _count: { _all: true } }),
+      prisma.tender.groupBy({ by: ['orgao'], where: { AND: [comPrazo, { fonte: 'SISTEMA_S' }] }, _count: { _all: true } }),
       prisma.workerLog.findFirst({ where: { status: { in: ['SUCCESS', 'PARTIAL'] }, finishedAt: { not: null } }, orderBy: { finishedAt: 'desc' }, select: { finishedAt: true } }),
     ])
-    const valor = { abertas, fontes: porFonte.filter((f) => f._count._all > 0).length, atualizadoEm: ultimaColeta?.finishedAt ?? null }
+    const marcas = marcasComLicitacao([
+      ...porFonte.filter((f) => f._count._all > 0).map((f) => ({ fonte: f.fonte, orgao: null })),
+      ...doSistemaS.filter((g) => g._count._all > 0).map((g) => ({ fonte: 'SISTEMA_S' as const, orgao: g.orgao })),
+    ])
+    const valor = { abertas, fontes: marcas.length, marcas, atualizadoEm: ultimaColeta?.finishedAt ?? null }
     gravarCache('estatisticas', valor)
     res.setHeader('Cache-Control', 'public, max-age=300')
     res.json(valor)

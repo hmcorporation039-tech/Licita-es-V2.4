@@ -15,6 +15,7 @@ import {
 } from '../lib/tenderContentHash'
 import { retencaoApagariaAoChegar } from '../lib/retencao'
 import { anoDoProcesso } from '../lib/anoDoProcesso'
+import { dataPlausivel } from '../lib/dataPlausivel'
 
 const prisma = new PrismaClient()
 
@@ -97,7 +98,24 @@ function ehSoCorrecaoDeFuso(antes: unknown, depois: unknown): boolean {
   return Math.abs(depois.getTime() - antes.getTime()) === DESLOCAMENTO_DE_BRASILIA_MS
 }
 
-export async function saveTender(tender: NormalizedTender): Promise<SaveResult> {
+const CAMPOS_DE_DATA = ['aberturaAt', 'encerramentoAt', 'publicadoAt'] as const
+
+export function comDatasPlausiveis(tender: NormalizedTender, agora: Date = new Date()): NormalizedTender {
+  return {
+    ...tender,
+    aberturaAt: dataPlausivel(tender.aberturaAt, agora),
+    encerramentoAt: dataPlausivel(tender.encerramentoAt, agora),
+    publicadoAt: dataPlausivel(tender.publicadoAt, agora),
+  }
+}
+
+function ehSoDescarteDeDataImplausivel(campo: string, antes: unknown, depois: unknown): boolean {
+  if (!(CAMPOS_DE_DATA as readonly string[]).includes(campo) || depois !== undefined || !(antes instanceof Date)) return false
+  return dataPlausivel(antes) === undefined
+}
+
+export async function saveTender(recebido: NormalizedTender): Promise<SaveResult> {
+  const tender = comDatasPlausiveis(recebido)
   const existing = await prisma.tender.findUnique({
     where: { fonteId: tender.fonteId },
     select: {
@@ -127,9 +145,11 @@ export async function saveTender(tender: NormalizedTender): Promise<SaveResult> 
       return { isNew: false, tenderId: existing.id, isDupe: true, changed: false, changedFields: [] }
     }
 
-    const changedFields = camposAlterados(snapshotDeTender(existing), snapshotDeTender(tender)).filter(
-      (campo) => !ehSoCorrecaoDeFuso(existing[campo as keyof typeof existing], tender[campo as keyof NormalizedTender]),
-    )
+    const changedFields = camposAlterados(snapshotDeTender(existing), snapshotDeTender(tender)).filter((campo) => {
+      const antes = existing[campo as keyof typeof existing]
+      const depois = tender[campo as keyof NormalizedTender]
+      return !ehSoCorrecaoDeFuso(antes, depois) && !ehSoDescarteDeDataImplausivel(campo, antes, depois)
+    })
 
     // Na recoleta só propagamos a situação quando for um estado morto novo
     // (revogada/suspensa/anulada) — ver SITUACOES_MORTAS_NA_COLETA.
@@ -138,9 +158,13 @@ export async function saveTender(tender: NormalizedTender): Promise<SaveResult> 
         ? { situacao: tender.situacao }
         : {}
 
+    const datasImplausiveisLimpas = Object.fromEntries(
+      CAMPOS_DE_DATA.filter((campo) => ehSoDescarteDeDataImplausivel(campo, existing[campo], tender[campo])).map((campo) => [campo, null])
+    )
+
     await prisma.tender.update({
       where: { id: existing.id },
-      data: { ...dadosPersistidos(tender), ...situacaoUpdate },
+      data: { ...dadosPersistidos(tender), ...situacaoUpdate, ...datasImplausiveisLimpas },
     })
 
     return { isNew: false, tenderId: existing.id, isDupe: true, changed: true, changedFields }

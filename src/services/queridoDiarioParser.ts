@@ -93,6 +93,8 @@ const ROTULO_DE_SECAO =
 
 const CONTRATACAO_JA_DEFINIDA = /\bRATIFIC|\bEM PROL D[AO] EMPRESA\b|\bCONTRATAD[AO]\s*:/
 
+const PARCERIA_QUE_NAO_E_LICITACAO = /\bTERMOS? DE (?:FOMENTO|COLABORACAO)\b|\bACORDOS? DE COOPERACAO\b/
+
 const SITUACAO_QUE_DESCARTA =
   /SUSPENS|REVOGA|ANULA(?:CAO|DA|DO)|ADIAMENTO|ADIAD|RESULTADO|HOMOLOGA|ADJUDICA|RETIFICA|ERRATA|DESERT|FRACASSAD|CANCELAMENTO|CANCELAD|PRORROGACAO|PRORROGAD|IMPUGNACAO|RATIFICA/
 
@@ -519,6 +521,8 @@ const PALAVRAS_SEM_OBJETO = new Set([
   'MUNICIPAL', 'ESTADUAL', 'COMPLEMENTAR', 'DECRETO', 'ART', 'ARTS', 'ARTIGO', 'INCISO', 'INCISOS', 'PARAGRAFO', 'UNICO', 'CAPUT', 'ALINEA',
   'DAS', 'DOS', 'NOS', 'NAS', 'COM', 'QUE', 'PARA', 'POR', 'SOBRE', 'PELO', 'PELA', 'PELOS', 'PELAS', 'AOS', 'DEMAIS', 'PRESENTE', 'AVISO',
   'PUBLICIDADE', 'DIVULGACAO', 'DIA', 'DIAS', 'ANO',
+  'LICITACAO', 'COMPARTILHADA', 'COMPARTILHADO', 'REPUBLICADO', 'REPUBLICADA', 'REPUBLICACAO', 'POS', 'ALTERACAO', 'CONTRATACAO', 'OBJETO',
+  'ABAIXO', 'DESCRITO', 'DESCRITA', 'DESCRITOS', 'DESCRITAS', 'SEGUIR', 'CELEBRAR', 'CELEBRACAO', 'TERMO', 'FOMENTO', 'COLABORACAO',
 ])
 
 export function objetoSemConteudo(objeto: string): boolean {
@@ -602,7 +606,7 @@ const DATA_POR_EXTENSO = new RegExp(
 )
 const DATA_NUMERICA = /(?<![\d./])(\d{1,2})\s*[/.]\s*(\d{1,2})\s*[/.]\s*(\d{4})(?![\d/])/g
 const HORA_DEPOIS = /^[^\d]{0,50}?(?<!\d)(\d{1,2})\s*(?:H|:|HORAS?\b)\s*(\d{2})?/
-const HORA_ANTES = /(?<!\d)(\d{1,2})\s*(?:H|:)\s*(\d{2})?\s*(?:MIN(?:UTOS)?)?\s*(?:DO DIA|DE|,)?\s*$/
+const HORA_ANTES = /(?<!\d)(\d{1,2})\s*(?:H|:|HORAS?\b)\s*(\d{2})?\s*(?:HORAS?\b|HRS?\b|HS?\b|MIN(?:UTOS)?\b)?\s*(?:DO DIA|DE|,)?\s*$/
 const CONTEXTO_DE_ASSINATURA = /(?:ASSINAD|PUBLICAD|DISPONIBILIZAD|EMITID|GERAD|CERTIFICAD|IMPRESS)[^.]{0,40}$/
 const CONTEXTO_DE_SESSAO =
   /(?:ABERTURA|SESSAO|DISPUTA|REALIZAR|REALIZACAO|CERTAME|LANCES|JULGAMENTO|ENVELOPES|PROPOSTAS)[^.]{0,60}$/
@@ -752,6 +756,7 @@ function avaliarBloco(bloco: BlocoDeAviso, gazeta: GazetaQueridoDiario, agora: D
   const fimDoCabecalho = Math.min(objeto.inicio, TAMANHO_DO_CABECALHO_SEM_OBJETO)
   const chaveDoCabecalho = chave.slice(0, fimDoCabecalho)
   if (cabecalhoDescarta(chaveDoCabecalho)) return { tipo: 'descartado' }
+  if (PARCERIA_QUE_NAO_E_LICITACAO.test(chaveDoCabecalho) || PARCERIA_QUE_NAO_E_LICITACAO.test(chaveDeBusca(objeto.objeto))) return { tipo: 'descartado' }
 
   const modalidade =
     identificarModalidade(chaveDoCabecalho, chave) ??

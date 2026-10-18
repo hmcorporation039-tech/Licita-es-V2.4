@@ -3,6 +3,7 @@ import { matcherQueue, redisConnection } from '../queues'
 import { enfileirarSemTravar } from '../queues/enfileirar'
 import { prisma, saveWorkerLog } from '../services/tenderService'
 import { duplicidadeNoPncpTceCe } from '../services/tceCeDuplicidade'
+import { esconderRepeticoesDoTceCe } from '../services/duplicataEntreFontes'
 import { idDaLicitacaoTceCe } from '../services/tceCeParser'
 import {
   DependenciasDaColetaTceCe,
@@ -117,6 +118,13 @@ export function startColetorTceCeWorker() {
       } catch (err) {
         erroGeral = motivoCurto(err)
         console.error(`[${CONTEXTO}] Erro na coleta:`, err instanceof Error ? err.message : err)
+      }
+
+      try {
+        const repetidas = await esconderRepeticoesDoTceCe()
+        if (repetidas > 0) console.log(`[${CONTEXTO}] ${repetidas} licitação(ões) repetida(s) no próprio TCE-CE escondida(s), fica a publicação mais recente.`)
+      } catch (err) {
+        console.error(`[${CONTEXTO}] Falha ao esconder licitações repetidas no próprio TCE-CE:`, err instanceof Error ? err.message : err)
       }
 
       const falhas = resumo?.falhas ?? []

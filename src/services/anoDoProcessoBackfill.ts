@@ -3,7 +3,7 @@ import { FONTES_COM_ANO_NO_NUMERO, anoDoProcesso } from '../lib/anoDoProcesso'
 
 const TAMANHO_DO_LOTE = 500
 
-export async function preencherAnoDoProcesso(agora: Date = new Date()): Promise<number> {
+async function preencherVazios(agora: Date): Promise<number> {
   let ultimoId: string | undefined
   let preenchidos = 0
   for (;;) {
@@ -26,4 +26,24 @@ export async function preencherAnoDoProcesso(agora: Date = new Date()): Promise<
       preenchidos += count
     }
   }
+}
+
+async function corrigirAnoNoInicioDoSescRegional(agora: Date): Promise<number> {
+  const candidatos = await prisma.tender.findMany({
+    where: { fonte: 'SESC_REGIONAL', anoDoProcesso: { not: null }, numeroControle: { contains: '/' } },
+    select: { id: true, fonte: true, numeroControle: true, anoDoProcesso: true },
+  })
+  let corrigidos = 0
+  for (const tender of candidatos) {
+    const ano = anoDoProcesso(tender.fonte, tender.numeroControle, agora)
+    if (ano === null || ano === tender.anoDoProcesso) continue
+    const { count } = await prisma.tender.updateMany({ where: { id: tender.id, anoDoProcesso: tender.anoDoProcesso }, data: { anoDoProcesso: ano } })
+    corrigidos += count
+  }
+  return corrigidos
+}
+
+export async function preencherAnoDoProcesso(agora: Date = new Date()): Promise<number> {
+  const preenchidos = await preencherVazios(agora)
+  return preenchidos + (await corrigirAnoNoInicioDoSescRegional(agora))
 }

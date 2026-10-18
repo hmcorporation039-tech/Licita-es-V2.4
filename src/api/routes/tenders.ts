@@ -34,6 +34,9 @@ import { dataDaSessao } from '../../lib/dataDaSessao'
 
 import { SIGLAS_DAS_UFS } from '../../lib/origemDoCadastro'
 import { literalNoLike } from '../../lib/buscaLiteral'
+import { temPalavraSignificativa } from '../../lib/matching'
+
+export const MENSAGEM_DE_BUSCA_SEM_PALAVRA = 'Digite pelo menos uma palavra do que você procura, como "cimento" ou "merenda". Só "de", "para", "com" e afins não filtram nada.'
 
 export const tendersRouter = Router()
 
@@ -121,6 +124,7 @@ tendersRouter.get(
       page,
       pageSize,
     } = querySchema.parse(req.query)
+    if (q && !temPalavraSignificativa(q)) throw new ApiError(400, MENSAGEM_DE_BUSCA_SEM_PALAVRA, { code: 'BUSCA_SEM_PALAVRA' })
     const companyId = somenteRelacionadas ? req.companyId! : undefined
     void situacao
 

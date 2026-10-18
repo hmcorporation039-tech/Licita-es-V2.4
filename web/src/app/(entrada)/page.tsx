@@ -787,7 +787,7 @@ export default async function Entrada() {
         totalDaBela={totaisPorTermo[TERMO_DA_BELA] ?? null}
         prazoDaBela={primeiroPrazoPorTermo[TERMO_DA_BELA] ?? null}
       />
-        <FaixaDeFontes />
+        <FaixaDeFontes marcas={estatisticas?.marcas ?? null} />
         <Ramos totaisPorTermo={totaisPorTermo} />
         <ConhecaABela trialDias={trialDias} />
         <Tour trialDias={trialDias} />

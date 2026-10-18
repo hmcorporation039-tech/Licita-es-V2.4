@@ -1,5 +1,6 @@
 import { ModalidadeEnum } from '../../types'
 import { SescUnidade, detectarModalidade } from '../sescRegional/tipos'
+import { dataPlausivel } from '../../lib/dataPlausivel'
 
 const HORAS_DE_BRASILIA_PARA_UTC = 3
 const DIA_MS = 86_400_000
@@ -18,7 +19,7 @@ export function horarioDeBrasilia(ano: number, mes: number, dia: number, hora = 
   const data = new Date(Date.UTC(ano, mes - 1, dia, hora + HORAS_DE_BRASILIA_PARA_UTC, minuto))
   const conferida = new Date(data.getTime() - HORAS_DE_BRASILIA_PARA_UTC * 3_600_000)
   if (conferida.getUTCFullYear() !== ano || conferida.getUTCMonth() !== mes - 1 || conferida.getUTCDate() !== dia) return undefined
-  return data
+  return dataPlausivel(data)
 }
 
 export function relogioLocalComoBrasilia(texto: string | null | undefined): Date | undefined {

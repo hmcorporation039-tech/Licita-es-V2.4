@@ -1,4 +1,5 @@
 import PausarLetreiro from './PausarLetreiro'
+import { fontesNaFaixa } from '@/lib/fontes'
 
 interface FonteOficial {
   nome: string
@@ -45,8 +46,9 @@ function Marca({ fonte }: { fonte: FonteOficial }) {
   )
 }
 
-export default function FaixaDeFontes() {
-  const total = FONTES_OFICIAIS.length
+export default function FaixaDeFontes({ marcas }: { marcas?: string[] | null }) {
+  const fontes = fontesNaFaixa(FONTES_OFICIAIS, marcas)
+  const total = fontes.length
   return (
     <section aria-labelledby="fontes-titulo" className="az-fontes az-escuro">
       <div className="az-conteiner az-fontes-topo">
@@ -58,7 +60,7 @@ export default function FaixaDeFontes() {
       </div>
       <div id={ID_DO_LETREIRO} className="az-letreiro">
         <ul className="az-letreiro-trilho">
-          {[...FONTES_OFICIAIS, ...FONTES_OFICIAIS].map((fonte, i) => (
+          {[...fontes, ...fontes].map((fonte, i) => (
             <li key={`${fonte.nome}-${i}`} aria-hidden={i >= total || undefined} className={i >= total ? 'az-letreiro-copia' : undefined}>
               <Marca fonte={fonte} />
             </li>

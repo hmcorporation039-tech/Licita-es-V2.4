@@ -87,19 +87,25 @@ export function motivoDaDuplicidade(
   return doPncp.some((chave) => chave !== null && numeros.has(chave)) ? 'numero' : null
 }
 
-export async function duplicidadeNoPncpTceCe(
+export interface DuplicataNoPncp {
+  id: string
+  motivo: MotivoDaDuplicidade
+}
+
+export async function duplicataNoPncpTceCe(
   tender: NormalizedTender,
   agora: Date = new Date(),
   modalidadeConhecida = true
-): Promise<MotivoDaDuplicidade | null> {
+): Promise<DuplicataNoPncp | null> {
   if (!tender.uf || (!tender.municipioIbge && !tender.municipio)) return null
   const limite = new Date(agora.getTime() - DIAS_DE_HISTORICO_DO_PNCP * DIA_MS)
   const municipioNorm = tender.municipio ? normalize(tender.municipio) : null
   const filtroDaModalidade = modalidadeConhecida
     ? Prisma.sql`AND modalidade::text IN (${Prisma.join(modalidadesEquivalentes(tender.modalidade))})`
     : Prisma.empty
-  const candidatos = await prisma.$queryRaw<CandidatoDoPncpNoCeara[]>`
-    SELECT abertura_at AS "aberturaAt",
+  const candidatos = await prisma.$queryRaw<(CandidatoDoPncpNoCeara & { id: string })[]>`
+    SELECT id,
+           abertura_at AS "aberturaAt",
            encerramento_at AS "encerramentoAt",
            objeto,
            raw_json->>'numeroCompra' AS "numeroCompra",
@@ -117,7 +123,15 @@ export async function duplicidadeNoPncpTceCe(
   const numeros = numerosDoTender(tender)
   for (const candidato of candidatos) {
     const motivo = motivoDaDuplicidade(tender, numeros, candidato)
-    if (motivo) return motivo
+    if (motivo) return { id: candidato.id, motivo }
   }
   return null
+}
+
+export async function duplicidadeNoPncpTceCe(
+  tender: NormalizedTender,
+  agora: Date = new Date(),
+  modalidadeConhecida = true
+): Promise<MotivoDaDuplicidade | null> {
+  return (await duplicataNoPncpTceCe(tender, agora, modalidadeConhecida))?.motivo ?? null
 }

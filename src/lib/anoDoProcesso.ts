@@ -10,6 +10,7 @@ const ANO_COM_DOIS_DIGITOS_DEPOIS_DA_BARRA = /\/\s*(\d{2})(?!\d)/g
 const ANO_COM_QUATRO_DIGITOS_DEPOIS_DE_SEPARADOR = /[.\-_ ](\d{4})(?!\d)/g
 const ANO_COM_DOIS_DIGITOS_DEPOIS_DE_SEPARADOR = /[.\-_](\d{2})(?!\d)/g
 const ANO_NO_INICIO_DO_PROCESSO_DO_SESC_GO = /^\s*(\d{2})(?!\d)/
+const ANO_NO_INICIO_DO_PROCESSO_DO_SESC_REGIONAL = /^\s*(\d{2})\/(?=\d{1,2}\.\d|\d{3,})/
 const SEQUENCIA_DE_DIGITOS = /\d+/g
 const MENOR_SEQUENCIA_COM_ANO_NO_FIM = 5
 const MENOR_SEQUENCIA_COM_ANO_NO_INICIO = 7
@@ -54,6 +55,12 @@ export function anoDoProcesso(fonte: FonteEnum, numeroControle: string | null | 
   if (fonte === 'SESC_GO') {
     const inicio = numero.match(ANO_NO_INICIO_DO_PROCESSO_DO_SESC_GO)
     return inicio ? anoPlausivel(2000 + Number(inicio[1]), anoMaximo) : null
+  }
+
+  if (fonte === 'SESC_REGIONAL') {
+    const inicio = numero.match(ANO_NO_INICIO_DO_PROCESSO_DO_SESC_REGIONAL)
+    const ano = inicio ? anoPlausivel(2000 + Number(inicio[1]), anoMaximo) : null
+    if (ano !== null) return ano
   }
 
   return (

@@ -5,6 +5,7 @@
 // ============================================================
 
 import { horaDeBrasilia } from './dataDeBrasilia'
+import { dataPlausivel } from './dataPlausivel'
 // "02/10/2026 14:00" ou "02/10/2026" -> Date. undefined se não casar o formato
 // (texto vazio, "-", etc. — mais comum do que se espera nesses sites).
 export function parseDataBr(texto: string | null | undefined): Date | undefined {
@@ -13,7 +14,7 @@ export function parseDataBr(texto: string | null | undefined): Date | undefined 
   if (!m) return undefined
   const [, dia, mes, ano, hora, min] = m
   const data = horaDeBrasilia(Number(ano), Number(mes) - 1, Number(dia), Number(hora ?? 0), Number(min ?? 0))
-  return Number.isNaN(data.getTime()) ? undefined : data
+  return dataPlausivel(data)
 }
 
 // "R$ 35.524.053,95" -> 35524053.95. undefined se não houver número.

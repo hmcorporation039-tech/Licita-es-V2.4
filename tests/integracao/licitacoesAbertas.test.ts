@@ -37,8 +37,16 @@ rodar('Somente licitações abertas', () => {
     sescRegionalPublicadaHaPouco: { fonte: 'SESC_REGIONAL', publicadoAt: dias(-3), uf: 'SP' },
     sescRegionalDeAnoPassadoPublicadaHaPouco: { fonte: 'SESC_REGIONAL', publicadoAt: dias(-3), numeroControle: `001/${anoAtual - 1}` },
     novacapComPrazoENumeroAntigo: { fonte: 'NOVACAP', encerramentoAt: dias(10), numeroControle: `00006/${anoAtual - 1}`, uf: 'SP' },
+    sestSenatDe2017ComPrazoEm2087: { fonte: 'SEST_SENAT', encerramentoAt: new Date('2087-01-05T03:00:00Z'), numeroControle: '003/2017' },
+    sestSenatDe2019ComPrazoNoAno5219: { fonte: 'SEST_SENAT', encerramentoAt: new Date('5219-10-15T03:00:00Z'), numeroControle: '010/2019' },
+    sistemaSDoAnoPassadoComSessaoEm2206: { fonte: 'SISTEMA_S', aberturaAt: new Date('2206-08-28T03:00:00Z'), numeroControle: `466/${anoAtual - 1}` },
+    tceCeComReaberturaEm2202: { fonte: 'TCE_CE', aberturaAt: new Date('2202-11-21T11:00:00Z'), publicadoAt: new Date('2022-11-30T03:00:00Z') },
+    pncpAntigoComPrazoEm2102: { encerramentoAt: new Date('2102-03-01T03:00:00Z'), publicadoAt: dias(-400) },
+    pncpCredenciamentoDeDezAnos: { encerramentoAt: dias(3650), publicadoAt: dias(-10), modalidade: 'CREDENCIAMENTO', uf: 'SP' },
+    diarioRepetidoDoPncp: { fonte: 'QUERIDO_DIARIO', aberturaAt: dias(5), publicadoAt: dias(-2), duplicataDe: 'id-da-licitacao-do-pncp' },
   }
-  const abertas = ['prazoFuturo', 'dispensaRecente', 'sessaoFiegFutura', 'sestSenatDesteAnoSemData', 'sescRegionalPublicadaHaPouco', 'novacapComPrazoENumeroAntigo']
+  const abertas = ['prazoFuturo', 'dispensaRecente', 'sessaoFiegFutura', 'sestSenatDesteAnoSemData', 'sescRegionalPublicadaHaPouco', 'novacapComPrazoENumeroAntigo', 'pncpCredenciamentoDeDezAnos']
+  const comPrazoConfirmado = ['prazoFuturo', 'sessaoFiegFutura', 'novacapComPrazoENumeroAntigo', 'pncpCredenciamentoDeDezAnos']
 
   beforeAll(async () => {
     process.env.DATABASE_URL = URL_BANCO
@@ -83,12 +91,21 @@ rodar('Somente licitações abertas', () => {
       sescGoDe2017SemData: 2017,
       sescRegionalDeAnoPassadoPublicadaHaPouco: anoAtual - 1,
       novacapComPrazoENumeroAntigo: anoAtual - 1,
+      sestSenatDe2017ComPrazoEm2087: 2017,
+      sestSenatDe2019ComPrazoNoAno5219: 2019,
+      sistemaSDoAnoPassadoComSessaoEm2206: anoAtual - 1,
     })
     const todas = await prisma.tender.findMany({ where: { fonteId: { endsWith: sufixo } } })
     const noBanco = await prisma.tender.findMany({ where: { fonteId: { endsWith: sufixo }, ...whereLicitacaoAberta() }, select: { fonteId: true } })
     const nomes = (l: { fonteId: string }[]) => l.map((t) => t.fonteId.replace(`-${sufixo}`, '')).sort()
     expect(nomes(noBanco)).toEqual([...abertas].sort())
     expect(nomes(todas.filter((t: Parameters<typeof estaAberta>[0]) => estaAberta(t)))).toEqual([...abertas].sort())
+  })
+
+  it('o prazo confirmado (página de entrada e contagem da lista) ignora data impossível e repetição do PNCP', async () => {
+    const { whereLicitacaoComPrazoConfirmado } = await import('../../src/lib/licitacaoAberta')
+    const noBanco = await prisma.tender.findMany({ where: { fonteId: { endsWith: sufixo }, ...whereLicitacaoComPrazoConfirmado() }, select: { fonteId: true } })
+    expect(noBanco.map((t: { fonteId: string }) => t.fonteId.replace(`-${sufixo}`, '')).sort()).toEqual([...comPrazoConfirmado].sort())
   })
 
   it('GET /api/tenders devolve só as abertas', async () => {

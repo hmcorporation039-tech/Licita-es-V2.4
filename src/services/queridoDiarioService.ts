@@ -32,6 +32,7 @@ const DIAS_SEM_CURSOR = 5
 const JANELA_MAXIMA_DIAS = 30
 const SIMILARIDADE_MINIMA_COM_O_PNCP = 0.45
 const SIMILARIDADE_MINIMA_NO_MESMO_DIA = 0.2
+export const SIMILARIDADE_MINIMA_PARA_ESCONDER_NO_MESMO_DIA = 0.4
 const SIMILARIDADE_MINIMA_COM_O_MESMO_NUMERO = 0.1
 const SEMELHANCA_MINIMA_ENTRE_REPUBLICACOES = 0.3
 const DIAS_DE_HISTORICO_DO_PNCP = 180
@@ -154,6 +155,7 @@ export function modalidadesEquivalentes(modalidade: ModalidadeEnum): ModalidadeE
   if (modalidade === 'DISPENSA_COM_DISPUTA' || modalidade === 'DISPENSA_SEM_DISPUTA') {
     return ['DISPENSA_COM_DISPUTA', 'DISPENSA_SEM_DISPUTA']
   }
+  if (modalidade === 'CREDENCIAMENTO' || modalidade === 'INEXIGIBILIDADE') return ['CREDENCIAMENTO', 'INEXIGIBILIDADE']
   return [modalidade]
 }
 
@@ -170,7 +172,8 @@ export function mesmoNumeroDoPncp(numero: NumeroDoAviso | null, candidato: Candi
 
 export function ehMesmaLicitacaoDoPncp(
   tender: Pick<NormalizedTender, 'aberturaAt'> & Partial<Pick<NormalizedTender, 'fonteId'>>,
-  candidato: CandidatoDoPncp
+  candidato: CandidatoDoPncp,
+  similaridadeMinimaNoMesmoDia: number = SIMILARIDADE_MINIMA_NO_MESMO_DIA
 ): boolean {
   if (Number(candidato.similaridade) >= SIMILARIDADE_MINIMA_COM_O_PNCP) return true
   if (
@@ -179,18 +182,19 @@ export function ehMesmaLicitacaoDoPncp(
   ) {
     return true
   }
-  if (!tender.aberturaAt || Number(candidato.similaridade) < SIMILARIDADE_MINIMA_NO_MESMO_DIA) return false
+  if (!tender.aberturaAt || Number(candidato.similaridade) < similaridadeMinimaNoMesmoDia) return false
   const dia = diaEmBrasilia(tender.aberturaAt)
   return [candidato.aberturaAt, candidato.encerramentoAt].some((data) => data !== null && diaEmBrasilia(new Date(data)) === dia)
 }
 
-export async function existeNoPncp(tender: NormalizedTender, agora: Date = new Date()): Promise<boolean> {
-  if (!tender.uf || (!tender.municipioIbge && !tender.municipio)) return false
+export async function licitacaoDoPncpEquivalente(tender: NormalizedTender, agora: Date = new Date()): Promise<string | null> {
+  if (!tender.uf || (!tender.municipioIbge && !tender.municipio)) return null
   const modalidades = modalidadesEquivalentes(tender.modalidade)
   const limite = new Date(agora.getTime() - DIAS_DE_HISTORICO_DO_PNCP * DIA_MS)
   const municipioNorm = tender.municipio ? normalize(tender.municipio) : null
-  const candidatos = await prisma.$queryRaw<CandidatoDoPncp[]>`
-    SELECT abertura_at AS "aberturaAt",
+  const candidatos = await prisma.$queryRaw<(CandidatoDoPncp & { id: string })[]>`
+    SELECT id,
+           abertura_at AS "aberturaAt",
            encerramento_at AS "encerramentoAt",
            similarity(coalesce(objeto_norm, ''), ${normalize(tender.objeto)})::float8 AS similaridade,
            raw_json->>'numeroCompra' AS "numeroCompra",
@@ -204,7 +208,11 @@ export async function existeNoPncp(tender: NormalizedTender, agora: Date = new D
     ORDER BY similaridade DESC
     LIMIT 50
   `
-  return candidatos.some((candidato) => ehMesmaLicitacaoDoPncp(tender, candidato))
+  return candidatos.find((candidato) => ehMesmaLicitacaoDoPncp(tender, candidato))?.id ?? null
+}
+
+export async function existeNoPncp(tender: NormalizedTender, agora: Date = new Date()): Promise<boolean> {
+  return (await licitacaoDoPncpEquivalente(tender, agora)) !== null
 }
 
 function palavrasDoObjeto(objeto: string): Set<string> {
