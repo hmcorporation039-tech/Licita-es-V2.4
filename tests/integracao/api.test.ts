@@ -228,6 +228,9 @@ rodar('API com banco real', () => {
       expect((await criar(Buffer.from('<html>nao sou pdf</html>'), { tipo: 'balanco', nome: 'Balanço patrimonial' })).status).toBe(415)
       expect((await criar(Buffer.from('%PDF-1.4 x'), undefined)).status).toBe(400)
       expect((await criar(Buffer.from('%PDF-1.4 x'), { tipo: 'balanco' })).status).toBe(400)
+      const dataRuim = await criar(Buffer.from('%PDF-1.4 x'), { tipo: 'balanco', nome: 'Balanço patrimonial', dataValidade: 'não é data' })
+      expect(dataRuim.status).toBe(400)
+      expect(await dataRuim.json()).toMatchObject({ error: 'Data de validade inválida', campo: 'dataValidade' })
       expect(await contar()).toBe(antes)
 
       const ok = await criar(Buffer.from('%PDF-1.4 balanco %%EOF'), { tipo: 'balanco', nome: 'Balanço patrimonial', dataValidade: '2027-04-30' })
