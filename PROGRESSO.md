@@ -149,6 +149,10 @@ Ver o cabeçalho de `scripts/enxugarRawJson.ts`.
 
 O SESC GO contava ~336 "novos" por rodada em 953. Causa: o loop compartilhado `salvarLote` (`src/workers/coletorHtmlShared.ts`, usado por 14 coletores) gravava licitação que já chegava encerrada; a faxina a apagava e a coleta seguinte, que traz a listagem inteira, a gravava de novo como nova e a mandava ao matcher. Passa a usar `saveTenderSeAindaServir`, a mesma regra do PNCP: encerrada só é gravada se já estiver no banco (para atualizar a situação). O descarte é contado (`totalDescartadas`) e entra na conferência de lote completo do Querido Diário, SIGPub e FAMEM, para o cursor desses diários continuar avançando. O fuso dos parsers HTML do SESC regional já tinha sido corrigido no #43.
 
+### Correção de 19/10: TCE-RS com "timeout of 60000ms exceeded" em produção
+
+O pedido do trecho do arquivo anual (Range em um ZIP de ~257 MB) esperava no máximo 60 s pelo primeiro byte, e o servidor do TCE-RS passou disso nas 3 tentativas. A espera pelo primeiro byte sobe para 3 min. O teto de 10 min por arquivo passa a contar desde o pedido (antes só começava depois dos cabeçalhos). Uma transferência que fica 2 min sem dados é derrubada e repetida: depois do primeiro byte o axios não vigia mais a conexão, e um trecho travado ficaria parado os 10 min. O timeout do axios vira "download incompleto (o servidor não começou a responder em 180 s)", repetível e legível no log. Comportamento do axios 1.20 conferido contra um servidor local; o servidor real do TCE-RS não é alcançável do ambiente de desenvolvimento na nuvem.
+
 ### Pendente (próxima sessão)
 
 | O que | Observação |

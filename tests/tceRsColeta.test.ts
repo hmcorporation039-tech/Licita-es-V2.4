@@ -10,6 +10,7 @@ import {
   anosParaLer,
   coletarTceRs,
   linhaDoResumo,
+  semRespostaNoPrazo,
 } from '../src/services/tceRsColeta'
 import { statusDaColetaTceRs } from '../src/workers/coletorTceRs'
 import { NormalizedTender, SituacaoEnum } from '../src/types'
@@ -164,6 +165,40 @@ describe('TCE-RS — coleta pelo arquivo anual', () => {
     expect(sempre.pedidos.filter((p) => p.tipo === 'trecho')).toHaveLength(3)
     expect(falhou.falhas[0]).toMatch(/download incompleto/)
     expect(falhou.arquivosCompletos).toBe(false)
+  })
+
+  it('servidor que demora a começar a responder é cancelado no tempo máximo e repetido', async () => {
+    const limites = { ...LIMITES_PADRAO_TCE_RS, tempoMaximoPorArquivoMs: 40 }
+    const umaVez = redeFalsaDoTceRs(ARQUIVOS, { pendurarTrecho: (vez) => vez === 0 })
+    const recuperada = await coletarTceRs(depsFalsas(umaVez), AGORA, limites)
+    expect(umaVez.esperas).toEqual([ESPERA_ENTRE_TENTATIVAS_MS])
+    expect(recuperada).toMatchObject({ linhasLidas: 25, arquivosCompletos: true })
+
+    const sempre = redeFalsaDoTceRs(ARQUIVOS, { pendurarTrecho: () => true })
+    const falhou = await coletarTceRs(depsFalsas(sempre), AGORA, limites)
+    expect(sempre.pedidos.filter((p) => p.tipo === 'trecho')).toHaveLength(3)
+    expect(falhou.falhas[0]).toMatch(/download incompleto \(tempo esgotado/)
+    expect(falhou.arquivosCompletos).toBe(false)
+  })
+
+  it('download que para de chegar no meio é derrubado pelo silêncio e repetido', async () => {
+    const limites = { ...LIMITES_PADRAO_TCE_RS, maxSilencioMs: 40 }
+    const umaVez = redeFalsaDoTceRs(ARQUIVOS, { silenciarTrecho: (vez) => vez === 0 })
+    const recuperada = await coletarTceRs(depsFalsas(umaVez), AGORA, limites)
+    expect(umaVez.esperas).toEqual([ESPERA_ENTRE_TENTATIVAS_MS])
+    expect(recuperada).toMatchObject({ linhasLidas: 25, arquivosCompletos: true })
+
+    const sempre = redeFalsaDoTceRs(ARQUIVOS, { silenciarTrecho: () => true })
+    const falhou = await coletarTceRs(depsFalsas(sempre), AGORA, limites)
+    expect(falhou.falhas[0]).toMatch(/sem dados do servidor por 0 s/)
+    expect(falhou.arquivosCompletos).toBe(false)
+  })
+
+  it('timeout do axios vira download incompleto (repetível) com o prazo no texto', () => {
+    const timeout = Object.assign(new Error('timeout of 180000ms exceeded'), { code: 'ECONNABORTED', isAxiosError: true })
+    expect(String(semRespostaNoPrazo(timeout, 180_000))).toMatch(/download incompleto \(o servidor não começou a responder em 180 s\)/)
+    const outro = new Error('outro')
+    expect(semRespostaNoPrazo(outro, 180_000)).toBe(outro)
   })
 
   it('403 ou 429 param tudo na hora, sem repetir', async () => {
