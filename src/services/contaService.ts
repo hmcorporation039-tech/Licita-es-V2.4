@@ -40,7 +40,6 @@ import {
   tokenUtilizavel,
 } from '../lib/tokensDeConta'
 
-// Regra do negócio, não configuração: o teste grátis é de 7 dias.
 export const TRIAL_DIAS = 7
 
 export function fimDoTesteNaConfirmacao(acessoAte: Date | null, planCode: string, agora: Date, dias: number = TRIAL_DIAS): Date | null {
