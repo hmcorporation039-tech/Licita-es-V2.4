@@ -7,7 +7,7 @@ senha e um período gratuito **uma única vez por CPF/CNPJ**. A cobrança contin
 
 1. `/cadastro` → `POST /api/auth/register` (sempre responde **202**, igual para qualquer situação).
 2. O sistema cria a empresa (plano **Teste**) e o usuário dono, com prazo de acesso de **7 dias**
-   (`TRIAL_DIAS`), e envia o e-mail de confirmação (link válido por 48 h, uso único).
+   (fixo em `TRIAL_DIAS`, `src/services/contaService.ts`), e envia o e-mail de confirmação (link válido por 48 h, uso único).
 3. A tela de cadastro passa a pedir o **código de 6 dígitos** enviado ao e-mail → `POST /api/auth/verify-email` `{ email, codigo }`. Só depois disso o login é liberado (a conta entra sozinha).
 4. `/esqueci-senha` → `POST /api/auth/forgot-password`; `/redefinir-senha?token=…` →
    `POST /api/auth/reset-password` (link válido por 1 h, uso único).

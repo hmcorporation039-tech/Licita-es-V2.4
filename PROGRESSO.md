@@ -132,14 +132,14 @@ Ver o cabeçalho de `scripts/enxugarRawJson.ts`.
 | Gerador de impugnação e de pedido de esclarecimento | #40 | ✅ |
 | Correções do teste de ponta a ponta: **fuso do PNCP** (horários 3 h adiantados; migration 27 corrige 47.966 registros), deslocamento até o local de execução, número real do edital, avisos de preço acima do estimado, alterações não salvas | #41 | ✅ |
 | Fonte nova: Sistema S — SENAC (API nacional, 28 unidades), SESI/SENAI/federações (Portal de Licitações da indústria, 13 portais; Paradigma, 9 federações) | #42 | 🟡 |
-| Fonte nova: **Infraero** (fora do PNCP) — varredura por id do portal próprio, revisita das abertas, aeroporto → município — `docs/MAPA_INFRAERO.md` | branch `fonte-infraero` | 🟡 |
-| Fonte nova: **diários municipais do SIGPub** (13 associações, prefeituras ainda fora do PNCP) — busca por termos de aviso, parser compartilhado com o Querido Diário, duplicidade com PNCP (inclusive pelo número) e com o Querido Diário — `docs/MAPA_DIARIOS_MUNICIPAIS.md` | branch `fonte-sigpub` | 🟡 |
-| Fonte nova: **TCE-CE** (184 municípios do Ceará) — lista de abertas do Portal de Licitações do TCE, duplicidade com o PNCP antes do detalhe, revisita e sumidas — `docs/MAPA_TCE_CE.md` | branch `fonte-tce-ce` | 🟡 |
-| Fonte nova: **TCE-RS** (LicitaCon, dados abertos: 497 municípios + órgãos estaduais) — arquivo anual lido por trechos do ZIP, edital publicado com sessão de hoje em diante, duplicidade com o PNCP (link declarado, regra comum e número/sessão), situação pela fase e pelos eventos — `docs/MAPA_TCE_RS.md` | branch `fonte-tce-rs` | 🟡 |
-| QA 17/10: fontes que falhavam calado, fim do teste grátis, prazo/local em Meus matches e Escolhidas, e-mail de match com prazo e link, avisos vagos do Querido Diário | branch `qa-fontes-conta-emails` | 🟡 |
-| Fonte nova: **TCE-PI** (Mural de Licitações, 224 municípios + Estado do Piauí) — divulgadas com sessão futura pela sessão JSF (tabela de 100 em 100, planilha exportada de reserva), duplicidade estrita com o PNCP + publicação no PNCP informada ao TCE, revisita e sumidas — `docs/MAPA_TCE_PI.md` | branch `fonte-tce-pi` | 🟡 |
-| Fonte nova: **TCE-TO** (SICAP-LCO, municípios do Tocantins) — API do Módulo Público por data de abertura, duplicidade com o PNCP antes do detalhe, revisita, sumidas e memória no Redis; pesquisa de BA/MA/TO com a FAMEM (MA) como próxima fonte e a Bahia sem fonte aberta — `docs/MAPA_TCE_TO.md` | branch `fonte-prefeituras-ba-ma-to` | 🟡 |
-| Fonte nova: **FAMEM** (Diário Oficial dos Municípios do Maranhão, 65 prefeituras) — lista JSON com o cookie de sessão do site, só os avisos pela categoria/título, leitor de avisos compartilhado, dados pessoais tirados antes do leitor, sessão de hoje em diante, duplicidade estrita com o PNCP e com o Querido Diário; coleta real: 30 novas em 16 municípios, 6 municípios do MA passam a ter licitação aberta — `docs/MAPA_FAMEM.md` | branch `fonte-famem` | 🟡 |
+| Fonte nova: **Infraero** (fora do PNCP) — varredura por id do portal próprio, revisita das abertas, aeroporto → município — `docs/MAPA_INFRAERO.md` | #65 | 🟡 |
+| Fonte nova: **diários municipais do SIGPub** (13 associações, prefeituras ainda fora do PNCP) — busca por termos de aviso, parser compartilhado com o Querido Diário, duplicidade com PNCP (inclusive pelo número) e com o Querido Diário — `docs/MAPA_DIARIOS_MUNICIPAIS.md` | #68 | 🟡 |
+| Fonte nova: **TCE-CE** (184 municípios do Ceará) — lista de abertas do Portal de Licitações do TCE, duplicidade com o PNCP antes do detalhe, revisita e sumidas — `docs/MAPA_TCE_CE.md` | #69 | 🟡 |
+| Fonte nova: **TCE-RS** (LicitaCon, dados abertos: 497 municípios + órgãos estaduais) — arquivo anual lido por trechos do ZIP, edital publicado com sessão de hoje em diante, duplicidade com o PNCP (link declarado, regra comum e número/sessão), situação pela fase e pelos eventos — `docs/MAPA_TCE_RS.md` | #79 | 🟡 |
+| QA 17/10: fontes que falhavam calado, fim do teste grátis, prazo/local em Meus matches e Escolhidas, e-mail de match com prazo e link, avisos vagos do Querido Diário | commit `aa9fb30` | 🟡 |
+| Fonte nova: **TCE-PI** (Mural de Licitações, 224 municípios + Estado do Piauí) — divulgadas com sessão futura pela sessão JSF (tabela de 100 em 100, planilha exportada de reserva), duplicidade estrita com o PNCP + publicação no PNCP informada ao TCE, revisita e sumidas — `docs/MAPA_TCE_PI.md` | #77 | 🟡 |
+| Fonte nova: **TCE-TO** (SICAP-LCO, municípios do Tocantins) — API do Módulo Público por data de abertura, duplicidade com o PNCP antes do detalhe, revisita, sumidas e memória no Redis; pesquisa de BA/MA/TO com a FAMEM (MA) como próxima fonte e a Bahia sem fonte aberta — `docs/MAPA_TCE_TO.md` | #78 | 🟡 |
+| Fonte nova: **FAMEM** (Diário Oficial dos Municípios do Maranhão, 65 prefeituras) — lista JSON com o cookie de sessão do site, só os avisos pela categoria/título, leitor de avisos compartilhado, dados pessoais tirados antes do leitor, sessão de hoje em diante, duplicidade estrita com o PNCP e com o Querido Diário; coleta real: 30 novas em 16 municípios, 6 municípios do MA passam a ter licitação aberta — `docs/MAPA_FAMEM.md` | #81 | 🟡 |
 
 ### Decisão de 17/10: coleta do módulo legado do Compras.gov.br desativada
 
@@ -153,12 +153,16 @@ O SESC GO contava ~336 "novos" por rodada em 953. Causa: o loop compartilhado `s
 
 O pedido do trecho do arquivo anual (Range em um ZIP de ~257 MB) esperava no máximo 60 s pelo primeiro byte, e o servidor do TCE-RS passou disso nas 3 tentativas. A espera pelo primeiro byte sobe para 3 min. O teto de 10 min por arquivo passa a contar desde o pedido (antes só começava depois dos cabeçalhos). Uma transferência que fica 2 min sem dados é derrubada e repetida: depois do primeiro byte o axios não vigia mais a conexão, e um trecho travado ficaria parado os 10 min. O timeout do axios vira "download incompleto (o servidor não começou a responder em 180 s)", repetível e legível no log. Comportamento do axios 1.20 conferido contra um servidor local; o servidor real do TCE-RS não é alcançável do ambiente de desenvolvimento na nuvem.
 
+### Correção de 19/10: teste grátis fixo em 7 dias
+
+Uma conta nova apareceu no administrador com acesso de 30 dias. O cadastro usava `TRIAL_DIAS` do ambiente quando definido (1 a 90), e o `.env.example` dizia "Padrão 14" enquanto o código usava 7. O prazo passa a ser fixo no código (`TRIAL_DIAS = 7` em `src/services/contaService.ts`) e a variável deixa de existir. Na lista de usuários do administrador, a situação mostra "Em teste"/"Teste encerrado" e a coluna "Acesso até" mostra quantos dias faltam; o botão "+30 dias" (que, na verdade, define hoje + 30) virou "7 dias" e "30 dias", com a explicação no título. Contas criadas antes com prazo maior não mudam sozinhas: ajustar pelo botão "7 dias".
+
 ### Pendente (próxima sessão)
 
 | O que | Observação |
 |---|---|
 | Cobrança por assinatura (cartão + Pix Automático) | Recomendação: Asaas. Aguarda decisão de planos/preços e a conta de teste |
-| Sistema S restante | SP, AC, MA e RN cobertos no branch `sistema-s-sp-ac-ma-rn` (falta o PR). Ficam de fora: PR (desafio do Cloudflare) e SESI-RR (só planilhas anuais) |
+| Sistema S restante | SP, AC, MA e RN cobertos no #45. Ficam de fora: PR (desafio do Cloudflare) e SESI-RR (só planilhas anuais) |
 | Endurecimento | CSP com nonce e token fora do `localStorage`; corrida nas cotas; Actions fixadas por SHA (precisa `gh auth refresh -s workflow`) |
 | Pentest final antes do lançamento | Repetir o roteiro do relatório de 15/10 incluindo a cobrança |
 

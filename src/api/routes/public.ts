@@ -7,7 +7,7 @@ import { Router } from 'express'
 import { prisma } from '../../services/tenderService'
 import { asyncHandler } from '../asyncHandler'
 import { lerLimites } from '../../lib/planos'
-import { trialDias } from '../../services/contaService'
+import { TRIAL_DIAS } from '../../services/contaService'
 import { TERMOS_VERSAO } from '../../lib/legal'
 import { z } from 'zod'
 import { normalize } from '../../lib/geoService'
@@ -26,7 +26,7 @@ publicRouter.get(
     const plans = await prisma.subscriptionPlan.findMany({ where: { active: true }, orderBy: { sortOrder: 'asc' } })
     res.setHeader('Cache-Control', 'public, max-age=300')
     res.json({
-      trialDias: trialDias(),
+      trialDias: TRIAL_DIAS,
       termosVersao: TERMOS_VERSAO,
       planos: plans.map((p) => ({
         codigo: p.code,

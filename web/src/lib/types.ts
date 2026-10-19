@@ -99,6 +99,7 @@ export interface AdminUser {
   createdAt: string
   hasPassword: boolean
   emailConfirmado: boolean
+  planCode: string
 }
 
 export interface MonitoredItem {

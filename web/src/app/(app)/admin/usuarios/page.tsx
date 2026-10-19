@@ -36,6 +36,10 @@ function isExpired(v: string | null) {
   return v != null && new Date(v).getTime() < Date.now()
 }
 
+function diasRestantes(v: string): number {
+  return Math.ceil((new Date(v).getTime() - Date.now()) / 86_400_000)
+}
+
 const SENHA_MIN = 10
 const SENHA_MAX = 72
 
@@ -94,8 +98,8 @@ function SenhaGerada({ titulo, email, senha }: { titulo: string; email: string; 
 
 function Situacao({ u }: { u: AdminUser }) {
   if (!u.active) return <StatusTag tone="danger">Desativado</StatusTag>
-  if (isExpired(u.accessExpiresAt)) return <StatusTag tone="warn">Acesso expirado</StatusTag>
-  return <StatusTag>Ativo</StatusTag>
+  if (isExpired(u.accessExpiresAt)) return <StatusTag tone="warn">{u.planCode === 'TESTE' ? 'Teste encerrado' : 'Acesso expirado'}</StatusTag>
+  return <StatusTag>{u.planCode === 'TESTE' ? 'Em teste' : 'Ativo'}</StatusTag>
 }
 
 export default function AdminUsuariosPage() {
@@ -309,6 +313,7 @@ export default function AdminUsuariosPage() {
                   const formId = `senha-${u.id}`
                   const souEu = meuId !== null && u.id === meuId
                   const semPrazo = u.accessExpiresAt === null
+                  const restantes = u.accessExpiresAt && !isExpired(u.accessExpiresAt) ? diasRestantes(u.accessExpiresAt) : null
                   return (
                     <Fragment key={u.id}>
                       <Tr selected={editando}>
@@ -333,7 +338,16 @@ export default function AdminUsuariosPage() {
                           </div>
                         </Td>
                         <Td numeric muted>
-                          {semPrazo ? <span className="font-sans">sem prazo</span> : formatarData(u.accessExpiresAt)}
+                          {semPrazo ? (
+                            <span className="font-sans">sem prazo</span>
+                          ) : (
+                            <div className="flex flex-col items-end gap-0.5">
+                              <span>{formatarData(u.accessExpiresAt)}</span>
+                              {restantes !== null && (
+                                <span className="font-sans text-xs">{restantes === 1 ? 'falta 1 dia' : `faltam ${restantes} dias`}</span>
+                              )}
+                            </div>
+                          )}
                         </Td>
                         <Td>
                           <div className="flex flex-wrap justify-end gap-1">
@@ -342,8 +356,11 @@ export default function AdminUsuariosPage() {
                                 Confirmar e-mail
                               </Button>
                             )}
-                            <Button size="sm" variant="ghost" icon={CalendarPlus} onClick={() => extend(u, 30)}>
-                              +30 dias
+                            <Button size="sm" variant="ghost" icon={CalendarPlus} title="Acesso até hoje + 7 dias" onClick={() => extend(u, 7)}>
+                              7 dias
+                            </Button>
+                            <Button size="sm" variant="ghost" icon={CalendarPlus} title="Acesso até hoje + 30 dias" onClick={() => extend(u, 30)}>
+                              30 dias
                             </Button>
                             <Button
                               size="sm"
