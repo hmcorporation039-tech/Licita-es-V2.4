@@ -31,6 +31,8 @@ export interface OpcoesDaRedeFalsa {
   statusDaCauda?: (caminho: string) => number
   statusDoTrecho?: (vez: number) => number
   cortarTrecho?: (vez: number) => number | null
+  pendurarTrecho?: (vez: number) => boolean
+  silenciarTrecho?: (vez: number) => boolean
 }
 
 export interface RedeFalsaDoTceRs extends RedeDoTceRs {
@@ -52,14 +54,20 @@ export function redeFalsaDoTceRs(arquivos: Record<string, Buffer>, opcoes: Opcoe
       if (!zip || status !== 206) return { status, dados: Buffer.alloc(0), tamanhoTotal: null, atualizadoEm: null }
       return { status, dados: zip.subarray(Math.max(0, zip.length - bytes)), tamanhoTotal: zip.length, atualizadoEm: 'Sun, 18 Oct 2026 06:35:01 GMT' }
     },
-    baixarTrecho: async (caminho, inicio, fim): Promise<TrechoDoArquivo> => {
+    baixarTrecho: async (caminho, inicio, fim, sinal): Promise<TrechoDoArquivo> => {
       rede.pedidos.push({ tipo: 'trecho', caminho, inicio, fim })
       const vez = trechos++
+      if (opcoes.pendurarTrecho?.(vez)) {
+        await new Promise<never>((_, rejeitar) => sinal?.addEventListener('abort', () => rejeitar(new Error('canceled'))))
+      }
       const zip = arquivos[caminho] ?? Buffer.alloc(0)
       const status = opcoes.statusDoTrecho?.(vez) ?? 206
       const corte = opcoes.cortarTrecho?.(vez) ?? null
       const pedaco = zip.subarray(inicio, fim + 1)
-      const corpo = Readable.from(corte === null ? [pedaco] : [pedaco.subarray(0, corte)])
+      const corpo = opcoes.silenciarTrecho?.(vez)
+        ? new Readable({ read() {} })
+        : Readable.from(corte === null ? [pedaco] : [pedaco.subarray(0, corte)])
+      if (opcoes.silenciarTrecho?.(vez)) corpo.push(pedaco.subarray(0, 100))
       const destruir = corpo.destroy.bind(corpo)
       corpo.destroy = (erro?: Error) => {
         rede.corposDestruidos++

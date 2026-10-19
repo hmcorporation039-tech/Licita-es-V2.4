@@ -8,7 +8,7 @@
 
 import { matcherQueue } from '../queues'
 import { enfileirarSemTravar } from '../queues/enfileirar'
-import { saveTender } from '../services/tenderService'
+import { saveTenderSeAindaServir } from '../services/tenderService'
 import { avisarAlteracaoDeTender } from '../services/tenderChangeService'
 import { NormalizedTender } from '../types'
 
@@ -16,17 +16,21 @@ export interface SaveCounters {
   totalNew: number
   totalDupes: number
   totalUpdated: number
+  totalDescartadas: number
 }
 
 export async function salvarLote(tenders: NormalizedTender[], contexto: string): Promise<SaveCounters> {
   let totalNew = 0
   let totalDupes = 0
   let totalUpdated = 0
+  let totalDescartadas = 0
 
   for (const tender of tenders) {
     try {
-      const result = await saveTender(tender)
-      if (result.isNew) {
+      const result = await saveTenderSeAindaServir(tender)
+      if (!result) {
+        totalDescartadas++
+      } else if (result.isNew) {
         totalNew++
         await enfileirarSemTravar(matcherQueue, 'match-tender', { tenderId: result.tenderId }, contexto)
       } else {
@@ -41,5 +45,6 @@ export async function salvarLote(tenders: NormalizedTender[], contexto: string):
     }
   }
 
-  return { totalNew, totalDupes, totalUpdated }
+  if (totalDescartadas > 0) console.log(`[${contexto}] Já encerradas, não gravadas: ${totalDescartadas}.`)
+  return { totalNew, totalDupes, totalUpdated, totalDescartadas }
 }

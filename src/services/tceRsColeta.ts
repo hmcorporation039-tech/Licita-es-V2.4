@@ -42,6 +42,8 @@ export const MAX_COMPRIMIDO_DOS_EVENTOS = 40 * 1024 * 1024
 export const MAX_COMPRIMIDO_DOS_DOCUMENTOS = 160 * 1024 * 1024
 export const MAX_ORIGINAL_POR_ARQUIVO = 800 * 1024 * 1024
 export const TEMPO_MAXIMO_POR_ARQUIVO_MS = 10 * 60_000
+export const ESPERA_PELO_PRIMEIRO_BYTE_MS = 3 * 60_000
+export const MAX_SILENCIO_NO_DOWNLOAD_MS = 2 * 60_000
 export const TENTATIVAS_POR_ARQUIVO = 3
 export const ESPERA_ENTRE_TENTATIVAS_MS = 5_000
 export const MESES_COM_O_ANO_ANTERIOR = 3
@@ -67,7 +69,7 @@ export interface TrechoDoArquivo {
 
 export interface RedeDoTceRs {
   baixarCauda: (caminho: string, bytes: number) => Promise<CaudaDoArquivo>
-  baixarTrecho: (caminho: string, inicio: number, fim: number) => Promise<TrechoDoArquivo>
+  baixarTrecho: (caminho: string, inicio: number, fim: number, sinal?: AbortSignal) => Promise<TrechoDoArquivo>
   esperar: (ms: number) => Promise<void>
 }
 
@@ -85,14 +87,23 @@ function aceitarQualquerStatus(): boolean {
   return true
 }
 
+export function semRespostaNoPrazo(err: unknown, prazoMs: number): unknown {
+  const codigo = (err as { code?: unknown } | null)?.code
+  if (codigo !== 'ECONNABORTED' && codigo !== 'ETIMEDOUT') return err
+  return new DownloadIncompletoDoTceRs(`o servidor não começou a responder em ${Math.round(prazoMs / 1000)} s`)
+}
+
 export const REDE_DO_TCE_RS: RedeDoTceRs = {
   baixarCauda: async (caminho, bytes) => {
-    const resposta = await tceRsClient.get<ArrayBuffer>(caminho, {
-      responseType: 'arraybuffer',
-      headers: { Range: `bytes=-${bytes}` },
-      maxContentLength: bytes + 1024,
-      validateStatus: (s) => s === 206 || s === 404,
-    })
+    const resposta = await tceRsClient
+      .get<ArrayBuffer>(caminho, {
+        responseType: 'arraybuffer',
+        headers: { Range: `bytes=-${bytes}` },
+        maxContentLength: bytes + 1024,
+        timeout: ESPERA_PELO_PRIMEIRO_BYTE_MS,
+        validateStatus: (s) => s === 206 || s === 404,
+      })
+      .catch((err) => Promise.reject(semRespostaNoPrazo(err, ESPERA_PELO_PRIMEIRO_BYTE_MS)))
     return {
       status: resposta.status,
       dados: Buffer.from(resposta.data),
@@ -100,12 +111,16 @@ export const REDE_DO_TCE_RS: RedeDoTceRs = {
       atualizadoEm: resposta.headers['last-modified'] ? String(resposta.headers['last-modified']) : null,
     }
   },
-  baixarTrecho: async (caminho, inicio, fim) => {
-    const resposta = await tceRsClient.get<Readable>(caminho, {
-      responseType: 'stream',
-      headers: { Range: `bytes=${inicio}-${fim}` },
-      validateStatus: aceitarQualquerStatus,
-    })
+  baixarTrecho: async (caminho, inicio, fim, sinal) => {
+    const resposta = await tceRsClient
+      .get<Readable>(caminho, {
+        responseType: 'stream',
+        headers: { Range: `bytes=${inicio}-${fim}` },
+        timeout: ESPERA_PELO_PRIMEIRO_BYTE_MS,
+        signal: sinal,
+        validateStatus: aceitarQualquerStatus,
+      })
+      .catch((err) => Promise.reject(semRespostaNoPrazo(err, ESPERA_PELO_PRIMEIRO_BYTE_MS)))
     if (resposta.status !== 206) resposta.data.destroy()
     return { status: resposta.status, corpo: resposta.data }
   },
@@ -178,6 +193,38 @@ export async function lerDiretorioDoZip(rede: RedeDoTceRs, ano: number): Promise
   conferirStatus(cauda.status)
   const tamanhoTotal = cauda.tamanhoTotal ?? cauda.dados.length
   return { entradas: entradasDoZip(cauda.dados, tamanhoTotal - cauda.dados.length), tamanhoTotal, atualizadoEm: cauda.atualizadoEm }
+}
+
+class VigiaDeSilencio extends Transform {
+  private relogio: NodeJS.Timeout | null = null
+
+  constructor(private readonly maxSilencioMs: number) {
+    super()
+    this.rearmar()
+  }
+
+  private rearmar(): void {
+    if (this.relogio) clearTimeout(this.relogio)
+    this.relogio = setTimeout(
+      () => this.destroy(new DownloadIncompletoDoTceRs(`sem dados do servidor por ${Math.round(this.maxSilencioMs / 1000)} s`)),
+      this.maxSilencioMs
+    )
+  }
+
+  _transform(pedaco: Buffer, _codificacao: BufferEncoding, pronto: TransformCallback): void {
+    this.rearmar()
+    pronto(null, pedaco)
+  }
+
+  _flush(pronto: TransformCallback): void {
+    if (this.relogio) clearTimeout(this.relogio)
+    pronto()
+  }
+
+  _destroy(erro: Error | null, pronto: (erro?: Error | null) => void): void {
+    if (this.relogio) clearTimeout(this.relogio)
+    pronto(erro)
+  }
 }
 
 class RecorteDaEntrada extends Transform {
@@ -261,6 +308,7 @@ export interface LimitesDaColetaTceRs {
   maxComprimido: Record<string, number>
   maxOriginal: number
   tempoMaximoPorArquivoMs: number
+  maxSilencioMs: number
 }
 
 export const LIMITES_PADRAO_TCE_RS: LimitesDaColetaTceRs = {
@@ -271,6 +319,7 @@ export const LIMITES_PADRAO_TCE_RS: LimitesDaColetaTceRs = {
   },
   maxOriginal: MAX_ORIGINAL_POR_ARQUIVO,
   tempoMaximoPorArquivoMs: TEMPO_MAXIMO_POR_ARQUIVO_MS,
+  maxSilencioMs: MAX_SILENCIO_NO_DOWNLOAD_MS,
 }
 
 export async function lerEntradaDoZip(
@@ -296,12 +345,22 @@ export async function lerEntradaDoZip(
 
   await comRetentativa(async () => {
     const leitor = criarLeitor()
-    const trecho = await rede.baixarTrecho(caminhoDoArquivoDoAno(ano), inicio, fim)
-    if (trecho.status !== 206) trecho.corpo.destroy()
-    conferirStatus(trecho.status)
-    const relogio = setTimeout(() => trecho.corpo.destroy(new DownloadIncompletoDoTceRs('tempo esgotado')), limites.tempoMaximoPorArquivoMs)
+    const tempoEsgotado = () => new DownloadIncompletoDoTceRs(`tempo esgotado (${Math.round(limites.tempoMaximoPorArquivoMs / 1000)} s)`)
+    const cancelamento = new AbortController()
+    let corpo: Readable | null = null
+    const relogio = setTimeout(() => {
+      cancelamento.abort()
+      corpo?.destroy(tempoEsgotado())
+    }, limites.tempoMaximoPorArquivoMs)
     try {
-      const etapas: (Transform | Writable)[] = [new RecorteDaEntrada(entrada.tamanhoComprimido)]
+      const trecho = await rede.baixarTrecho(caminhoDoArquivoDoAno(ano), inicio, fim, cancelamento.signal).catch((err) => {
+        throw cancelamento.signal.aborted ? tempoEsgotado() : err
+      })
+      corpo = trecho.corpo
+      if (trecho.status !== 206) trecho.corpo.destroy()
+      conferirStatus(trecho.status)
+      if (cancelamento.signal.aborted) throw tempoEsgotado()
+      const etapas: (Transform | Writable)[] = [new VigiaDeSilencio(limites.maxSilencioMs), new RecorteDaEntrada(entrada.tamanhoComprimido)]
       if (entrada.metodo === METODO_DEFLATE) etapas.push(createInflateRaw())
       etapas.push(new TextoDaEntrada(limites.maxOriginal, (pedaco) => leitor.ler(pedaco)))
       await pipeline([trecho.corpo, ...etapas])

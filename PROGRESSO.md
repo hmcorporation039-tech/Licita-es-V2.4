@@ -145,14 +145,20 @@ Ver o cabeçalho de `scripts/enxugarRawJson.ts`.
 
 `/modulo-legado/1_consultarLicitacao` e `/5_consultarComprasSemLicitacao` respondem 200 com `totalRegistros: 0` para jul–set/2025, para 2026 inteiro e para outubro/2026; abr–jun/2025 ainda tem 2.624 registros (a última página é de 09/06/2025) e dez/2024 tem 2.054. As 44 coletas "SUCCESS" com 0 licitações eram a API vazia, não um filtro nosso. O que o Compras.gov.br publica pela Lei 14.133 chega pelo PNCP. O agendador saiu de `COLETOR_SCHEDULERS` (e é removido do Redis na subida), o worker não sobe mais e a página de entrada parou de citar o Compras.gov.br como fonte própria. O código do coletor ficou no repositório.
 
+### Correção de 19/10: "novos" inflado nos coletores de HTML e diários
+
+O SESC GO contava ~336 "novos" por rodada em 953. Causa: o loop compartilhado `salvarLote` (`src/workers/coletorHtmlShared.ts`, usado por 14 coletores) gravava licitação que já chegava encerrada; a faxina a apagava e a coleta seguinte, que traz a listagem inteira, a gravava de novo como nova e a mandava ao matcher. Passa a usar `saveTenderSeAindaServir`, a mesma regra do PNCP: encerrada só é gravada se já estiver no banco (para atualizar a situação). O descarte é contado (`totalDescartadas`) e entra na conferência de lote completo do Querido Diário, SIGPub e FAMEM, para o cursor desses diários continuar avançando. O fuso dos parsers HTML do SESC regional já tinha sido corrigido no #43.
+
+### Correção de 19/10: TCE-RS com "timeout of 60000ms exceeded" em produção
+
+O pedido do trecho do arquivo anual (Range em um ZIP de ~257 MB) esperava no máximo 60 s pelo primeiro byte, e o servidor do TCE-RS passou disso nas 3 tentativas. A espera pelo primeiro byte sobe para 3 min. O teto de 10 min por arquivo passa a contar desde o pedido (antes só começava depois dos cabeçalhos). Uma transferência que fica 2 min sem dados é derrubada e repetida: depois do primeiro byte o axios não vigia mais a conexão, e um trecho travado ficaria parado os 10 min. O timeout do axios vira "download incompleto (o servidor não começou a responder em 180 s)", repetível e legível no log. Comportamento do axios 1.20 conferido contra um servidor local; o servidor real do TCE-RS não é alcançável do ambiente de desenvolvimento na nuvem.
+
 ### Pendente (próxima sessão)
 
 | O que | Observação |
 |---|---|
 | Cobrança por assinatura (cartão + Pix Automático) | Recomendação: Asaas. Aguarda decisão de planos/preços e a conta de teste |
 | Sistema S restante | SP, AC, MA e RN cobertos no branch `sistema-s-sp-ac-ma-rn` (falta o PR). Ficam de fora: PR (desafio do Cloudflare) e SESI-RR (só planilhas anuais) |
-| Fuso dos parsers HTML do SESC regional | O Paradigma (SESC DN/SP/RJ/BA/RS e indústria) foi corrigido no #42; os parsers HTML dos demais SESC montam datas com `new Date(ano, mes, dia…)` no fuso do processo — em produção (UTC) saem 3 h adiantadas. Mesma correção: hora de Brasília explícita (a regra de diferença exata de 3 h já evita aviso falso) |
-| `totalNew` dos coletores inflado | Ex.: sesc-go conta ~336 "novos" por rodada com 953 no total — investigar a contagem |
 | Endurecimento | CSP com nonce e token fora do `localStorage`; corrida nas cotas; Actions fixadas por SHA (precisa `gh auth refresh -s workflow`) |
 | Pentest final antes do lançamento | Repetir o roteiro do relatório de 15/10 incluindo a cobrança |
 

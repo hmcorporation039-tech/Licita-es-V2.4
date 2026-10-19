@@ -82,6 +82,7 @@ export interface ContagemDoSalvamento {
   totalNew: number
   totalDupes: number
   totalUpdated: number
+  totalDescartadas?: number
 }
 
 export interface DependenciasDaColeta {
@@ -321,7 +322,7 @@ export async function coletarQueridoDiario(
       medicao.novos += salvos.totalNew
       medicao.atualizados += salvos.totalUpdated
       medicao.inalterados += salvos.totalDupes - salvos.totalUpdated
-      return completo && salvos.totalNew + salvos.totalDupes === lote.length
+      return completo && salvos.totalNew + salvos.totalDupes + (salvos.totalDescartadas ?? 0) === lote.length
     } catch (err) {
       r.houveFalhas = true
       r.falhasAoGravar += lote.length
