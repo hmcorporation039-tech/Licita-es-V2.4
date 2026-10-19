@@ -1,7 +1,7 @@
 import { PublicProse } from '@/components/PublicShell'
 import { Notice } from '@/components/ui'
 
-export const metadata = { title: 'Termos de Uso — Monitor de Licitações' }
+export const metadata = { title: 'Termos de Uso — Licita Bela' }
 
 export default function TermosPage() {
   return (
@@ -13,7 +13,7 @@ export default function TermosPage() {
       <div className="text-base leading-relaxed text-ink-2 marker:text-faint [&_h2]:mb-3 [&_h2]:mt-8 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:text-ink [&_li]:pl-1 [&_p]:mb-3 [&_strong]:font-semibold [&_strong]:text-ink [&_ul]:mb-3 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-5">
         <h2>1. O serviço</h2>
         <p>
-          O Monitor de Licitações é uma plataforma que coleta licitações publicadas em fontes públicas, permite acompanhá-las por
+          A Licita Bela é uma plataforma que coleta licitações publicadas em fontes públicas, permite acompanhá-las por
           critérios definidos pelo usuário, organiza documentos de habilitação e oferece apoio à leitura de editais por inteligência
           artificial.
         </p>

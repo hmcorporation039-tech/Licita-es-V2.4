@@ -88,7 +88,7 @@ export default function AcessoEncerrado({
         <h2 id="acesso-encerrado-continuar" className="text-base font-bold text-ink">
           Como continuar usando
         </h2>
-        <p className="text-sm text-ink-2">Fale com a equipe do Monitor para assinar um plano. O acesso volta com tudo como estava.</p>
+        <p className="text-sm text-ink-2">Fale com a equipe da Licita Bela para assinar um plano. O acesso volta com tudo como estava.</p>
         <div className="flex flex-wrap gap-2">
           {whatsapp && (
             <a

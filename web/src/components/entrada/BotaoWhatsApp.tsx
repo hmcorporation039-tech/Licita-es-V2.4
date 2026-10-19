@@ -3,7 +3,7 @@
 import { MessageCircle } from 'lucide-react'
 import { rastrear } from '@/lib/rastreamento'
 
-const MENSAGEM_INICIAL = 'Olá! Quero saber mais sobre o Monitor de Licitações.'
+const MENSAGEM_INICIAL = 'Olá! Quero saber mais sobre a Licita Bela.'
 
 export function linkDoWhatsApp(numero: string): string {
   return `https://wa.me/${numero}?text=${encodeURIComponent(MENSAGEM_INICIAL)}`

@@ -43,5 +43,5 @@ export function numeroDoWhatsApp(valor: string | undefined = process.env.NEXT_PU
 }
 
 export function linkDoWhatsAppParaContinuar(numero: string): string {
-  return `https://wa.me/${numero}?text=${encodeURIComponent('Olá! Quero continuar usando o Monitor de Licitações depois do teste.')}`
+  return `https://wa.me/${numero}?text=${encodeURIComponent('Olá! Quero continuar usando a Licita Bela depois do teste.')}`
 }

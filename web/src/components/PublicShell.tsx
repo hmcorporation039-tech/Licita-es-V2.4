@@ -17,7 +17,7 @@ function Anel({ classe }: { classe: string }) {
 
 function PainelDaBela({ fala, destaques }: { fala: ReactNode; destaques?: DestaqueDoPainel[] }) {
   return (
-    <aside className="pb-painel" aria-label="Recado da Bela, assistente do Monitor">
+    <aside className="pb-painel" aria-label="Recado da Bela, assistente da Licita Bela">
       <Anel classe="pb-anel-a" />
       <Anel classe="pb-anel-b" />
       <figure className="pb-bela">
@@ -109,8 +109,8 @@ export function PublicFrame({ children }: { children: ReactNode }) {
       </a>
       <header className="pb-topo">
         <div className="pb-conteiner pb-topo-linha">
-          <Link href="/" className="pb-marca" aria-label="Monitor de Licitações, página inicial">
-            Monitor <span>de Licitações</span>
+          <Link href="/" className="pb-marca" aria-label="Licita Bela, página inicial">
+            Licita <span>Bela</span>
           </Link>
           <NavegacaoPublica />
         </div>
@@ -121,9 +121,9 @@ export function PublicFrame({ children }: { children: ReactNode }) {
       <footer className="pb-rodape">
         <div className="pb-conteiner pb-rodape-grade">
           <p className="pb-marca">
-            Monitor <span>de Licitações</span>
+            Licita <span>Bela</span>
           </p>
-          <p>© Monitor de Licitações · H&amp;M Engenharia e Tecnologia LTDA · CNPJ 04.003.376/0001-00 · Brasília/DF</p>
+          <p>© Licita Bela · H&amp;M Engenharia e Tecnologia LTDA · CNPJ 04.003.376/0001-00 · Brasília/DF</p>
           <nav aria-label="Documentos legais" className="pb-rodape-links">
             <Link href="/termos">Termos de Uso</Link>
             <Link href="/privacidade">Política de Privacidade</Link>

@@ -77,7 +77,7 @@ describe('e-mails mostram data e valor no padrão de Brasília, qualquer que sej
       else process.env.APP_URL = appUrlOriginal
     })
 
-    it('traz prazo em Brasília, município/UF, órgão e o link para a licitação no Monitor, mesmo sem link de edital', async () => {
+    it('traz prazo em Brasília, município/UF, órgão e o link para a licitação na Licita Bela, mesmo sem link de edital', async () => {
       await sendMatchEmail({
         to: 'cliente@exemplo.com',
         itemName: 'Cimento',
@@ -94,7 +94,7 @@ describe('e-mails mostram data e valor no padrão de Brasília, qualquer que sej
       expect(html).toContain('Prazo para enviar a proposta:</strong> 20/10/2026 21:00')
       expect(html).toContain('Município:</strong> Anápolis/GO')
       expect(html).toContain('Órgão:</strong> Prefeitura Municipal de Anápolis')
-      expect(html).toContain('<a href="https://monitor.exemplo.com.br/tenders/abc-123">Abrir no Monitor de Licitações</a>')
+      expect(html).toContain('<a href="https://monitor.exemplo.com.br/tenders/abc-123">Abrir na Licita Bela</a>')
       expect(html).not.toContain('Ver edital')
     })
 

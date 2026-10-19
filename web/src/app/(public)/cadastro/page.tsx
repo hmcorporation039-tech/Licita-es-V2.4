@@ -3,7 +3,7 @@ import { buscarEstatisticas, buscarPlanos } from '@/lib/dadosPublicos'
 import { estadoDaSigla } from '@/lib/estados'
 import FormularioDeCadastro, { type InteresseInicial } from './FormularioDeCadastro'
 
-export const metadata: Metadata = { title: 'Criar conta — Monitor de Licitações' }
+export const metadata: Metadata = { title: 'Criar conta — Licita Bela' }
 
 const ESPERA_DOS_DADOS_DO_PAINEL_MS = 2500
 const TAMANHO_MINIMO_DO_TERMO = 2

@@ -63,7 +63,7 @@ function Resultado({ termo, uf, total, amostras }: { termo: string; uf: string; 
           Nenhuma licitação aberta agora para <strong>“{termo}”</strong> {onde(uf)}.
         </p>
         <p className="az-resultado-nota">
-          Licitações novas abrem todo dia. Tente um termo mais curto ou todo o Brasil, ou crie a conta: você cadastra o que vende e o Monitor avisa quando aparecer.
+          Licitações novas abrem todo dia. Tente um termo mais curto ou todo o Brasil, ou crie a conta: você cadastra o que vende e a Licita Bela avisa quando aparecer.
         </p>
         <LinkDeCadastro origem="vitrine" href={destino} className="az-pilula az-pilula-verde az-pilula-cheia">
           Criar conta grátis e ser avisado
@@ -213,7 +213,7 @@ export default function VitrineDeBusca() {
           ))}
         </div>
         <p id="busca-nota" className="az-busca-nota">
-          Busca real nas licitações abertas que o Monitor acompanha. Sem cadastro.
+          Busca real nas licitações abertas que a Licita Bela acompanha. Sem cadastro.
         </p>
       </form>
       <div aria-live="polite">

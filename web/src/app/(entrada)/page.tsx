@@ -40,11 +40,11 @@ import { carregarDadosDaEntrada, type EstatisticasPublicas, type ListaChegando, 
 
 export const revalidate = 600
 
-const TITULO = 'Monitor de Licitações: licitações abertas para o que você vende'
+const TITULO = 'Licita Bela: licitações abertas para o que você vende'
 const DESCRICAO =
   'Busca diária no PNCP, no Sistema S e nos diários oficiais. Aviso do que encerra primeiro, alerta de cláusulas ilegais no edital e proposta no papel timbrado da sua empresa. Teste grátis, sem cartão.'
 const ENDERECO_PADRAO = 'https://licita-es-v2-4.vercel.app'
-const IMAGEM_DE_COMPARTILHAMENTO = { url: '/bela/bela-compartilhar.jpg', width: 1200, height: 670, alt: 'Bela, a assistente do Monitor de Licitações' }
+const IMAGEM_DE_COMPARTILHAMENTO = { url: '/bela/bela-compartilhar.jpg', width: 1200, height: 670, alt: 'Bela, a assistente da Licita Bela' }
 
 function enderecoDoSite(): URL {
   try {
@@ -61,7 +61,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'pt_BR',
-    siteName: 'Monitor de Licitações',
+    siteName: 'Licita Bela',
     title: TITULO,
     description: DESCRICAO,
     images: [IMAGEM_DE_COMPARTILHAMENTO],
@@ -104,7 +104,7 @@ const PASSOS: Array<{ nome: string; titulo: string; texto: string; itens: string
   {
     nome: 'Encontrar',
     titulo: 'Diga o que você vende, ou peça para a Bela',
-    texto: 'Cadastre itens, códigos CATMAT/CATSER, UASGs e regiões. Todo dia o Monitor busca nas fontes e separa as licitações abertas que batem, ordenadas pelo prazo.',
+    texto: 'Cadastre itens, códigos CATMAT/CATSER, UASGs e regiões. Todo dia a Licita Bela busca nas fontes e separa as licitações abertas que batem, ordenadas pelo prazo.',
     itens: ['Busca diária em todas as fontes', 'O que encerra primeiro aparece primeiro', 'Aviso quando o órgão altera a licitação'],
     previa: PreviaEncontrar,
     tom: 'az-tom-azul',
@@ -112,7 +112,7 @@ const PASSOS: Array<{ nome: string; titulo: string; texto: string; itens: string
   {
     nome: 'Analisar',
     titulo: 'Saiba em minutos se vale a pena entrar',
-    texto: 'O resumo do edital traz objeto, valor, exigências e documentos de habilitação. Quando uma cláusula passa dos limites da lei, o Monitor avisa com a gravidade e o artigo.',
+    texto: 'O resumo do edital traz objeto, valor, exigências e documentos de habilitação. Quando uma cláusula passa dos limites da lei, a Licita Bela avisa com a gravidade e o artigo.',
     itens: ['Checklist de habilitação com o que já está no seu cofre', 'Prazo de impugnação contado em dias úteis', 'Aviso de vencimento dos seus documentos'],
     previa: PreviaAnalisar,
     tom: 'az-tom-coral',
@@ -151,7 +151,7 @@ const COMPARATIVO: Array<{ recurso: string; planilha: Celula; comuns: Celula; mo
 const CONFIANCA: Array<{ icone: LucideIcon; titulo: string; texto: string }> = [
   { icone: Landmark, titulo: 'Dados de fontes públicas oficiais', texto: 'As licitações vêm do PNCP, que reúne o que os órgãos publicam no Compras.gov.br e nos demais portais, dos portais do Sistema S e dos diários oficiais.' },
   { icone: LockKeyhole, titulo: 'Seus documentos no seu cofre', texto: 'Só os usuários da sua empresa acessam os documentos, os estudos e as propostas.' },
-  { icone: CreditCard, titulo: 'Teste grátis sem cartão', texto: 'Você usa o Monitor sem informar cartão de crédito.' },
+  { icone: CreditCard, titulo: 'Teste grátis sem cartão', texto: 'Você usa a Licita Bela sem informar cartão de crédito.' },
   { icone: Building, titulo: 'Feito em Brasília/DF', texto: 'Desenvolvido pela H&M Engenharia e Tecnologia, a partir da rotina real de licitações.' },
 ]
 
@@ -159,11 +159,11 @@ const perguntasFrequentes = (trialDias: number | null): Array<{ pergunta: string
   {
     pergunta: 'Serve para a minha cidade ou o meu estado?',
     resposta:
-      'Sim, o Monitor cobre todo o Brasil. Ele busca no PNCP, onde órgãos federais, estaduais e municipais publicam as licitações (inclusive as feitas pelo Compras.gov.br), nos portais do Sistema S, na Novacap e na FIEG. Para prefeituras que publicam só no diário oficial, o Monitor lê os diários dos municípios cobertos pelo Querido Diário.',
+      'Sim, a Licita Bela cobre todo o Brasil. Ela busca no PNCP, onde órgãos federais, estaduais e municipais publicam as licitações (inclusive as feitas pelo Compras.gov.br), nos portais do Sistema S, na Novacap e na FIEG. Para prefeituras que publicam só no diário oficial, a Licita Bela lê os diários dos municípios cobertos pelo Querido Diário.',
   },
   {
     pergunta: 'Preciso de certificado digital?',
-    resposta: 'Para usar o Monitor, não. Para participar dos pregões no portal do órgão, sim, como sempre: o certificado e o cadastro no portal continuam com a sua empresa.',
+    resposta: 'Para usar a Licita Bela, não. Para participar dos pregões no portal do órgão, sim, como sempre: o certificado e o cadastro no portal continuam com a sua empresa.',
   },
   {
     pergunta: 'A Bela dá lance sozinha?',
@@ -232,8 +232,8 @@ function TituloDeSecao({ id, fino, forte, apoio, sobretitulo }: { id: string; fi
 function Navegacao() {
   return (
     <header className="az-nav">
-      <Link href="/" className="az-marca" aria-label="Monitor de Licitações, página inicial">
-        Monitor <span>de Licitações</span>
+      <Link href="/" className="az-marca" aria-label="Licita Bela, página inicial">
+        Licita <span>Bela</span>
       </Link>
       <nav aria-label="Principal" className="az-nav-acoes">
         <a href="#bela" className="az-nav-link">
@@ -344,14 +344,14 @@ function Heroi({
               <span className="az-claro">tudo num lugar só</span>
             </h1>
             <p className="az-heroi-sub">
-              Você diz o que vende. O Monitor encontra as licitações abertas {textoDasFontesNoHeroi(fontesComLicitacaoAberta(estatisticas?.fontes, FONTES_OFICIAIS.length))}, avisa o que encerra primeiro e monta a proposta no papel timbrado da sua empresa.
+              Você diz o que vende. A Licita Bela encontra as licitações abertas {textoDasFontesNoHeroi(fontesComLicitacaoAberta(estatisticas?.fontes, FONTES_OFICIAIS.length))}, avisa o que encerra primeiro e monta a proposta no papel timbrado da sua empresa.
             </p>
             <VitrineDeBusca />
             <Provas estatisticas={estatisticas} trialDias={trialDias} />
           </div>
           <div className="az-palco">
             <span aria-hidden className="az-palco-brilho" />
-            <BelaEmMovimento variante="heroi" alt="Bela, a assistente por voz do Monitor de Licitações, sorrindo com o celular na mão" className="az-palco-bela" />
+            <BelaEmMovimento variante="heroi" alt="Bela, a assistente por voz da Licita Bela, sorrindo com o celular na mão" className="az-palco-bela" />
             <FalaDaBelaNoHeroi total={totalDaBela} termo={TERMO_DA_BELA} primeiroPrazo={prazoDaBela} className="az-balao az-palco-balao" />
             <div className="az-palco-celular">
               <MolduraDeCelular>
@@ -363,7 +363,7 @@ function Heroi({
         <p className="az-palco-legenda">
           {chegando.ilustrativo
             ? 'No celular: exemplo ilustrativo, com dados fictícios. Busque o que você vende para ver as licitações reais.'
-            : 'No celular: amostra real de licitações abertas que o Monitor acompanha.'}
+            : 'No celular: amostra real de licitações abertas que a Licita Bela acompanha.'}
         </p>
       </div>
     </section>
@@ -428,7 +428,7 @@ function ConhecaABela({ trialDias }: { trialDias: number | null }) {
       <div className="az-conteiner az-bela-grade">
         <Revelar className="az-bela-retrato az-escuro">
           <Aneis variante="retrato" />
-          <BelaEmMovimento variante="secao" alt="Bela, a assistente do Monitor de Licitações, de blazer azul, sorrindo" className="az-bela-foto" />
+          <BelaEmMovimento variante="secao" alt="Bela, a assistente da Licita Bela, de blazer azul, sorrindo" className="az-bela-foto" />
           <div aria-hidden className="revela-pop az-bela-ouvindo" style={atraso(300)}>
             <span className="az-bela-onda">
               <span />
@@ -453,7 +453,7 @@ function ConhecaABela({ trialDias }: { trialDias: number | null }) {
             <span className="az-fino">A assistente que</span> <span className="az-forte">trabalha por voz</span>
           </h2>
           <p className="az-bela-apoio">
-            A Bela é a assistente por voz do Monitor. Você busca falando, ela acompanha o pregão com você e sugere o lance com a margem calculada. <b>A Bela sugere; quem dá o lance é você.</b>
+            A Bela é a assistente por voz da Licita Bela. Você busca falando, ela acompanha o pregão com você e sugere o lance com a margem calculada. <b>A Bela sugere; quem dá o lance é você.</b>
           </p>
           <ol className="az-conversa" aria-label="Exemplos de pedidos para a Bela">
             {COMANDOS_DA_BELA.map((c) => (
@@ -486,7 +486,7 @@ function Tour({ trialDias }: { trialDias: number | null }) {
   return (
     <section id="tour" aria-labelledby="tour-titulo" className="az-secao az-secao-branca">
       <div className="az-conteiner">
-        <TituloDeSecao id="tour-titulo" fino="Do edital ao lance," forte="no mesmo lugar" apoio="Quatro etapas de uma licitação e o que o Monitor faz em cada uma. As telas são exemplos ilustrativos, com dados fictícios." />
+        <TituloDeSecao id="tour-titulo" fino="Do edital ao lance," forte="no mesmo lugar" apoio="Quatro etapas de uma licitação e o que a Licita Bela faz em cada uma. As telas são exemplos ilustrativos, com dados fictícios." />
         <ol className="az-passos">
           {PASSOS.map((p, i) => {
             const Previa = p.previa
@@ -563,14 +563,14 @@ function Comparativo() {
         />
         <div className="az-tabela-caixa">
           <table className="az-tabela">
-            <caption className="sr-only">Comparação de recursos entre planilha e Google, monitores comuns e o Monitor de Licitações</caption>
+            <caption className="sr-only">Comparação de recursos entre planilha e Google, monitores comuns e a Licita Bela</caption>
             <thead>
               <tr>
                 <th scope="col">Recurso</th>
                 <th scope="col">Planilha e Google</th>
                 <th scope="col">Monitores comuns</th>
                 <th scope="col" className="az-tabela-destaque">
-                  Monitor de Licitações
+                  Licita Bela
                 </th>
               </tr>
             </thead>
@@ -612,7 +612,7 @@ function Confianca({ trialDias }: { trialDias: number | null }) {
               </span>
               <span>
                 <strong>{titulo}</strong>
-                <span>{titulo === 'Teste grátis sem cartão' && trialDias ? `${trialDias} dias para usar o Monitor, sem informar cartão de crédito.` : texto}</span>
+                <span>{titulo === 'Teste grátis sem cartão' && trialDias ? `${trialDias} dias para usar a Licita Bela, sem informar cartão de crédito.` : texto}</span>
               </span>
             </li>
           ))}
@@ -771,9 +771,9 @@ function Rodape() {
     <footer className="az-rodape">
       <div className="az-conteiner az-rodape-grade">
         <p className="az-marca az-marca-rodape">
-          Monitor <span>de Licitações</span>
+          Licita <span>Bela</span>
         </p>
-        <p>© Monitor de Licitações · H&amp;M Engenharia e Tecnologia LTDA · CNPJ 04.003.376/0001-00 · Brasília/DF</p>
+        <p>© Licita Bela · H&amp;M Engenharia e Tecnologia LTDA · CNPJ 04.003.376/0001-00 · Brasília/DF</p>
         <nav aria-label="Documentos legais" className="az-rodape-links">
           <Link href="/termos" className="az-link">
             Termos de Uso

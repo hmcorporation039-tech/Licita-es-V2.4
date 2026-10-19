@@ -8,7 +8,7 @@ export default function NaoEncontrada() {
         <div className="mx-auto flex h-14 w-full max-w-[1200px] items-center px-4 sm:px-6">
           <Link href="/" className="flex items-center gap-2.5 text-sm font-semibold tracking-[-0.005em] text-ink">
             <span aria-hidden className="size-3.5 rounded-sm bg-accent" />
-            Monitor de Licitações
+            Licita Bela
           </Link>
         </div>
       </header>
