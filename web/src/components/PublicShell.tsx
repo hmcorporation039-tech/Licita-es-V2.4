@@ -123,7 +123,7 @@ export function PublicFrame({ children }: { children: ReactNode }) {
           <p className="pb-marca">
             Monitor <span>de Licitações</span>
           </p>
-          <p>© Monitor de Licitações · H&amp;M Engenharia e Tecnologia · Brasília/DF</p>
+          <p>© Monitor de Licitações · H&amp;M Engenharia e Tecnologia LTDA · CNPJ 04.003.376/0001-00 · Brasília/DF</p>
           <nav aria-label="Documentos legais" className="pb-rodape-links">
             <Link href="/termos">Termos de Uso</Link>
             <Link href="/privacidade">Política de Privacidade</Link>
