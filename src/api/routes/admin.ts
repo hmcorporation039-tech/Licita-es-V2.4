@@ -14,6 +14,7 @@ import { asyncHandler, ApiError } from '../asyncHandler'
 import { requireAdmin, requireAuth } from '../authMiddleware'
 import { escritaSensivelLimiter } from '../rateLimit'
 import { registrarAuditoria } from '../../services/auditService'
+import { TRIAL_DIAS } from '../../services/contaService'
 import {
   importacaoEmAndamento,
   statusImportacoes,
@@ -65,6 +66,8 @@ adminRouter.post(
     if (existing) throw new ApiError(409, 'Já existe um usuário com este e-mail')
 
     const tempPassword = body.password ?? generateTempPassword()
+    const planCode = body.planCode ?? 'TESTE'
+    const diasValidade = planCode === 'TESTE' && !body.isAdmin ? body.diasValidade ?? TRIAL_DIAS : body.diasValidade
 
     if (body.planCode && !(await prisma.subscriptionPlan.findUnique({ where: { code: body.planCode } }))) {
       throw new ApiError(400, `Plano "${body.planCode}" não existe`)
@@ -78,7 +81,7 @@ adminRouter.post(
         // Conta criada pelo admin não passa pela confirmação de e-mail.
         emailVerifiedAt: new Date(),
         isAdmin: body.isAdmin,
-        accessExpiresAt: computeExpiresAt(body.diasValidade),
+        accessExpiresAt: computeExpiresAt(diasValidade),
         // Toda conta precisa de uma Company (ver schema.prisma) — quem se
         // cadastra sozinho ganha uma individual (PESSOA_FISICA), sem
         // precisar de CNPJ. Convidar alguém para uma empresa já existente
@@ -162,6 +165,10 @@ adminRouter.patch(
     if (!existing) throw new ApiError(404, 'Usuário não encontrado')
     if (existing.id === req.userId && (body.isAdmin === false || body.active === false)) {
       throw new ApiError(400, 'Você não pode tirar o próprio acesso de administrador nem desativar a própria conta')
+    }
+    if (body.diasValidade === null && !existing.isAdmin) {
+      const empresa = await prisma.company.findUnique({ where: { id: existing.companyId }, select: { planCode: true } })
+      if (empresa?.planCode === 'TESTE') throw new ApiError(400, 'Conta em teste precisa ter prazo. Para tirar o prazo, troque o plano da empresa.')
     }
 
     const data: {
