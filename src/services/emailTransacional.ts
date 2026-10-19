@@ -11,6 +11,7 @@
 // ============================================================
 
 import { Resend } from 'resend'
+import { enviarPeloResend } from '../lib/envioPeloResend'
 import { appUrl } from '../lib/appUrl'
 import { escapeHtml } from '../lib/html'
 import { quantidadeCom } from '../lib/plural'
@@ -29,11 +30,11 @@ export const caixaDeSaidaDeTeste: EmailEnviado[] = []
 
 let resend: Resend | null = null
 
-async function enviar(msg: EmailEnviado): Promise<void> {
+async function enviar(msg: EmailEnviado): Promise<boolean> {
   try {
     if (process.env.NODE_ENV === 'test') {
       caixaDeSaidaDeTeste.push(msg)
-      return
+      return true
     }
     if (!process.env.RESEND_API_KEY) {
       console.warn(
@@ -41,12 +42,14 @@ async function enviar(msg: EmailEnviado): Promise<void> {
           (process.env.NODE_ENV !== 'production' && msg.link ? ` Link (somente dev): ${msg.link}` : '') +
           (process.env.NODE_ENV !== 'production' && msg.codigo ? ` Código (somente dev): ${msg.codigo}` : '')
       )
-      return
+      return false
     }
     if (!resend) resend = new Resend(process.env.RESEND_API_KEY)
-    await resend.emails.send({ from: EMAIL_FROM, to: msg.to, subject: msg.subject, html: msg.html })
+    await enviarPeloResend(resend, { from: EMAIL_FROM, to: msg.to, subject: msg.subject, html: msg.html })
+    return true
   } catch (err) {
     console.error('[E-mail] Falha ao enviar:', err instanceof Error ? err.message : err)
+    return false
   }
 }
 
@@ -97,6 +100,22 @@ export async function enviarCodigoDeConfirmacao(to: string, codigo: string): Pro
       <p style="font-size:30px;letter-spacing:8px;font-weight:bold;margin:16px 0">${escapeHtml(codigo)}</p>
       <p>Digite o código na tela de cadastro e confirme o seu acesso.</p>
     </div>`,
+  })
+}
+
+export async function enviarConviteDeAcessoPorEmail(to: string, nome: string | null, token: string, validadeHoras: number): Promise<boolean> {
+  const link = linkDeRecuperacao(token)
+  return enviar({
+    to,
+    link,
+    subject: 'Seu acesso ao Monitor de Licitações',
+    html: moldura(
+      nome ? `Olá, ${nome}` : 'Seu acesso está pronto',
+      `<p>Criamos um acesso ao Monitor de Licitações para você. O seu login é este e-mail: <strong>${escapeHtml(to)}</strong>.</p>
+       <p>Clique no botão para criar a sua senha. O link vale por ${validadeHoras} horas e só pode ser usado uma vez. Se ele vencer, use "Esqueci minha senha" na tela de entrada.</p>`,
+      link,
+      'Criar minha senha'
+    ),
   })
 }
 

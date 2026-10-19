@@ -23,6 +23,7 @@ import {
   enviarAvisoDeDocumentoRepetido,
   enviarCodigoDeConfirmacao,
   enviarRecuperacaoDeSenha,
+  enviarConviteDeAcessoPorEmail,
 } from './emailTransacional'
 import { somenteDigitos } from '../lib/documentos'
 import { TERMOS_VERSAO } from '../lib/legal'
@@ -56,7 +57,7 @@ async function acessoAoConfirmar(user: { accessExpiresAt: Date | null; companyId
 
 // Emite um token novo e invalida os anteriores ainda não usados do mesmo tipo.
 // Devolve null se já foi emitido um há menos de um minuto (evita spam de e-mail).
-async function emitirToken(userId: string, tipo: TipoDeToken, agora = new Date()): Promise<string | null> {
+async function emitirToken(userId: string, tipo: TipoDeToken, agora = new Date(), validadeMs: number = VALIDADE_DO_TOKEN[tipo]): Promise<string | null> {
   const recente = await prisma.authToken.findFirst({
     where: { userId, type: tipo, createdAt: { gt: new Date(agora.getTime() - INTERVALO_ENTRE_ENVIOS_MS) } },
     select: { id: true },
@@ -67,7 +68,7 @@ async function emitirToken(userId: string, tipo: TipoDeToken, agora = new Date()
   await prisma.$transaction([
     prisma.authToken.updateMany({ where: { userId, type: tipo, usedAt: null }, data: { usedAt: agora } }),
     prisma.authToken.create({
-      data: { userId, type: tipo, tokenHash: hash, expiresAt: new Date(agora.getTime() + VALIDADE_DO_TOKEN[tipo]) },
+      data: { userId, type: tipo, tokenHash: hash, expiresAt: new Date(agora.getTime() + validadeMs) },
     }),
   ])
   return token
@@ -300,6 +301,16 @@ export async function solicitarRecuperacao(emailBruto: string): Promise<{ userId
   const token = await emitirToken(user.id, 'PASSWORD_RESET')
   if (token) void enviarRecuperacaoDeSenha(user.email, token, VALIDADE_DO_TOKEN.PASSWORD_RESET / 60_000)
   return token ? { userId: user.id, companyId: user.companyId } : null
+}
+
+export const VALIDADE_DO_CONVITE_MS = 72 * 60 * 60 * 1000
+
+export async function enviarConviteDeAcesso(userId: string): Promise<boolean> {
+  const user = await prisma.user.findUnique({ where: { id: userId } })
+  if (!user || !user.active) return false
+  const token = await emitirToken(user.id, 'PASSWORD_RESET', new Date(), VALIDADE_DO_CONVITE_MS)
+  if (!token) return false
+  return enviarConviteDeAcessoPorEmail(user.email, user.name, token, VALIDADE_DO_CONVITE_MS / 3_600_000)
 }
 
 export async function redefinirSenha(

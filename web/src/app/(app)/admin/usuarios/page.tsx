@@ -149,6 +149,7 @@ export default function AdminUsuariosPage() {
   const [planCode, setPlanCode] = useState('TESTE')
   const [creating, setCreating] = useState(false)
   const [senhaCriada, setSenhaCriada] = useState<{ email: string; senha: string } | null>(null)
+  const [conviteEnviadoPara, setConviteEnviadoPara] = useState<string | null>(null)
 
   const [passwordEditId, setPasswordEditId] = useState<string | null>(null)
   const [passwordValue, setPasswordValue] = useState('')
@@ -187,7 +188,8 @@ export default function AdminUsuariosPage() {
     setSenhaCriada(null)
     setCreating(true)
     try {
-      const result = await api.post<{ generatedPassword?: string; email: string }>('/api/admin/users', {
+      setConviteEnviadoPara(null)
+      const result = await api.post<{ generatedPassword?: string; email: string; conviteEnviado?: boolean }>('/api/admin/users', {
         email,
         name: name || undefined,
         password: password || undefined,
@@ -195,6 +197,7 @@ export default function AdminUsuariosPage() {
         diasValidade: diasValidade ? Number(diasValidade) : null,
         planCode,
       })
+      if (result.conviteEnviado) setConviteEnviadoPara(result.email)
       if (result.generatedPassword) setSenhaCriada({ email: result.email, senha: result.generatedPassword })
       setEmail('')
       setName('')
@@ -292,6 +295,13 @@ export default function AdminUsuariosPage() {
           </div>
 
           {!falhouAoCarregar && <FormError className="sm:col-span-2">{error}</FormError>}
+          {conviteEnviadoPara && (
+            <div className="sm:col-span-2">
+              <Notice tone="ok" title={`Convite enviado para ${conviteEnviadoPara}`}>
+                A pessoa recebe o login e um link para criar a própria senha, válido por 72 horas.
+              </Notice>
+            </div>
+          )}
           {senhaCriada && (
             <div className="sm:col-span-2">
               <SenhaGerada titulo="Senha gerada para" email={senhaCriada.email} senha={senhaCriada.senha} />

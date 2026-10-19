@@ -14,7 +14,7 @@ import { asyncHandler, ApiError } from '../asyncHandler'
 import { requireAdmin, requireAuth } from '../authMiddleware'
 import { escritaSensivelLimiter } from '../rateLimit'
 import { registrarAuditoria } from '../../services/auditService'
-import { TRIAL_DIAS } from '../../services/contaService'
+import { TRIAL_DIAS, enviarConviteDeAcesso } from '../../services/contaService'
 import {
   importacaoEmAndamento,
   statusImportacoes,
@@ -98,7 +98,10 @@ adminRouter.post(
       metadata: { email: user.email, isAdmin: user.isAdmin, planCode: body.planCode ?? 'TESTE' },
     })
 
+    const conviteEnviado = await enviarConviteDeAcesso(user.id)
+
     res.status(201).json({
+      conviteEnviado,
       id: user.id,
       email: user.email,
       name: user.name,
