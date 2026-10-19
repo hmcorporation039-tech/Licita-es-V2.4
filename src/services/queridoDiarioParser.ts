@@ -199,7 +199,7 @@ const CORTE_DO_ORGAO =
   /\s+[-–—]\s+|\/|\s+(?:torna|tornam|por meio|atrav[ée]s|inscrit|pessoa jur[íi]dica|com sede|cnpj|situad|neste ato|estado d|realizar[áa]|far[áa]|comunica|avisa|informa|no uso|em cumprimento|em atendimento|de acordo|nos termos|mediante|pretende)(?!\p{L})|(?<=\p{L}{4})\.\s/iu
 const PALAVRAS_MINUSCULAS = new Set(['de', 'da', 'do', 'das', 'dos', 'e'])
 
-const HOSTS_QUE_NAO_SAO_EDITAL = ['planalto.gov.br', 'in.gov.br', 'lexml.gov.br', 'queridodiario.ok.org.br', 'diariomunicipal.com.br']
+const HOSTS_QUE_NAO_SAO_EDITAL = ['planalto.gov.br', 'in.gov.br', 'lexml.gov.br', 'queridodiario.ok.org.br', 'diariomunicipal.com.br', 'famem.org.br', 'www.gov.br']
 
 const ROTULOS_DA_MODALIDADE: Record<FamiliaDeModalidade, string> = {
   PREGAO: 'Pregão',
@@ -256,14 +256,14 @@ function prefixoEmMaiusculas(original: string, tamanho: number): boolean {
   return prefixo === prefixo.toUpperCase()
 }
 
-function ehInicioDeAviso(original: string, chave: string): boolean {
+export function ehInicioDeAviso(original: string, chave: string): boolean {
   const m = chave.match(INICIO_DE_AVISO)
   if (!m || ehLinhaDeSumario(original)) return false
   if (prefixoEmMaiusculas(original, m[0].length)) return true
   return COMPLEMENTO_ACEITO_EM_TITULO_MISTO.test(chave.slice(m[0].length))
 }
 
-function ehFimDeBloco(original: string, chave: string): boolean {
+export function ehFimDeBloco(original: string, chave: string): boolean {
   if (ehSeparador(original)) return true
   const m = chave.match(FIM_DE_BLOCO_EM_MAIUSCULAS)
   if (m && prefixoEmMaiusculas(original, m[0].length)) return true

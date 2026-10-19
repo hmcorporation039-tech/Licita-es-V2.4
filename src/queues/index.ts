@@ -46,6 +46,7 @@ export const coletorTceCeQueue = new Queue('coletor-tce-ce', defaultQueueOptions
 export const coletorTcePiQueue = new Queue('coletor-tce-pi', defaultQueueOptions)
 export const coletorTceToQueue = new Queue('coletor-tce-to', defaultQueueOptions)
 export const coletorTceRsQueue = new Queue('coletor-tce-rs', defaultQueueOptions)
+export const coletorFamemQueue = new Queue('coletor-famem', defaultQueueOptions)
 
 // Fila de matching (disparada após salvar cada licitação nova)
 export const matcherQueue = new Queue('matcher', defaultQueueOptions)
@@ -210,6 +211,14 @@ export const COLETOR_SCHEDULERS: ColetorScheduler[] = [
     tz: 'America/Sao_Paulo',
     fonte: 'TCE_RS',
     disparaNaPartida: false,
+  },
+  {
+    queue: coletorFamemQueue,
+    schedulerId: 'coleta-famem',
+    jobName: 'coleta-famem',
+    pattern: '10 11,18 * * *',
+    tz: 'America/Sao_Paulo',
+    fonte: 'FAMEM',
   },
 ]
 

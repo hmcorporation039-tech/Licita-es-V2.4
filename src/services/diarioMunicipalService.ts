@@ -67,8 +67,11 @@ export async function baixarMateria(associacao: AssociacaoSigpub, codigo: string
   return pegarHtml(`/${associacao.slug}/materia/${codigo}`)
 }
 
+const PREFIXOS_COM_EQUIVALENTE_NO_QUERIDO_DIARIO = ['DM-', 'FAMEM-']
+
 export function equivalenteNoQueridoDiario(fonteId: string): string | null {
-  return fonteId.startsWith('DM-') ? `QD-${fonteId.slice(3)}` : null
+  const prefixo = PREFIXOS_COM_EQUIVALENTE_NO_QUERIDO_DIARIO.find((p) => fonteId.startsWith(p))
+  return prefixo ? `QD-${fonteId.slice(prefixo.length)}` : null
 }
 
 export async function existeNoQueridoDiario(tender: NormalizedTender): Promise<boolean> {

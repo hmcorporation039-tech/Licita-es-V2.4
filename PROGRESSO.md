@@ -139,6 +139,7 @@ Ver o cabeçalho de `scripts/enxugarRawJson.ts`.
 | QA 17/10: fontes que falhavam calado, fim do teste grátis, prazo/local em Meus matches e Escolhidas, e-mail de match com prazo e link, avisos vagos do Querido Diário | branch `qa-fontes-conta-emails` | 🟡 |
 | Fonte nova: **TCE-PI** (Mural de Licitações, 224 municípios + Estado do Piauí) — divulgadas com sessão futura pela sessão JSF (tabela de 100 em 100, planilha exportada de reserva), duplicidade estrita com o PNCP + publicação no PNCP informada ao TCE, revisita e sumidas — `docs/MAPA_TCE_PI.md` | branch `fonte-tce-pi` | 🟡 |
 | Fonte nova: **TCE-TO** (SICAP-LCO, municípios do Tocantins) — API do Módulo Público por data de abertura, duplicidade com o PNCP antes do detalhe, revisita, sumidas e memória no Redis; pesquisa de BA/MA/TO com a FAMEM (MA) como próxima fonte e a Bahia sem fonte aberta — `docs/MAPA_TCE_TO.md` | branch `fonte-prefeituras-ba-ma-to` | 🟡 |
+| Fonte nova: **FAMEM** (Diário Oficial dos Municípios do Maranhão, 65 prefeituras) — lista JSON com o cookie de sessão do site, só os avisos pela categoria/título, leitor de avisos compartilhado, dados pessoais tirados antes do leitor, sessão de hoje em diante, duplicidade estrita com o PNCP e com o Querido Diário; coleta real: 30 novas em 16 municípios, 6 municípios do MA passam a ter licitação aberta — `docs/MAPA_FAMEM.md` | branch `fonte-famem` | 🟡 |
 
 ### Decisão de 17/10: coleta do módulo legado do Compras.gov.br desativada
 
