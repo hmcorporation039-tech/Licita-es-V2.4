@@ -58,7 +58,7 @@ const rotuloDaModalidade = (m: string | null) => (m ? (MODALIDADES[m] ?? m) : '�
 
 const COR = { texto: '#1e293b', suave: '#64748b', linha: '#e2e8f0', bom: '#047857', ruim: '#b91c1c', alerta: '#b45309', titulo: '#3730a3' }
 const MARGEM = 40
-const TOPO = 100 // espaço do papel timbrado do Monitor de Licitações no alto de cada página
+const TOPO = 100 // espaço do papel timbrado da Licita Bela no alto de cada página
 
 // Fontes padrão do PDF só têm Latin-1 e algumas pontuações: o resto (textos de edital) vira espaço.
 const seguro = (t: string) => t.replace(/[^\x20-\x7E\u00A0-\u00FF\u2013\u2014\u2018\u2019\u201C\u201D\u2022\u2026\u20AC]/g, ' ').replace(/\s+/g, ' ').trim()
@@ -354,14 +354,14 @@ export function gerarPdfDoEstudo(e: EntradaDoPdf): Promise<Buffer> {
       8
     )
 
-    // Papel timbrado do Monitor de Licitações (nome da plataforma) com o nome e o CNPJ/CPF da empresa,
+    // Papel timbrado da Licita Bela (nome da plataforma) com o nome e o CNPJ/CPF da empresa,
     // e rodapé, em TODAS as páginas. A margem inferior é zerada para o rodapé não abrir página nova.
     const { start, count } = doc.bufferedPageRange()
     for (let i = start; i < start + count; i++) {
       doc.switchToPage(i)
       doc.page.margins.bottom = 0
       doc.rect(0, 0, doc.page.width, 8).fill(COR.titulo)
-      doc.font('Helvetica-Bold').fontSize(17).fillColor(COR.titulo).text('Monitor de Licitações', MARGEM, 26, { width: largura, lineBreak: false })
+      doc.font('Helvetica-Bold').fontSize(17).fillColor(COR.titulo).text('Licita Bela', MARGEM, 26, { width: largura, lineBreak: false })
       doc.font('Helvetica').fontSize(8).fillColor(COR.suave).text('Acompanhamento, análise e estudo de viabilidade de licitações públicas', MARGEM, 47, { width: largura, lineBreak: false })
       doc.font('Helvetica-Bold').fontSize(9).fillColor(COR.texto).text(
         identificacaoDaEmpresa(e.empresa),
@@ -371,7 +371,7 @@ export function gerarPdfDoEstudo(e: EntradaDoPdf): Promise<Buffer> {
       )
       doc.moveTo(MARGEM, TOPO - 16).lineTo(MARGEM + largura, TOPO - 16).strokeColor(COR.titulo).lineWidth(1.2).stroke()
       doc.font('Helvetica').fontSize(7.5).fillColor(COR.suave)
-      doc.text(`Monitor de Licitações - ${seguro(e.empresa.nome)} - página ${i - start + 1} de ${count}`, MARGEM, doc.page.height - 28, { width: largura, align: 'center', lineBreak: false })
+      doc.text(`Licita Bela - ${seguro(e.empresa.nome)} - página ${i - start + 1} de ${count}`, MARGEM, doc.page.height - 28, { width: largura, align: 'center', lineBreak: false })
     }
     doc.end()
   })

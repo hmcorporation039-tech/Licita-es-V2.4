@@ -55,7 +55,7 @@ function Lateral({ ativo }: { ativo: string }) {
   return (
     <div className="az-app-lateral">
       <span className="az-app-marca">
-        Monitor <span>de Licitações</span>
+        Licita <span>Bela</span>
       </span>
       {LATERAL.map(({ nome, icone: Icone }) => (
         <span key={nome} className={nome === ativo ? 'az-app-lateral-ativo' : undefined}>
@@ -132,7 +132,7 @@ export function PreviaEncontrar() {
 export function PreviaAnalisar() {
   return (
     <Ilustrativo legenda="Resumo do edital e alerta de cláusula, no computador.">
-      <MolduraDeNotebook endereco="Monitor de Licitações · Resumo do edital">
+      <MolduraDeNotebook endereco="Licita Bela · Resumo do edital">
         <div className="az-app-notebook">
           <Lateral ativo="Escolhidas" />
           <div className="az-app-principal">
@@ -198,7 +198,7 @@ const TRACOS_DA_PAGINA = ['74%', '100%', '100%', '86%', '100%', '62%']
 export function PreviaPreparar() {
   return (
     <Ilustrativo legenda="Estudo de custos e documentos no papel timbrado.">
-      <MolduraDeNotebook endereco="Monitor de Licitações · Estudo de custos">
+      <MolduraDeNotebook endereco="Licita Bela · Estudo de custos">
         <div className="az-app-notebook">
           <Lateral ativo="Documentos" />
           <div className="az-app-principal az-app-duas-colunas">

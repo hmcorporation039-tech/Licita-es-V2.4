@@ -323,7 +323,7 @@ authRouter.post(
     const senhaConfere = await verifyPasswordConstantTime(parsed.password, user && user.active ? user.passwordHash : null)
     if (!user || !user.active || !senhaConfere) throw new ApiError(401, 'E-mail ou senha inválidos')
     if (!user.accessExpiresAt || !acessoExpirou(user.accessExpiresAt)) {
-      throw new ApiError(409, 'O acesso desta conta está ativo. Entre normalmente para usar o Monitor ou baixar seus dados em Conta.')
+      throw new ApiError(409, 'O acesso desta conta está ativo. Entre normalmente para usar a Licita Bela ou baixar seus dados em Conta.')
     }
 
     const aviso = avisoDoPedidoDeAcessoEncerrado(parsed.pedido, {

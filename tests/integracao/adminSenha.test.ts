@@ -114,7 +114,7 @@ rodar('Admin: redefinir a senha de um usuário', () => {
     expect(r.status).toBe(201)
     expect(r.body.conviteEnviado).toBe(true)
     const convite = caixaDeSaidaDeTeste.find((m) => m.to === `teste-${sufixo}@teste.local`)
-    expect(convite?.subject).toBe('Seu acesso ao Monitor de Licitações')
+    expect(convite?.subject).toBe('Seu acesso à Licita Bela')
     expect(convite?.html).toContain(`teste-${sufixo}@teste.local`)
     const token = new URL(convite!.link!).searchParams.get('token')
     expect(token).toBeTruthy()

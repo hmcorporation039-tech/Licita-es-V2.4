@@ -81,7 +81,7 @@ export async function sendMatchEmail(params: MatchEmailParams) {
       ${orgao ? `<p><strong>Órgão:</strong> ${escapeHtml(orgao)}</p>` : ''}
       ${local ? `<p><strong>${escapeHtml(local.rotulo)}:</strong> ${escapeHtml(local.valor)}</p>` : ''}
       ${valorEstimado ? `<p><strong>Valor estimado:</strong> ${escapeHtml(emReais(valorEstimado))}</p>` : ''}
-      ${linkHtml(linkDaLicitacaoNoMonitor(tenderId), 'Abrir no Monitor de Licitações')}
+      ${linkHtml(linkDaLicitacaoNoMonitor(tenderId), 'Abrir na Licita Bela')}
       ${linkHtml(linkEdital, 'Ver edital na fonte')}
     `,
   })

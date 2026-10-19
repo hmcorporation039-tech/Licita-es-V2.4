@@ -6,7 +6,7 @@ import { calar, falaDisponivel, falar } from '@/lib/bela'
 import { rastrear } from '@/lib/rastreamento'
 
 const APRESENTACAO =
-  'Oi, eu sou a Bela, a assistente do Monitor de Licitações. Você me diz o que vende e eu encontro as licitações abertas, pelo prazo mais próximo. Na hora do pregão, eu faço a conta da margem e sugiro o lance. Quem dá o lance é sempre você.'
+  'Oi, eu sou a Bela, a assistente da Licita Bela. Você me diz o que vende e eu encontro as licitações abertas, pelo prazo mais próximo. Na hora do pregão, eu faço a conta da margem e sugiro o lance. Quem dá o lance é sempre você.'
 
 const VERIFICAR_A_CADA_MS = 300
 const assinarNada = () => () => {}

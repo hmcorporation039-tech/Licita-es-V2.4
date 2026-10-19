@@ -76,7 +76,7 @@ export async function enviarAvisoDeAcessoEncerrado(to: string, { licitacoesEsper
     subject: `${emTeste ? 'Seu teste terminou' : 'Seu acesso terminou'}: ${esperando} por você`,
     html: moldura(
       emTeste ? 'Seu teste grátis terminou' : 'O acesso da sua conta terminou',
-      `<p>O Monitor continua procurando licitações para os itens que você cadastrou: há ${escapeHtml(esperando)} por você, guardadas na sua conta.</p>
+      `<p>A Licita Bela continua procurando licitações para os itens que você cadastrou: há ${escapeHtml(esperando)} por você, guardadas na sua conta.</p>
        <p>Enquanto o acesso estiver encerrado, você não recebe os avisos de cada licitação. Veja como continuar ou pedir uma cópia dos seus dados.</p>`,
       link,
       'Ver como continuar'
@@ -108,10 +108,10 @@ export async function enviarConviteDeAcessoPorEmail(to: string, nome: string | n
   return enviar({
     to,
     link,
-    subject: 'Seu acesso ao Monitor de Licitações',
+    subject: 'Seu acesso à Licita Bela',
     html: moldura(
       nome ? `Olá, ${nome}` : 'Seu acesso está pronto',
-      `<p>Criamos um acesso ao Monitor de Licitações para você. O seu login é este e-mail: <strong>${escapeHtml(to)}</strong>.</p>
+      `<p>Criamos um acesso à Licita Bela para você. O seu login é este e-mail: <strong>${escapeHtml(to)}</strong>.</p>
        <p>Clique no botão para criar a sua senha. O link vale por ${validadeHoras} horas e só pode ser usado uma vez. Se ele vencer, use "Esqueci minha senha" na tela de entrada.</p>`,
       link,
       'Criar minha senha'

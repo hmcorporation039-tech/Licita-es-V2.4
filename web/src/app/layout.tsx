@@ -29,7 +29,7 @@ const nunito = localFont({
 })
 
 export const metadata: Metadata = {
-  title: 'Monitor de Licitações',
+  title: 'Licita Bela',
   description: 'Licitações abertas para o seu negócio, com prazo, edital e habilitação no mesmo lugar.',
 }
 

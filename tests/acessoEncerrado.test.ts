@@ -13,7 +13,7 @@ describe('fim do teste grátis — mensagens da API', () => {
 
   it('teste vencido diz quando terminou no dia de Brasília e não manda falar com "o administrador"', () => {
     const texto = mensagemDeAcessoEncerrado(venceu, true)
-    expect(texto).toBe('Seu teste grátis terminou em 17/10/2026. Seus dados continuam guardados: fale com a equipe do Monitor para assinar ou pedir uma cópia deles.')
+    expect(texto).toBe('Seu teste grátis terminou em 17/10/2026. Seus dados continuam guardados: fale com a equipe da Licita Bela para assinar ou pedir uma cópia deles.')
     expect(texto).not.toMatch(/administrador/i)
     expect(mensagemDeAcessoEncerrado(venceu, false)).toMatch(/^O prazo de acesso da sua conta terminou em 17\/10\/2026/)
   })

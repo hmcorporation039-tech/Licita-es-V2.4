@@ -12,8 +12,8 @@ export function acessoExpirou(accessExpiresAt: Date | null | undefined, agora: D
 export function mensagemDeAcessoEncerrado(acessoAte: Date, emTeste: boolean): string {
   const dia = DIA_EM_BRASILIA.format(acessoAte)
   return emTeste
-    ? `Seu teste grátis terminou em ${dia}. Seus dados continuam guardados: fale com a equipe do Monitor para assinar ou pedir uma cópia deles.`
-    : `O prazo de acesso da sua conta terminou em ${dia}. Seus dados continuam guardados: fale com a equipe do Monitor para renovar ou pedir uma cópia deles.`
+    ? `Seu teste grátis terminou em ${dia}. Seus dados continuam guardados: fale com a equipe da Licita Bela para assinar ou pedir uma cópia deles.`
+    : `O prazo de acesso da sua conta terminou em ${dia}. Seus dados continuam guardados: fale com a equipe da Licita Bela para renovar ou pedir uma cópia deles.`
 }
 
 export function detalhesDoAcessoEncerrado(acessoAte: Date, planCode: string | null | undefined): Record<string, unknown> {
@@ -30,12 +30,12 @@ export function avisoDoPedidoDeAcessoEncerrado(
     return {
       assunto: 'Pedido de cópia dos dados de conta com acesso encerrado (LGPD)',
       texto: `${quem}\n\nA pessoa pediu a exportação dos dados (LGPD, art. 18). Prazo legal: até 15 dias. Gere o arquivo (o mesmo de /api/conta/meus-dados) e envie ao e-mail da conta.`,
-      resposta: 'Pedido registrado. A equipe do Monitor vai enviar a cópia dos seus dados para o e-mail da conta em até 15 dias.',
+      resposta: 'Pedido registrado. A equipe da Licita Bela vai enviar a cópia dos seus dados para o e-mail da conta em até 15 dias.',
     }
   }
   return {
     assunto: 'Cliente com acesso encerrado quer continuar',
-    texto: `${quem}\n\nA pessoa quer continuar usando o Monitor. Entre em contato pelo e-mail da conta para combinar o plano e estender o acesso.`,
-    resposta: 'Pedido registrado. A equipe do Monitor vai falar com você pelo e-mail da conta para combinar como continuar.',
+    texto: `${quem}\n\nA pessoa quer continuar usando a Licita Bela. Entre em contato pelo e-mail da conta para combinar o plano e estender o acesso.`,
+    resposta: 'Pedido registrado. A equipe da Licita Bela vai falar com você pelo e-mail da conta para combinar como continuar.',
   }
 }

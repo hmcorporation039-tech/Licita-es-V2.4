@@ -64,7 +64,7 @@ const GRUPOS: GrupoDeMenu[] = [
 function Marca() {
   return (
     <Link href="/dashboard" className="whitespace-nowrap rounded-lg px-2 py-1 font-display text-lg leading-none tracking-[-0.02em] text-nav-ink focus-visible:outline-white">
-      <span className="font-black">Monitor</span> <span className="font-light text-nav-muted">de Licitações</span>
+      <span className="font-black">Licita</span> <span className="font-light text-nav-muted">Bela</span>
     </Link>
   )
 }

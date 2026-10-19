@@ -57,8 +57,8 @@ export default function FaixaDeFontes({ marcas }: { marcas?: string[] | null }) 
     <section aria-labelledby="fontes-titulo" className="az-fontes az-escuro">
       <div className="az-conteiner az-fontes-topo">
         <div>
-          <h2 id="fontes-titulo">Fontes oficiais que o Monitor acompanha</h2>
-          <p>Todo dia o Monitor lê estes portais e junta tudo numa lista só, pelo prazo mais próximo.</p>
+          <h2 id="fontes-titulo">Fontes oficiais que a Licita Bela acompanha</h2>
+          <p>Todo dia a Licita Bela lê estes portais e junta tudo numa lista só, pelo prazo mais próximo.</p>
         </div>
         <PausarLetreiro alvo={ID_DO_LETREIRO} />
       </div>
@@ -71,7 +71,7 @@ export default function FaixaDeFontes({ marcas }: { marcas?: string[] | null }) 
           ))}
         </ul>
       </div>
-      <p className="az-conteiner az-fontes-aviso">Logotipos das fontes públicas de dados acompanhadas pelo Monitor. O Monitor não tem vínculo com esses órgãos.</p>
+      <p className="az-conteiner az-fontes-aviso">Logotipos das fontes públicas de dados acompanhadas pela Licita Bela. A Licita Bela não tem vínculo com esses órgãos.</p>
     </section>
   )
 }

@@ -1,5 +1,5 @@
 // ============================================================
-// Dossiê em PDF (papel timbrado do Monitor de Licitações + habilitação + exigências) e CEP.
+// Dossiê em PDF (papel timbrado da Licita Bela + habilitação + exigências) e CEP.
 // Se DOSSIE_PDF_AMOSTRA apontar para um arquivo, grava o PDF gerado ali para conferência visual.
 // ============================================================
 
@@ -116,7 +116,7 @@ describe('PDF do dossiê', () => {
     }
   }
 
-  it('gera o PDF com o papel timbrado do Monitor, habilitação e exigências, sem quebrar com caracteres fora do Latin-1', async () => {
+  it('gera o PDF com o papel timbrado da Licita Bela, habilitação e exigências, sem quebrar com caracteres fora do Latin-1', async () => {
     const pdf = await gerarPdfDoEstudo(entrada(true))
     expect(pdf.subarray(0, 5).toString()).toBe('%PDF-')
     if (process.env.DOSSIE_PDF_AMOSTRA) writeFileSync(process.env.DOSSIE_PDF_AMOSTRA, pdf)

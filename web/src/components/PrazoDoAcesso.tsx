@@ -48,7 +48,7 @@ export default function PainelDoAcesso() {
           fica bloqueado, mas os seus dados continuam guardados.
         </p>
         <p>
-          Para continuar usando, fale com a equipe do Monitor
+          Para continuar usando, fale com a equipe da Licita Bela
           {whatsapp ? (
             <>
               {' '}

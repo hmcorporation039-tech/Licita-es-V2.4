@@ -1,7 +1,7 @@
 import { PublicProse } from '@/components/PublicShell'
 import { Notice } from '@/components/ui'
 
-export const metadata = { title: 'Política de Privacidade — Monitor de Licitações' }
+export const metadata = { title: 'Política de Privacidade — Licita Bela' }
 
 export default function PrivacidadePage() {
   return (
