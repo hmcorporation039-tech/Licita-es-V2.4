@@ -3,6 +3,7 @@
 // ============================================================
 
 import { Resend } from 'resend'
+import { enviarPeloResend } from '../lib/envioPeloResend'
 import { escapeHtml, safeHttpUrl } from '../lib/html'
 import { formatarDiaDoCalendario, formatarDiaEHoraDeBrasilia, formatarPrazoDaLicitacao } from '../lib/dataDeBrasilia'
 import { appUrl } from '../lib/appUrl'
@@ -69,7 +70,7 @@ export async function sendMatchEmail(params: MatchEmailParams) {
   const prazo = prazoDoEmailDeMatch(params)
   const local = localDaLicitacao(municipio, uf)
 
-  await getResendClient().emails.send({
+  await enviarPeloResend(getResendClient(), {
     from: EMAIL_FROM,
     to,
     subject: `Nova licitação encontrada: ${itemName.replace(/[\r\n]+/g, ' ').slice(0, 150)}`,
@@ -103,7 +104,7 @@ export async function sendDocumentExpiryEmail(params: DocumentExpiryEmailParams)
   const vencido = diasRestantes < 0
   const dataFormatada = formatarDiaDoCalendario(dataValidade)
 
-  await getResendClient().emails.send({
+  await enviarPeloResend(getResendClient(), {
     from: EMAIL_FROM,
     to,
     subject: vencido ? `Documento vencido: ${documentName}` : `Documento ${quandoVence(diasRestantes)}: ${documentName}`,
@@ -143,7 +144,7 @@ export async function sendTenderChangedEmail(params: TenderChangedEmailParams) {
   const { to, tenderObjeto, campos, orgao, encerramentoAt, fonte, linkEdital } = params
   const rotulos = campos.map((campo) => ROTULO_CAMPO_ALTERADO[campo] ?? campo)
 
-  await getResendClient().emails.send({
+  await enviarPeloResend(getResendClient(), {
     from: EMAIL_FROM,
     to,
     subject: 'Uma licitação que você acompanha foi alterada',

@@ -13,6 +13,7 @@
 
 import axios from 'axios'
 import { Resend } from 'resend'
+import { enviarPeloResend } from '../lib/envioPeloResend'
 
 const SILENCIO_MS = 15 * 60 * 1000
 const MAX_DETALHE = 1500
@@ -58,7 +59,7 @@ const enviosPadrao: Required<Envios> = {
   email: async (para, assunto, texto) => {
     if (!process.env.RESEND_API_KEY) return
     const from = process.env.EMAIL_FROM ?? 'noreply@seudominio.com.br'
-    await new Resend(process.env.RESEND_API_KEY).emails.send({ from, to: para, subject: assunto, text: texto })
+    await enviarPeloResend(new Resend(process.env.RESEND_API_KEY), { from, to: para, subject: assunto, text: texto })
   },
 }
 

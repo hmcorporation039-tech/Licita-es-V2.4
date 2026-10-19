@@ -109,8 +109,17 @@ rodar('Admin: redefinir a senha de um usuário', () => {
   })
 
   it('conta em teste criada pelo admin sem informar dias ganha o prazo do teste grátis', async () => {
+    const { caixaDeSaidaDeTeste } = await import('../../src/services/emailTransacional')
     const r = await http('POST', '/api/admin/users', { email: `teste-${sufixo}@teste.local`, planCode: 'TESTE' }, tokenAdmin)
     expect(r.status).toBe(201)
+    expect(r.body.conviteEnviado).toBe(true)
+    const convite = caixaDeSaidaDeTeste.find((m) => m.to === `teste-${sufixo}@teste.local`)
+    expect(convite?.subject).toBe('Seu acesso ao Monitor de Licitações')
+    expect(convite?.html).toContain(`teste-${sufixo}@teste.local`)
+    const token = new URL(convite!.link!).searchParams.get('token')
+    expect(token).toBeTruthy()
+    expect((await http('POST', '/api/auth/reset-password', { token, novaSenha: 'Senha-do-convite-1' })).status).toBe(200)
+    expect((await http('POST', '/api/auth/login', { email: `teste-${sufixo}@teste.local`, password: 'Senha-do-convite-1' })).status).toBe(200)
     const dias = (new Date(r.body.accessExpiresAt).getTime() - Date.now()) / 86_400_000
     expect(dias).toBeGreaterThan(6.9)
     expect(dias).toBeLessThanOrEqual(7)
