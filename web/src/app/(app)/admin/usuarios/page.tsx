@@ -96,10 +96,40 @@ function SenhaGerada({ titulo, email, senha }: { titulo: string; email: string; 
   )
 }
 
+function emTeste(u: AdminUser): boolean {
+  return u.planCode === 'TESTE' && !u.isAdmin
+}
+
 function Situacao({ u }: { u: AdminUser }) {
   if (!u.active) return <StatusTag tone="danger">Desativado</StatusTag>
+  if (u.isAdmin) return <StatusTag>Equipe</StatusTag>
   if (isExpired(u.accessExpiresAt)) return <StatusTag tone="warn">{u.planCode === 'TESTE' ? 'Teste encerrado' : 'Acesso expirado'}</StatusTag>
+  if (emTeste(u) && u.accessExpiresAt === null) return <StatusTag tone="warn">Teste sem prazo</StatusTag>
   return <StatusTag>{u.planCode === 'TESTE' ? 'Em teste' : 'Ativo'}</StatusTag>
+}
+
+function AcoesDePrazo({ u, onPrazo }: { u: AdminUser; onPrazo: (u: AdminUser, dias: number | null) => void }) {
+  if (u.isAdmin || !u.active) return null
+  const semPrazo = u.accessExpiresAt === null
+  if (emTeste(u)) {
+    return (
+      <Button size="sm" variant={semPrazo ? 'secondary' : 'ghost'} icon={CalendarPlus} title="Acesso até hoje + 7 dias" onClick={() => onPrazo(u, 7)}>
+        {semPrazo ? 'Definir prazo de 7 dias' : isExpired(u.accessExpiresAt) ? 'Reabrir teste por 7 dias' : 'Estender teste'}
+      </Button>
+    )
+  }
+  return (
+    <>
+      <Button size="sm" variant="ghost" icon={CalendarPlus} title="Acesso até hoje + 30 dias" onClick={() => onPrazo(u, 30)}>
+        Renovar 30 dias
+      </Button>
+      {!semPrazo && (
+        <Button size="sm" variant="ghost" onClick={() => onPrazo(u, null)}>
+          Remover prazo
+        </Button>
+      )}
+    </>
+  )
 }
 
 export default function AdminUsuariosPage() {
@@ -356,21 +386,7 @@ export default function AdminUsuariosPage() {
                                 Confirmar e-mail
                               </Button>
                             )}
-                            <Button size="sm" variant="ghost" icon={CalendarPlus} title="Acesso até hoje + 7 dias" onClick={() => extend(u, 7)}>
-                              7 dias
-                            </Button>
-                            <Button size="sm" variant="ghost" icon={CalendarPlus} title="Acesso até hoje + 30 dias" onClick={() => extend(u, 30)}>
-                              30 dias
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              disabled={semPrazo}
-                              title={semPrazo ? 'Este usuário já está sem prazo' : undefined}
-                              onClick={() => extend(u, null)}
-                            >
-                              Remover prazo
-                            </Button>
+                            <AcoesDePrazo u={u} onPrazo={extend} />
                             {!souEu && (
                               <Button size="sm" variant="ghost" icon={Power} onClick={() => toggleActive(u)}>
                                 {u.active ? 'Desativar' : 'Ativar'}

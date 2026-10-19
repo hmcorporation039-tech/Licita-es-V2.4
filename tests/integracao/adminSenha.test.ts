@@ -107,4 +107,25 @@ rodar('Admin: redefinir a senha de um usuário', () => {
     expect(r.status).toBe(403)
     expect((await http('POST', '/api/auth/login', { email: alvoEmail, password: 'Invasora-123456' })).status).toBe(401)
   })
+
+  it('conta em teste criada pelo admin sem informar dias ganha o prazo do teste grátis', async () => {
+    const r = await http('POST', '/api/admin/users', { email: `teste-${sufixo}@teste.local`, planCode: 'TESTE' }, tokenAdmin)
+    expect(r.status).toBe(201)
+    const dias = (new Date(r.body.accessExpiresAt).getTime() - Date.now()) / 86_400_000
+    expect(dias).toBeGreaterThan(6.9)
+    expect(dias).toBeLessThanOrEqual(7)
+  })
+
+  it('conta em teste não pode ficar sem prazo; conta de plano pago pode', async () => {
+    const teste = await http('POST', '/api/admin/users', { email: `teste2-${sufixo}@teste.local`, planCode: 'TESTE' }, tokenAdmin)
+    const recusado = await http('PATCH', `/api/admin/users/${teste.body.id}`, { diasValidade: null }, tokenAdmin)
+    expect(recusado.status).toBe(400)
+    expect(recusado.body.error).toMatch(/precisa ter prazo/)
+    expect((await prisma.user.findUnique({ where: { id: teste.body.id } })).accessExpiresAt).not.toBeNull()
+
+    const pago = await http('POST', '/api/admin/users', { email: `pago-${sufixo}@teste.local`, planCode: 'EMPRESARIAL', diasValidade: 30 }, tokenAdmin)
+    const liberado = await http('PATCH', `/api/admin/users/${pago.body.id}`, { diasValidade: null }, tokenAdmin)
+    expect(liberado.status).toBe(200)
+    expect(liberado.body.accessExpiresAt).toBeNull()
+  })
 })
