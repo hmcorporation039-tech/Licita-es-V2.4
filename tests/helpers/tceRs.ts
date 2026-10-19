@@ -31,9 +31,7 @@ export interface OpcoesDaRedeFalsa {
   statusDaCauda?: (caminho: string) => number
   statusDoTrecho?: (vez: number) => number
   cortarTrecho?: (vez: number) => number | null
-  // Servidor que não começa a responder: o pedido só termina quando é cancelado.
   pendurarTrecho?: (vez: number) => boolean
-  // Servidor que manda os primeiros bytes e para de enviar, sem fechar a conexão.
   silenciarTrecho?: (vez: number) => boolean
 }
 

@@ -4,11 +4,6 @@
 // PNCP/ComprasNet, esses três não têm filtro de data no servidor — cada
 // coleta traz a listagem inteira, e quem decide o que é novo/alterado é
 // o dedupe por content hash já existente em saveTender().
-//
-// Licitação que já chega encerrada não é gravada (a não ser que já esteja no
-// banco): a faxina a apagaria, e a coleta seguinte, que traz a listagem
-// inteira de novo, a contaria como nova outra vez — era o que inflava o
-// "novos" do SESC GO (~336 por rodada em 953) e mandava encerrada ao matcher.
 // ============================================================
 
 import { matcherQueue } from '../queues'

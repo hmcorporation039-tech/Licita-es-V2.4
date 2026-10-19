@@ -42,10 +42,6 @@ export const MAX_COMPRIMIDO_DOS_EVENTOS = 40 * 1024 * 1024
 export const MAX_COMPRIMIDO_DOS_DOCUMENTOS = 160 * 1024 * 1024
 export const MAX_ORIGINAL_POR_ARQUIVO = 800 * 1024 * 1024
 export const TEMPO_MAXIMO_POR_ARQUIVO_MS = 10 * 60_000
-// O servidor do TCE-RS chega a passar de 60 s antes do primeiro byte de um
-// trecho do arquivo anual (~257 MB): em produção as 3 tentativas estouraram
-// o timeout de 60 s do axios. A espera vale até o servidor começar a responder;
-// depois disso quem manda é o silêncio máximo e o tempo máximo por arquivo.
 export const ESPERA_PELO_PRIMEIRO_BYTE_MS = 3 * 60_000
 export const MAX_SILENCIO_NO_DOWNLOAD_MS = 2 * 60_000
 export const TENTATIVAS_POR_ARQUIVO = 3
@@ -91,8 +87,6 @@ function aceitarQualquerStatus(): boolean {
   return true
 }
 
-// Timeout do axios ("timeout of Nms exceeded") vira download incompleto, que é
-// repetido e aparece no log com o tempo que o servidor ficou sem responder.
 export function semRespostaNoPrazo(err: unknown, prazoMs: number): unknown {
   const codigo = (err as { code?: unknown } | null)?.code
   if (codigo !== 'ECONNABORTED' && codigo !== 'ETIMEDOUT') return err
@@ -201,8 +195,6 @@ export async function lerDiretorioDoZip(rede: RedeDoTceRs, ano: number): Promise
   return { entradas: entradasDoZip(cauda.dados, tamanhoTotal - cauda.dados.length), tamanhoTotal, atualizadoEm: cauda.atualizadoEm }
 }
 
-// Depois do primeiro byte o axios não vigia mais a conexão: um trecho que
-// para de chegar ficaria parado até o tempo máximo do arquivo.
 class VigiaDeSilencio extends Transform {
   private relogio: NodeJS.Timeout | null = null
 
@@ -353,7 +345,6 @@ export async function lerEntradaDoZip(
 
   await comRetentativa(async () => {
     const leitor = criarLeitor()
-    // O tempo máximo conta desde o pedido: a espera pelo primeiro byte entra nele.
     const tempoEsgotado = () => new DownloadIncompletoDoTceRs(`tempo esgotado (${Math.round(limites.tempoMaximoPorArquivoMs / 1000)} s)`)
     const cancelamento = new AbortController()
     let corpo: Readable | null = null

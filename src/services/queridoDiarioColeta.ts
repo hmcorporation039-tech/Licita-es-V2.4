@@ -82,7 +82,6 @@ export interface ContagemDoSalvamento {
   totalNew: number
   totalDupes: number
   totalUpdated: number
-  // Já encerradas na chegada, não gravadas (ver salvarLote).
   totalDescartadas?: number
 }
 
