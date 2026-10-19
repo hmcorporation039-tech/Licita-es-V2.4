@@ -117,7 +117,7 @@ rodar('Cadastro público e recuperação de senha', () => {
       expect(dias).toBeLessThan(7.1)
     })
 
-    it('o e-mail traz SÓ o código e a instrução — sem link, botão, nome ou marca; no banco fica só o HMAC', async () => {
+    it('o e-mail traz o código e a instrução com a marca — sem link, botão ou nome; no banco fica só o HMAC', async () => {
       const msg = ultimoEmailPara(email('fulano'))
       expect(msg.subject).toBe('Seu código de confirmação')
       codigoInicial = msg.codigo
@@ -126,7 +126,8 @@ rodar('Cadastro público e recuperação de senha', () => {
       expect(msg.html).not.toMatch(/href|http|<a /i)
       expect(msg.html).toContain(codigoInicial)
       expect(msg.html).toContain('Digite o código na tela de cadastro e confirme o seu acesso.')
-      expect(msg.html).not.toMatch(/Fulano|Licita|Monitor/i)
+      expect(msg.html).not.toMatch(/Fulano/i)
+      expect(msg.html).toContain('Licita')
 
       const tokens = await prisma.authToken.findMany({ where: { user: { email: email('fulano') } } })
       expect(tokens).toHaveLength(1)

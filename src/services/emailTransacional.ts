@@ -14,6 +14,7 @@ import { Resend } from 'resend'
 import { enviarPeloResend } from '../lib/envioPeloResend'
 import { appUrl } from '../lib/appUrl'
 import { escapeHtml } from '../lib/html'
+import { emailDaMarca } from '../lib/emailDaMarca'
 import { quantidadeCom } from '../lib/plural'
 
 const EMAIL_FROM = process.env.EMAIL_FROM ?? 'noreply@seudominio.com.br'
@@ -54,13 +55,7 @@ async function enviar(msg: EmailEnviado): Promise<boolean> {
 }
 
 function moldura(titulo: string, corpo: string, link: string, rotuloBotao: string): string {
-  return `
-    <div style="font-family:Arial,sans-serif;max-width:520px">
-      <h2>${escapeHtml(titulo)}</h2>
-      ${corpo}
-      <p><a href="${escapeHtml(link)}" style="display:inline-block;background:#4338ca;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none">${escapeHtml(rotuloBotao)}</a></p>
-      <p style="color:#64748b;font-size:12px">Se o botão não funcionar, copie este endereço no navegador:<br>${escapeHtml(link)}</p>
-    </div>`
+  return emailDaMarca({ previa: titulo, titulo, corpo: corpo.replace(/<p>/g, '<p style="margin:0 0 12px">'), botao: { texto: rotuloBotao, link } })
 }
 
 export function linkDoAcessoEncerrado(): string {
@@ -88,18 +83,20 @@ export function linkDeRecuperacao(token: string): string {
   return `${appUrl()}/redefinir-senha?token=${encodeURIComponent(token)}`
 }
 
-// Confirmação do cadastro: SÓ o código e a instrução. Sem link, sem botão, sem nome e sem
-// marca — nada que dê a um terceiro o que clicar ou o que ver sobre a plataforma.
+// Confirmação do cadastro: o código e a instrução, com a marca. Sem link, sem botão e sem
+// nome — nada que dê a um terceiro o que clicar.
 export async function enviarCodigoDeConfirmacao(to: string, codigo: string): Promise<void> {
   await enviar({
     to,
     codigo,
     subject: 'Seu código de confirmação',
-    html: `
-    <div style="font-family:Arial,sans-serif;max-width:420px">
-      <p style="font-size:30px;letter-spacing:8px;font-weight:bold;margin:16px 0">${escapeHtml(codigo)}</p>
-      <p>Digite o código na tela de cadastro e confirme o seu acesso.</p>
-    </div>`,
+    html: emailDaMarca({
+      previa: `Seu código é ${codigo}`,
+      titulo: 'Seu código de confirmação',
+      corpo: `<p style="margin:8px 0 16px;padding:16px 0;text-align:center;font-size:34px;font-weight:800;letter-spacing:10px;color:#0b1f44;background:#f4f8ff;border:1px solid #dbe6f7;border-radius:12px">${escapeHtml(codigo)}</p>
+      <p style="margin:0 0 12px">Digite o código na tela de cadastro e confirme o seu acesso.</p>
+      <p style="margin:0;font-size:13px;color:#5b6b8c">O código vale por 15 minutos. Se você não pediu, ignore este e-mail.</p>`,
+    }),
   })
 }
 

@@ -14,9 +14,13 @@ import { parseDataBr } from '../src/lib/scrapingHelpers'
 
 const chaveOriginal = process.env.RESEND_API_KEY
 
-function htmlEnviado(): string {
+function htmlBruto(): string {
   const chamadas = enviar.mock.calls as unknown as Array<[{ html: string }]>
-  return chamadas[chamadas.length - 1][0].html.replace(/\s/g, ' ')
+  return chamadas[chamadas.length - 1][0].html
+}
+
+function htmlEnviado(): string {
+  return htmlBruto().replace(/<[^>]+>/g, ' ').replace(/&rarr;/g, '').replace(/\s+/g, ' ')
 }
 
 describe('e-mails mostram data e valor no padrão de Brasília, qualquer que seja o fuso do servidor', () => {
@@ -37,7 +41,7 @@ describe('e-mails mostram data e valor no padrão de Brasília, qualquer que sej
       encerramentoAt: dataDeBrasilia('2026-10-20T09:00:00'),
       fonte: 'PNCP',
     })
-    expect(htmlEnviado()).toContain('Novo fim do recebimento de propostas:</strong> 20/10/2026 09:00')
+    expect(htmlEnviado()).toContain('Novo fim do recebimento de propostas 20/10/2026 09:00')
   })
 
   it('21:00 de Brasília no PNCP não vira o dia seguinte', async () => {
@@ -59,12 +63,12 @@ describe('e-mails mostram data e valor no padrão de Brasília, qualquer que sej
       encerramentoAt: parseDataBr('20/10/2026'),
       fonte: 'SESC_REGIONAL',
     })
-    expect(htmlEnviado()).toContain('Novo fim do recebimento de propostas:</strong> 20/10/2026</p>')
+    expect(htmlEnviado()).toMatch(/Novo fim do recebimento de propostas 20\/10\/2026 (?!\d)/)
   })
 
   it('valor estimado sai em reais com centavos', async () => {
     await sendMatchEmail({ to: 'cliente@exemplo.com', itemName: 'Cimento', tenderId: 't1', tenderObjeto: 'Compra de cimento', fonte: 'PNCP', valorEstimado: 1234.5 })
-    expect(htmlEnviado()).toContain('Valor estimado:</strong> R$ 1.234,50')
+    expect(htmlEnviado()).toContain('Valor estimado R$ 1.234,50')
   })
 
   describe('e-mail de match novo', () => {
@@ -91,10 +95,11 @@ describe('e-mails mostram data e valor no padrão de Brasília, qualquer que sej
         linkEdital: null,
       })
       const html = htmlEnviado()
-      expect(html).toContain('Prazo para enviar a proposta:</strong> 20/10/2026 21:00')
-      expect(html).toContain('Município:</strong> Anápolis/GO')
-      expect(html).toContain('Órgão:</strong> Prefeitura Municipal de Anápolis')
-      expect(html).toContain('<a href="https://monitor.exemplo.com.br/tenders/abc-123">Abrir na Licita Bela</a>')
+      expect(html).toContain('Prazo para enviar a proposta 20/10/2026 21:00')
+      expect(html).toContain('Município Anápolis/GO')
+      expect(html).toContain('Órgão Prefeitura Municipal de Anápolis')
+      expect(htmlBruto()).toContain('href="https://monitor.exemplo.com.br/tenders/abc-123"')
+      expect(html).toContain('Abrir na Licita Bela')
       expect(html).not.toContain('Ver edital')
     })
 
@@ -110,8 +115,8 @@ describe('e-mails mostram data e valor no padrão de Brasília, qualquer que sej
         linkEdital: 'https://portal.exemplo.com.br/edital.pdf',
       })
       const html = htmlEnviado()
-      expect(html).toContain('Data da sessão:</strong> 20/10/2026</p>')
-      expect(html).toContain('UF:</strong> DF')
+      expect(html).toMatch(/Data da sessão 20\/10\/2026 (?!\d)/)
+      expect(html).toContain('UF DF')
       expect(html).toContain('Ver edital na fonte')
     })
 
@@ -124,12 +129,12 @@ describe('e-mails mostram data e valor no padrão de Brasília, qualquer que sej
         fonte: 'PNCP',
         aberturaAt: dataDeBrasilia('2026-10-10T08:00:00'),
       })
-      expect(htmlEnviado()).toContain('Prazo:</strong> não informado pela fonte (confira no edital)')
+      expect(htmlEnviado()).toContain('Prazo não informado pela fonte (confira no edital)')
     })
   })
 
   it('validade do documento sai no dia digitado', async () => {
     await sendDocumentExpiryEmail({ to: 'cliente@exemplo.com', documentName: 'CND', diasRestantes: 3, dataValidade: new Date('2026-10-20') })
-    expect(htmlEnviado()).toContain('Validade:</strong> 20/10/2026')
+    expect(htmlEnviado()).toContain('Validade 20/10/2026')
   })
 })
