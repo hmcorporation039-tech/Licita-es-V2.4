@@ -4,7 +4,8 @@
 
 import { Resend } from 'resend'
 import { enviarPeloResend } from '../lib/envioPeloResend'
-import { escapeHtml, safeHttpUrl } from '../lib/html'
+import { escapeHtml } from '../lib/html'
+import { emailDaMarca, paragrafo } from '../lib/emailDaMarca'
 import { formatarDiaDoCalendario, formatarDiaEHoraDeBrasilia, formatarPrazoDaLicitacao } from '../lib/dataDeBrasilia'
 import { appUrl } from '../lib/appUrl'
 import { quandoVence } from '../lib/plural'
@@ -19,11 +20,6 @@ function getResendClient(): Resend {
 
 function emReais(valor: number): string {
   return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-}
-
-function linkHtml(url: string | null | undefined, rotulo: string): string {
-  const href = safeHttpUrl(url)
-  return href ? `<p><a href="${escapeHtml(href)}">${escapeHtml(rotulo)}</a></p>` : ''
 }
 
 export interface MatchEmailParams {
@@ -74,16 +70,20 @@ export async function sendMatchEmail(params: MatchEmailParams) {
     from: EMAIL_FROM,
     to,
     subject: `Nova licitação encontrada: ${itemName.replace(/[\r\n]+/g, ' ').slice(0, 150)}`,
-    html: `
-      <h2>Encontramos uma licitação para "${escapeHtml(itemName)}"</h2>
-      <p><strong>Objeto:</strong> ${escapeHtml(tenderObjeto)}</p>
-      <p><strong>${escapeHtml(prazo.rotulo)}:</strong> ${escapeHtml(prazo.valor)}</p>
-      ${orgao ? `<p><strong>Órgão:</strong> ${escapeHtml(orgao)}</p>` : ''}
-      ${local ? `<p><strong>${escapeHtml(local.rotulo)}:</strong> ${escapeHtml(local.valor)}</p>` : ''}
-      ${valorEstimado ? `<p><strong>Valor estimado:</strong> ${escapeHtml(emReais(valorEstimado))}</p>` : ''}
-      ${linkHtml(linkDaLicitacaoNoMonitor(tenderId), 'Abrir na Licita Bela')}
-      ${linkHtml(linkEdital, 'Ver edital na fonte')}
-    `,
+    html: emailDaMarca({
+      previa: `${prazo.rotulo}: ${prazo.valor}`,
+      titulo: `Licitação nova para "${itemName}"`,
+      corpo: paragrafo(escapeHtml(tenderObjeto)),
+      detalhes: [
+        { rotulo: prazo.rotulo, valor: prazo.valor },
+        ...(orgao ? [{ rotulo: 'Órgão', valor: orgao }] : []),
+        ...(local ? [local] : []),
+        ...(valorEstimado ? [{ rotulo: 'Valor estimado', valor: emReais(valorEstimado) }] : []),
+      ],
+      botao: { texto: 'Abrir na Licita Bela', link: linkDaLicitacaoNoMonitor(tenderId) },
+      linkSecundario: linkEdital ? { texto: 'Ver edital na fonte', link: linkEdital } : undefined,
+      motivo: 'Você recebeu este aviso porque a licitação combina com um item que você monitora na Licita Bela.',
+    }),
   })
 }
 
@@ -108,12 +108,16 @@ export async function sendDocumentExpiryEmail(params: DocumentExpiryEmailParams)
     from: EMAIL_FROM,
     to,
     subject: vencido ? `Documento vencido: ${documentName}` : `Documento ${quandoVence(diasRestantes)}: ${documentName}`,
-    html: `
-      <h2>${vencido ? 'Documento vencido' : 'Documento próximo do vencimento'}</h2>
-      <p><strong>Documento:</strong> ${escapeHtml(documentName)}</p>
-      <p><strong>Validade:</strong> ${escapeHtml(dataFormatada)} ${vencido ? '(já venceu)' : `(${quandoVence(diasRestantes)})`}</p>
-      <p>Renove esse documento pra não perder o prazo de nenhuma licitação em andamento.</p>
-    `,
+    html: emailDaMarca({
+      previa: vencido ? `${documentName} venceu` : `${documentName} ${quandoVence(diasRestantes)}`,
+      titulo: vencido ? 'Documento vencido' : 'Documento perto de vencer',
+      corpo: paragrafo('Renove este documento para não perder o prazo de nenhuma licitação em andamento.'),
+      detalhes: [
+        { rotulo: 'Documento', valor: documentName },
+        { rotulo: 'Validade', valor: `${dataFormatada} ${vencido ? '(já venceu)' : `(${quandoVence(diasRestantes)})`}` },
+      ],
+      botao: { texto: 'Abrir meus documentos', link: `${appUrl()}/empresa` },
+    }),
   })
 }
 
@@ -148,20 +152,19 @@ export async function sendTenderChangedEmail(params: TenderChangedEmailParams) {
     from: EMAIL_FROM,
     to,
     subject: 'Uma licitação que você acompanha foi alterada',
-    html: `
-      <h2>Licitação alterada pelo órgão</h2>
-      <p><strong>Objeto:</strong> ${escapeHtml(tenderObjeto)}</p>
-      ${orgao ? `<p><strong>Órgão:</strong> ${escapeHtml(orgao)}</p>` : ''}
-      <p><strong>O que mudou:</strong> ${escapeHtml(rotulos.join(', '))}</p>
-      ${
-        encerramentoAt
-          ? `<p><strong>Novo fim do recebimento de propostas:</strong> ${escapeHtml(
-              fonte ? formatarPrazoDaLicitacao(encerramentoAt, fonte) : formatarDiaEHoraDeBrasilia(encerramentoAt)
-            )}</p>`
-          : ''
-      }
-      <p>Confira o edital atualizado antes de enviar sua proposta.</p>
-      ${linkHtml(linkEdital, 'Ver edital')}
-    `,
+    html: emailDaMarca({
+      previa: `O que mudou: ${rotulos.join(', ')}`,
+      titulo: 'Licitação alterada pelo órgão',
+      corpo: paragrafo(escapeHtml(tenderObjeto)),
+      detalhes: [
+        ...(orgao ? [{ rotulo: 'Órgão', valor: orgao }] : []),
+        { rotulo: 'O que mudou', valor: rotulos.join(', ') },
+        ...(encerramentoAt
+          ? [{ rotulo: 'Novo fim do recebimento de propostas', valor: fonte ? formatarPrazoDaLicitacao(encerramentoAt, fonte) : formatarDiaEHoraDeBrasilia(encerramentoAt) }]
+          : []),
+      ],
+      botao: linkEdital ? { texto: 'Ver edital atualizado', link: linkEdital } : undefined,
+      motivo: 'Você recebeu este aviso porque acompanha esta licitação na Licita Bela. Confira o edital antes de enviar a proposta.',
+    }),
   })
 }
