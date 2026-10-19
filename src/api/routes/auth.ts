@@ -26,7 +26,7 @@ import {
   redefinirSenha,
   reenviarConfirmacao,
   solicitarRecuperacao,
-  trialDias,
+  TRIAL_DIAS,
 } from '../../services/contaService'
 import { interesseSchema, montarOrigem, utmSchema } from '../../lib/origemDoCadastro'
 import {
@@ -119,7 +119,7 @@ authRouter.post(
     if (r.criado) {
       await registrarAuditoria(
         req,
-        { action: 'CADASTRO_CRIADO', entityType: 'usuario', entityId: r.userId, companyId: r.companyId, metadata: { tipo: d.tipo, trialDias: trialDias() } },
+        { action: 'CADASTRO_CRIADO', entityType: 'usuario', entityId: r.userId, companyId: r.companyId, metadata: { tipo: d.tipo, trialDias: TRIAL_DIAS } },
         { userId: r.userId, email: r.email }
       )
       await registrarAuditoria(req, { action: 'CODIGO_ENVIADO', entityType: 'usuario', entityId: r.userId, companyId: r.companyId, metadata: { validadeMinutos: 15 } }, { userId: r.userId, email: r.email })

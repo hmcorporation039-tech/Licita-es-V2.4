@@ -40,14 +40,10 @@ import {
   tokenUtilizavel,
 } from '../lib/tokensDeConta'
 
-export const TRIAL_DIAS_PADRAO = 7
+// Regra do negócio, não configuração: o teste grátis é de 7 dias.
+export const TRIAL_DIAS = 7
 
-export function trialDias(env: NodeJS.ProcessEnv = process.env): number {
-  const n = Number(env.TRIAL_DIAS)
-  return Number.isInteger(n) && n >= 1 && n <= 90 ? n : TRIAL_DIAS_PADRAO
-}
-
-export function fimDoTesteNaConfirmacao(acessoAte: Date | null, planCode: string, agora: Date, dias: number = trialDias()): Date | null {
+export function fimDoTesteNaConfirmacao(acessoAte: Date | null, planCode: string, agora: Date, dias: number = TRIAL_DIAS): Date | null {
   if (acessoAte === null || planCode !== 'TESTE') return acessoAte
   const aPartirDaConfirmacao = new Date(agora.getTime() + dias * 24 * 60 * 60 * 1000)
   return aPartirDaConfirmacao > acessoAte ? aPartirDaConfirmacao : acessoAte
@@ -226,7 +222,7 @@ export async function cadastrar(dados: DadosDeCadastro): Promise<ResultadoDoCada
         companyRole: 'OWNER',
         // O período de teste é o prazo de acesso: vencido, o login é recusado
         // até o administrador estender ou trocar o plano.
-        accessExpiresAt: new Date(agora.getTime() + trialDias() * 24 * 60 * 60 * 1000),
+        accessExpiresAt: new Date(agora.getTime() + TRIAL_DIAS * 24 * 60 * 60 * 1000),
         termsAcceptedAt: agora,
         termsVersion: TERMOS_VERSAO,
         company: {

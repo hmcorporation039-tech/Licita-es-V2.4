@@ -124,6 +124,7 @@ adminRouter.get(
         emailVerifiedAt: true,
         createdAt: true,
         passwordHash: true,
+        company: { select: { planCode: true } },
       },
     })
     res.json(
@@ -137,6 +138,7 @@ adminRouter.get(
         emailConfirmado: u.emailVerifiedAt != null,
         createdAt: u.createdAt,
         hasPassword: u.passwordHash != null,
+        planCode: u.company.planCode,
       }))
     )
   })

@@ -153,6 +153,10 @@ O SESC GO contava ~336 "novos" por rodada em 953. Causa: o loop compartilhado `s
 
 O pedido do trecho do arquivo anual (Range em um ZIP de ~257 MB) esperava no máximo 60 s pelo primeiro byte, e o servidor do TCE-RS passou disso nas 3 tentativas. A espera pelo primeiro byte sobe para 3 min. O teto de 10 min por arquivo passa a contar desde o pedido (antes só começava depois dos cabeçalhos). Uma transferência que fica 2 min sem dados é derrubada e repetida: depois do primeiro byte o axios não vigia mais a conexão, e um trecho travado ficaria parado os 10 min. O timeout do axios vira "download incompleto (o servidor não começou a responder em 180 s)", repetível e legível no log. Comportamento do axios 1.20 conferido contra um servidor local; o servidor real do TCE-RS não é alcançável do ambiente de desenvolvimento na nuvem.
 
+### Correção de 19/10: teste grátis fixo em 7 dias
+
+Uma conta nova apareceu no administrador com acesso de 30 dias. O cadastro usava `TRIAL_DIAS` do ambiente quando definido (1 a 90), e o `.env.example` dizia "Padrão 14" enquanto o código usava 7. O prazo passa a ser fixo no código (`TRIAL_DIAS = 7` em `src/services/contaService.ts`) e a variável deixa de existir. Na lista de usuários do administrador, a situação mostra "Em teste"/"Teste encerrado" e a coluna "Acesso até" mostra quantos dias faltam; o botão "+30 dias" (que, na verdade, define hoje + 30) virou "7 dias" e "30 dias", com a explicação no título. Contas criadas antes com prazo maior não mudam sozinhas: ajustar pelo botão "7 dias".
+
 ### Pendente (próxima sessão)
 
 | O que | Observação |
