@@ -307,4 +307,26 @@ rodar('Rodada de QA: busca por palavra inteira e matches coerentes', () => {
     expect(new Date(limite!.date).getTime()).toBeLessThan(dias(10).getTime())
     expect(new Date(limite!.date).getTime()).toBeGreaterThan(Date.now() - 86_400_000)
   }, 60_000)
+
+  it('mapa de oportunidades: conta por estado o mesmo que o feed e lista as do estado clicado', async () => {
+    const t = termo('mapa')
+    await licitacao('mapa-go-1', `Aquisição de ${t}`)
+    await licitacao('mapa-go-2', `Registro de preços de ${t}`)
+    await licitacao('mapa-ba', `Contratação de ${t}`, { uf: 'BA' })
+    await licitacao('mapa-encerrada', `Pregão de ${t}`, { uf: 'MG', encerramentoAt: dias(-1) })
+    await novoItem({ name: 'Mapa', keywords: [t] })
+
+    const mapa = await http('GET', '/api/dashboard/mapa/oportunidades')
+    expect(mapa.status).toBe(200)
+    const estados = mapa.body.estados as unknown as Array<{ uf: string; total: number }>
+    expect(estados).toEqual([{ uf: 'GO', total: 2 }, { uf: 'BA', total: 1 }])
+
+    const goias = await http('GET', '/api/dashboard/mapa/oportunidades/go')
+    expect(goias.body.total).toBe(2)
+    expect((goias.body.tenders as unknown as Array<{ id: string }>).map((x) => x.id).sort()).toEqual([ids['mapa-go-1'], ids['mapa-go-2']].sort())
+
+    const minas = await http('GET', '/api/dashboard/mapa/oportunidades/MG')
+    expect(minas.body.total).toBe(0)
+    expect((await http('GET', '/api/dashboard/mapa/oportunidades/xyz')).status).toBe(400)
+  }, 60_000)
 })

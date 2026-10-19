@@ -773,7 +773,7 @@ function Rodape() {
         <p className="az-marca az-marca-rodape">
           Monitor <span>de Licitações</span>
         </p>
-        <p>© Monitor de Licitações · H&amp;M Engenharia e Tecnologia · Brasília/DF</p>
+        <p>© Monitor de Licitações · H&amp;M Engenharia e Tecnologia LTDA · CNPJ 04.003.376/0001-00 · Brasília/DF</p>
         <nav aria-label="Documentos legais" className="az-rodape-links">
           <Link href="/termos" className="az-link">
             Termos de Uso

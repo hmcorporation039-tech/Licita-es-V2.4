@@ -118,6 +118,61 @@ dashboardRouter.get(
   })
 )
 
+const UF_VALIDA = /^[A-Z]{2}$/
+const LICITACOES_POR_ESTADO_NO_MAPA = 15
+
+dashboardRouter.get(
+  '/mapa/oportunidades',
+  asyncHandler(async (req, res) => {
+    const companyId = req.companyId!
+    const matches = await prisma.tenderMatch.findMany({
+      where: { companyId, tender: { AND: [whereDaLicitacaoNoFeed(), { uf: { not: null } }] } },
+      select: { tenderId: true, tender: { select: { uf: true } } },
+      distinct: ['tenderId'],
+    })
+    const porUf = new Map<string, number>()
+    for (const m of matches) {
+      const uf = m.tender.uf!.toUpperCase()
+      porUf.set(uf, (porUf.get(uf) ?? 0) + 1)
+    }
+    res.json({ estados: Array.from(porUf, ([uf, total]) => ({ uf, total })).sort((a, b) => b.total - a.total) })
+  })
+)
+
+dashboardRouter.get(
+  '/mapa/oportunidades/:uf',
+  asyncHandler(async (req, res) => {
+    const companyId = req.companyId!
+    const uf = String(req.params.uf).toUpperCase()
+    if (!UF_VALIDA.test(uf)) {
+      res.status(400).json({ error: 'UF inválida' })
+      return
+    }
+    const where = { companyId, tender: { AND: [whereDaLicitacaoNoFeed(), { uf }] } }
+    const [doEstado, matches] = await Promise.all([
+      prisma.tenderMatch.findMany({ where, select: { tenderId: true }, distinct: ['tenderId'] }),
+      prisma.tenderMatch.findMany({
+        where,
+        distinct: ['tenderId'],
+        orderBy: [{ dentroDeObraCompleta: 'asc' }, { createdAt: 'desc' }],
+        take: LICITACOES_POR_ESTADO_NO_MAPA,
+        select: {
+          tender: { select: { id: true, fonte: true, municipio: true, orgao: true, objeto: true, objetoResumido: true, encerramentoAt: true } },
+        },
+      }),
+    ])
+    const agora = Date.now()
+    res.json({
+      uf,
+      total: doEstado.length,
+      tenders: matches.map(({ tender: t }) => {
+        const { horasRestantes, urgencia } = prazoNoMapa(t.encerramentoAt, t.fonte, agora)
+        return { id: t.id, municipio: t.municipio, orgao: t.orgao, objeto: t.objetoResumido ?? t.objeto, horasRestantes, urgencia }
+      }),
+    })
+  })
+)
+
 dashboardRouter.get(
   '/mapa',
   asyncHandler(async (req, res) => {

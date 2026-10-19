@@ -9,8 +9,9 @@ import { api } from '@/lib/api'
 import { DashboardData } from '@/lib/types'
 import { dataDaLicitacao } from '@/lib/datas'
 import BrazilMap, { EstadoMapa } from '@/components/BrazilMap'
+import MapaDeOportunidades from '@/components/MapaDeOportunidades'
 import MedidorDeAnalises from '@/components/MedidorDeAnalises'
-import { Carregando, EmptyState, ErrorState, Metric, MetricRow, Notice, PageHeader, Panel, Prazo, TextLink } from '@/components/ui'
+import { Carregando, EmptyState, ErrorState, Metric, MetricRow, Notice, PageHeader, Panel, Prazo, Tabs, TextLink, type Aba } from '@/components/ui'
 import SeloObraCompleta from '@/components/SeloObraCompleta'
 
 const numero = (n: number) => n.toLocaleString('pt-BR')
@@ -18,12 +19,20 @@ const numero = (n: number) => n.toLocaleString('pt-BR')
 const INTERVALO_ENQUANTO_BUSCA_MS = 3_000
 const MAXIMO_DE_CONSULTAS_ENQUANTO_BUSCA = 40
 
+type AbaDoMapa = 'oportunidades' | 'escolhidas'
+
+const ABAS_DO_MAPA: Aba<AbaDoMapa>[] = [
+  { id: 'oportunidades', label: 'Oportunidades abertas' },
+  { id: 'escolhidas', label: 'Escolhidas por você' },
+]
+
 export default function DashboardPage() {
   const user = useRequireSession()
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState(false)
   const [estadosMapa, setEstadosMapa] = useState<EstadoMapa[]>([])
+  const [abaDoMapa, setAbaDoMapa] = useState<AbaDoMapa>('oportunidades')
   const [consultasEnquantoBusca, setConsultasEnquantoBusca] = useState(0)
 
   const carregarResumo = useCallback(() => {
@@ -101,8 +110,11 @@ export default function DashboardPage() {
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
             <div className="flex min-w-0 flex-col gap-6">
-              <Panel title="Licitações escolhidas pelo Brasil">
-                <BrazilMap estados={estadosMapa} />
+              <Panel title="Licitações pelo Brasil">
+                <div className="flex flex-col gap-4">
+                  <Tabs tabs={ABAS_DO_MAPA} value={abaDoMapa} onChange={setAbaDoMapa} label="O que o mapa mostra" />
+                  {abaDoMapa === 'oportunidades' ? <MapaDeOportunidades /> : <BrazilMap estados={estadosMapa} />}
+                </div>
               </Panel>
 
               <Panel title="Últimos matches" actions={<TextLink href="/matches" className="text-sm">Ver todos</TextLink>} padding={data.ultimosMatches.length === 0 ? 'md' : 'none'}>
