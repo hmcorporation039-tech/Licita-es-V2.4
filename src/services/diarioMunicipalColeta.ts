@@ -257,7 +257,7 @@ export async function coletarDiarioMunicipal(
       medicao.novos += salvos.totalNew
       medicao.atualizados += salvos.totalUpdated
       medicao.inalterados += salvos.totalDupes - salvos.totalUpdated
-      return completo && salvos.totalNew + salvos.totalDupes === lote.length
+      return completo && salvos.totalNew + salvos.totalDupes + (salvos.totalDescartadas ?? 0) === lote.length
     } catch (err) {
       r.houveFalhas = true
       console.error(`[Diário Municipal] Erro ao salvar avisos de ${descricao}:`, mensagemDoErro(err))

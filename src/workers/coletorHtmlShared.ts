@@ -4,11 +4,16 @@
 // PNCP/ComprasNet, esses três não têm filtro de data no servidor — cada
 // coleta traz a listagem inteira, e quem decide o que é novo/alterado é
 // o dedupe por content hash já existente em saveTender().
+//
+// Licitação que já chega encerrada não é gravada (a não ser que já esteja no
+// banco): a faxina a apagaria, e a coleta seguinte, que traz a listagem
+// inteira de novo, a contaria como nova outra vez — era o que inflava o
+// "novos" do SESC GO (~336 por rodada em 953) e mandava encerrada ao matcher.
 // ============================================================
 
 import { matcherQueue } from '../queues'
 import { enfileirarSemTravar } from '../queues/enfileirar'
-import { saveTender } from '../services/tenderService'
+import { saveTenderSeAindaServir } from '../services/tenderService'
 import { avisarAlteracaoDeTender } from '../services/tenderChangeService'
 import { NormalizedTender } from '../types'
 
@@ -16,17 +21,21 @@ export interface SaveCounters {
   totalNew: number
   totalDupes: number
   totalUpdated: number
+  totalDescartadas: number
 }
 
 export async function salvarLote(tenders: NormalizedTender[], contexto: string): Promise<SaveCounters> {
   let totalNew = 0
   let totalDupes = 0
   let totalUpdated = 0
+  let totalDescartadas = 0
 
   for (const tender of tenders) {
     try {
-      const result = await saveTender(tender)
-      if (result.isNew) {
+      const result = await saveTenderSeAindaServir(tender)
+      if (!result) {
+        totalDescartadas++
+      } else if (result.isNew) {
         totalNew++
         await enfileirarSemTravar(matcherQueue, 'match-tender', { tenderId: result.tenderId }, contexto)
       } else {
@@ -41,5 +50,6 @@ export async function salvarLote(tenders: NormalizedTender[], contexto: string):
     }
   }
 
-  return { totalNew, totalDupes, totalUpdated }
+  if (totalDescartadas > 0) console.log(`[${contexto}] Já encerradas, não gravadas: ${totalDescartadas}.`)
+  return { totalNew, totalDupes, totalUpdated, totalDescartadas }
 }

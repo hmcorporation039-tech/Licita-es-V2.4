@@ -257,7 +257,7 @@ export async function coletarDaFamem(
       r.totalNew += salvos.totalNew
       r.totalDupes += salvos.totalDupes
       r.totalUpdated += salvos.totalUpdated
-      return completo && salvos.totalNew + salvos.totalDupes === lote.length
+      return completo && salvos.totalNew + salvos.totalDupes + (salvos.totalDescartadas ?? 0) === lote.length
     } catch (err) {
       r.houveFalhas = true
       console.error(`[FAMEM] Erro ao salvar os avisos de ${descricao}:`, mensagemDoErro(err))
