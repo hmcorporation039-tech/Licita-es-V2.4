@@ -639,7 +639,7 @@ function Planos({ dados }: { dados: PlanosResposta }) {
           id="planos-titulo"
           fino="Planos para"
           forte="cada tamanho de empresa"
-          apoio={`Comece com ${dados.trialDias || 7} dias grátis, sem cartão e sem fidelidade. Plano Fundador: os 30 primeiros clientes pagam 35% a menos durante 12 meses.`}
+          apoio={`Comece com ${dados.trialDias || 7} dias grátis, sem cartão e sem fidelidade.`}
         />
         <Revelar>
           <ul className="az-planos">
