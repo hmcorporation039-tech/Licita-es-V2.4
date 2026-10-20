@@ -104,6 +104,42 @@ rodar('Conta: LGPD, documento da empresa e cadastro', () => {
     })
   })
 
+  describe('Aceite dos Termos de Uso e da Política de Privacidade', () => {
+    it('versão antiga fica pendente até o aceite, que grava a versão vigente e a auditoria', async () => {
+      const { TERMOS_VERSAO } = await import('../../src/lib/legal')
+      const { token, userId } = await criarEmpresa('termos', gerarCnpj())
+      await prisma.user.update({ where: { id: userId }, data: { termsVersion: '2026-10-minuta-1', termsAcceptedAt: new Date('2026-10-01T12:00:00Z') } })
+
+      const antes = await http('GET', '/api/conta/termos', undefined, token)
+      expect(antes.status).toBe(200)
+      expect(antes.body).toMatchObject({ versaoVigente: TERMOS_VERSAO, versaoAceita: '2026-10-minuta-1', pendente: true })
+
+      expect((await http('POST', '/api/conta/aceitar-termos', { versao: '2026-10-minuta-1' }, token)).status).toBe(409)
+      const aceite = await http('POST', '/api/conta/aceitar-termos', { versao: TERMOS_VERSAO }, token)
+      expect(aceite.status).toBe(200)
+
+      const depois = await http('GET', '/api/conta/termos', undefined, token)
+      expect(depois.body).toMatchObject({ versaoAceita: TERMOS_VERSAO, pendente: false })
+      const gravado = await prisma.user.findUnique({ where: { id: userId }, select: { termsVersion: true, termsAcceptedAt: true } })
+      expect(gravado.termsVersion).toBe(TERMOS_VERSAO)
+      expect(gravado.termsAcceptedAt.getTime()).toBeGreaterThan(new Date('2026-10-01T12:00:00Z').getTime())
+      const auditoria = await prisma.auditLog.findFirst({ where: { action: 'TERMOS_ACEITOS', entityId: userId } })
+      expect(auditoria?.metadata).toEqual({ versao: TERMOS_VERSAO })
+    })
+
+    it('membro convidado também aceita por conta própria, e sem login não há acesso', async () => {
+      const { TERMOS_VERSAO } = await import('../../src/lib/legal')
+      const dono = await criarEmpresa('termos-dono', gerarCnpj())
+      const membro = await criarEmpresa('termos-membro', null, 'MEMBER', dono.companyId)
+      expect((await http('GET', '/api/conta/termos', undefined, membro.token)).body.pendente).toBe(true)
+      expect((await http('POST', '/api/conta/aceitar-termos', { versao: TERMOS_VERSAO }, membro.token)).status).toBe(200)
+      expect((await http('GET', '/api/conta/termos', undefined, membro.token)).body.pendente).toBe(false)
+      expect((await http('GET', '/api/conta/termos', undefined, dono.token)).body.pendente).toBe(true)
+      expect((await http('GET', '/api/conta/termos')).status).toBe(401)
+      expect((await http('POST', '/api/conta/aceitar-termos', { versao: TERMOS_VERSAO })).status).toBe(401)
+    })
+  })
+
   describe('LGPD', () => {
     it('exporta os dados da conta, sem hash de senha, e registra na auditoria', async () => {
       const { token, companyId, userId } = await criarEmpresa('exporta', gerarCnpj())

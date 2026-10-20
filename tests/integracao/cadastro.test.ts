@@ -108,7 +108,7 @@ rodar('Cadastro público e recuperação de senha', () => {
       expect(user).not.toBeNull()
       expect(user.emailVerifiedAt).toBeNull()
       expect(user.companyRole).toBe('OWNER')
-      expect(user.termsVersion).toMatch(/minuta/)
+      expect(user.termsVersion).toBe((await import('../../src/lib/legal')).TERMOS_VERSAO)
       expect(user.termsAcceptedAt).not.toBeNull()
       expect(user.company.planCode).toBe('TESTE')
       expect(user.company.tipo).toBe('PESSOA_FISICA')

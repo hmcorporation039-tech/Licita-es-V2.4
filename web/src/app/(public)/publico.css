@@ -190,13 +190,30 @@
   border-color: #ffffff;
 }
 
-.pb-topo-secundario {
-  display: none;
+.pb-topo-acoes .pb-pilula {
+  padding: 0 12px;
+  font-size: 14px;
 }
 
-@media (min-width: 420px) {
-  .pb-topo-secundario {
-    display: inline-flex;
+@media (max-width: 379px) {
+  .pb-topo .pb-marca {
+    font-size: 19px;
+  }
+
+  .pb-topo-acoes {
+    gap: 6px;
+  }
+
+  .pb-topo-acoes .pb-pilula {
+    padding: 0 10px;
+    font-size: 13px;
+  }
+}
+
+@media (min-width: 480px) {
+  .pb-topo-acoes .pb-pilula {
+    padding: 0 18px;
+    font-size: 15px;
   }
 }
 
