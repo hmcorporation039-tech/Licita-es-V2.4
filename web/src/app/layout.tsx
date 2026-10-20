@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import localFont from 'next/font/local'
 import './globals.css'
 
@@ -31,6 +31,12 @@ const nunito = localFont({
 export const metadata: Metadata = {
   title: 'Licita Bela',
   description: 'Licitações abertas para o seu negócio, com prazo, edital e habilitação no mesmo lugar.',
+  applicationName: 'Licita Bela',
+  appleWebApp: { capable: true, title: 'Licita Bela', statusBarStyle: 'default' },
+}
+
+export const viewport: Viewport = {
+  themeColor: '#0a4fd6',
 }
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
