@@ -15,6 +15,10 @@ export function horaDeBrasilia(ano: number, mesBaseZero: number, dia: number, ho
   return new Date(Date.UTC(ano, mesBaseZero, dia, hora, minuto) + DESLOCAMENTO_DE_BRASILIA_MS)
 }
 
+export function diaDeBrasilia(d: Date): string {
+  return new Date(d.getTime() - DESLOCAMENTO_DE_BRASILIA_MS).toISOString().slice(0, 10)
+}
+
 export function inicioDoDiaEmBrasilia(d: Date): Date {
   const local = new Date(d.getTime() - DESLOCAMENTO_DE_BRASILIA_MS)
   return horaDeBrasilia(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate())

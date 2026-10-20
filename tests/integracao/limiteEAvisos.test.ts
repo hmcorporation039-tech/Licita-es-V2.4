@@ -7,6 +7,7 @@ vi.mock('../../src/services/emailService', async (original) => ({
   ...(await original<typeof import('../../src/services/emailService')>()),
   sendMatchEmail: vi.fn(async () => undefined),
   sendDocumentExpiryEmail: vi.fn(async () => undefined),
+  sendResumoDiarioEmail: vi.fn(async () => true),
 }))
 
 vi.mock('../../src/services/rematchService', async (original) => {
@@ -125,7 +126,7 @@ rodar('Limite de matches por item, fila fora do ar e avisos para teste encerrado
     const temMatch = async (tenderId: string) => (await prisma.tenderMatch.count({ where: { monitoredItemId: item.id, tenderId } })) === 1
     const abertos = () => prisma.tenderMatch.count({ where: { monitoredItemId: item.id } })
 
-    it('licitação nova mais aderente entra, tira a menos aderente não escolhida e gera o e-mail', async () => {
+    it('licitação nova mais aderente entra, tira a menos aderente não escolhida e vai para o resumo diário', async () => {
       const { processarLicitacaoNoMatcher } = await import('../../src/workers/matcher')
       const { enfileirarAvisosDeMatch } = await import('../../src/services/rematchService')
       const { processarMatch } = await import('../../src/workers/notificador')
@@ -143,8 +144,14 @@ rodar('Limite de matches por item, fila fora do ar e avisos para teste encerrado
 
       vi.mocked(sendMatchEmail).mockClear()
       await processarMatch({ tenderMatchId: criados[0] })
-      expect(sendMatchEmail).toHaveBeenCalledTimes(1)
-      expect(vi.mocked(sendMatchEmail).mock.calls[0][0]).toMatchObject({ to: user.email, tenderId: ids.nova })
+      expect(sendMatchEmail).not.toHaveBeenCalled()
+
+      const { enviarResumoDoUsuario } = await import('../../src/services/resumoDiario')
+      const { sendResumoDiarioEmail } = await import('../../src/services/emailService')
+      vi.mocked(sendResumoDiarioEmail).mockClear()
+      expect(await enviarResumoDoUsuario(user.id)).toBe('enviado')
+      expect(vi.mocked(sendResumoDiarioEmail).mock.calls[0][0]).toBe(user.email)
+      expect(vi.mocked(sendResumoDiarioEmail).mock.calls[0][1].map((l) => l.tenderId)).toContain(ids.nova)
     }, 60_000)
 
     it('licitação nova menos aderente não entra, não tira ninguém e não gera e-mail', async () => {
@@ -207,7 +214,8 @@ rodar('Limite de matches por item, fila fora do ar e avisos para teste encerrado
     )
 
     const { processarMatch } = await import('../../src/workers/notificador')
-    const { sendMatchEmail, sendDocumentExpiryEmail } = await import('../../src/services/emailService')
+    const { enviarResumoDoUsuario } = await import('../../src/services/resumoDiario')
+    const { sendMatchEmail, sendDocumentExpiryEmail, sendResumoDiarioEmail } = await import('../../src/services/emailService')
     const { caixaDeSaidaDeTeste } = await import('../../src/services/emailTransacional')
     const paraEle = () => caixaDeSaidaDeTeste.filter((m) => m.to === user.email)
     vi.mocked(sendMatchEmail).mockClear()
@@ -228,6 +236,7 @@ rodar('Limite de matches por item, fila fora do ar e avisos para teste encerrado
     await processarMatch({ tenderMatchId: quartoMatch })
     expect(paraEle()).toHaveLength(1)
     expect(vi.mocked(sendMatchEmail).mock.calls.filter(([p]) => p.to === user.email)).toHaveLength(0)
+    expect(await enviarResumoDoUsuario(user.id)).toBe('sem-acesso')
 
     const documento = await prisma.companyDocument.create({
       data: { companyId: user.companyId, userId: user.id, nome: `CND ${sufixo}`, dataValidade: new Date(Date.now() + 3 * DIA_MS) },
@@ -242,7 +251,10 @@ rodar('Limite de matches por item, fila fora do ar e avisos para teste encerrado
     const quinta = await prisma.tender.create({ data: licitacao('fim-4', `Fornecimento de ${palavra} quinta`, 26) })
     const [quintoMatch] = await processarLicitacaoNoMatcher(quinta.id)
     await processarMatch({ tenderMatchId: quintoMatch })
-    expect(vi.mocked(sendMatchEmail).mock.calls.filter(([p]) => p.to === user.email)).toHaveLength(1)
+    expect(vi.mocked(sendMatchEmail).mock.calls.filter(([p]) => p.to === user.email)).toHaveLength(0)
+    vi.mocked(sendResumoDiarioEmail).mockClear()
+    expect(await enviarResumoDoUsuario(user.id)).toBe('enviado')
+    expect(vi.mocked(sendResumoDiarioEmail).mock.calls[0][1].map((l) => l.tenderId)).toContain(quinta.id)
     await checkExpiringDocuments()
     expect(vi.mocked(sendDocumentExpiryEmail).mock.calls.filter(([p]) => p.to === user.email)).toHaveLength(1)
   }, 60_000)

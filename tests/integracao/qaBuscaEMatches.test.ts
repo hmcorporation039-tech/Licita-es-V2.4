@@ -112,7 +112,7 @@ rodar('Rodada de QA: busca por palavra inteira e matches coerentes', () => {
     await prisma?.$disconnect()
   })
 
-  it('A1/M12: criar o item já busca, licitação encerrada nunca vira match e o notificador ignora match de licitação encerrada', async () => {
+  it('A1/M12: criar o item já busca, licitação encerrada nunca vira match e o notificador não manda e-mail por match', async () => {
     const t = termo('aum')
     await licitacao('a1-aberta', `Aquisição de ${t} para a secretaria`)
     await licitacao('a1-encerrada', `Aquisição de ${t} para o almoxarifado`, { encerramentoAt: dias(-2) })
@@ -137,7 +137,7 @@ rodar('Rodada de QA: busca por palavra inteira e matches coerentes', () => {
     await processarMatch({ tenderMatchId: antigo.id })
     expect(sendMatchEmail).not.toHaveBeenCalled()
     await processarMatch({ tenderMatchId: aberto.id })
-    expect(sendMatchEmail).toHaveBeenCalledTimes(1)
+    expect(sendMatchEmail).not.toHaveBeenCalled()
   }, 60_000)
 
   it('A2: editar o item tira os matches que deixaram de valer, mas mantém a licitação escolhida', async () => {

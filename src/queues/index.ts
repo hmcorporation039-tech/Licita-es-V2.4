@@ -4,7 +4,7 @@
 
 import { Queue, QueueOptions } from 'bullmq'
 import IORedis from 'ioredis'
-import { ColetorJobPayload, FonteEnum } from '../types'
+import { ColetorJobPayload, FonteEnum, NotificadorRotinaPayload } from '../types'
 
 // Conexão Redis compartilhada
 export const redisConnection = new IORedis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
@@ -237,6 +237,29 @@ async function removerAgendadoresLegados(scheduler: ColetorScheduler): Promise<n
   }
 
   return removidos
+}
+
+interface AgendadorDeAviso {
+  schedulerId: string
+  pattern: string
+  tz: string
+  dados: NotificadorRotinaPayload
+}
+
+export const AGENDADORES_DE_AVISOS: AgendadorDeAviso[] = [
+  { schedulerId: 'resumo-diario', pattern: '0 7 * * *', tz: 'America/Sao_Paulo', dados: { tipo: 'resumo-diario' } },
+  { schedulerId: 'lembrete-de-prazo', pattern: '0 * * * *', tz: 'America/Sao_Paulo', dados: { tipo: 'lembrete-de-prazo' } },
+]
+
+export async function agendarAvisosPorEmail() {
+  for (const agendador of AGENDADORES_DE_AVISOS) {
+    await notificadorQueue.upsertJobScheduler(
+      agendador.schedulerId,
+      { pattern: agendador.pattern, tz: agendador.tz },
+      { name: agendador.schedulerId, data: agendador.dados }
+    )
+  }
+  console.log('[Queue] Resumo diário e lembrete de prazo agendados.')
 }
 
 export const AGENDADORES_DESATIVADOS: { queue: Queue; schedulerId: string }[] = [{ queue: coletorComprasnetQueue, schedulerId: 'coleta-comprasnet' }]

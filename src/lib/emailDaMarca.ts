@@ -27,10 +27,19 @@ export interface DetalheDoEmail {
   valor: string
 }
 
+export interface CartaoDoEmail {
+  titulo: string
+  destaque?: string
+  linhas: string[]
+  link?: LinkDoEmail
+}
+
 export interface ConteudoDoEmail {
   previa: string
   titulo: string
   corpo?: string
+  cartoes?: CartaoDoEmail[]
+  notaDosCartoes?: string
   detalhes?: DetalheDoEmail[]
   botao?: LinkDoEmail
   linkSecundario?: LinkDoEmail
@@ -73,6 +82,32 @@ function detalhesHtml(detalhes: DetalheDoEmail[]): string {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:16px;border-bottom:1px solid ${COR.linha}">${linhas}</table>`
 }
 
+function cartaoHtml(cartao: CartaoDoEmail): string {
+  const href = cartao.link ? safeHttpUrl(cartao.link.link) : null
+  const destaque = cartao.destaque
+    ? `<div style="margin-top:6px;font-size:13px;font-weight:700;line-height:1.45;color:${COR.azul}">${escapeHtml(cartao.destaque)}</div>`
+    : ''
+  const linhas = cartao.linhas.map((linha) => `<div style="margin-top:2px;font-size:13px;line-height:1.45;color:${COR.texto}">${escapeHtml(linha)}</div>`).join('')
+  const link =
+    href && cartao.link
+      ? `<div style="margin-top:8px;font-size:13px"><a href="${escapeHtml(href)}" style="color:${COR.azul};font-weight:800;text-decoration:none">${escapeHtml(cartao.link.texto)} &rarr;</a></div>`
+      : ''
+  return `
+      <tr>
+        <td style="padding:14px 16px;border:1px solid ${COR.linha};border-radius:12px;background:${COR.papel}">
+          <div style="font-size:15px;font-weight:800;line-height:1.4;color:${COR.tinta}">${escapeHtml(cartao.titulo)}</div>
+          ${destaque}${linhas}${link}
+        </td>
+      </tr>
+      <tr><td style="height:10px;line-height:10px;font-size:0">&nbsp;</td></tr>`
+}
+
+function cartoesHtml(cartoes: CartaoDoEmail[], nota?: string): string {
+  if (cartoes.length === 0) return ''
+  const notaHtml = nota ? `<p style="margin:2px 0 0;font-size:14px;font-weight:700;color:${COR.tinta}">${escapeHtml(nota)}</p>` : ''
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:8px;border-collapse:separate">${cartoes.map(cartaoHtml).join('')}</table>${notaHtml}`
+}
+
 export function emailDaMarca(conteudo: ConteudoDoEmail): string {
   const motivo = conteudo.motivo ?? 'Você recebeu este e-mail por causa da sua conta na Licita Bela.'
   return `<!doctype html>
@@ -93,6 +128,7 @@ export function emailDaMarca(conteudo: ConteudoDoEmail): string {
             <td style="background:${COR.papel};border-radius:0 0 16px 16px;padding:28px;color:${COR.texto};font-size:15px;line-height:1.6">
               <h1 style="margin:0 0 12px;font-size:21px;line-height:1.3;font-weight:800;color:${COR.tinta}">${escapeHtml(conteudo.titulo)}</h1>
               ${conteudo.corpo ?? ''}
+              ${cartoesHtml(conteudo.cartoes ?? [], conteudo.notaDosCartoes)}
               ${detalhesHtml(conteudo.detalhes ?? [])}
               ${conteudo.botao ? botaoHtml(conteudo.botao) : ''}
               ${conteudo.linkSecundario ? linkSecundarioHtml(conteudo.linkSecundario) : ''}

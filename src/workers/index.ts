@@ -4,7 +4,7 @@
 // ============================================================
 
 import 'dotenv/config'
-import { COLETOR_SCHEDULERS, dispararColetaInicial, scheduleColetorJobs } from '../queues'
+import { COLETOR_SCHEDULERS, agendarAvisosPorEmail, dispararColetaInicial, scheduleColetorJobs } from '../queues'
 import { startColetorPNCPWorker } from './coletorPNCP'
 import { startColetorNovacapWorker } from './coletorNovacap'
 import { startColetorFiegWorker } from './coletorFieg'
@@ -90,6 +90,7 @@ async function main() {
   // aconteceu e inundou os logs do serviço).
   try {
     await scheduleColetorJobs()
+    await agendarAvisosPorEmail()
     await dispararColetaInicial()
 
     console.log('📥 Coleta inicial disparada.')
