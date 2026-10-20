@@ -255,19 +255,32 @@
   background: rgb(255 255 255 / 0.08);
 }
 
-.az-nav-entrar {
-  display: none;
-}
-
 .az-nav .az-pilula {
   min-height: 44px;
-  padding: 0 18px;
-  font-size: 15px;
+  padding: 0 12px;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+@media (max-width: 379px) {
+  .az-nav .az-marca {
+    font-size: 19px;
+  }
+
+  .az-nav .az-nav-acoes {
+    gap: 6px;
+  }
+
+  .az-nav .az-pilula {
+    padding: 0 10px;
+    font-size: 13px;
+  }
 }
 
 @media (min-width: 480px) {
-  .az-nav-entrar {
-    display: inline-flex;
+  .az-nav .az-pilula {
+    padding: 0 18px;
+    font-size: 15px;
   }
 }
 
