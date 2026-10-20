@@ -8,6 +8,7 @@ export interface PlanoPublico {
   descricao: string | null
   limites: Limites
   precoMensalCentavos: number | null
+  precoAnualCentavos?: number | null
 }
 
 export interface PlanosResposta {

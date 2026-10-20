@@ -2760,6 +2760,23 @@
   letter-spacing: 0;
 }
 
+.az-plano-anual {
+  margin: 0 0 6px;
+  color: var(--az-tinta-2);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.az-plano-anual span {
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #e3f7ea;
+  color: var(--az-verde-tinta);
+  font-size: 12px;
+  font-weight: 900;
+}
+
 .az-plano-em-breve {
   display: inline-flex;
   padding: 4px 12px;
