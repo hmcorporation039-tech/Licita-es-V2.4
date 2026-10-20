@@ -1,3 +1,4 @@
+import { documentoParaGuardar } from './documentoDoFornecedor'
 const BYTES_DO_CP1252: Record<string, number> = {
   '€': 0x80,
   '‚': 0x82,
@@ -140,7 +141,7 @@ export function escolherVencedor(resultados: ResultadoDoItemPncp[]): VencedorDoI
   const vencedor = ordenados[0]
   const fornecedores = new Set(ativos.map((r, indice) => r.niFornecedor?.trim() || `sem-identificacao-${indice}`))
   return {
-    ni: vencedor.niFornecedor?.trim() || null,
+    ni: documentoParaGuardar(vencedor.niFornecedor),
     nome: textoLimpo(vencedor.nomeRazaoSocialFornecedor),
     porte: textoLimpo(vencedor.porteFornecedorNome),
     valorUnitarioHomologado: numeroOuNulo(vencedor.valorUnitarioHomologado),

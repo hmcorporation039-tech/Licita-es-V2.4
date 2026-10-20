@@ -11,3 +11,10 @@ export function formatarDocumentoDoFornecedor(ni: string | null | undefined): st
   if (digitos.length === 11) return mascararCpf(digitos)
   return ni
 }
+
+export function documentoParaGuardar(ni: string | null | undefined): string | null {
+  const limpo = ni?.trim()
+  if (!limpo) return null
+  const digitos = limpo.replace(/\D/g, '')
+  return digitos.length === 11 ? mascararCpf(digitos) : limpo
+}
