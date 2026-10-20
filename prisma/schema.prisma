@@ -258,6 +258,8 @@ model Tender {
   // Ultima vez que a situacao real foi reconsultada no PNCP — usado para
   // fazer rodizio em vez de varrer a base inteira a cada execucao.
   situacaoCheckedAt  DateTime?      @map("situacao_checked_at")
+  resultadoConferidoEm DateTime?    @map("resultado_conferido_em")
+  resultadoFinal     Boolean        @default(false) @map("resultado_final")
   createdAt          DateTime       @default(now()) @map("created_at")
   updatedAt          DateTime       @updatedAt @map("updated_at")
 
@@ -408,6 +410,15 @@ model TenderItem {
   quantidade         Decimal?
   valorUnitario      Decimal? @map("valor_unitario")
   valorTotal         Decimal? @map("valor_total")
+  situacaoDoResultado     String?   @map("situacao_do_resultado")
+  vencedorNi              String?   @map("vencedor_ni")
+  vencedorNome            String?   @map("vencedor_nome")
+  vencedorPorte           String?   @map("vencedor_porte")
+  valorUnitarioHomologado Decimal?  @map("valor_unitario_homologado")
+  quantidadeHomologada    Decimal?  @map("quantidade_homologada")
+  valorTotalHomologado    Decimal?  @map("valor_total_homologado")
+  dataDoResultado         DateTime? @map("data_do_resultado") @db.Date
+  fornecedoresRegistrados Int?      @map("fornecedores_registrados")
   createdAt          DateTime @default(now()) @map("created_at")
 
   tender Tender @relation(fields: [tenderId], references: [id], onDelete: Cascade)

@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Calculator, X } from 'lucide-react'
+import { Calculator, Trophy, X } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
 import { api, ApiRequestError } from '@/lib/api'
 import { ParticipationPlanListItem } from '@/lib/types'
-import { Button, Carregando, EmptyState, ErrorState, LinkButton, PageHeader, Prazo, StatusTag, Table, TableWrap, Td, Th, THead, Tr } from '@/components/ui'
+import { Button, Carregando, EmptyState, ErrorState, LinkButton, PageHeader, Prazo, StatusTag, Table, TableWrap, Td, Th, THead, Tr, cx } from '@/components/ui'
+import { textoDosItensHomologados } from '@/lib/resultadoDaLicitacao'
 import { ROTULOS_DE_FONTE } from '@/lib/fontes'
 import { fimDasPropostas, localDaLicitacao } from '@/lib/licitacaoNaTela'
 import AvisoDeVersaoDoPncp from '@/components/AvisoDeVersaoDoPncp'
@@ -19,6 +20,16 @@ function formatValor(v: string | null) {
 
 function rotuloDaFonte(fonte: string) {
   return ROTULOS_DE_FONTE[fonte] ?? fonte.replace(/_/g, ' ')
+}
+
+function LinhaDoResultado({ tenderId, itensHomologados, className }: { tenderId: string; itensHomologados?: number; className?: string }) {
+  if (!itensHomologados) return null
+  return (
+    <Link href={`/tenders/${tenderId}?aba=resultado`} className={cx('inline-flex items-center gap-1 text-xs font-semibold text-ok hover:underline', className)}>
+      <Trophy size={13} aria-hidden />
+      {textoDosItensHomologados(itensHomologados)}
+    </Link>
+  )
 }
 
 export default function EscolhidasPage() {
@@ -103,6 +114,7 @@ export default function EscolhidasPage() {
                     {p.tender.objetoResumido ?? p.tender.objeto}
                   </Link>
                   <p className="mt-0.5 text-xs break-words text-muted">{p.tender.orgao ?? 'órgão n/d'}</p>
+                  <LinhaDoResultado tenderId={p.tenderId} itensHomologados={p.tender.itensHomologados} className="mt-1.5" />
                 </div>
                 <AvisoDeVersaoDoPncp tender={p.tender} />
                 <dl className="grid grid-cols-1 gap-2 text-sm min-[420px]:grid-cols-2">
@@ -151,6 +163,7 @@ export default function EscolhidasPage() {
                         {p.tender.objetoResumido ?? p.tender.objeto}
                       </Link>
                       <p className="mt-0.5 truncate text-xs text-muted">{p.tender.orgao ?? 'órgão n/d'}</p>
+                      <LinhaDoResultado tenderId={p.tenderId} itensHomologados={p.tender.itensHomologados} className="mt-1" />
                       <AvisoDeVersaoDoPncp tender={p.tender} className="mt-2" />
                     </Td>
                     <Td>

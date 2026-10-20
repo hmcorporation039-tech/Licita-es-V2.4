@@ -29,6 +29,8 @@ import RelatorioDaRevisao from '@/components/RelatorioDaRevisao'
 import DocumentosDaLicitacao from '@/components/DocumentosDaLicitacao'
 import AvisoDeVersaoDoPncp from '@/components/AvisoDeVersaoDoPncp'
 import { versaoDoPncp } from '@/lib/licitacaoNaTela'
+import ResultadoDaLicitacao, { ResumoDoResultadoDaLicitacao } from '@/components/ResultadoDaLicitacao'
+import { mostraResultado } from '@/lib/resultadoDaLicitacao'
 import {
   Button,
   buttonClasses,
@@ -77,7 +79,7 @@ const TOM_DA_SEVERIDADE: Record<string, Tom> = {
   baixa: 'neutral',
 }
 
-const ABAS = ['informacoes', 'itens', 'analise', 'habilitacao', 'exigencias', 'checklist', 'plano', 'documentos'] as const
+const ABAS = ['informacoes', 'resultado', 'itens', 'analise', 'habilitacao', 'exigencias', 'checklist', 'plano', 'documentos'] as const
 
 type TabId = (typeof ABAS)[number]
 
@@ -484,9 +486,11 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
   const linkEdital = safeHttpUrl(tender.linkEdital)
   const escolhida = plan?.status === 'VOU_PARTICIPAR'
   const analiseBloqueada = medida?.esgotado === true
+  const comResultado = mostraResultado(tender)
 
   const abas: Aba<TabId>[] = [
     { id: 'informacoes', label: 'Informações' },
+    ...(comResultado ? [{ id: 'resultado' as const, label: 'Resultado' }] : []),
     { id: 'itens', label: 'Itens', count: tender.items?.length },
     { id: 'analise', label: 'Análise' },
     { id: 'habilitacao', label: 'Habilitação' },
@@ -609,6 +613,8 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
         <div role="tabpanel" id={`painel-${activeTab}`} aria-labelledby={`aba-${activeTab}`} className="min-w-0">
           {activeTab === 'informacoes' && (
             <div className="flex flex-col gap-4">
+              {comResultado && <ResumoDoResultadoDaLicitacao tender={tender} onVerPorItem={() => setActiveTab('resultado')} />}
+
               <Panel title="Informações do processo">
                 <DescriptionList columns={3} items={informacoes} />
               </Panel>
@@ -647,6 +653,9 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
               </Panel>
             </div>
           )}
+
+          {activeTab === 'resultado' &&
+            (comResultado ? <ResultadoDaLicitacao tender={tender} /> : <EmptyState title="O resultado aparece depois que o prazo das propostas termina." />)}
 
           {activeTab === 'habilitacao' && <PainelDoFiscal tenderId={id} />}
 

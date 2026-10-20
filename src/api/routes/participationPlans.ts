@@ -6,6 +6,7 @@
 // ============================================================
 
 import { Router } from 'express'
+import { Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { prisma } from '../../services/tenderService'
 import { asyncHandler } from '../asyncHandler'
@@ -25,6 +26,8 @@ import { responderComPlanilha } from '../respostaDePlanilha'
 
 export const participationPlansRouter = Router()
 
+const ITENS_HOMOLOGADOS = { situacaoDoResultado: { equals: 'Homologado', mode: 'insensitive' } } satisfies Prisma.TenderItemWhereInput
+
 const querySchema = z.object({
   status: z.enum(PARTICIPATION_STATUS_VALUES).optional(),
 })
@@ -37,10 +40,10 @@ participationPlansRouter.get(
     const plans = await prisma.tenderParticipationPlan.findMany({
       where: { companyId: req.companyId!, ...(status ? { status } : {}) },
       orderBy: { updatedAt: 'desc' },
-      include: { tender: { select: TENDER_PUBLICO } },
+      include: { tender: { select: { ...TENDER_PUBLICO, _count: { select: { items: { where: ITENS_HOMOLOGADOS } } } } } },
     })
 
-    res.json(plans)
+    res.json(plans.map(({ tender: { _count, ...tender }, ...plano }) => ({ ...plano, tender: { ...tender, itensHomologados: _count.items } })))
   })
 )
 
