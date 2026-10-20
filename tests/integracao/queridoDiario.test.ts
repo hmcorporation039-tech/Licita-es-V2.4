@@ -14,6 +14,7 @@ rodar('Querido Diário — duplicidade com o PNCP e republicação', () => {
   const ibge = `99${sufixo.replace(/\D/g, '').padEnd(5, '0').slice(0, 5)}`
   const agora = new Date()
   const dias = (n: number) => new Date(agora.getTime() + n * 86_400_000)
+  const diaEmBrasilia = (d: Date) => new Date(d.getTime() - 3 * 3_600_000).toISOString().slice(0, 10).split('-').reverse().join('/')
 
   function doDiario(over: Partial<NormalizedTender> = {}): NormalizedTender {
     return {
@@ -112,7 +113,7 @@ rodar('Querido Diário — duplicidade com o PNCP e republicação', () => {
     const texto = `AVISO DE LICITAÇÃO
 PREGÃO PRESENCIAL Nº 065/2026
 OBJETO: Aquisição de kits de materiais de uso pessoal destinados aos professores ${sufixo}.
-DATA DA SESSÃO: ${dias(10).toISOString().slice(8, 10)}/${dias(10).toISOString().slice(5, 7)}/${dias(10).getUTCFullYear()} às 09h00.
+DATA DA SESSÃO: ${diaEmBrasilia(dias(10))} às 09h00.
 ...........................................................................................................
 AVISO DE LICITAÇÃO
 PREGÃO ELETRÔNICO Nº 077/2026

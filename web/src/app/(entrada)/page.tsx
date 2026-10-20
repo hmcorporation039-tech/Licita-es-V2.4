@@ -639,7 +639,7 @@ function Planos({ dados }: { dados: PlanosResposta }) {
           id="planos-titulo"
           fino="Planos para"
           forte="cada tamanho de empresa"
-          apoio="A cobrança ainda não está ativa: durante o teste você usa o plano gratuito, e os preços dos planos pagos serão divulgados em breve."
+          apoio={`Comece com ${dados.trialDias || 7} dias grátis, sem cartão e sem fidelidade. Plano Fundador: os 30 primeiros clientes pagam 35% a menos durante 12 meses.`}
         />
         <Revelar>
           <ul className="az-planos">
@@ -662,9 +662,14 @@ function Planos({ dados }: { dados: PlanosResposta }) {
                         <small>/mês</small>
                       </>
                     ) : (
-                      <span className="az-plano-em-breve">Preço em breve</span>
+                      <span className="az-plano-em-breve">Sob consulta</span>
                     )}
                   </p>
+                  {!teste && p.precoAnualCentavos && (
+                    <p className="az-plano-anual">
+                      ou {brl(p.precoAnualCentavos)}/ano <span>2 meses grátis</span>
+                    </p>
+                  )}
                   <ul className="az-plano-limites">
                     <li>
                       <Check size={16} strokeWidth={3} aria-hidden />
@@ -685,11 +690,15 @@ function Planos({ dados }: { dados: PlanosResposta }) {
                       </span>
                     </li>
                   </ul>
-                  {teste && (
+                  {teste ? (
                     <LinkDeCadastro origem="planos" className="az-pilula az-pilula-verde az-pilula-cheia">
                       Começar o teste
                     </LinkDeCadastro>
-                  )}
+                  ) : p.precoMensalCentavos ? (
+                    <LinkDeCadastro origem="planos" className="az-pilula az-pilula-contorno az-pilula-cheia">
+                      Testar {dados.trialDias || 7} dias grátis
+                    </LinkDeCadastro>
+                  ) : null}
                 </li>
               )
             })}
