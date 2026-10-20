@@ -6,12 +6,13 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 vi.mock('../../src/services/emailService', async (original) => ({
   ...(await original<typeof import('../../src/services/emailService')>()),
   sendMatchEmail: vi.fn(async () => undefined),
+  sendResumoDiarioEmail: vi.fn(async () => true),
 }))
 
 const URL_BANCO = process.env.TEST_DATABASE_URL
 const rodar = describe.skipIf(!URL_BANCO)
 
-rodar('Rodada 2 de QA: datas impossíveis, repetição entre fontes, contagem de fontes e teto de e-mails', () => {
+rodar('Rodada 2 de QA: datas impossíveis, repetição entre fontes, contagem de fontes e resumo diário', () => {
   let server: Server
   let base = ''
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -193,34 +194,32 @@ rodar('Rodada 2 de QA: datas impossíveis, repetição entre fontes, contagem de
     expect(e.marcas.every((m) => (MARCAS_DAS_FONTES as readonly string[]).includes(m))).toBe(true)
   })
 
-  it('N16: o teto diário de e-mails conta o dia de Brasília, não o dia UTC', async () => {
+  it('N16: o resumo diário conta o dia de Brasília, não o dia UTC', async () => {
     const agoraReal = new Date()
     const noiteEmBrasilia = new Date(Date.UTC(agoraReal.getUTCFullYear(), agoraReal.getUTCMonth(), agoraReal.getUTCDate() + 1, 2, 0))
-    const mesmaNoiteAntesDaViradaUtc = new Date(noiteEmBrasilia.getTime() - 150 * 60_000)
+    const diaEmBrasilia = new Date(Date.UTC(agoraReal.getUTCFullYear(), agoraReal.getUTCMonth(), agoraReal.getUTCDate())).toISOString().slice(0, 10)
+    const madrugadaSeguinte = new Date(noiteEmBrasilia.getTime() + 2 * 3_600_000)
+    const diaSeguinte = new Date(Date.UTC(agoraReal.getUTCFullYear(), agoraReal.getUTCMonth(), agoraReal.getUTCDate() + 1)).toISOString().slice(0, 10)
 
     const empresa = await prisma.company.create({ data: { name: `QA2 teto ${sufixo}` } })
     const usuario = await prisma.user.create({ data: { email: `qa2-teto-${sufixo}@teste.local`, passwordHash: 'x', companyId: empresa.id } })
     const item = await prisma.monitoredItem.create({ data: { companyId: empresa.id, userId: usuario.id, name: 'Teto', keywords: [palavra('teto')], catmatCodes: [], catserCodes: [], ufs: [] } })
     const tender = await registro('teto', { fonte: 'PNCP', modalidade: 'PREGAO_ELETRONICO', objeto: `Aquisição de ${palavra('teto')}`, encerramentoAt: dias(10), publicadoAt: dias(-1) })
-    const match = await prisma.tenderMatch.create({ data: { tenderId: tender.id, monitoredItemId: item.id, companyId: empresa.id, userId: usuario.id, score: 0.9, matchedKeywords: [palavra('teto')] } })
-    const anterior = await prisma.notification.create({ data: { userId: usuario.id, type: 'EMAIL', title: 'anterior', body: 'anterior', sentAt: mesmaNoiteAntesDaViradaUtc, metadata: {} } })
+    const outra = await registro('teto-2', { fonte: 'PNCP', modalidade: 'PREGAO_ELETRONICO', objeto: `Fornecimento de ${palavra('teto')}`, encerramentoAt: dias(12), publicadoAt: dias(-1) })
+    await prisma.tenderMatch.create({ data: { tenderId: tender.id, monitoredItemId: item.id, companyId: empresa.id, userId: usuario.id, score: 0.9, matchedKeywords: [palavra('teto')], createdAt: new Date(noiteEmBrasilia.getTime() - 3_600_000) } })
 
-    const { processarMatch } = await import('../../src/workers/notificador')
-    const { sendMatchEmail } = await import('../../src/services/emailService')
-    process.env.MAX_EMAILS_DIA_EMPRESA = '1'
+    const { enviarResumoDoUsuario, idDoResumoDiario } = await import('../../src/services/resumoDiario')
+    const { sendResumoDiarioEmail } = await import('../../src/services/emailService')
     try {
-      vi.useFakeTimers({ toFake: ['Date'] })
-      vi.setSystemTime(noiteEmBrasilia)
-      vi.mocked(sendMatchEmail).mockClear()
-      await processarMatch({ tenderMatchId: match.id })
-      expect(sendMatchEmail).not.toHaveBeenCalled()
+      vi.mocked(sendResumoDiarioEmail).mockClear()
+      expect(await enviarResumoDoUsuario(usuario.id, noiteEmBrasilia)).toBe('enviado')
+      expect(await prisma.notification.count({ where: { id: idDoResumoDiario(usuario.id, diaEmBrasilia) } })).toBe(1)
 
-      await prisma.notification.update({ where: { id: anterior.id }, data: { sentAt: new Date(noiteEmBrasilia.getTime() - 24 * 3_600_000) } })
-      await processarMatch({ tenderMatchId: match.id })
-      expect(sendMatchEmail).toHaveBeenCalledTimes(1)
+      await prisma.tenderMatch.create({ data: { tenderId: outra.id, monitoredItemId: item.id, companyId: empresa.id, userId: usuario.id, score: 0.9, matchedKeywords: [palavra('teto')], createdAt: new Date(noiteEmBrasilia.getTime() + 3_600_000) } })
+      expect(await enviarResumoDoUsuario(usuario.id, madrugadaSeguinte)).toBe('enviado')
+      expect(await prisma.notification.count({ where: { id: idDoResumoDiario(usuario.id, diaSeguinte) } })).toBe(1)
+      expect(sendResumoDiarioEmail).toHaveBeenCalledTimes(2)
     } finally {
-      vi.useRealTimers()
-      delete process.env.MAX_EMAILS_DIA_EMPRESA
       await prisma.notification.deleteMany({ where: { userId: usuario.id } })
       await prisma.tenderMatch.deleteMany({ where: { companyId: empresa.id } })
       await prisma.monitoredItem.deleteMany({ where: { companyId: empresa.id } })

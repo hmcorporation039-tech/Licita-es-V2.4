@@ -246,4 +246,8 @@ export interface NotificadorAlteracaoPayload {
   campos: string[]
 }
 
-export type NotificadorJobPayload = NotificadorMatchPayload | NotificadorAlteracaoPayload
+export interface NotificadorRotinaPayload {
+  tipo: 'resumo-diario' | 'lembrete-de-prazo'
+}
+
+export type NotificadorJobPayload = NotificadorMatchPayload | NotificadorAlteracaoPayload | NotificadorRotinaPayload

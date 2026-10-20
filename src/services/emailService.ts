@@ -5,10 +5,11 @@
 import { Resend } from 'resend'
 import { enviarPeloResend } from '../lib/envioPeloResend'
 import { escapeHtml } from '../lib/html'
-import { emailDaMarca, paragrafo } from '../lib/emailDaMarca'
+import { emailDaMarca, paragrafo, type CartaoDoEmail } from '../lib/emailDaMarca'
 import { formatarDiaDoCalendario, formatarDiaEHoraDeBrasilia, formatarPrazoDaLicitacao } from '../lib/dataDeBrasilia'
 import { appUrl } from '../lib/appUrl'
-import { quandoVence } from '../lib/plural'
+import { quandoVence, quantidadeCom } from '../lib/plural'
+import { momentoDoFimDoPrazo, textoDoTempoRestante } from '../lib/prazoDoAviso'
 
 const EMAIL_FROM = process.env.EMAIL_FROM ?? 'noreply@seudominio.com.br'
 
@@ -85,6 +86,160 @@ export async function sendMatchEmail(params: MatchEmailParams) {
       motivo: 'Você recebeu este aviso porque a licitação combina com um item que você monitora na Licita Bela.',
     }),
   })
+}
+
+export interface LicitacaoDoAviso {
+  tenderId: string
+  objeto: string
+  fonte: string
+  orgao: string | null
+  municipio: string | null
+  uf: string | null
+  encerramentoAt: Date | null
+  aberturaAt: Date | null
+}
+
+export interface MatchParaResumo {
+  tenderMatchId: string
+  itemName: string
+  dentroDeObraCompleta: boolean
+  licitacao: LicitacaoDoAviso
+}
+
+export interface LicitacaoDoResumo extends LicitacaoDoAviso {
+  itens: string[]
+  tenderMatchIds: string[]
+  dentroDeObraCompleta: boolean
+}
+
+export interface LicitacaoDoLembrete extends LicitacaoDoAviso {
+  fimDoPrazo: Date
+}
+
+export interface EmailMontado {
+  assunto: string
+  html: string
+}
+
+export const MAX_LICITACOES_NO_RESUMO = 15
+const MAX_CARACTERES_DO_OBJETO = 180
+
+function textoResumido(texto: string, maximo: number): string {
+  const limpo = texto.replace(/\s+/g, ' ').trim()
+  return limpo.length <= maximo ? limpo : `${limpo.slice(0, maximo - 1).trimEnd()}…`
+}
+
+function momentoParaOrdenar(licitacao: LicitacaoDoAviso): number {
+  return momentoDoFimDoPrazo(licitacao)?.getTime() ?? Number.POSITIVE_INFINITY
+}
+
+export function agruparMatchesDoResumo(matches: MatchParaResumo[]): LicitacaoDoResumo[] {
+  const porLicitacao = new Map<string, LicitacaoDoResumo>()
+  for (const match of matches) {
+    const existente = porLicitacao.get(match.licitacao.tenderId)
+    if (!existente) {
+      porLicitacao.set(match.licitacao.tenderId, {
+        ...match.licitacao,
+        itens: [match.itemName],
+        tenderMatchIds: [match.tenderMatchId],
+        dentroDeObraCompleta: match.dentroDeObraCompleta,
+      })
+      continue
+    }
+    if (!existente.itens.includes(match.itemName)) existente.itens.push(match.itemName)
+    existente.tenderMatchIds.push(match.tenderMatchId)
+    existente.dentroDeObraCompleta = existente.dentroDeObraCompleta && match.dentroDeObraCompleta
+  }
+  return [...porLicitacao.values()].sort(
+    (a, b) => Number(a.dentroDeObraCompleta) - Number(b.dentroDeObraCompleta) || momentoParaOrdenar(a) - momentoParaOrdenar(b)
+  )
+}
+
+function linhasDaLicitacao(licitacao: LicitacaoDoAviso): string[] {
+  const local = localDaLicitacao(licitacao.municipio, licitacao.uf)
+  return [...(licitacao.orgao ? [licitacao.orgao] : []), ...(local ? [local.valor] : [])]
+}
+
+function cartaoDoResumo(licitacao: LicitacaoDoResumo, env: NodeJS.ProcessEnv): CartaoDoEmail {
+  const prazo = prazoDoEmailDeMatch(licitacao)
+  return {
+    titulo: textoResumido(licitacao.objeto, MAX_CARACTERES_DO_OBJETO),
+    destaque: `${prazo.rotulo}: ${prazo.valor}`,
+    linhas: [
+      ...linhasDaLicitacao(licitacao),
+      `${licitacao.itens.length === 1 ? 'Item' : 'Itens'}: ${licitacao.itens.join(', ')}`,
+      ...(licitacao.dentroDeObraCompleta ? ['Faz parte de uma obra completa'] : []),
+    ],
+    link: { texto: 'Abrir', link: linkDaLicitacaoNoMonitor(licitacao.tenderId, env) },
+  }
+}
+
+export function assuntoDoResumoDiario(total: number): string {
+  return `${quantidadeCom(total, 'licitação nova', 'licitações novas')} para você hoje`
+}
+
+export function montarEmailDoResumoDiario(licitacoes: LicitacaoDoResumo[], env: NodeJS.ProcessEnv = process.env): EmailMontado {
+  const total = licitacoes.length
+  const visiveis = licitacoes.slice(0, MAX_LICITACOES_NO_RESUMO)
+  const restantes = total - visiveis.length
+  const primeiroPrazo = prazoDoEmailDeMatch(visiveis[0])
+  return {
+    assunto: assuntoDoResumoDiario(total),
+    html: emailDaMarca({
+      previa: `A mais urgente: ${primeiroPrazo.rotulo.toLowerCase()} ${primeiroPrazo.valor}`,
+      titulo: `${quantidadeCom(total, 'licitação nova combina', 'licitações novas combinam')} com seus itens`,
+      corpo: paragrafo('Estas licitações abertas apareceram desde o último resumo. As de prazo mais próximo vêm primeiro.'),
+      cartoes: visiveis.map((licitacao) => cartaoDoResumo(licitacao, env)),
+      notaDosCartoes: restantes > 0 ? `E mais ${quantidadeCom(restantes, 'licitação', 'licitações')} no painel.` : undefined,
+      botao: { texto: restantes > 0 ? 'Ver todas as licitações' : 'Abrir meus matches', link: `${appUrl(env)}/matches` },
+      motivo: 'Você recebe este resumo uma vez por dia porque monitora itens na Licita Bela.',
+    }),
+  }
+}
+
+export function assuntoDoLembreteDePrazo(total: number): string {
+  return `Prazo encerrando: ${quantidadeCom(total, 'licitação escolhida', 'licitações escolhidas')}`
+}
+
+export function montarEmailDoLembreteDePrazo(licitacoes: LicitacaoDoLembrete[], agora: Date, env: NodeJS.ProcessEnv = process.env): EmailMontado {
+  const ordenadas = [...licitacoes].sort((a, b) => a.fimDoPrazo.getTime() - b.fimDoPrazo.getTime())
+  const total = ordenadas.length
+  return {
+    assunto: assuntoDoLembreteDePrazo(total),
+    html: emailDaMarca({
+      previa: `A mais próxima: ${textoDoTempoRestante(ordenadas[0].fimDoPrazo, agora)}`,
+      titulo: total === 1 ? 'Uma licitação escolhida está perto do fim do prazo' : `${total} licitações escolhidas estão perto do fim do prazo`,
+      corpo: paragrafo('Confira a proposta e os documentos antes que o prazo acabe.'),
+      cartoes: ordenadas.map((licitacao) => {
+        const prazo = prazoDoEmailDeMatch(licitacao)
+        return {
+          titulo: textoResumido(licitacao.objeto, MAX_CARACTERES_DO_OBJETO),
+          destaque: `${prazo.rotulo}: ${prazo.valor} (${textoDoTempoRestante(licitacao.fimDoPrazo, agora)})`,
+          linhas: linhasDaLicitacao(licitacao),
+          link: { texto: 'Abrir', link: linkDaLicitacaoNoMonitor(licitacao.tenderId, env) },
+        }
+      }),
+      botao: { texto: 'Abrir licitações escolhidas', link: `${appUrl(env)}/escolhidas` },
+      motivo: 'Você recebeu este lembrete porque sua empresa marcou estas licitações como "Vou participar" na Licita Bela.',
+    }),
+  }
+}
+
+async function enviarEmailMontado(to: string, email: EmailMontado): Promise<boolean> {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn(`[emailService] RESEND_API_KEY não configurada — "${email.assunto}" não foi enviado.`)
+    return false
+  }
+  await enviarPeloResend(getResendClient(), { from: EMAIL_FROM, to, subject: email.assunto, html: email.html })
+  return true
+}
+
+export async function sendResumoDiarioEmail(to: string, licitacoes: LicitacaoDoResumo[]): Promise<boolean> {
+  return enviarEmailMontado(to, montarEmailDoResumoDiario(licitacoes))
+}
+
+export async function sendLembreteDePrazoEmail(to: string, licitacoes: LicitacaoDoLembrete[], agora: Date): Promise<boolean> {
+  return enviarEmailMontado(to, montarEmailDoLembreteDePrazo(licitacoes, agora))
 }
 
 export interface DocumentExpiryEmailParams {

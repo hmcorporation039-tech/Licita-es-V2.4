@@ -1,17 +1,18 @@
 // ============================================================
 // workers/notificador.ts — Agente Notificador
-// Consome a fila 'notificador': avisa o dono do item monitorado quando
-// há um match novo, e quem acompanha uma licitação quando o órgão a
-// republica com prazo/valor/edital diferente.
+// Consome a fila 'notificador': resumo diário dos matches novos (07:00),
+// lembrete de prazo das licitações escolhidas (de hora em hora) e aviso
+// para quem acompanha uma licitação quando o órgão a republica com
+// prazo/valor/edital diferente.
 // ============================================================
 
 import { Worker, Job } from 'bullmq'
 import { redisConnection } from '../queues'
 import { prisma } from '../services/tenderService'
-import { sendMatchEmail, sendTenderChangedEmail } from '../services/emailService'
-import { NotificadorAlteracaoPayload, NotificadorJobPayload, NotificadorMatchPayload } from '../types'
-import { limites } from '../lib/limites'
-import { inicioDoDiaEmBrasilia } from '../lib/dataDeBrasilia'
+import { sendTenderChangedEmail } from '../services/emailService'
+import { NotificadorAlteracaoPayload, NotificadorJobPayload, NotificadorMatchPayload, NotificadorRotinaPayload } from '../types'
+import { enviarResumosDiarios } from '../services/resumoDiario'
+import { enviarLembretesDePrazo } from '../services/lembreteDePrazo'
 import { estaAberta } from '../lib/licitacaoAberta'
 import { SELECT_DO_DESTINATARIO, acessoDoDestinatarioComEmpresa, avisarFimDoAcessoUmaVez } from '../services/avisoDeAcessoEncerrado'
 
@@ -24,61 +25,26 @@ async function jaNotificado(caminho: string[], valor: string): Promise<boolean> 
 }
 
 export async function processarMatch(payload: NotificadorMatchPayload): Promise<void> {
-  const { tenderMatchId } = payload
-
-  if (await jaNotificado(['tenderMatchId'], tenderMatchId)) return
-
   const match = await prisma.tenderMatch.findUnique({
-    where: { id: tenderMatchId },
-    include: { tender: true, monitoredItem: true, user: { select: SELECT_DO_DESTINATARIO } },
+    where: { id: payload.tenderMatchId },
+    include: { tender: true, user: { select: SELECT_DO_DESTINATARIO } },
   })
   if (!match || !estaAberta(match.tender)) return
 
   const acesso = acessoDoDestinatarioComEmpresa(match.user)
   if (acesso.situacao === 'encerrado') await avisarFimDoAcessoUmaVez(match.user, acesso.acessoAte)
-  if (acesso.situacao !== 'ativo') return
+}
 
-  const emailsHojeDaEmpresa = await prisma.notification.count({
-    where: {
-      type: 'EMAIL',
-      sentAt: { gte: inicioDoDiaEmBrasilia(new Date()) },
-      user: { companyId: match.companyId },
-    },
-  })
-  if (emailsHojeDaEmpresa >= limites.maxEmailsDiaPorEmpresa) {
-    console.log(
-      `[Notificador Worker] Teto diário de ${limites.maxEmailsDiaPorEmpresa} e-mail(s) de match atingido pela empresa ${match.companyId} — match ${tenderMatchId} fica só na plataforma.`
-    )
+async function processarRotina(payload: NotificadorRotinaPayload): Promise<void> {
+  if (payload.tipo === 'resumo-diario') {
+    const { usuarios, enviados, falhas } = await enviarResumosDiarios()
+    console.log(`[Notificador Worker] Resumo diário: ${enviados} enviado(s), ${falhas} falha(s), ${usuarios} usuário(s) com match recente.`)
+    if (falhas > 0) throw new Error(`${falhas} resumo(s) diário(s) não enviado(s)`)
     return
   }
-
-  await sendMatchEmail({
-    to: match.user.email,
-    itemName: match.monitoredItem.name,
-    tenderId: match.tender.id,
-    tenderObjeto: match.tender.objetoResumido ?? match.tender.objeto,
-    fonte: match.tender.fonte,
-    orgao: match.tender.orgao,
-    municipio: match.tender.municipio,
-    uf: match.tender.uf,
-    valorEstimado: match.tender.valorEstimado ? Number(match.tender.valorEstimado) : null,
-    encerramentoAt: match.tender.encerramentoAt,
-    aberturaAt: match.tender.aberturaAt,
-    linkEdital: match.tender.linkEdital,
-  })
-
-  await prisma.notification.create({
-    data: {
-      userId: match.userId,
-      type: 'EMAIL',
-      title: `Nova licitação: ${match.monitoredItem.name}`,
-      body: match.tender.objetoResumido ?? match.tender.objeto,
-      sentAt: new Date(),
-      metadata: { tenderMatchId },
-    },
-  })
-
-  console.log(`[Notificador Worker] E-mail enviado para ${match.user.email} (match ${tenderMatchId})`)
+  const { empresas, enviados, falhas } = await enviarLembretesDePrazo()
+  console.log(`[Notificador Worker] Lembrete de prazo: ${enviados} enviado(s), ${falhas} falha(s), ${empresas} empresa(s) com prazo perto do fim.`)
+  if (falhas > 0) throw new Error(`${falhas} lembrete(s) de prazo não enviado(s)`)
 }
 
 async function processarAlteracao(payload: NotificadorAlteracaoPayload): Promise<void> {
@@ -123,11 +89,16 @@ export function startNotificadorWorker() {
   const worker = new Worker<NotificadorJobPayload>(
     'notificador',
     async (job: Job<NotificadorJobPayload>) => {
-      if ('tenderMatchId' in job.data) {
-        await processarMatch(job.data)
+      const dados = job.data
+      if ('tenderMatchId' in dados) {
+        await processarMatch(dados)
         return
       }
-      await processarAlteracao(job.data)
+      if (dados.tipo === 'alteracao') {
+        await processarAlteracao(dados)
+        return
+      }
+      await processarRotina(dados)
     },
     {
       connection: redisConnection,
