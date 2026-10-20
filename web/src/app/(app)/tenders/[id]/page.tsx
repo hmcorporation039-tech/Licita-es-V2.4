@@ -1,5 +1,6 @@
 'use client'
 
+import CompartilharLicitacao from '@/components/CompartilharLicitacao'
 import { dataDaLicitacao, faltamDiasUteis, formatarData } from '@/lib/datas'
 import { use, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { AlertCircle, Calculator, Check, CheckCircle2, ChevronDown, ChevronUp, ExternalLink, Gavel, Loader2, Plus, RotateCcw, Trash2 } from 'lucide-react'
@@ -549,6 +550,18 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
         }
         actions={
           <>
+            <CompartilharLicitacao
+              licitacao={{
+                id: tender.id,
+                objeto: tender.objetoResumido ?? tender.objeto,
+                orgao: tender.orgao ?? null,
+                local: local ?? null,
+                fonte: tender.fonte,
+                encerramentoAt: tender.encerramentoAt ?? null,
+                aberturaAt: tender.aberturaAt ?? null,
+                linkEdital: linkEdital ?? null,
+              }}
+            />
             {linkEdital && (
               <a href={linkEdital} target="_blank" rel="noopener noreferrer" className={buttonClasses('secondary', 'md')}>
                 Ver edital original
