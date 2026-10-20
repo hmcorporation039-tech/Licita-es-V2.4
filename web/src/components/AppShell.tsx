@@ -22,6 +22,7 @@ import {
 import { clearSessionUser, getSessionUser, type SessionUser } from '@/lib/session'
 import { api } from '@/lib/api'
 import { MedidorNoMenu } from '@/components/MedidorDeAnalises'
+import InstalarApp from '@/components/InstalarApp'
 import { PrazoDoAcessoNoMenu } from '@/components/PrazoDoAcesso'
 import Bela, { BotaoDaBela } from '@/components/Bela'
 import { cx } from '@/components/ui'
@@ -190,7 +191,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
           className="w-full rounded-xl py-1.5 pl-1.5"
         />
         <Navegacao user={user} pathname={pathname} />
-        <div className="mt-auto">
+        <div className="mt-auto flex flex-col gap-3">
+          <InstalarApp />
           <Rodape user={user} onSair={sair} />
         </div>
       </aside>
