@@ -108,6 +108,16 @@ export const COLETOR_SCHEDULERS: ColetorScheduler[] = [
     dados: { varredura: 'propostas' },
     disparaNaPartida: false,
   },
+  {
+    queue: coletorPNCPQueue,
+    schedulerId: 'resultados-pncp',
+    jobName: 'resultados-pncp',
+    pattern: '25 4,10,16,22 * * *',
+    tz: 'America/Sao_Paulo',
+    fonte: 'PNCP',
+    dados: { varredura: 'resultados' },
+    disparaNaPartida: false,
+  },
   // Uma vez por dia — essas 3 não têm filtro de data, então rodar 2x/dia
   // como PNCP/ComprasNet só dobraria o custo sem trazer nada a mais.
   {

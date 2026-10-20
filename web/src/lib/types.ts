@@ -161,6 +161,15 @@ export interface TenderItem {
   quantidade: string | null
   valorUnitario: string | null
   valorTotal: string | null
+  situacaoDoResultado?: string | null
+  vencedorNi?: string | null
+  vencedorNome?: string | null
+  vencedorPorte?: string | null
+  valorUnitarioHomologado?: string | null
+  quantidadeHomologada?: string | null
+  valorTotalHomologado?: string | null
+  dataDoResultado?: string | null
+  fornecedoresRegistrados?: number | null
 }
 
 export interface CatalogResult {
@@ -198,6 +207,9 @@ export interface Tender {
   linkEdital: string | null
   duplicataDe?: string | null
   createdAt: string
+  resultadoFinal?: boolean
+  resultadoConferidoEm?: string | null
+  itensHomologados?: number
   items?: TenderItem[]
   match?: TenderMatchInfo
 }

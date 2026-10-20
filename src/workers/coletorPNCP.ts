@@ -24,9 +24,11 @@ import {
 } from '../services/pncpColeta'
 import { ColetorJobPayload, NormalizedTender } from '../types'
 import { esconderRepeticoesDaLicitacaoDoPncp, revisarRepeticoesDoPncp } from '../services/duplicataEntreFontes'
+import { ResumoDosResultados, conferirResultadosDasLicitacoes } from '../services/resultadoDasLicitacoes'
 
 export const WORKER_DA_COLETA_PNCP = 'coletor-pncp'
 export const WORKER_DA_VARREDURA_DE_PROPOSTAS = 'varredura-propostas-pncp'
+export const WORKER_DOS_RESULTADOS_PNCP = 'resultados-pncp'
 
 async function esconderRepeticoesSemTravar(tenderId: string, tender: NormalizedTender, contexto: string): Promise<void> {
   try {
@@ -165,12 +167,41 @@ async function varrerPropostasAbertas(job: Job<ColetorJobPayload>) {
   return resumo
 }
 
+export async function conferirResultadosNoPncp(): Promise<ResumoDosResultados> {
+  const startedAt = new Date()
+  const resumo = await conferirResultadosDasLicitacoes()
+  if (resumo.pulada) {
+    console.warn('[Resultado PNCP] Conferência anterior ainda em andamento — pulando esta execução.')
+    return resumo
+  }
+  const motivos = [
+    ...(resumo.parouNoTeto ? [`parou no teto de ${resumo.requisicoes} requisições; continua na próxima execução`] : []),
+    ...(resumo.parouPorBloqueio ? ['o PNCP limitou as requisições; continua na próxima execução'] : []),
+    ...resumo.falhas.slice(0, 20),
+  ]
+  await saveWorkerLog({
+    worker: WORKER_DOS_RESULTADOS_PNCP,
+    status: resumo.falhas.length > 0 ? 'PARTIAL' : 'SUCCESS',
+    totalFetched: resumo.conferidas,
+    totalNew: resumo.vencedores,
+    totalUpdated: resumo.finalizadas,
+    errorMsg: motivos.length > 0 ? motivos.join('; ') : undefined,
+    startedAt,
+    finishedAt: new Date(),
+  })
+  console.log(
+    `[Resultado PNCP] Concluído — ${resumo.conferidas} licitação(ões) conferida(s), ${resumo.itensCriados} item(ns) criado(s), ${resumo.vencedores} vencedor(es) gravado(s), ${resumo.finalizadas} com resultado final, ${resumo.requisicoes} requisição(ões), ${resumo.falhas.length} falha(s).`
+  )
+  return resumo
+}
+
 // Worker principal
 export function startColetorPNCPWorker() {
   const worker = new Worker<ColetorJobPayload>(
     'coletor-pncp',
     async (job: Job<ColetorJobPayload>) => {
       if (job.data.varredura === 'propostas') await varrerPropostasAbertas(job)
+      else if (job.data.varredura === 'resultados') await conferirResultadosNoPncp()
       else await coletarPublicacoes(job)
     },
     {

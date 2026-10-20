@@ -56,6 +56,15 @@ describe('agendadores do PNCP', () => {
     expect(pncp.agendados.find((a) => a.id === 'coleta-pncp')?.job).toEqual({ name: 'coleta-pncp', data: { fonte: 'PNCP' } })
   })
 
+  it('a conferência do resultado roda 4 vezes ao dia no horário de Brasília, na fila do PNCP', async () => {
+    const { scheduleColetorJobs } = await import('../src/queues')
+    const pncp = filas.porNome.get('coletor-pncp')!
+    await scheduleColetorJobs()
+    const resultados = pncp.agendados.find((a) => a.id === 'resultados-pncp')
+    expect(resultados?.opcoes).toEqual({ pattern: '25 4,10,16,22 * * *', tz: 'America/Sao_Paulo' })
+    expect(resultados?.job).toEqual({ name: 'resultados-pncp', data: { varredura: 'resultados', fonte: 'PNCP' } })
+  })
+
   it('a varredura não roda a cada subida do processo', async () => {
     const { dispararColetaInicial } = await import('../src/queues')
     await dispararColetaInicial()
