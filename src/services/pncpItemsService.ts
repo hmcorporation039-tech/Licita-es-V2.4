@@ -13,7 +13,7 @@ import axios from 'axios'
 import { NormalizedTenderItem } from '../types'
 import { assertIdentificadorCompraPncp } from '../lib/pncpIdentificador'
 
-interface PNCPItemRaw {
+export interface PNCPItemRaw {
   numeroItem: number
   descricao: string
   informacaoComplementar: string | null
@@ -36,7 +36,11 @@ export async function fetchPNCPItens(
   const response = await axios.get<PNCPItemRaw[]>(url, { timeout: 20_000 })
   const raw = Array.isArray(response.data) ? response.data : []
 
-  return raw.map((item) => ({
+  return raw.map(normalizarItemDoPncp)
+}
+
+export function normalizarItemDoPncp(item: PNCPItemRaw): NormalizedTenderItem {
+  return {
     numeroItem: item.numeroItem,
     descricao: item.descricao ?? '',
     descricaoDetalhada: item.informacaoComplementar || undefined,
@@ -47,5 +51,5 @@ export async function fetchPNCPItens(
     quantidade: item.quantidade ?? undefined,
     valorUnitario: item.valorUnitarioEstimado ?? undefined,
     valorTotal: item.valorTotal ?? undefined,
-  }))
+  }
 }

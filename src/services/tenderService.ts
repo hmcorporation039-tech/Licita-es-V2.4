@@ -214,6 +214,21 @@ export async function saveTenderItemsIfMissing(
   })
 }
 
+export async function saveTenderItemsQueFaltam(tenderId: string, items: NormalizedTenderItem[]): Promise<number> {
+  const numeros = [...new Set(items.map((item) => item.numeroItem).filter((n): n is number => Number.isInteger(n)))]
+  if (numeros.length === 0) return 0
+  const existentes = await prisma.tenderItem.findMany({ where: { tenderId, numeroItem: { in: numeros } }, select: { numeroItem: true } })
+  const jaGravados = new Set(existentes.map((e) => e.numeroItem))
+  const faltantes = new Map<number, NormalizedTenderItem>()
+  for (const item of items) {
+    if (item.numeroItem === undefined || !Number.isInteger(item.numeroItem) || jaGravados.has(item.numeroItem) || faltantes.has(item.numeroItem)) continue
+    faltantes.set(item.numeroItem, item)
+  }
+  if (faltantes.size === 0) return 0
+  await prisma.tenderItem.createMany({ data: [...faltantes.values()].map((item) => itemParaBanco(item, tenderId)) })
+  return faltantes.size
+}
+
 // Garante que os itens de uma licitação PNCP estejam no banco, buscando-os sob
 // demanda se ainda não existirem. Usado tanto ao abrir o detalhe quanto logo
 // após um match (o "acompanhar compra" do fluxo), para o pool já vir com itens.

@@ -26,8 +26,8 @@ rodar('Preço vencedor: resultado das licitações do PNCP', () => {
   const empresas: string[] = []
   const tokens: Record<'a' | 'b', string> = { a: '', b: '' }
   const usuarios: Record<'a' | 'b', { id: string; companyId: string }> = { a: { id: '', companyId: '' }, b: { id: '', companyId: '' } }
-  const ids = { comMatch: randomUUID(), comPlano: randomUUID(), semInteresse: randomUUID(), antiga: randomUUID(), noTeto: randomUUID(), comErro: randomUUID(), depoisDoErro: randomUUID() }
-  const sequenciais: Record<keyof typeof ids, number> = { comMatch: 11, comPlano: 12, semInteresse: 13, antiga: 14, noTeto: 15, comErro: 16, depoisDoErro: 17 }
+  const ids = { comMatch: randomUUID(), comPlano: randomUUID(), semInteresse: randomUUID(), antiga: randomUUID(), noTeto: randomUUID(), comErro: randomUUID(), depoisDoErro: randomUUID(), semItens: randomUUID() }
+  const sequenciais: Record<keyof typeof ids, number> = { comMatch: 11, comPlano: 12, semInteresse: 13, antiga: 14, noTeto: 15, comErro: 16, depoisDoErro: 17, semItens: 18 }
 
   const respostas = new Map<string, unknown[] | Error>()
   const chamadas: string[] = []
@@ -46,6 +46,14 @@ rodar('Preço vencedor: resultado das licitações do PNCP', () => {
 
   const itemDoPncp = (numeroItem: number, situacaoCompraItemNome: string, temResultado: boolean) => ({
     numeroItem,
+    descricao: `FEIJÃO CARIOCA ITEM ${numeroItem}`,
+    informacaoComplementar: `Tipo 1, pacote de 1 kg, item ${numeroItem}`,
+    criterioJulgamentoNome: 'Menor preço',
+    materialOuServico: 'M',
+    catalogoCodigoItem: `4500${numeroItem}`,
+    unidadeMedida: 'Pacote',
+    quantidade: 100,
+    valorTotal: 250,
     temResultado,
     situacaoCompraItem: situacaoCompraItemNome === 'Em andamento' ? 1 : situacaoCompraItemNome === 'Homologado' ? 2 : 4,
     situacaoCompraItemNome,
@@ -182,6 +190,7 @@ rodar('Preço vencedor: resultado das licitações do PNCP', () => {
       resultado({ niFornecedor: '22222222000122', nomeRazaoSocialFornecedor: 'ALIMENTAÃ‡ÃƒO BOA COMÃ‰RCIO LTDA', porteFornecedorNome: 'EPP', ordemClassificacaoSrp: 1, sequencialResultado: 3, valorUnitarioHomologado: 8, valorTotalHomologado: 800, quantidadeHomologada: 100 }),
       resultado({ niFornecedor: '33333333000133', nomeRazaoSocialFornecedor: 'CANCELADA LTDA', ordemClassificacaoSrp: 1, sequencialResultado: 1, dataCancelamento: '2021-02-25T10:00:00' }),
     ])
+    respostas.set(resultadosDoItem('comMatch', 4), [resultado({ niFornecedor: '77777777000177', nomeRazaoSocialFornecedor: 'ITEM QUE FALTAVA LTDA', valorUnitarioHomologado: 3, quantidadeHomologada: 100, valorTotalHomologado: 300 })])
     respostas.set(listaDeItens('comPlano'), [itemDoPncp(1, 'Homologado', true), itemDoPncp(2, 'Em andamento', false)])
     respostas.set(resultadosDoItem('comPlano', 1), [resultado({ niFornecedor: '44444444000144', nomeRazaoSocialFornecedor: 'DISTRIBUIDORA DO PLANO LTDA', valorUnitarioHomologado: 2, valorTotalHomologado: 1200 })])
     respostas.set(listaDeItens('semInteresse'), [itemDoPncp(1, 'Homologado', true)])
@@ -213,14 +222,27 @@ rodar('Preço vencedor: resultado das licitações do PNCP', () => {
     expect(Number(itens.get(2)?.valorUnitarioHomologado)).toBe(8)
     expect(itens.get(3)).toMatchObject({ situacaoDoResultado: 'Deserto', vencedorNome: null })
     expect(itens.get(9)).toMatchObject({ situacaoDoResultado: null, vencedorNome: null })
+    expect(itens.get(4)).toMatchObject({
+      descricao: 'FEIJÃO CARIOCA ITEM 4',
+      descricaoNorm: 'feijao carioca item 4',
+      descricaoDetalhada: 'Tipo 1, pacote de 1 kg, item 4',
+      catmatCode: '45004',
+      unidadeMedida: 'Pacote',
+      situacaoDoResultado: 'Homologado',
+      vencedorNome: 'ITEM QUE FALTAVA LTDA',
+    })
+    expect(Number(itens.get(4)?.valorUnitario)).toBe(2.5)
+    expect(itens.get(1)?.descricao).toBe('Item 1 de merenda escolar')
+    expect(itens.size).toBe(5)
+    expect(resumo.itensCriados).toBeGreaterThanOrEqual(1)
 
     const comMatch = await prisma.tender.findUniqueOrThrow({ where: { id: ids.comMatch } })
     expect(comMatch.resultadoFinal).toBe(true)
     expect(comMatch.situacao).toBe('HOMOLOGADA')
-    expect(Number(comMatch.valorHomologado)).toBe(1994)
+    expect(Number(comMatch.valorHomologado)).toBe(2294)
     expect(comMatch.resultadoConferidoEm?.toISOString()).toBe(AGORA.toISOString())
     expect(chamadasDa('comMatch')).not.toContain(resultadosDoItem('comMatch', 3))
-    expect(chamadasDa('comMatch')).not.toContain(resultadosDoItem('comMatch', 4))
+    expect(chamadasDa('comMatch')).toContain(resultadosDoItem('comMatch', 4))
 
     const comPlano = await prisma.tender.findUniqueOrThrow({ where: { id: ids.comPlano } })
     expect(comPlano).toMatchObject({ resultadoFinal: false, situacao: 'ENCERRADA', valorHomologado: null })
@@ -297,6 +319,49 @@ rodar('Preço vencedor: resultado das licitações do PNCP', () => {
     expect(depois).toMatchObject({ resultadoFinal: true, situacao: 'ENCERRADA', valorHomologado: null })
   })
 
+  it('licitação acompanhada sem itens no banco ganha os itens e o vencedor, sem duplicar na segunda varredura nem na coleta sob demanda', async () => {
+    await prisma.tender.create({ data: licitacao('semItens', new Date(AGORA.getTime() - 50 * DIA_MS)) })
+    await criarMatch(ids.semItens, 'a')
+    respostas.set(listaDeItens('semItens'), [itemDoPncp(1, 'Homologado', true), itemDoPncp(2, 'Em andamento', false)])
+    respostas.set(resultadosDoItem('semItens', 1), [resultado({ niFornecedor: '88888888000188', nomeRazaoSocialFornecedor: 'VENCEDORA SEM ITENS LTDA', valorTotalHomologado: 199, quantidadeHomologada: 100, valorUnitarioHomologado: 1.99 })])
+    expect(await prisma.tenderItem.count({ where: { tenderId: ids.semItens } })).toBe(0)
+
+    chamadas.length = 0
+    const primeira = await conferir({ agora: new Date(AGORA.getTime() + 16 * HORA_MS), teto: 50, buscar })
+    expect(primeira.itensCriados).toBe(2)
+    expect(chamadasDa('semItens')).toEqual([listaDeItens('semItens'), resultadosDoItem('semItens', 1)])
+    let itens = await itensGravados(ids.semItens)
+    expect(itens.size).toBe(2)
+    expect(itens.get(1)).toMatchObject({
+      descricao: 'FEIJÃO CARIOCA ITEM 1',
+      descricaoNorm: 'feijao carioca item 1',
+      criterioJulgamento: 'Menor preço',
+      catmatCode: '45001',
+      catserCode: null,
+      situacaoDoResultado: 'Homologado',
+      vencedorNi: '88888888000188',
+      vencedorNome: 'VENCEDORA SEM ITENS LTDA',
+    })
+    expect(Number(itens.get(1)?.quantidade)).toBe(100)
+    expect(Number(itens.get(1)?.valorTotal)).toBe(250)
+    expect(itens.get(2)).toMatchObject({ situacaoDoResultado: 'Em andamento', vencedorNome: null })
+    expect((await prisma.tender.findUniqueOrThrow({ where: { id: ids.semItens } })).resultadoFinal).toBe(false)
+
+    chamadas.length = 0
+    const segunda = await conferir({ agora: new Date(AGORA.getTime() + 29 * HORA_MS), teto: 50, buscar })
+    expect(chamadasDa('semItens')).toEqual([listaDeItens('semItens')])
+    expect(segunda.itensCriados).toBe(0)
+
+    const { saveTenderItemsIfMissing, garantirItensPNCP } = await import('../../src/services/tenderService')
+    const { normalizarItemDoPncp } = await import('../../src/services/pncpItemsService')
+    await saveTenderItemsIfMissing(ids.semItens, [itemDoPncp(1, 'Homologado', true), itemDoPncp(2, 'Em andamento', false)].map((i) => normalizarItemDoPncp(i)))
+    expect(await garantirItensPNCP({ id: ids.semItens, fonte: 'PNCP', rawJson: { anoCompra: 2021, sequencialCompra: 18, orgaoEntidade: { cnpj } } })).toBe(false)
+
+    itens = await itensGravados(ids.semItens)
+    expect(await prisma.tenderItem.count({ where: { tenderId: ids.semItens } })).toBe(2)
+    expect(itens.get(1)?.vencedorNome).toBe('VENCEDORA SEM ITENS LTDA')
+  })
+
   it('o detalhe da licitação devolve o vencedor de cada item e o estado do resultado', async () => {
     const { status, corpo } = await obter(`/api/tenders/${ids.comMatch}`, tokens.a)
     expect(status).toBe(200)
@@ -319,7 +384,7 @@ rodar('Preço vencedor: resultado das licitações do PNCP', () => {
     const daA = await obter('/api/participation-plans', tokens.a)
     expect(daA.status).toBe(200)
     const porLicitacao = new Map((daA.corpo as { tenderId: string; tender: { itensHomologados: number; items?: unknown } }[]).map((p) => [p.tenderId, p.tender]))
-    expect(porLicitacao.get(ids.comMatch)?.itensHomologados).toBe(2)
+    expect(porLicitacao.get(ids.comMatch)?.itensHomologados).toBe(3)
     expect(porLicitacao.get(ids.comPlano)?.itensHomologados).toBe(2)
     expect(porLicitacao.get(ids.comMatch)).not.toHaveProperty('items')
     expect(porLicitacao.get(ids.comMatch)).not.toHaveProperty('_count')
@@ -344,7 +409,7 @@ rodar('Preço vencedor: resultado das licitações do PNCP', () => {
     const objetos = textoDaColuna(planilha, 'Objeto')
     const homologados = textoDaColuna(planilha, 'Valor homologado')
     const porObjeto = new Map([...objetos].map(([linha, objeto]) => [objeto, homologados.get(linha)]))
-    expect(porObjeto.get('Aquisição de merenda comMatch')).toBe('1994')
+    expect(porObjeto.get('Aquisição de merenda comMatch')).toBe('2294')
     expect(porObjeto.get('Aquisição de merenda comPlano')).toBe('2100')
   })
 })

@@ -190,7 +190,7 @@ export async function conferirResultadosNoPncp(): Promise<ResumoDosResultados> {
     finishedAt: new Date(),
   })
   console.log(
-    `[Resultado PNCP] Concluído — ${resumo.conferidas} licitação(ões) conferida(s), ${resumo.vencedores} vencedor(es) gravado(s), ${resumo.finalizadas} com resultado final, ${resumo.requisicoes} requisição(ões), ${resumo.falhas.length} falha(s).`
+    `[Resultado PNCP] Concluído — ${resumo.conferidas} licitação(ões) conferida(s), ${resumo.itensCriados} item(ns) criado(s), ${resumo.vencedores} vencedor(es) gravado(s), ${resumo.finalizadas} com resultado final, ${resumo.requisicoes} requisição(ões), ${resumo.falhas.length} falha(s).`
   )
   return resumo
 }

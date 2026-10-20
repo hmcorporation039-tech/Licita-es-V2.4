@@ -11,7 +11,14 @@ import {
   itemCancelado,
   situacaoDoItem,
 } from '../lib/resultadoDoPncp'
-import { prisma } from './tenderService'
+import { prisma, saveTenderItemsQueFaltam } from './tenderService'
+import { PNCPItemRaw, normalizarItemDoPncp } from './pncpItemsService'
+
+export type ItemDaListaDoPncp = ItemDaCompraPncp & Partial<Omit<PNCPItemRaw, 'numeroItem' | 'valorUnitarioEstimado'>>
+
+function itemParaGravar(item: ItemDaListaDoPncp) {
+  return normalizarItemDoPncp(item as PNCPItemRaw)
+}
 
 export const BASE_DA_API_DE_COMPRAS_DO_PNCP = 'https://pncp.gov.br/api/pncp'
 export const ITENS_POR_PAGINA = 50
@@ -73,7 +80,7 @@ function caminhoDaCompra(compra: CompraDoPncp): string {
 }
 
 export interface ItensLidos {
-  itens: ItemDaCompraPncp[]
+  itens: ItemDaListaDoPncp[]
   completo: boolean
 }
 
@@ -83,10 +90,10 @@ export async function lerItensDaCompra(
   buscar: BuscarListaNoPncp = buscarListaNoPncp
 ): Promise<ItensLidos> {
   const caminho = `${caminhoDaCompra(compra)}/itens`
-  const porNumero = new Map<number, ItemDaCompraPncp>()
+  const porNumero = new Map<number, ItemDaListaDoPncp>()
   for (let pagina = 1; ; pagina++) {
     if (orcamento.esgotado) return { itens: [...porNumero.values()], completo: false }
-    const lote = await orcamento.gastar(() => buscar<ItemDaCompraPncp>(caminho, { pagina, tamanhoPagina: ITENS_POR_PAGINA }))
+    const lote = await orcamento.gastar(() => buscar<ItemDaListaDoPncp>(caminho, { pagina, tamanhoPagina: ITENS_POR_PAGINA }))
     let novos = 0
     for (const item of lote) {
       if (!item || !Number.isInteger(item.numeroItem) || porNumero.has(item.numeroItem)) continue
@@ -151,6 +158,7 @@ export interface LicitacaoParaConferir {
 
 export interface ConferenciaDaLicitacao {
   completa: boolean
+  itensCriados: number
   vencedores: number
   finalizada: boolean
 }
@@ -162,6 +170,7 @@ export async function conferirResultadoDaLicitacao(
   agora: Date = new Date()
 ): Promise<ConferenciaDaLicitacao> {
   const { itens, completo } = await lerItensDaCompra(licitacao.compra, orcamento, buscar)
+  const itensCriados = await saveTenderItemsQueFaltam(licitacao.id, itens.map(itemParaGravar))
 
   const linhas = await prisma.tenderItem.findMany({
     where: { tenderId: licitacao.id, numeroItem: { in: itens.map((i) => i.numeroItem) } },
@@ -192,13 +201,13 @@ export async function conferirResultadoDaLicitacao(
     if (tirarVencedor) Object.assign(gravado, { vencedorNi: null, vencedorNome: null, valorTotalHomologado: null })
   }
 
-  if (!completo) return { completa: false, vencedores: 0, finalizada: false }
+  if (!completo) return { completa: false, itensCriados, vencedores: 0, finalizada: false }
 
   let vencedores = 0
   for (const item of itens) {
     const gravado = gravados.get(item.numeroItem)
     if (!gravado || item.temResultado !== true || temVencedor(gravado) || itemCancelado(situacaoDoItem(item))) continue
-    if (orcamento.esgotado) return { completa: false, vencedores, finalizada: false }
+    if (orcamento.esgotado) return { completa: false, itensCriados, vencedores, finalizada: false }
     const vencedor = await orcamento.gastar(() => buscarVencedorDoItem(licitacao.compra, item.numeroItem, buscar))
     if (!vencedor) continue
     await prisma.tenderItem.updateMany({
@@ -238,7 +247,7 @@ export async function conferirResultadoDaLicitacao(
     })
   }
 
-  return { completa: true, vencedores, finalizada: finalizacao.final }
+  return { completa: true, itensCriados, vencedores, finalizada: finalizacao.final }
 }
 
 interface LinhaCandidata {
@@ -278,6 +287,7 @@ export async function licitacoesParaConferir(agora: Date, limite: number): Promi
 export interface ResumoDosResultados {
   pulada: boolean
   conferidas: number
+  itensCriados: number
   vencedores: number
   finalizadas: number
   falhas: string[]
@@ -302,6 +312,7 @@ export async function conferirResultadosDasLicitacoes(opcoes: OpcoesDosResultado
   const resumo: ResumoDosResultados = {
     pulada: false,
     conferidas: 0,
+    itensCriados: 0,
     vencedores: 0,
     finalizadas: 0,
     falhas: [],
@@ -343,6 +354,7 @@ export async function conferirResultadosDasLicitacoes(opcoes: OpcoesDosResultado
           buscar,
           agora
         )
+        resumo.itensCriados += conferencia.itensCriados
         resumo.vencedores += conferencia.vencedores
         if (!conferencia.completa) {
           resumo.parouNoTeto = true
