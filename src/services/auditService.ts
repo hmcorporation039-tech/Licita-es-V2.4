@@ -57,6 +57,7 @@ export const ACOES = [
   'PREGAO_VALOR_FINAL_MINIMO_COPIADO',
   'PREGAO_VALOR_FINAL_MINIMO_DEFINIDO',
   'PREGAO_VALOR_FINAL_MINIMO_DESMARCADO',
+  'EXPORTACAO_PLANILHA',
 ] as const
 export type AcaoAuditoria = (typeof ACOES)[number]
 
