@@ -171,6 +171,7 @@ export const ROTULO_ACAO: Record<string, string> = {
   PREGAO_VALOR_FINAL_MINIMO_DEFINIDO: 'Valor final mínimo marcado como cadastrado no portal',
   PREGAO_VALOR_FINAL_MINIMO_DESMARCADO: 'Valor final mínimo desmarcado no plano de disputa',
   EXPORTACAO_PLANILHA: 'Planilha do Excel exportada',
+  TERMOS_ACEITOS: 'Termos de Uso e Política de Privacidade aceitos',
 }
 
 export interface CriterioDeAderencia {

@@ -788,6 +788,10 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
                       Documento analisado: <span className="font-mono">{analysis.documentoNome}</span>
                     </p>
                   )}
+                  <p className="text-xs text-muted">
+                    Resumo feito por inteligência artificial: pode errar ou deixar de fora alguma exigência. Confira sempre no edital original antes de
+                    decidir ou enviar a proposta.
+                  </p>
                   <RelatorioDaRevisao revisao={analysis.revisao ?? null} />
                   {user?.isAdmin && analysis.rascunho && (
                     <details className="rounded border border-line bg-sunken p-3 text-xs text-ink-2">

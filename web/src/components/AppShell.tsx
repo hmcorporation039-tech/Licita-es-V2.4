@@ -26,6 +26,7 @@ import InstalarApp from '@/components/InstalarApp'
 import { PrazoDoAcessoNoMenu } from '@/components/PrazoDoAcesso'
 import Bela, { BotaoDaBela } from '@/components/Bela'
 import { cx } from '@/components/ui'
+import AvisoDeTermos from '@/components/AvisoDeTermos'
 
 interface ItemDeMenu {
   href: string
@@ -200,7 +201,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
       <Bela aberta={belaAberta} onFechar={() => setBelaAberta(false)} />
 
       <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-7">
-        <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-6">{children}</div>
+        <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-6">
+          <AvisoDeTermos />
+          {children}
+        </div>
       </main>
     </div>
   )

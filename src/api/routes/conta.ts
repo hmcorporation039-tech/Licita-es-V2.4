@@ -16,6 +16,7 @@ import { avisarAdministrador } from '../../services/alertaOperacional'
 import { requireCompanyOwner } from '../authMiddleware'
 import { escritaSensivelLimiter } from '../rateLimit'
 import { ApiError, asyncHandler } from '../asyncHandler'
+import { TERMOS_VERSAO } from '../../lib/legal'
 
 export const contaRouter = Router()
 
@@ -109,5 +110,33 @@ contaRouter.post(
     res.status(202).json({
       mensagem: 'Pedido de exclusão registrado. A conta e os dados serão excluídos em até 15 dias; você receberá a confirmação por e-mail.',
     })
+  })
+)
+
+contaRouter.get(
+  '/termos',
+  asyncHandler(async (req, res) => {
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId! }, select: { termsVersion: true, termsAcceptedAt: true } })
+    res.json({
+      versaoVigente: TERMOS_VERSAO,
+      versaoAceita: user.termsVersion,
+      aceitoEm: user.termsAcceptedAt,
+      pendente: user.termsVersion !== TERMOS_VERSAO,
+    })
+  })
+)
+
+const aceiteSchema = z.object({ versao: z.string().min(1).max(40) })
+
+contaRouter.post(
+  '/aceitar-termos',
+  escritaSensivelLimiter,
+  asyncHandler(async (req, res) => {
+    const { versao } = aceiteSchema.parse(req.body)
+    if (versao !== TERMOS_VERSAO) throw new ApiError(409, 'Os termos foram atualizados. Recarregue a página e leia a versão nova.')
+    const aceitoEm = new Date()
+    await prisma.user.update({ where: { id: req.userId! }, data: { termsAcceptedAt: aceitoEm, termsVersion: TERMOS_VERSAO } })
+    await registrarAuditoria(req, { action: 'TERMOS_ACEITOS', entityType: 'usuario', entityId: req.userId!, metadata: { versao: TERMOS_VERSAO } })
+    res.json({ versaoAceita: TERMOS_VERSAO, aceitoEm })
   })
 )
