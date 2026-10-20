@@ -21,6 +21,8 @@ import { municipioCitado } from '../../lib/localDeExecucao'
 import { semRepeticao } from '../../lib/semRepeticao'
 import { findMunicipioByNomeUf, haversineKm } from '../../lib/geoService'
 import { PrecosIndisponiveisError, pesquisarPrecos } from '../../services/pesquisaDePrecosService'
+import { precosVencedoresDaLicitacao } from '../../services/precosVencedoresService'
+import { MESES_DO_HISTORICO, MINIMO_DE_CASOS } from '../../lib/precosVencedores'
 import { gerarPdfDoEstudo } from '../../services/estudoPdf'
 import { carregarDossie } from '../../services/dossieDaLicitacao'
 import { montarPacoteDeHabilitacao } from '../../lib/pacoteDeHabilitacao'
@@ -271,6 +273,28 @@ estudosRouter.post(
       if (err instanceof PrecosIndisponiveisError) throw new ApiError(502, err.message)
       throw err
     }
+  })
+)
+
+estudosRouter.get(
+  '/:tenderId/precos-vencedores',
+  estudoPrecosLimiter,
+  asyncHandler(async (req, res) => {
+    const ctx = await carregar(req.companyId!, req.params.tenderId)
+    const doBanco = new Map(ctx.tender.items.map((i) => [i.id, i]))
+    const itens = ctx.itens.map((it) => {
+      const bruto = doBanco.get(it.id)
+      return {
+        id: it.id,
+        descricao: it.descricao,
+        descricaoNorm: bruto?.descricaoNorm ?? null,
+        unidade: it.unidade,
+        catmatCode: bruto?.catmatCode ?? null,
+        catserCode: bruto?.catserCode ?? null,
+      }
+    })
+    const resultado = await precosVencedoresDaLicitacao({ id: ctx.tender.id, duplicataDe: ctx.tender.duplicataDe }, itens)
+    res.json({ meses: MESES_DO_HISTORICO, minimoDeCasos: MINIMO_DE_CASOS, itens: resultado })
   })
 )
 

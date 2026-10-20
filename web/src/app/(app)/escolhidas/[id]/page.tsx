@@ -1,7 +1,7 @@
 'use client'
 
 import { formatarData, formatarDataDaLicitacao, palavraDias } from '@/lib/datas'
-import { use, useCallback, useEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react'
+import { Fragment, use, useCallback, useEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowRight, FileDown, FileSignature, FolderArchive, Gavel, Plus, RefreshCw, Save, Search, Trash2 } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
@@ -9,6 +9,8 @@ import { api, ApiRequestError, baixarArquivo } from '@/lib/api'
 import { useAvisoDeAlteracoesNaoSalvas } from '@/hooks/useAvisoDeAlteracoesNaoSalvas'
 import { DadosDoEstudo, EstudoResposta, PesquisaDePrecosResposta, ResultadoDoEstudo } from '@/lib/estudoTypes'
 import { arredondarCasas, lerNumero } from '@/lib/numeroBr'
+import { MINIMO_DE_CASOS, TEXTO_DA_BASE, type PrecosVencedoresResposta } from '@/lib/precosVencedores'
+import { CasosDosVencedores, VencedoresDoItem, type SituacaoDosVencedores } from '@/components/PrecosVencedores'
 import {
   Button,
   Carregando,
@@ -133,6 +135,9 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
   const [escopoUf, setEscopoUf] = useState<'BR' | 'UF'>('BR')
   const [meses, setMeses] = useState(12)
   const [amostras, setAmostras] = useState<Record<string, PesquisaDePrecosResposta>>({})
+  const [vencedores, setVencedores] = useState<PrecosVencedoresResposta | null>(null)
+  const [situacaoDosVencedores, setSituacaoDosVencedores] = useState<SituacaoDosVencedores>('carregando')
+  const [casosAbertos, setCasosAbertos] = useState<Record<string, boolean>>({})
   const versaoCalculo = useRef(0)
 
   useEffect(() => {
@@ -145,6 +150,25 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
         setResultado(r.resultado)
       })
       .catch((e) => setErro(e instanceof ApiRequestError ? e.message : 'Erro ao carregar o estudo'))
+  }, [user, id])
+
+  useEffect(() => {
+    if (!user) return
+    let cancelado = false
+    setSituacaoDosVencedores('carregando')
+    api
+      .get<PrecosVencedoresResposta>(`/api/estudos/${id}/precos-vencedores`)
+      .then((r) => {
+        if (cancelado) return
+        setVencedores(r)
+        setSituacaoDosVencedores('pronto')
+      })
+      .catch(() => {
+        if (!cancelado) setSituacaoDosVencedores('erro')
+      })
+    return () => {
+      cancelado = true
+    }
   }, [user, id])
 
   useEffect(() => {
@@ -281,6 +305,8 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
 
   const t = estudo.tender
   const linhaPorItem = new Map(resultado.itens.map((l) => [l.id, l]))
+  const vencedoresPorItem = new Map((vencedores?.itens ?? []).map((v) => [v.itemId, v]))
+  const mesesDosVencedores = vencedores?.meses ?? 24
   const estimadoDosItens = resultado.estimadoPeloOrgao
   const vendaAcimaDoEstimado = estimadoDosItens !== null && estimadoDosItens > 0 && resultado.receita > estimadoDosItens
   const temCatalogo = estudo.itens.some((i) => i.codigoCatalogo)
@@ -357,7 +383,7 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
             </div>
           )}
 
-          <TableWrap minWidth={1180}>
+          <TableWrap minWidth={1400}>
             <Table>
               <THead>
                 <tr>
@@ -365,6 +391,7 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
                   <Th align="right">Qtd.</Th>
                   <Th align="right">Estimado un. (órgão)</Th>
                   <Th>Mercado (pago)</Th>
+                  <Th>Vencedores (PNCP)</Th>
                   <Th>Seu custo un.</Th>
                   <Th>Seu preço un.</Th>
                   <Th align="right">Custo total</Th>
@@ -382,8 +409,11 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
                   const minimo = l?.precoMinimoUnit ?? null
                   const precoAcimaDoEstimado = estimadoUnit !== null && estimadoUnit > 0 && e.precoVendaUnit !== null && e.precoVendaUnit > estimadoUnit
                   const minimoAcimaDoEstimado = estimadoUnit !== null && estimadoUnit > 0 && minimo !== null && minimo > estimadoUnit
+                  const doVencedor = vencedoresPorItem.get(it.id)
+                  const casosAberto = !!casosAbertos[it.id] && !!doVencedor && doVencedor.amostras >= MINIMO_DE_CASOS
                   return (
-                    <Tr key={it.id}>
+                    <Fragment key={it.id}>
+                    <Tr>
                       <Td className="max-w-[260px]">
                         <span className="line-clamp-2 text-ink" title={it.descricao}>
                           {it.numero ? <span className="font-mono text-muted">{it.numero}. </span> : ''}
@@ -454,6 +484,18 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
                           <span className="text-faint">sem código de catálogo</span>
                         )}
                       </Td>
+                      <Td className="min-w-[210px] text-xs">
+                        <VencedoresDoItem
+                          situacao={situacaoDosVencedores}
+                          item={doVencedor}
+                          tipo={it.tipoCatalogo}
+                          unidadeDoItem={it.unidade}
+                          nomeDoItem={nomeDoItem}
+                          aberto={casosAberto}
+                          onAlternar={() => setCasosAbertos((c) => ({ ...c, [it.id]: !c[it.id] }))}
+                          onUsarMediana={(mediana) => alterar((d) => ({ ...d, itens: { ...d.itens, [it.id]: { custoUnit: e.custoUnit, precoVendaUnit: mediana } } }))}
+                        />
+                      </Td>
                       <Td>
                         <div className="w-36">
                           <Numero
@@ -498,12 +540,20 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
                         {e.precoVendaUnit === null ? '—' : brl(l?.venda ?? 0)}
                       </Td>
                     </Tr>
+                    {casosAberto && doVencedor && (
+                      <Tr>
+                        <Td colSpan={9} className="bg-sunken">
+                          <CasosDosVencedores item={doVencedor} meses={mesesDosVencedores} />
+                        </Td>
+                      </Tr>
+                    )}
+                    </Fragment>
                   )
                 })}
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-line-strong bg-sunken">
-                  <Td colSpan={6} className="text-right text-sm font-semibold text-ink">
+                  <Td colSpan={7} className="text-right text-sm font-semibold text-ink">
                     Total dos itens
                   </Td>
                   <Td numeric className="font-semibold text-ink">
@@ -517,6 +567,9 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
               </tfoot>
             </Table>
           </TableWrap>
+          <p className="text-xs text-muted">
+            <span className="font-medium text-ink-2">Preços vencedores em licitações parecidas</span> (últimos {mesesDosVencedores} meses, pelo mesmo código CATMAT/CATSER ou pela descrição parecida): {TEXTO_DA_BASE}
+          </p>
         </div>
       </Panel>
 

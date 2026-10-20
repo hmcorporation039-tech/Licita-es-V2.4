@@ -125,16 +125,21 @@ export interface GrupoDeUnidade {
   amostras: number
 }
 
-export interface PrecosPorUnidade {
+export interface PrecoComUnidade {
+  precoUnitario: number
+  unidade: string | null
+}
+
+export interface PrecosPorUnidade<T extends PrecoComUnidade = RegistroDePreco> {
   estatisticas: EstatisticasDePreco | null
   unidade: string | null
   unidadeConfere: boolean | null
   unidades: GrupoDeUnidade[]
-  registros: RegistroDePreco[]
+  registros: T[]
 }
 
-export function estatisticasPorUnidade(registros: RegistroDePreco[], unidadeDoItem: string | null | undefined): PrecosPorUnidade {
-  const grupos = new Map<string | null, RegistroDePreco[]>()
+export function estatisticasPorUnidade<T extends PrecoComUnidade = RegistroDePreco>(registros: T[], unidadeDoItem: string | null | undefined): PrecosPorUnidade<T> {
+  const grupos = new Map<string | null, T[]>()
   for (const r of registros) {
     const chave = normalizarUnidade(r.unidade)
     grupos.set(chave, [...(grupos.get(chave) ?? []), r])
