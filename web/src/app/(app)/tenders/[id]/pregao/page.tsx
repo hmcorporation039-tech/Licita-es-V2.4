@@ -53,6 +53,14 @@ import {
   TextLink,
 } from "@/components/ui";
 import { AvatarDaBela } from "@/components/Bela";
+import {
+  TEXTO_DA_BASE,
+  acimaDoQueCostumaVencer,
+  referenciaParaOPregao,
+  textoDaReferencia,
+  type PrecosVencedoresResposta,
+  type ReferenciaDoPregao,
+} from "@/lib/precosVencedores";
 import { ChecklistDaDisputa, PlanoDoValorFinal } from "@/components/PlanoDeDisputa";
 
 const ALVO_GLOBAL = "global";
@@ -259,12 +267,34 @@ function Indicador({
   );
 }
 
+function ReferenciaDosVencedores({
+  alvo,
+  criterio,
+  referencia,
+}: {
+  alvo: AlvoDoPregao;
+  criterio: CriterioDoPregao;
+  referencia: ReferenciaDoPregao;
+}) {
+  const acima = acimaDoQueCostumaVencer(alvo, criterio, referencia);
+  return (
+    <p className="text-xs text-muted" title={TEXTO_DA_BASE}>
+      {textoDaReferencia(referencia)}
+      {acima && (
+        <span className="text-ink-2"> · seu preço proposto está acima do que costuma vencer</span>
+      )}
+    </p>
+  );
+}
+
 function ResumoDoAlvo({
   alvo,
   painel,
+  referencia,
 }: {
   alvo: AlvoDoPregao;
   painel: PainelDoPregao;
+  referencia: ReferenciaDoPregao | null;
 }) {
   const propostoAbaixoDoMinimo =
     alvo.precoProposto !== null &&
@@ -312,6 +342,13 @@ function ResumoDoAlvo({
           detalhe="dados / limite combinado"
         />
       </dl>
+      {referencia && (
+        <ReferenciaDosVencedores
+          alvo={alvo}
+          criterio={painel.config.criterio}
+          referencia={referencia}
+        />
+      )}
     </div>
   );
 }
@@ -793,6 +830,9 @@ export default function PregaoComABelaPage({
   const [enviando, setEnviando] = useState<Acao | null>(null);
   const [erroDaAcao, setErroDaAcao] = useState<string | null>(null);
   const [avisoDaBela, setAvisoDaBela] = useState<string | null>(null);
+  const [vencedores, setVencedores] = useState<PrecosVencedoresResposta | null>(
+    null,
+  );
 
   useEffect(() => {
     if (!user) return;
@@ -819,6 +859,22 @@ export default function PregaoComABelaPage({
       cancelado = true;
     };
   }, [user, id, tentativa]);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelado = false;
+    api
+      .get<PrecosVencedoresResposta>(`/api/estudos/${id}/precos-vencedores`)
+      .then((r) => {
+        if (!cancelado) setVencedores(r);
+      })
+      .catch(() => {
+        if (!cancelado) setVencedores(null);
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [user, id]);
 
   const voltar = { href: `/tenders/${id}`, label: "Licitação" };
 
@@ -866,6 +922,12 @@ export default function PregaoComABelaPage({
   const alvo =
     painelAtual.alvos.find((a) => a.id === alvoId) ?? alvoPadrao;
   const encerrado = Boolean(painelAtual.config.encerradoEm);
+  const referenciaDosVencedores =
+    alvo.id === ALVO_GLOBAL
+      ? null
+      : referenciaParaOPregao(
+          vencedores?.itens.find((v) => v.itemId === alvo.id),
+        );
   const lancesDoAlvo = painelAtual.lances.filter((l) => l.alvo === alvo.id);
   const meuLanceAnotado =
     lancesDoAlvo[0]?.origem === "MEU_LANCE" ? lancesDoAlvo[0].valor : null;
@@ -1170,7 +1232,11 @@ export default function PregaoComABelaPage({
             />
           )}
 
-          <ResumoDoAlvo alvo={alvo} painel={painelAtual} />
+          <ResumoDoAlvo
+            alvo={alvo}
+            painel={painelAtual}
+            referencia={referenciaDosVencedores}
+          />
 
           <Panel
             title="Melhor lance agora"

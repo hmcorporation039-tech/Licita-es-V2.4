@@ -76,6 +76,11 @@ describe('escolha do vencedor do item', () => {
     expect(vencedor?.fornecedoresRegistrados).toBe(3)
   })
 
+  it('vencedor pessoa física: o CPF já é guardado mascarado, o CNPJ fica inteiro', () => {
+    expect(escolherVencedor([{ ...RESULTADO_REAL, tipoPessoa: 'PF', niFornecedor: '12345678901' }])?.ni).toBe('***.456.789-**')
+    expect(escolherVencedor([{ ...RESULTADO_REAL, niFornecedor: ' 52112156000168 ' }])?.ni).toBe('52112156000168')
+  })
+
   it('empate na classificação: decide pelo sequencial do resultado', () => {
     const vencedor = escolherVencedor([
       { ...RESULTADO_REAL, niFornecedor: '1', nomeRazaoSocialFornecedor: 'DEPOIS', ordemClassificacaoSrp: null, sequencialResultado: 2 },
