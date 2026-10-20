@@ -9,6 +9,7 @@ import { Paginated, TenderMatch } from '@/lib/types'
 import NotaDeAderencia from '@/components/NotaDeAderencia'
 import { Button, Carregando, Checkbox, EmptyState, ErrorState, Field, LinkButton, PageHeader, Prazo, Select, StatusTag, cx, useDialogo } from '@/components/ui'
 import SeloObraCompleta from '@/components/SeloObraCompleta'
+import ExportarParaExcel from '@/components/ExportarParaExcel'
 import { ROTULOS_DE_FONTE } from '@/lib/fontes'
 import { fimDasPropostas, localDaLicitacao } from '@/lib/licitacaoNaTela'
 
@@ -108,9 +109,12 @@ export default function MatchesPage() {
         actions={
           data &&
           data.total > 0 && (
-            <Button variant="danger" size="sm" icon={Trash2} onClick={clearAllMatches} loading={clearing}>
-              {clearing ? 'Apagando…' : 'Apagar todos os matches'}
-            </Button>
+            <div className="flex flex-wrap items-start gap-2">
+              <ExportarParaExcel planilha="matches" title="Baixa todas as licitações do feed (não só esta página), uma por linha, com os itens que combinaram" />
+              <Button variant="danger" size="sm" icon={Trash2} onClick={clearAllMatches} loading={clearing}>
+                {clearing ? 'Apagando…' : 'Apagar todos os matches'}
+              </Button>
+            </div>
           )
         }
       />

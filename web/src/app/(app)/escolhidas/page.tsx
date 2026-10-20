@@ -10,6 +10,7 @@ import { Button, Carregando, EmptyState, ErrorState, LinkButton, PageHeader, Pra
 import { ROTULOS_DE_FONTE } from '@/lib/fontes'
 import { fimDasPropostas, localDaLicitacao } from '@/lib/licitacaoNaTela'
 import AvisoDeVersaoDoPncp from '@/components/AvisoDeVersaoDoPncp'
+import ExportarParaExcel from '@/components/ExportarParaExcel'
 
 function formatValor(v: string | null) {
   if (!v) return '—'
@@ -50,10 +51,16 @@ export default function EscolhidasPage() {
     <>
       <PageHeader
         title="Licitações escolhidas"
+        actions={
+          !loading && (
+            <ExportarParaExcel planilha="escolhidas" title="Baixa todas as licitações com plano de participação: escolhidas, em avaliação, já disputadas e descartadas" />
+          )
+        }
         description={
           <p className="max-w-3xl">
             Licitações em que você decidiu concorrer. Para incluir uma, use “Escolher esta licitação” no detalhe da licitação ou “Marcar como interessado” em “Meus matches”.
-            Em cada uma, o estudo de custos calcula preços de mercado, deslocamento, prazo, lucro ou prejuízo e gera o PDF.
+            Em cada uma, o estudo de custos calcula preços de mercado, deslocamento, prazo, lucro ou prejuízo e gera o PDF. A planilha do Excel traz
+            também as licitações em avaliação, as já disputadas e as descartadas, com a situação de cada uma.
           </p>
         }
       />

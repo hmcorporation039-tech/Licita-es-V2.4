@@ -193,3 +193,12 @@ export const cepLimiter = rateLimit({
   keyGenerator: (req) => req.userId ?? 'anonimo',
   message: { error: 'Muitas consultas de CEP — aguarde alguns minutos e tente de novo' },
 })
+
+export const exportacaoPlanilhaLimiter = rateLimit({
+  windowMs: JANELA_MS,
+  limit: limite(30),
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  keyGenerator: (req) => req.userId ?? 'anonimo',
+  message: { error: 'Muitas planilhas geradas — aguarde alguns minutos e tente de novo' },
+})

@@ -12,6 +12,18 @@ import { registrarAuditoria } from '../../services/auditService'
 import { whereDaLicitacaoNoFeed } from '../../lib/feedDeMatches'
 import { TENDER_PUBLICO } from '../../lib/tenderPublico'
 import { Aderencia, calcularAderencia } from '../../lib/aderencia'
+import { exportacaoPlanilhaLimiter } from '../rateLimit'
+import { gerarPlanilhaXlsx } from '../../lib/planilhaXlsx'
+import {
+  CAMPOS_DA_LICITACAO_NA_PLANILHA,
+  COLUNAS_DOS_MATCHES,
+  TETO_DE_LINHAS_DA_PLANILHA,
+  agruparMatchesPorLicitacao,
+  avisoDeListaCortada,
+  linhaDoMatch,
+} from '../../lib/planilhasDaEmpresa'
+import { linkDaLicitacaoNoMonitor } from '../../services/emailService'
+import { responderComPlanilha } from '../respostaDePlanilha'
 
 export const matchesRouter = Router()
 
@@ -158,6 +170,53 @@ matchesRouter.get(
       totalPages: Math.max(1, Math.ceil(totalPaginavel / pageSize)),
       ordenacaoPorNotaLimitadaA,
     })
+  })
+)
+
+export const TETO_DE_MATCHES_LIDOS_NA_EXPORTACAO = 50_000
+
+matchesRouter.get(
+  '/exportar',
+  exportacaoPlanilhaLimiter,
+  asyncHandler(async (req, res) => {
+    const matches = await prisma.tenderMatch.findMany({
+      where: { companyId: req.companyId!, tender: whereDaLicitacaoNoFeed() },
+      orderBy: ORDEM_DA_AMOSTRA_POR_NOTA,
+      take: TETO_DE_MATCHES_LIDOS_NA_EXPORTACAO,
+      select: {
+        tenderId: true,
+        ...CAMPOS_DA_NOTA,
+        tender: { select: { ...CAMPOS_DA_NOTA.tender.select, fonte: true, aberturaAt: true } },
+        monitoredItem: { select: { ...CAMPOS_DA_NOTA.monitoredItem.select, name: true } },
+      },
+    })
+    const grupos = agruparMatchesPorLicitacao(
+      matches.map((m) => ({
+        tenderId: m.tenderId,
+        nomeDoItem: m.monitoredItem.name,
+        dentroDeObraCompleta: m.dentroDeObraCompleta,
+        nota: aderenciaDoMatch(m).nota,
+        datas: m.tender,
+      }))
+    )
+    const selecionados = grupos.slice(0, TETO_DE_LINHAS_DA_PLANILHA)
+    const cortada = grupos.length > selecionados.length || matches.length >= TETO_DE_MATCHES_LIDOS_NA_EXPORTACAO
+    const licitacoes = await prisma.tender.findMany({
+      where: { id: { in: selecionados.map((g) => g.tenderId) } },
+      select: CAMPOS_DA_LICITACAO_NA_PLANILHA,
+    })
+    const porId = new Map(licitacoes.map((t) => [t.id, t]))
+    const linhas = selecionados.flatMap((grupo) => {
+      const licitacao = porId.get(grupo.tenderId)
+      return licitacao ? [linhaDoMatch(grupo, licitacao, linkDaLicitacaoNoMonitor(licitacao.id))] : []
+    })
+    const planilha = gerarPlanilhaXlsx({
+      nomeDaAba: 'Meus matches',
+      colunas: COLUNAS_DOS_MATCHES,
+      linhas,
+      observacaoFinal: cortada ? avisoDeListaCortada(linhas.length, 'prazo mais próximo') : undefined,
+    })
+    await responderComPlanilha(req, res, 'matches', linhas.length, planilha)
   })
 )
 

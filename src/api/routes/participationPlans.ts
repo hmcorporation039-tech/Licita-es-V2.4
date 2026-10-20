@@ -11,6 +11,17 @@ import { prisma } from '../../services/tenderService'
 import { asyncHandler } from '../asyncHandler'
 import { PARTICIPATION_STATUS_VALUES } from './tenders'
 import { TENDER_PUBLICO } from '../../lib/tenderPublico'
+import { exportacaoPlanilhaLimiter } from '../rateLimit'
+import { gerarPlanilhaXlsx } from '../../lib/planilhaXlsx'
+import {
+  CAMPOS_DA_LICITACAO_NA_PLANILHA,
+  COLUNAS_DAS_ESCOLHIDAS,
+  TETO_DE_LINHAS_DA_PLANILHA,
+  avisoDeListaCortada,
+  linhaDaEscolhida,
+} from '../../lib/planilhasDaEmpresa'
+import { linkDaLicitacaoNoMonitor } from '../../services/emailService'
+import { responderComPlanilha } from '../respostaDePlanilha'
 
 export const participationPlansRouter = Router()
 
@@ -30,5 +41,27 @@ participationPlansRouter.get(
     })
 
     res.json(plans)
+  })
+)
+
+participationPlansRouter.get(
+  '/exportar',
+  exportacaoPlanilhaLimiter,
+  asyncHandler(async (req, res) => {
+    const planos = await prisma.tenderParticipationPlan.findMany({
+      where: { companyId: req.companyId! },
+      orderBy: [{ updatedAt: 'desc' }, { id: 'asc' }],
+      take: TETO_DE_LINHAS_DA_PLANILHA + 1,
+      select: { status: true, tender: { select: CAMPOS_DA_LICITACAO_NA_PLANILHA } },
+    })
+    const selecionados = planos.slice(0, TETO_DE_LINHAS_DA_PLANILHA)
+    const linhas = selecionados.map((p) => linhaDaEscolhida(p.status, p.tender, linkDaLicitacaoNoMonitor(p.tender.id)))
+    const planilha = gerarPlanilhaXlsx({
+      nomeDaAba: 'Escolhidas',
+      colunas: COLUNAS_DAS_ESCOLHIDAS,
+      linhas,
+      observacaoFinal: planos.length > selecionados.length ? avisoDeListaCortada(linhas.length, 'atualizadas mais recentemente') : undefined,
+    })
+    await responderComPlanilha(req, res, 'escolhidas', linhas.length, planilha)
   })
 )
