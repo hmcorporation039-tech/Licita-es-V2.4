@@ -29,6 +29,7 @@ import { anonimizarAuditoriaAntiga, cleanupOldUnmatchedTenders, cleanupOldWorker
 import { apagarTextosDeEditaisAntigos } from '../services/textosDoEdital'
 import { apagarErrosAntigos, registrarErro, textoDaFalha } from '../services/errosDoSistema'
 import { apagarChamadosAntigos } from '../services/chamados'
+import { apagarConversasAntigas } from '../services/atendimento'
 import { checkExpiringDocuments } from '../services/documentAlertService'
 import { configuracaoDeIa } from '../services/analiseEmDupla'
 import { textoDoDiagnostico } from '../lib/diagnosticoDeChave'
@@ -142,6 +143,8 @@ async function main() {
       console.log(`[Retenção] Texto guardado para a conversa apagado de ${licitacoes} licitação(ões) encerrada(s).`)
       const { apagados: erros } = await apagarErrosAntigos()
       const { apagados: chamados } = await apagarChamadosAntigos()
+      const { apagadas: conversas } = await apagarConversasAntigas()
+      console.log(`[Retenção] ${conversas} mensagem(ns) do atendimento com mais de 180 dias apagada(s).`)
       console.log(`[Retenção] ${erros} erro(s) do sistema e ${chamados} chamado(s) resolvido(s) antigos apagados.`)
     } catch (err) {
       console.error('[Retenção] Erro na limpeza:', err)

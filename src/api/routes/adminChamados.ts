@@ -7,6 +7,8 @@ import { escritaSensivelLimiter } from '../rateLimit'
 import { registrarAuditoria } from '../../services/auditService'
 import { errosDoChamado } from '../../services/errosDoSistema'
 import { mudarStatusDoChamado, responderChamado } from '../../services/chamados'
+import { diagnosticarChamado } from '../../services/diagnostico'
+import { atendimentoHabilitado } from '../../services/atendimento'
 import { STATUS_DE_CHAMADO, TAMANHO_MAXIMO_DA_MENSAGEM, TIPOS_DE_CHAMADO, codigosDosErros } from '../../lib/suporte'
 
 export const adminChamadosRouter = Router()
@@ -129,5 +131,18 @@ adminChamadosRouter.get(
       prisma.erroDoSistema.count({ where }),
     ])
     res.json({ erros, total, pagina, porPagina })
+  })
+)
+
+adminChamadosRouter.post(
+  '/chamados/:numero/diagnostico',
+  escritaSensivelLimiter,
+  asyncHandler(async (req, res) => {
+    if (!atendimentoHabilitado()) throw new ApiError(503, 'A IA está desligada nesta instalação')
+    const chamado = await chamadoPeloNumero(req)
+    const resultado = await diagnosticarChamado(chamado.id, { forcar: true })
+    if (resultado === 'IGNORADO') throw new ApiError(409, 'Já existe um diagnóstico sendo feito para este chamado. Aguarde alguns minutos.')
+    const atualizado = await prisma.chamado.findUniqueOrThrow({ where: { id: chamado.id }, select: { diagnostico: true, diagnosticoStatus: true, diagnosticoEm: true } })
+    res.json(atualizado)
   })
 )

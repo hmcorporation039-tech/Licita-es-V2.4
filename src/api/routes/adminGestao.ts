@@ -219,6 +219,7 @@ const patchCompanySchema = z.object({
       usuarios: limiteSchema.optional(),
       analisesIaMes: limiteSchema.optional(),
       perguntasAoEditalMes: limiteSchema.optional(),
+      mensagensDeSuporteMes: limiteSchema.optional(),
     })
     .strict()
     .nullable()
@@ -279,6 +280,7 @@ const limitsSchema = z
     usuarios: limiteSchema,
     analisesIaMes: limiteSchema,
     perguntasAoEditalMes: limiteSchema.optional(),
+    mensagensDeSuporteMes: limiteSchema.optional(),
   })
   .strict()
 

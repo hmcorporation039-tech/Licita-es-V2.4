@@ -12,6 +12,7 @@ const CAMPOS: { chave: keyof Limites; rotulo: string }[] = [
   { chave: 'usuarios', rotulo: 'Usuários' },
   { chave: 'analisesIaMes', rotulo: 'Análises de IA / mês' },
   { chave: 'perguntasAoEditalMes', rotulo: 'Perguntas ao edital / mês' },
+  { chave: 'mensagensDeSuporteMes', rotulo: 'Mensagens ao atendimento / mês' },
 ]
 
 export default function AdminPlanosPage() {
@@ -100,7 +101,7 @@ function CartaoPlano({ plano, onSalvo, onErro }: { plano: PlanoComercial; onSalv
   const [nome, setNome] = useState(plano.name)
   const [ativo, setAtivo] = useState(plano.active)
   const [limites, setLimites] = useState<Record<string, string>>(
-    Object.fromEntries(CAMPOS.map((c) => [c.chave, paraTexto(plano.limits[c.chave])]))
+    Object.fromEntries(CAMPOS.map((c) => [c.chave, paraTexto(plano.limits[c.chave] ?? null)]))
   )
 
   async function salvar() {
@@ -175,7 +176,7 @@ function NovoPlano({ onCriado, onErro }: { onCriado: () => void; onErro: (m: str
       await api.post('/api/admin/plans', {
         code: code.trim().toUpperCase(),
         name: nome.trim(),
-        limits: { itensMonitorados: 3, usuarios: 1, analisesIaMes: 3, perguntasAoEditalMes: 10 },
+        limits: { itensMonitorados: 3, usuarios: 1, analisesIaMes: 3, perguntasAoEditalMes: 10, mensagensDeSuporteMes: 30 },
       })
       setCode('')
       setNome('')

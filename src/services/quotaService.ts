@@ -62,7 +62,7 @@ export async function pedidosDeAnaliseNaUltimaHora(companyId: string, agora: Dat
 
 export async function usoDaEmpresa(companyId: string): Promise<UsoDaEmpresa> {
   const inicioDoMes = inicioDoMesBrasilia()
-  const [itensMonitorados, usuarios, analisesConcluidas, emAndamento, perguntasAoEditalMes] = await Promise.all([
+  const [itensMonitorados, usuarios, analisesConcluidas, emAndamento, perguntasAoEditalMes, mensagensDeSuporteMes] = await Promise.all([
     // Conta todos (ativos ou não): senão desativar e recriar burlaria o limite.
     prisma.monitoredItem.count({ where: { companyId } }),
     prisma.user.count({ where: { companyId, active: true } }),
@@ -70,8 +70,9 @@ export async function usoDaEmpresa(companyId: string): Promise<UsoDaEmpresa> {
     prisma.aiUsage.count({ where: { companyId, status: 'OK', etapa: 'analise', createdAt: { gte: inicioDoMes } } }),
     analisesEmAndamento(companyId),
     prisma.editalPergunta.count({ where: { companyId, createdAt: { gte: inicioDoMes } } }),
+    prisma.mensagemDeSuporte.count({ where: { companyId, papel: 'USUARIO', createdAt: { gte: inicioDoMes } } }),
   ])
-  return { itensMonitorados, usuarios, analisesIaMes: analisesConcluidas + emAndamento, perguntasAoEditalMes }
+  return { itensMonitorados, usuarios, analisesIaMes: analisesConcluidas + emAndamento, perguntasAoEditalMes, mensagensDeSuporteMes }
 }
 
 export async function resumoDeCotas(companyId: string) {

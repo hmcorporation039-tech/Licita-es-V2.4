@@ -22,11 +22,12 @@ describe('quantidadeDoRecurso', () => {
 
 describe('lerLimites', () => {
   it('lê limites válidos, inclusive null (ilimitado)', () => {
-    expect(lerLimites({ itensMonitorados: null, usuarios: 5, analisesIaMes: 40, perguntasAoEditalMes: null })).toEqual({
+    expect(lerLimites({ itensMonitorados: null, usuarios: 5, analisesIaMes: 40, perguntasAoEditalMes: null, mensagensDeSuporteMes: 300 })).toEqual({
       itensMonitorados: null,
       usuarios: 5,
       analisesIaMes: 40,
       perguntasAoEditalMes: null,
+      mensagensDeSuporteMes: 300,
     })
   })
 
@@ -38,14 +39,14 @@ describe('lerLimites', () => {
 })
 
 describe('limitesEfetivos', () => {
-  const plano = { itensMonitorados: 10, usuarios: 1, analisesIaMes: 10, perguntasAoEditalMes: 150 }
+  const plano = { itensMonitorados: 10, usuarios: 1, analisesIaMes: 10, perguntasAoEditalMes: 150, mensagensDeSuporteMes: 100 }
 
   it('sem ajuste vale o plano', () => {
     expect(limitesEfetivos(plano, null)).toEqual(plano)
   })
 
   it('o ajuste combinado com o cliente vence o plano, só nas chaves informadas', () => {
-    expect(limitesEfetivos(plano, { itensMonitorados: 30 })).toEqual({ itensMonitorados: 30, usuarios: 1, analisesIaMes: 10, perguntasAoEditalMes: 150 })
+    expect(limitesEfetivos(plano, { itensMonitorados: 30 })).toEqual({ itensMonitorados: 30, usuarios: 1, analisesIaMes: 10, perguntasAoEditalMes: 150, mensagensDeSuporteMes: 100 })
     expect(limitesEfetivos(plano, { usuarios: null }).usuarios).toBeNull()
   })
 })
