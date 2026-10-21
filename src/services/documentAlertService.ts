@@ -13,6 +13,7 @@ import { sendDocumentExpiryEmail } from './emailService'
 import { formatarDiaDoCalendario } from '../lib/dataDeBrasilia'
 import { quandoVence } from '../lib/plural'
 import { SELECT_DO_DESTINATARIO, acessoDoDestinatarioComEmpresa } from './avisoDeAcessoEncerrado'
+import { linksDeDescadastro } from '../lib/descadastro'
 
 export const ALERT_THRESHOLD_DAYS = 15
 export const ALERT_COOLDOWN_DAYS = 7
@@ -26,6 +27,7 @@ export async function checkExpiringDocuments(): Promise<{ checked: number; alert
     where: {
       dataValidade: { lte: threshold },
       OR: [{ lastAlertedAt: null }, { lastAlertedAt: { lte: cooldownCutoff } }],
+      user: { receberAvisoDeDocumento: true },
     },
     include: { user: { select: SELECT_DO_DESTINATARIO } },
   })
@@ -42,6 +44,7 @@ export async function checkExpiringDocuments(): Promise<{ checked: number; alert
         documentName: doc.nome,
         diasRestantes,
         dataValidade: doc.dataValidade,
+        descadastro: linksDeDescadastro(doc.userId, 'aviso-de-documento'),
       })
 
       await prisma.notification.create({

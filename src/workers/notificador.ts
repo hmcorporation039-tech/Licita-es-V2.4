@@ -15,6 +15,7 @@ import { enviarResumosDiarios } from '../services/resumoDiario'
 import { enviarLembretesDePrazo } from '../services/lembreteDePrazo'
 import { estaAberta } from '../lib/licitacaoAberta'
 import { SELECT_DO_DESTINATARIO, acessoDoDestinatarioComEmpresa, avisarFimDoAcessoUmaVez } from '../services/avisoDeAcessoEncerrado'
+import { linksDeDescadastro } from '../lib/descadastro'
 
 async function jaNotificado(caminho: string[], valor: string): Promise<boolean> {
   const existente = await prisma.notification.findFirst({
@@ -47,7 +48,7 @@ async function processarRotina(payload: NotificadorRotinaPayload): Promise<void>
   if (falhas > 0) throw new Error(`${falhas} lembrete(s) de prazo não enviado(s)`)
 }
 
-async function processarAlteracao(payload: NotificadorAlteracaoPayload): Promise<void> {
+export async function processarAlteracao(payload: NotificadorAlteracaoPayload): Promise<void> {
   const { tenderId, userId, campos } = payload
 
   // A chave de idempotência inclui os campos alterados: uma segunda
@@ -57,9 +58,9 @@ async function processarAlteracao(payload: NotificadorAlteracaoPayload): Promise
 
   const [tender, user] = await Promise.all([
     prisma.tender.findUnique({ where: { id: tenderId } }),
-    prisma.user.findUnique({ where: { id: userId }, select: SELECT_DO_DESTINATARIO }),
+    prisma.user.findUnique({ where: { id: userId }, select: { ...SELECT_DO_DESTINATARIO, receberAvisoDeAlteracao: true } }),
   ])
-  if (!tender || !user || acessoDoDestinatarioComEmpresa(user).situacao !== 'ativo') return
+  if (!tender || !user || !user.receberAvisoDeAlteracao || acessoDoDestinatarioComEmpresa(user).situacao !== 'ativo') return
 
   await sendTenderChangedEmail({
     to: user.email,
@@ -69,6 +70,7 @@ async function processarAlteracao(payload: NotificadorAlteracaoPayload): Promise
     encerramentoAt: tender.encerramentoAt,
     fonte: tender.fonte,
     linkEdital: tender.linkEdital,
+    descadastro: linksDeDescadastro(user.id, 'aviso-de-alteracao'),
   })
 
   await prisma.notification.create({
@@ -82,7 +84,7 @@ async function processarAlteracao(payload: NotificadorAlteracaoPayload): Promise
     },
   })
 
-  console.log(`[Notificador Worker] Aviso de alteração enviado para ${user.email} (tender ${tenderId})`)
+  console.log(`[Notificador Worker] Aviso de alteração enviado para o usuário ${user.id} (tender ${tenderId})`)
 }
 
 export function startNotificadorWorker() {

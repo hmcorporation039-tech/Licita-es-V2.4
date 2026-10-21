@@ -75,6 +75,23 @@ export const changePasswordLimiter = rateLimit({
   message: { error: 'Muitas tentativas — aguarde alguns minutos e tente de novo' },
 })
 
+export const descadastroLimiter = rateLimit({
+  windowMs: JANELA_MS,
+  limit: limite(30),
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { error: 'Muitas tentativas — aguarde alguns minutos e tente de novo' },
+})
+
+export const descadastroUmCliqueLimiter = rateLimit({
+  windowMs: JANELA_MS,
+  limit: limite(10),
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  keyGenerator: (req) => `descadastro:${String(req.query.t ?? '').slice(0, 300)}`,
+  message: { error: 'Muitas tentativas — aguarde alguns minutos e tente de novo' },
+})
+
 // Cadastro público: cada tentativa gera um bcrypt e pode disparar e-mail.
 // Por IP e por hora, para frear criação em massa de contas de teste.
 export const cadastroLimiter = rateLimit({

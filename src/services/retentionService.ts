@@ -107,3 +107,34 @@ export async function cleanupOldWorkerLogs(): Promise<{ deleted: number }> {
 
   return { deleted: count }
 }
+
+export const AUDITORIA_RETENCAO_ANOS = 5
+const LOTE_DA_AUDITORIA = 1_000
+
+export function corteDaAuditoria(agora: Date = new Date()): Date {
+  const corte = new Date(agora.getTime())
+  corte.setUTCFullYear(corte.getUTCFullYear() - AUDITORIA_RETENCAO_ANOS)
+  return corte
+}
+
+export async function anonimizarAuditoriaAntiga(agora: Date = new Date()): Promise<{ anonimizados: number }> {
+  const corte = corteDaAuditoria(agora)
+  let anonimizados = 0
+  for (;;) {
+    const alterados = await prisma.$executeRaw`
+      UPDATE "audit_logs" SET
+        "actor_email" = NULL,
+        "ip" = NULL,
+        "user_agent" = NULL,
+        "metadata" = CASE WHEN "metadata"->>'email' IS NOT NULL THEN "metadata" - 'email' ELSE "metadata" END
+      WHERE "id" IN (
+        SELECT "id" FROM "audit_logs"
+        WHERE "created_at" < ${corte}
+          AND ("actor_email" IS NOT NULL OR "ip" IS NOT NULL OR "user_agent" IS NOT NULL OR "metadata"->>'email' IS NOT NULL)
+        LIMIT ${LOTE_DA_AUDITORIA}
+      )`
+    anonimizados += alterados
+    if (alterados < LOTE_DA_AUDITORIA) break
+  }
+  return { anonimizados }
+}

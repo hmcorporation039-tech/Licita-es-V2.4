@@ -6,7 +6,7 @@ export default function PrivacidadePage() {
   return (
     <PublicProse titulo="Política de Privacidade" rotulo="Documento legal">
       <div className="text-base leading-relaxed text-ink-2 marker:text-faint [&_h2]:mb-3 [&_h2]:mt-8 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:text-ink [&_li]:pl-1 [&_p]:mb-3 [&_strong]:font-semibold [&_strong]:text-ink [&_ul]:mb-3 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-5">
-        <p className="text-sm text-muted">Versão de 20 de outubro de 2026.</p>
+        <p className="text-sm text-muted">Versão de 21 de outubro de 2026.</p>
         <p>
           Esta Política explica quais dados pessoais a Licita Bela trata, para quê, com quem compartilha e quais são os seus
           direitos, conforme a Lei Geral de Proteção de Dados (Lei 13.709/2018). A controladora dos dados é a{' '}
@@ -77,6 +77,11 @@ export default function PrivacidadePage() {
             <strong>Anthropic e Google</strong>: provedores de inteligência artificial. Recebem apenas o texto público do edital
             para gerar o resumo. Não enviamos seus dados cadastrais, financeiros nem os documentos do cofre.
           </li>
+          <li>
+            <strong>Reconhecimento de voz do navegador</strong>: quando você fala com a Bela, a plataforma usa o recurso de voz do
+            próprio navegador, sem gravar o áudio nos nossos servidores. No Google Chrome, o áudio é enviado e processado pelo Google
+            para virar texto. Se preferir, digite em vez de falar.
+          </li>
           <li>Intermediador de pagamento, quando você contratar um plano.</li>
           <li>Autoridades públicas, quando houver obrigação legal ou ordem judicial.</li>
         </ul>
@@ -109,8 +114,8 @@ export default function PrivacidadePage() {
           </li>
           <li>Pedido de exclusão: atendido em até 15 dias, com confirmação por e-mail.</li>
           <li>
-            Registros de acesso: no mínimo 6 meses, como exige o Marco Civil da Internet. Quando a conta é excluída, eles são
-            anonimizados (sem e-mail, IP e navegador).
+            Registros de acesso: no mínimo 6 meses, como exige o Marco Civil da Internet, e no máximo 5 anos. Depois desse prazo, ou
+            quando a conta é excluída, eles são anonimizados (sem e-mail, IP e navegador).
           </li>
           <li>Cópias de segurança do banco: guardadas com acesso restrito; dados excluídos podem permanecer nelas por até 90 dias.</li>
           <li>Dados fiscais e de pagamento: pelo prazo exigido pela legislação tributária.</li>
@@ -124,6 +129,16 @@ export default function PrivacidadePage() {
         </p>
         <ul>
           <li>Pelos menus <strong>Conta</strong> e <strong>Empresa</strong>, você corrige seus dados; em <strong>Conta</strong>, também baixa uma cópia dos dados de cadastro e pede a exclusão da conta.</li>
+          <li>
+            Usuário convidado por uma empresa exclui os próprios dados na hora, em <strong>Conta</strong>. Os itens, documentos e
+            estudos que ele cadastrou continuam com a empresa. O dono da empresa também pode remover um usuário, com o mesmo efeito.
+          </li>
+          <li>
+            Em <strong>Conta</strong>, na seção “E-mails que você recebe”, você escolhe quais avisos quer receber (resumo diário,
+            lembrete de prazo, documento perto de vencer e licitação alterada). Cada aviso traz no rodapé um link para se descadastrar
+            com um clique. Os e-mails da conta, como código de acesso, convite, troca de senha e avisos de segurança, não podem ser
+            desligados.
+          </li>
           <li>Os demais pedidos, inclusive a cópia dos documentos do cofre e dos estudos, são feitos pelo e-mail do encarregado abaixo.</li>
         </ul>
 

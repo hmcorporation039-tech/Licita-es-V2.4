@@ -24,6 +24,7 @@ import { CepIndisponivelError, CepNaoEncontradoError, consultarCep } from '../..
 import { detectarTipoDeArquivo } from '../../lib/arquivoDeDocumento'
 import { imagemLegivel } from '../../services/documentos/papelTimbrado'
 import { reenviarConfirmacao } from '../../services/contaService'
+import { excluirDadosDoUsuario, metadataDaExclusao } from '../../services/exclusaoDeUsuario'
 
 export const companyRouter = Router()
 
@@ -341,5 +342,28 @@ companyRouter.patch(
       metadata: { email: membro.email, companyRole: body.companyRole, active: body.active },
     })
     res.json({ id: updated.id, email: updated.email, companyRole: updated.companyRole, active: updated.active })
+  })
+)
+
+companyRouter.delete(
+  '/members/:id',
+  requireCompanyOwner,
+  escritaSensivelLimiter,
+  asyncHandler(async (req, res) => {
+    const membro = await assertMembroDaEmpresa(req.params.id, req.companyId!)
+    if (membro.id === req.userId) {
+      throw new ApiError(400, 'Para excluir a sua própria conta, use "Excluir meus dados" na página Conta.')
+    }
+    if (membro.disabledByAdmin) {
+      throw new ApiError(403, 'Esta conta foi bloqueada pelo administrador da plataforma. Fale com o suporte para removê-la.')
+    }
+    const resumo = await excluirDadosDoUsuario({ userId: membro.id, companyId: req.companyId!, herdeiroId: req.userId! })
+    await registrarAuditoria(req, {
+      action: 'MEMBRO_REMOVIDO',
+      entityType: 'usuario',
+      entityId: resumo.userId,
+      metadata: metadataDaExclusao(resumo),
+    })
+    res.status(204).send()
   })
 )

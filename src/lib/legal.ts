@@ -7,4 +7,4 @@
 // (LGPD, contrato de adesão, foro, tributação) antes de uso comercial real.
 // ============================================================
 
-export const TERMOS_VERSAO = '2026-10-20'
+export const TERMOS_VERSAO = '2026-10-21'
