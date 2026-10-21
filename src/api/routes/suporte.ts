@@ -6,6 +6,12 @@ import { errosDaTelaLimiter, suporteLimiter } from '../rateLimit'
 import { registrarAuditoria } from '../../services/auditService'
 import { registrarErro } from '../../services/errosDoSistema'
 import { abrirChamado, responderChamado } from '../../services/chamados'
+import { exigirCotaDaRequisicao } from '../cotas'
+import { limitesDaEmpresa } from '../../services/quotaService'
+import { inicioDoMesBrasilia } from '../../lib/planos'
+import { AtendimentoIndisponivel, atendimentoHabilitado, conversaDoUsuario, conversarComOSuporte, mensagensDoUsuarioNaUltimaHora } from '../../services/atendimento'
+import { diagnosticarEmSegundoPlano } from '../../services/diagnostico'
+import { MAX_MENSAGENS_DE_AJUDA_POR_HORA, TAMANHO_MAXIMO_DA_MENSAGEM_DE_AJUDA, normalizarMensagem } from '../../lib/atendimento'
 import {
   MAX_CHAMADOS_POR_DIA,
   MAX_ERROS_RECENTES_NO_CHAMADO,
@@ -109,6 +115,7 @@ suporteRouter.post(
       errosRecentes: dados.errosRecentes,
     })
     await registrarAuditoria(req, { action: 'CHAMADO_ABERTO', entityType: 'chamado', entityId: chamado.id, metadata: { numero: chamado.numero, tipo: dados.tipo } })
+    if (dados.tipo === 'ERRO') diagnosticarEmSegundoPlano(chamado.id)
     res.status(201).json({ numero: chamado.numero, status: chamado.status })
   })
 )
@@ -149,5 +156,69 @@ suporteRouter.post(
     if (!chamado) throw new ApiError(404, 'Chamado não encontrado')
     const { mensagem, status } = await responderChamado({ chamadoId: chamado.id, autor: 'CLIENTE', userId: req.userId!, texto: corpo })
     res.status(201).json({ id: mensagem.id, status })
+  })
+)
+
+const conversando = new Set<string>()
+
+const mensagemDeAjudaSchema = z.object({
+  mensagem: z
+    .string()
+    .transform(normalizarMensagem)
+    .pipe(z.string().min(2, 'Escreva a sua mensagem').max(TAMANHO_MAXIMO_DA_MENSAGEM_DE_AJUDA, `A mensagem pode ter até ${TAMANHO_MAXIMO_DA_MENSAGEM_DE_AJUDA} caracteres`)),
+  tela: z.string().max(300).nullish(),
+  errosRecentes: z.array(erroRecenteSchema).max(MAX_ERROS_RECENTES_NO_CHAMADO * 2).optional(),
+})
+
+async function cotaDeMensagens(req: Request) {
+  const [{ limites }, usadas] = await Promise.all([
+    limitesDaEmpresa(req.companyId!),
+    prisma.mensagemDeSuporte.count({ where: { companyId: req.companyId!, papel: 'USUARIO', createdAt: { gte: inicioDoMesBrasilia() } } }),
+  ])
+  return { usadas, limite: req.isAdmin === true ? null : limites.mensagensDeSuporteMes }
+}
+
+suporteRouter.get(
+  '/conversa',
+  asyncHandler(async (req, res) => {
+    const [mensagens, cota] = await Promise.all([conversaDoUsuario(req.userId!), cotaDeMensagens(req)])
+    res.json({ disponivel: atendimentoHabilitado(), mensagens, cota })
+  })
+)
+
+suporteRouter.post(
+  '/conversa',
+  suporteLimiter,
+  asyncHandler(async (req, res) => {
+    if (!atendimentoHabilitado()) throw new ApiError(503, 'O atendimento automático está desligado. Abra um chamado que a equipe responde.')
+    const dados = mensagemDeAjudaSchema.parse(req.body)
+    await exigirCotaDaRequisicao(req, 'mensagensDeSuporteMes')
+    const userId = req.userId!
+    if (!req.isAdmin && (await mensagensDoUsuarioNaUltimaHora(userId)) >= MAX_MENSAGENS_DE_AJUDA_POR_HORA) {
+      throw new ApiError(429, 'Muitas mensagens na última hora. Aguarde um pouco ou abra um chamado.', { code: 'MENSAGENS_POR_HORA' })
+    }
+    if (conversando.has(userId)) throw new ApiError(429, 'Aguarde a resposta da mensagem anterior.', { code: 'MENSAGEM_EM_ANDAMENTO' })
+    conversando.add(userId)
+    try {
+      const r = await conversarComOSuporte({
+        companyId: req.companyId!,
+        userId,
+        mensagem: dados.mensagem,
+        tela: dados.tela ?? null,
+        navegador: req.header('user-agent') ?? null,
+        errosRecentes: dados.errosRecentes ?? [],
+      })
+      if (r.resposta.chamado) {
+        const aberto = await prisma.chamado.findUnique({ where: { numero: r.resposta.chamado }, select: { id: true, tipo: true, diagnosticoStatus: true } })
+        if (aberto?.tipo === 'ERRO' && !aberto.diagnosticoStatus) diagnosticarEmSegundoPlano(aberto.id)
+      }
+      res.status(201).json({ ...r, cota: await cotaDeMensagens(req) })
+    } catch (err) {
+      if (err instanceof AtendimentoIndisponivel) throw new ApiError(422, err.message)
+      console.error('[Atendimento] Falha ao responder:', err instanceof Error ? err.message : err)
+      throw new ApiError(502, 'O atendimento não conseguiu responder agora. Tente de novo em instantes ou abra um chamado.')
+    } finally {
+      conversando.delete(userId)
+    }
   })
 )

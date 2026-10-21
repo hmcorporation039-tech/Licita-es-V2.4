@@ -83,8 +83,10 @@ export default function PrivacidadePage() {
           <li><strong>ViaCEP e BrasilAPI</strong>: consulta do endereço pelo CEP que você digita.</li>
           <li>
             <strong>Anthropic e Google</strong>: provedores de inteligência artificial. Recebem o texto público do edital para gerar
-            o resumo e, quando você pergunta ao edital, a pergunta que você digitou. Não enviamos seus dados cadastrais, financeiros
-            nem os documentos do cofre; por isso, evite escrever dados pessoais nas perguntas.
+            o resumo e, quando você pergunta ao edital, a pergunta que você digitou. No atendimento do Suporte, o Google recebe a sua
+            mensagem, o histórico recente da conversa, o nome do plano e os números de uso da sua empresa; nos chamados de erro, recebe
+            também o relato e o registro técnico do erro. Não enviamos seus dados cadastrais, financeiros nem os documentos do cofre; por
+            isso, evite escrever dados pessoais nas perguntas e mensagens.
           </li>
           <li>
             <strong>Reconhecimento de voz do navegador</strong>: quando você fala com a Bela, a plataforma usa o recurso de voz do
@@ -128,6 +130,7 @@ export default function PrivacidadePage() {
             horário e os códigos dos erros recentes da sessão. Ficam até 1 ano depois de resolvidos.
           </li>
           <li>Registro de erros do sistema (sem senhas nem chaves): 30 dias.</li>
+          <li>Conversa com o atendimento do Suporte: 180 dias.</li>
           <li>
             Perguntas ao edital: enquanto a conta existir. O texto do edital guardado para a conversa é apagado 30 dias depois do fim
             do prazo da licitação.

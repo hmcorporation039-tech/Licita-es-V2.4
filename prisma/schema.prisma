@@ -77,6 +77,7 @@ model User {
   chamados           Chamado[]
   mensagensDeChamado ChamadoMensagem[]
   errosDoSistema     ErroDoSistema[]
+  mensagensDeSuporte MensagemDeSuporte[]
 
   @@index([companyId])
   @@map("users")
@@ -148,6 +149,7 @@ model Company {
   perguntasAoEdital    EditalPergunta[]
   chamados             Chamado[]
   errosDoSistema       ErroDoSistema[]
+  mensagensDeSuporte   MensagemDeSuporte[]
 
   @@map("companies")
 }
@@ -1021,4 +1023,20 @@ model ChamadoMensagem {
 
   @@index([chamadoId, createdAt])
   @@map("chamado_mensagens")
+}
+
+model MensagemDeSuporte {
+  id        String   @id @default(uuid())
+  companyId String   @map("company_id")
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  papel     String
+  texto     String   @db.Text
+  dados     Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId, createdAt])
+  @@index([companyId, papel, createdAt])
+  @@map("mensagens_de_suporte")
 }

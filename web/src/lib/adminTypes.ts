@@ -5,6 +5,7 @@ export interface Limites {
   usuarios: number | null
   analisesIaMes: number | null
   perguntasAoEditalMes: number | null
+  mensagensDeSuporteMes?: number | null
 }
 
 export interface RecursoDoPlano {

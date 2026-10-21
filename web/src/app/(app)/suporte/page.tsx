@@ -7,6 +7,7 @@ import { useRequireSession } from '@/hooks/useRequireSession'
 import { api, ApiRequestError } from '@/lib/api'
 import { formatarData } from '@/lib/datas'
 import { ROTULO_DO_STATUS, ROTULO_DO_TIPO, TOM_DO_STATUS, lerErrosRecentes, lerUltimaTela, type StatusDeChamado, type TipoDeChamado } from '@/lib/suporte'
+import AtendimentoDoSuporte from '@/components/AtendimentoDoSuporte'
 import { Button, Carregando, EmptyState, Field, FormError, Input, Notice, PageHeader, Panel, Select, StatusTag, Textarea } from '@/components/ui'
 
 interface ResumoDoChamado {
@@ -78,6 +79,8 @@ export default function SuportePage() {
           Enquanto isso, escreva para <strong>suporte@licitabela.com.br</strong> que respondemos por e-mail.
         </Notice>
       )}
+
+      {!foraDoAr && <AtendimentoDoSuporte aoAbrirChamado={carregar} />}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <Panel title="Abrir um chamado">

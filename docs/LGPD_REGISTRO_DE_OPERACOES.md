@@ -40,6 +40,7 @@
 | 18 | Conversa com o edital | Pergunta digitada pelo usuário, resposta da IA, autor e data | Responder dúvidas sobre os documentos da licitação, com a página citada | Execução de contrato (V) | Postgres (só a empresa do usuário vê) | Railway; Google (Gemini recebe o texto do edital e a pergunta) | Enquanto a conta existir; apagada com a exclusão da empresa e incluída na exportação de dados |
 | 19 | Chamados de suporte | Relato e mensagens, tipo, autor, última tela, navegador, horário, versão e códigos dos erros recentes | Atender o cliente e corrigir falhas | Execução de contrato (V) | Postgres (o cliente vê os próprios; o dono vê os da empresa; o admin vê todos, com auditoria) | Railway; Resend (aviso da resposta por e-mail) | Até 1 ano depois de resolvido; apagado com a exclusão da empresa e incluído na exportação de dados |
 | 20 | Registro de erros do sistema | Mensagem e local do erro, rota sem consulta, navegador, código de rastreio, usuário e empresa | Segurança e correção de falhas | Legítimo interesse (IX) | Postgres (só o admin) | Railway | 30 dias; usuário e empresa desligados na exclusão |
+| 21 | Atendimento do Suporte por IA (atendimento, especialista em licitações e diagnóstico técnico) | Mensagem e histórico da conversa, plano e números de uso da empresa, tela aberta; no diagnóstico, relato do chamado e registro técnico dos erros | Responder dúvidas de uso e de licitação, abrir chamados e diagnosticar falhas | Execução de contrato (V) e legítimo interesse (IX) no diagnóstico | Postgres (o usuário vê a própria conversa; o admin vê o diagnóstico) | Railway; Google (Gemini) | Conversa 180 dias; diagnóstico junto com o chamado; apagados com a exclusão da empresa ou do usuário |
 
 ## 3. Operadores e transferência internacional
 
@@ -51,7 +52,7 @@
 | Resend | E-mail, nome e conteúdo dos avisos | EUA | Termos e DPA do fornecedor (aceitar e arquivar) |
 | Cloudflare | IP na verificação anti-robô, quando ativada | Global | Termos e DPA do fornecedor (aceitar e arquivar) |
 | Anthropic | Texto público de editais | EUA | Termos comerciais da API (sem dado pessoal do cliente) |
-| Google | Texto público de editais e perguntas da conversa com o edital; áudio da voz quando o navegador é o Chrome | Global | Termos da API Gemini; política do navegador |
+| Google | Texto público de editais e perguntas da conversa com o edital; mensagens do atendimento do Suporte e registro técnico dos chamados de erro; áudio da voz quando o navegador é o Chrome | Global | Termos da API Gemini; política do navegador |
 | ViaCEP, BrasilAPI | CEP | Brasil | Serviço público, sem dado identificador |
 | Serviços de push (Google FCM, Apple, Mozilla, Microsoft) | Endereço de entrega e mensagem criptografada de ponta a ponta (o serviço não lê o conteúdo) | Global | Termos do navegador; só quando o usuário ativa |
 | Asaas (quando ligar a cobrança) | Dados de pagamento e do pagador | Brasil | Contrato do intermediador |

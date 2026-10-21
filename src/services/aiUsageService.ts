@@ -39,13 +39,13 @@ export interface QuemPediu {
 }
 
 export async function registrarUsoDeIa(args: {
-  tenderId: string
+  tenderId: string | null
   quem?: QuemPediu
   uso: UsoDeIa
   durationMs: number
   status: 'OK' | 'ERRO'
   // 'analise' (analista) ou 'revisao' (revisor). A cota do cliente conta só 'analise'.
-  etapa?: 'analise' | 'revisao' | 'pergunta'
+  etapa?: 'analise' | 'revisao' | 'pergunta' | 'suporte' | 'especialista' | 'diagnostico'
 }): Promise<void> {
   try {
     await prisma.aiUsage.create({

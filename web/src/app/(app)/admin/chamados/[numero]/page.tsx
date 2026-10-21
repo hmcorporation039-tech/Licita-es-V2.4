@@ -6,6 +6,7 @@ import { api, ApiRequestError } from '@/lib/api'
 import { formatarData } from '@/lib/datas'
 import { ROTULO_DO_STATUS, ROTULO_DO_TIPO, TOM_DO_STATUS, type ErroRecente, type StatusDeChamado, type TipoDeChamado } from '@/lib/suporte'
 import { ListaDeMensagens, ResponderChamado, type MensagemDoChamado } from '@/components/ConversaDoChamado'
+import DiagnosticoDoChamado, { type Diagnostico } from '@/components/DiagnosticoDoChamado'
 import { Carregando, DescriptionList, ErrorState, Panel, Select, StatusTag } from '@/components/ui'
 
 interface ErroGuardado {
@@ -31,6 +32,9 @@ interface ChamadoDoAdmin {
   relato: string
   createdAt: string
   contexto: { tela?: string | null; navegador?: string | null; horario?: string; versao?: string | null; errosRecentes?: ErroRecente[] }
+  diagnostico: Diagnostico | null
+  diagnosticoStatus: string | null
+  diagnosticoEm: string | null
   company: { id: string; name: string; planCode: string }
   user: { name: string | null; email: string; companyRole: string } | null
   mensagens: Array<{ id: string; autor: 'CLIENTE' | 'SUPORTE'; texto: string; createdAt: string; user: { name: string | null } | null }>
@@ -114,6 +118,7 @@ function Conteudo({ numero }: { numero: string }) {
             />
           </div>
         </Panel>
+        <DiagnosticoDoChamado numero={c.numero} diagnostico={c.diagnostico} status={c.diagnosticoStatus} geradoEm={c.diagnosticoEm} onAtualizar={carregar} />
       </div>
 
       <div className="flex min-w-0 flex-col gap-6">
