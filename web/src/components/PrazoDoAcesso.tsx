@@ -32,10 +32,12 @@ export function PrazoDoAcessoNoMenu() {
   )
 }
 
-export default function PainelDoAcesso() {
+export type CobrancaNaConta = 'carregando' | 'desligada' | 'sem-assinatura' | 'assinatura-vigente'
+
+export default function PainelDoAcesso({ cobranca = 'desligada' }: { cobranca?: CobrancaNaConta }) {
   const { dados } = useUsoDoPlano()
   const situacao = situacaoDoResumo(dados)
-  if (!situacao) return null
+  if (!situacao || cobranca === 'carregando' || cobranca === 'assinatura-vigente') return null
   const whatsapp = numeroDoWhatsApp()
   return (
     <Panel
@@ -47,22 +49,26 @@ export default function PainelDoAcesso() {
           {situacao.emTeste ? 'O teste vai até' : 'Seu acesso vai até'} <strong className="text-ink">{situacao.dataCompleta}</strong>. Depois dessa data o login
           fica bloqueado, mas os seus dados continuam guardados.
         </p>
-        <p>
-          Para continuar usando, fale com a equipe da Licita Bela
-          {whatsapp ? (
-            <>
-              {' '}
-              <a href={linkDoWhatsAppParaContinuar(whatsapp)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-semibold text-accent underline underline-offset-[3px]">
-                <MessageCircle size={14} aria-hidden />
-                pelo WhatsApp
-              </a>
-              .
-            </>
-          ) : (
-            '. Quando o prazo terminar, a tela de login mostra como pedir para continuar.'
-          )}{' '}
-          Uma cópia dos seus dados pode ser baixada a qualquer momento em “Seus dados”, mais abaixo.
-        </p>
+        {cobranca === 'sem-assinatura' ? (
+          <p>Para continuar usando, assine um plano no quadro Assinatura, logo abaixo. Uma cópia dos seus dados pode ser baixada a qualquer momento em “Seus dados”, mais abaixo.</p>
+        ) : (
+          <p>
+            Para continuar usando, fale com a equipe da Licita Bela
+            {whatsapp ? (
+              <>
+                {' '}
+                <a href={linkDoWhatsAppParaContinuar(whatsapp)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-semibold text-accent underline underline-offset-[3px]">
+                  <MessageCircle size={14} aria-hidden />
+                  pelo WhatsApp
+                </a>
+                .
+              </>
+            ) : (
+              '. Quando o prazo terminar, a tela de login mostra como pedir para continuar.'
+            )}{' '}
+            Uma cópia dos seus dados pode ser baixada a qualquer momento em “Seus dados”, mais abaixo.
+          </p>
+        )}
       </div>
     </Panel>
   )

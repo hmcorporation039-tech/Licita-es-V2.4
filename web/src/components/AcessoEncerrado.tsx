@@ -1,10 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Download, MessageCircle, Send } from 'lucide-react'
 import { api, ApiRequestError } from '@/lib/api'
 import { linkDoWhatsAppParaContinuar, numeroDoWhatsApp, situacaoDoAcesso } from '@/lib/acessoDaConta'
 import { Button, Field, FormError, Input, Notice, buttonClasses } from '@/components/ui'
+import EscolhaDoPlano, { type EscolhaFeita } from '@/components/EscolhaDoPlano'
+import type { PlanoParaAssinar } from '@/lib/cobranca'
 
 type Pedido = 'continuar' | 'exportar'
 
@@ -39,6 +41,34 @@ export default function AcessoEncerrado({
   const situacao = situacaoDoAcesso(dados.acessoAte, dados.emTeste === true)
   const whatsapp = numeroDoWhatsApp()
   const pedirCredenciais = !emailInicial || !senhaInicial
+  const [planos, setPlanos] = useState<PlanoParaAssinar[]>([])
+  const [assinando, setAssinando] = useState(false)
+  const [erroDaAssinatura, setErroDaAssinatura] = useState<string | null>(null)
+
+  useEffect(() => {
+    api
+      .get<{ disponivel?: boolean; planos?: PlanoParaAssinar[] }>('/api/cobranca/planos')
+      .then((r) => setPlanos(r.disponivel && Array.isArray(r.planos) ? r.planos : []))
+      .catch(() => setPlanos([]))
+  }, [])
+
+  async function assinar(escolha: EscolhaFeita) {
+    setErroDaAssinatura(null)
+    if (!email.trim() || !senha) {
+      setErroDaAssinatura('Informe o e-mail e a senha da conta para assinar.')
+      return
+    }
+    setAssinando(true)
+    try {
+      const r = await api.post<{ linkDaFatura: string | null }>('/api/auth/acesso-encerrado/assinar', { email: email.trim(), password: senha, ...escolha })
+      if (r.linkDaFatura) window.location.href = r.linkDaFatura
+      else setMensagem('Assinatura criada. A fatura chega no seu e-mail em instantes; o acesso volta assim que o pagamento for confirmado.')
+    } catch (err) {
+      setErroDaAssinatura(err instanceof ApiRequestError ? err.message : 'Não foi possível criar a assinatura agora. Tente de novo.')
+    } finally {
+      setAssinando(false)
+    }
+  }
 
   async function pedir(pedido: Pedido) {
     setErro(null)
@@ -88,7 +118,15 @@ export default function AcessoEncerrado({
         <h2 id="acesso-encerrado-continuar" className="text-base font-bold text-ink">
           Como continuar usando
         </h2>
-        <p className="text-sm text-ink-2">Fale com a equipe da Licita Bela para assinar um plano. O acesso volta com tudo como estava.</p>
+        {planos.length > 0 ? (
+          <>
+            <p className="text-sm text-ink-2">Assine agora: o acesso volta com tudo como estava assim que o pagamento for confirmado. Se a sua fatura venceu, o botão abre a fatura em aberto.</p>
+            <EscolhaDoPlano planos={planos} enviando={assinando} erro={erroDaAssinatura} onEscolher={(e) => void assinar(e)} />
+            <p className="text-sm text-ink-2">Prefere falar com alguém antes?</p>
+          </>
+        ) : (
+          <p className="text-sm text-ink-2">Fale com a equipe da Licita Bela para assinar um plano. O acesso volta com tudo como estava.</p>
+        )}
         <div className="flex flex-wrap gap-2">
           {whatsapp && (
             <a

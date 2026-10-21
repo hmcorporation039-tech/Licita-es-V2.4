@@ -41,6 +41,7 @@
 | 19 | Chamados de suporte | Relato e mensagens, tipo, autor, última tela, navegador, horário, versão e códigos dos erros recentes | Atender o cliente e corrigir falhas | Execução de contrato (V) | Postgres (o cliente vê os próprios; o dono vê os da empresa; o admin vê todos, com auditoria) | Railway; Resend (aviso da resposta por e-mail) | Até 1 ano depois de resolvido; apagado com a exclusão da empresa e incluído na exportação de dados |
 | 20 | Registro de erros do sistema | Mensagem e local do erro, rota sem consulta, navegador, código de rastreio, usuário e empresa | Segurança e correção de falhas | Legítimo interesse (IX) | Postgres (só o admin) | Railway | 30 dias; usuário e empresa desligados na exclusão |
 | 21 | Atendimento do Suporte por IA (atendimento, especialista em licitações e diagnóstico técnico) | Mensagem e histórico da conversa, plano e números de uso da empresa, tela aberta; no diagnóstico, relato do chamado e registro técnico dos erros | Responder dúvidas de uso e de licitação, abrir chamados e diagnosticar falhas | Execução de contrato (V) e legítimo interesse (IX) no diagnóstico | Postgres (o usuário vê a própria conversa; o admin vê o diagnóstico) | Railway; Google (Gemini) | Conversa 180 dias; diagnóstico junto com o chamado; apagados com a exclusão da empresa ou do usuário |
+| 22 | Assinatura e cobrança | Nome, CNPJ ou CPF e e-mail de cobrança da empresa; plano, valores, vencimentos, situação de cada fatura, forma de pagamento; quem assinou e quem cancelou (auditoria) | Cobrar o plano, liberar e suspender o acesso, reembolsar | Execução de contrato (V); obrigação legal (II) para os registros fiscais | Postgres (o dono vê as faturas da empresa; o admin vê todas) e Asaas | Asaas, Resend | Enquanto a conta existir; na exclusão da empresa a assinatura é cancelada no Asaas e os registros saem do nosso banco, ficando o registro fiscal com o Asaas pelo prazo legal |
 
 ## 3. Operadores e transferência internacional
 
@@ -55,7 +56,7 @@
 | Google | Texto público de editais e perguntas da conversa com o edital; mensagens do atendimento do Suporte e registro técnico dos chamados de erro; áudio da voz quando o navegador é o Chrome | Global | Termos da API Gemini; política do navegador |
 | ViaCEP, BrasilAPI | CEP | Brasil | Serviço público, sem dado identificador |
 | Serviços de push (Google FCM, Apple, Mozilla, Microsoft) | Endereço de entrega e mensagem criptografada de ponta a ponta (o serviço não lê o conteúdo) | Global | Termos do navegador; só quando o usuário ativa |
-| Asaas (quando ligar a cobrança) | Dados de pagamento e do pagador | Brasil | Contrato do intermediador |
+| Asaas | Nome, CNPJ ou CPF e e-mail de cobrança da empresa; dados do cartão digitados direto na página do Asaas (não passam pela Licita Bela) | Brasil | Contrato do intermediador; sem transferência internacional |
 
 **Pendente:** confirmar com o advogado se os DPAs dos fornecedores atendem à Resolução CD/ANPD 19/2024 (cláusulas-padrão contratuais) ou se é preciso aditivo.
 

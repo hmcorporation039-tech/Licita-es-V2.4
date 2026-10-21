@@ -6,7 +6,8 @@ import { useRequireSession } from '@/hooks/useRequireSession'
 import { api, ApiRequestError } from '@/lib/api'
 import { clearSessionUser, replaceSessionToken } from '@/lib/session'
 import UsoDoPlano from '@/components/UsoDoPlano'
-import PainelDoAcesso from '@/components/PrazoDoAcesso'
+import AssinaturaDaEmpresa from '@/components/AssinaturaDaEmpresa'
+import PainelDoAcesso, { type CobrancaNaConta } from '@/components/PrazoDoAcesso'
 import NotificacoesNoCelular from '@/components/NotificacoesNoCelular'
 import { Button, Carregando, Checkbox, Field, FormError, Input, Notice, PageHeader, Panel, Textarea, useDialogo } from '@/components/ui'
 
@@ -18,6 +19,7 @@ export default function ContaPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [cobranca, setCobranca] = useState<CobrancaNaConta>('carregando')
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -58,7 +60,8 @@ export default function ContaPage() {
       <PageHeader title="Minha conta" description={user.email} />
 
       <div className="flex w-full max-w-xl flex-col gap-6">
-        <PainelDoAcesso />
+        <PainelDoAcesso cobranca={cobranca} />
+        <AssinaturaDaEmpresa onSituacao={setCobranca} />
         <UsoDoPlano />
         <NotificacoesNoCelular userId={user.id} />
 

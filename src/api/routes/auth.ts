@@ -38,6 +38,8 @@ import {
 } from '../../lib/acessoEncerrado'
 import { criarItemDoCadastro } from './monitoredItems'
 import { aguardarFimDaBusca } from '../../services/rematchService'
+import { assinar } from '../../services/cobranca'
+import { assinaturaSchema } from './cobranca'
 
 export const authRouter = Router()
 
@@ -340,6 +342,29 @@ authRouter.post(
     )
     void avisarAdministrador(`acesso-encerrado|${user.id}|${parsed.pedido}`, aviso.assunto, aviso.texto)
     res.status(202).json({ mensagem: aviso.resposta })
+  })
+)
+
+const assinaturaComAcessoEncerradoSchema = loginSchema.merge(assinaturaSchema)
+
+authRouter.post(
+  '/acesso-encerrado/assinar',
+  loginLimiter,
+  loginPorContaLimiter,
+  loginPorContaGlobalLimiter,
+  asyncHandler(async (req, res) => {
+    const parsed = assinaturaComAcessoEncerradoSchema.parse(req.body)
+    const email = normalizeEmail(parsed.email)
+    const user = await prisma.user.findUnique({ where: { email } })
+    const senhaConfere = await verifyPasswordConstantTime(parsed.password, user && user.active ? user.passwordHash : null)
+    if (!user || !user.active || !senhaConfere) throw new ApiError(401, 'E-mail ou senha inválidos')
+    if (user.disabledByAdmin) throw new ApiError(403, 'Esta conta foi bloqueada pela equipe da Licita Bela. Fale com o suporte.')
+    if (user.companyRole !== 'OWNER') throw new ApiError(403, 'Só o dono da empresa pode assinar. Peça a ele para entrar e assinar.')
+    if (!user.accessExpiresAt || !acessoExpirou(user.accessExpiresAt)) {
+      throw new ApiError(409, 'O acesso desta conta está ativo. Entre normalmente e assine em Minha conta.')
+    }
+    const r = await assinar({ companyId: user.companyId, userId: user.id, planCode: parsed.planCode, ciclo: parsed.ciclo, cupom: parsed.cupom })
+    res.status(201).json(r)
   })
 )
 

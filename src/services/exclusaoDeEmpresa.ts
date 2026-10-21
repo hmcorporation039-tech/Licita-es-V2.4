@@ -11,6 +11,7 @@
 // ============================================================
 
 import { prisma } from './tenderService'
+import { cancelarAntesDeExcluirEmpresa } from './cobranca'
 
 export interface ResumoDaExclusao {
   empresa: { id: string; name: string }
@@ -60,7 +61,10 @@ export async function excluirEmpresa(companyId: string, executar: boolean): Prom
   }
   if (!executar) return resumo
 
+  await cancelarAntesDeExcluirEmpresa(companyId)
   await prisma.$transaction([
+    prisma.pagamento.deleteMany({ where: { companyId } }),
+    prisma.assinatura.deleteMany({ where: { companyId } }),
     prisma.tenderMatch.deleteMany({ where: { companyId } }),
     prisma.monitoredItem.deleteMany({ where: { companyId } }),
     prisma.companyDocument.deleteMany({ where: { companyId } }),

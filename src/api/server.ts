@@ -31,6 +31,8 @@ import { conversaComOEditalRouter } from './routes/conversaComOEdital'
 import { estudosRouter } from './routes/estudos'
 import { suporteRouter } from './routes/suporte'
 import { adminChamadosRouter } from './routes/adminChamados'
+import { adminCobrancaRouter } from './routes/adminCobranca'
+import { cobrancaPublicaRouter, cobrancaRouter, webhookDoAsaasRouter } from './routes/cobranca'
 import { atribuirCodigoDeRastreio } from './rastreio'
 import { registrarErro, textoDaFalha } from '../services/errosDoSistema'
 import { descadastroRouter } from './routes/descadastro'
@@ -94,6 +96,8 @@ app.get('/api/health/ready', async (_req, res) => {
   res.status(p.ok ? 200 : 503).json(p)
 })
 
+app.use('/api/cobranca/webhook', webhookDoAsaasRouter)
+
 app.use('/api', globalLimiter)
 
 // Login/sessão — públicos por natureza. Criação de usuário é admin-only
@@ -104,6 +108,8 @@ app.use('/api/descadastro', descadastroRouter)
 app.use('/api/admin', adminRouter)
 app.use('/api/admin', adminGestaoRouter)
 app.use('/api/admin', adminChamadosRouter)
+app.use('/api/admin', adminCobrancaRouter)
+app.use('/api/cobranca', cobrancaPublicaRouter)
 
 // Todo o resto da plataforma exige sessão válida — a identidade do
 // usuário vem do token (req.userId), não de um campo enviado pelo cliente.
@@ -125,6 +131,7 @@ app.use('/api/conta', requireAuth, contaRouter)
 app.use('/api/celular', requireAuth, celularRouter)
 app.use('/api/estudos', requireAuth, estudosRouter)
 app.use('/api/suporte', requireAuth, suporteRouter)
+app.use('/api/cobranca', requireAuth, cobrancaRouter)
 
 function guardarErroDaApi(req: Parameters<ErrorRequestHandler>[1], err: unknown, status: number) {
   return registrarErro({

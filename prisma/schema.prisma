@@ -78,6 +78,7 @@ model User {
   mensagensDeChamado ChamadoMensagem[]
   errosDoSistema     ErroDoSistema[]
   mensagensDeSuporte MensagemDeSuporte[]
+  assinaturasCriadas Assinatura[]
 
   @@index([companyId])
   @@map("users")
@@ -150,6 +151,8 @@ model Company {
   chamados             Chamado[]
   errosDoSistema       ErroDoSistema[]
   mensagensDeSuporte   MensagemDeSuporte[]
+  assinaturas          Assinatura[]
+  pagamentos           Pagamento[]
 
   @@map("companies")
 }
@@ -1039,4 +1042,90 @@ model MensagemDeSuporte {
   @@index([userId, createdAt])
   @@index([companyId, papel, createdAt])
   @@map("mensagens_de_suporte")
+}
+
+model Cupom {
+  id          String       @id @default(uuid())
+  codigo      String       @unique
+  percentual  Int
+  meses       Int
+  maxUsos     Int?         @map("max_usos")
+  usos        Int          @default(0)
+  validoAte   DateTime?    @map("valido_ate")
+  ativo       Boolean      @default(true)
+  observacao  String?
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  assinaturas Assinatura[]
+
+  @@map("cupons")
+}
+
+model Assinatura {
+  id                   String      @id @default(uuid())
+  companyId            String      @map("company_id")
+  planCode             String      @map("plan_code")
+  ciclo                String
+  status               String      @default("PENDENTE")
+  ambiente             String
+  asaasClienteId       String      @map("asaas_cliente_id")
+  asaasAssinaturaId    String?     @unique @map("asaas_assinatura_id")
+  valorCentavos        Int         @map("valor_centavos")
+  valorCheioCentavos   Int         @map("valor_cheio_centavos")
+  cupomId              String?     @map("cupom_id")
+  descontoAte          DateTime?   @map("desconto_ate")
+  pagoAte              DateTime?   @map("pago_ate")
+  criadaPorUserId      String?     @map("criada_por_user_id")
+  canceladaEm          DateTime?   @map("cancelada_em")
+  motivoDoCancelamento String?     @map("motivo_do_cancelamento")
+  createdAt            DateTime    @default(now()) @map("created_at")
+  updatedAt            DateTime    @updatedAt @map("updated_at")
+  company              Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  cupom                Cupom?      @relation(fields: [cupomId], references: [id], onDelete: SetNull)
+  criadaPor            User?       @relation(fields: [criadaPorUserId], references: [id], onDelete: SetNull)
+  pagamentos           Pagamento[]
+
+  @@index([companyId, createdAt])
+  @@index([status])
+  @@map("assinaturas")
+}
+
+model Pagamento {
+  id                   String     @id @default(uuid())
+  companyId            String     @map("company_id")
+  assinaturaId         String     @map("assinatura_id")
+  asaasCobrancaId      String     @unique @map("asaas_cobranca_id")
+  status               String
+  forma                String?
+  valorCentavos        Int        @map("valor_centavos")
+  valorLiquidoCentavos Int?       @map("valor_liquido_centavos")
+  vencimento           DateTime   @db.Date
+  pagoEm               DateTime?  @map("pago_em")
+  estornadoEm          DateTime?  @map("estornado_em")
+  linkDaFatura         String?    @map("link_da_fatura")
+  avisoDeFaturaEm      DateTime?  @map("aviso_de_fatura_em")
+  avisoDeAtrasoEm      DateTime?  @map("aviso_de_atraso_em")
+  avisoDePagamentoEm   DateTime?  @map("aviso_de_pagamento_em")
+  createdAt            DateTime   @default(now()) @map("created_at")
+  updatedAt            DateTime   @updatedAt @map("updated_at")
+  company              Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  assinatura           Assinatura @relation(fields: [assinaturaId], references: [id], onDelete: Cascade)
+
+  @@index([assinaturaId, vencimento])
+  @@index([companyId])
+  @@index([pagoEm])
+  @@map("pagamentos")
+}
+
+model EventoDeCobranca {
+  id                String    @id
+  evento            String
+  asaasCobrancaId   String?   @map("asaas_cobranca_id")
+  asaasAssinaturaId String?   @map("asaas_assinatura_id")
+  processadoEm      DateTime? @map("processado_em")
+  resultado         String?
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("eventos_de_cobranca")
 }

@@ -93,7 +93,11 @@ export default function PrivacidadePage() {
             próprio navegador, sem gravar o áudio nos nossos servidores. No Google Chrome, o áudio é enviado e processado pelo Google
             para virar texto. Se preferir, digite em vez de falar.
           </li>
-          <li>Intermediador de pagamento, quando você contratar um plano.</li>
+          <li>
+            <strong>Asaas</strong>: intermediador de pagamento, quando você assina um plano. Recebe o nome e o CNPJ (ou CPF) da empresa e o
+            e-mail de cobrança; os dados do cartão, quando você paga com cartão, são digitados direto na página do Asaas e não passam
+            pela Licita Bela.
+          </li>
           <li>Autoridades públicas, quando houver obrigação legal ou ordem judicial.</li>
         </ul>
         <p>

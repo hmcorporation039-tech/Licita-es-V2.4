@@ -28,7 +28,7 @@ contaRouter.get(
   asyncHandler(async (req, res) => {
     const companyId = req.companyId!
     const dono = req.companyRole === 'OWNER'
-    const [usuario, empresa, membros, itens, documentos, planos, checklists, exigencias, matches, analises, eventos, perguntasAoEdital, chamados] = await Promise.all([
+    const [usuario, empresa, membros, itens, documentos, planos, checklists, exigencias, matches, analises, eventos, perguntasAoEdital, chamados, assinaturas] = await Promise.all([
       prisma.user.findUnique({
         where: { id: req.userId! },
         select: {
@@ -74,6 +74,16 @@ contaRouter.get(
         orderBy: { createdAt: 'desc' },
         select: { numero: true, tipo: true, status: true, assunto: true, relato: true, contexto: true, createdAt: true, mensagens: { orderBy: { createdAt: 'asc' }, select: { autor: true, texto: true, createdAt: true } } },
       }),
+      dono
+        ? prisma.assinatura.findMany({
+            where: { companyId },
+            orderBy: { createdAt: 'desc' },
+            select: {
+              planCode: true, ciclo: true, status: true, valorCentavos: true, valorCheioCentavos: true, descontoAte: true, pagoAte: true, canceladaEm: true, createdAt: true,
+              pagamentos: { orderBy: { vencimento: 'desc' }, select: { status: true, forma: true, valorCentavos: true, vencimento: true, pagoEm: true, estornadoEm: true } },
+            },
+          })
+        : Promise.resolve([]),
     ])
 
     await registrarAuditoria(req, { action: 'DADOS_EXPORTADOS', entityType: 'empresa', entityId: companyId })
@@ -94,6 +104,7 @@ contaRouter.get(
       historicoDeAcoes: eventos,
       perguntasAoEdital,
       chamadosDeSuporte: chamados,
+      assinaturasEPagamentos: assinaturas,
     })
   })
 )
