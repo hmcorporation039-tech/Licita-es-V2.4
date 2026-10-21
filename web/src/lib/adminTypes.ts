@@ -176,6 +176,9 @@ export const ROTULO_ACAO: Record<string, string> = {
   MEMBRO_REMOVIDO: 'Membro removido pelo dono (dados excluídos)',
   PREFERENCIAS_DE_EMAIL_ALTERADAS: 'Preferências de e-mail alteradas',
   DESCADASTRO_POR_LINK: 'Descadastro de e-mail pelo link',
+  CELULAR_ATIVADO: 'Notificações no celular ativadas em um aparelho',
+  CELULAR_DESATIVADO: 'Notificações no celular desativadas em um aparelho',
+  PREFERENCIAS_DO_CELULAR_ALTERADAS: 'Preferências de notificação no celular alteradas',
 }
 
 export interface CriterioDeAderencia {

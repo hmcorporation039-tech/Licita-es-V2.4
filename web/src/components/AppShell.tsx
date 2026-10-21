@@ -27,6 +27,7 @@ import { PrazoDoAcessoNoMenu } from '@/components/PrazoDoAcesso'
 import Bela, { BotaoDaBela } from '@/components/Bela'
 import { cx } from '@/components/ui'
 import AvisoDeTermos from '@/components/AvisoDeTermos'
+import { desligarAoSair, sincronizarEsteAparelho } from '@/lib/notificacaoNoCelular'
 
 interface ItemDeMenu {
   href: string
@@ -140,7 +141,13 @@ export default function AppShell({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('keydown', aoTeclar)
   }, [menuAberto])
 
+  useEffect(() => {
+    const sessao = getSessionUser()
+    if (sessao) sincronizarEsteAparelho(sessao.id).catch(() => undefined)
+  }, [])
+
   async function sair() {
+    await desligarAoSair()
     try {
       await api.post('/api/auth/logout')
     } catch {}

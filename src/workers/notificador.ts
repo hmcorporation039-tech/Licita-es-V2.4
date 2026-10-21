@@ -7,15 +7,24 @@
 // ============================================================
 
 import { Worker, Job } from 'bullmq'
-import { redisConnection } from '../queues'
+import { notificadorQueue, redisConnection } from '../queues'
+import { enfileirarSemTravar } from '../queues/enfileirar'
 import { prisma } from '../services/tenderService'
-import { sendTenderChangedEmail } from '../services/emailService'
-import { NotificadorAlteracaoPayload, NotificadorJobPayload, NotificadorMatchPayload, NotificadorRotinaPayload } from '../types'
+import { ROTULO_CAMPO_ALTERADO, sendTenderChangedEmail } from '../services/emailService'
+import { NotificadorAlteracaoPayload, NotificadorCelularPayload, NotificadorJobPayload, NotificadorMatchPayload, NotificadorRotinaPayload } from '../types'
 import { enviarResumosDiarios } from '../services/resumoDiario'
 import { enviarLembretesDePrazo } from '../services/lembreteDePrazo'
 import { estaAberta } from '../lib/licitacaoAberta'
 import { SELECT_DO_DESTINATARIO, acessoDoDestinatarioComEmpresa, avisarFimDoAcessoUmaVez } from '../services/avisoDeAcessoEncerrado'
 import { linksDeDescadastro } from '../lib/descadastro'
+import { mensagemDeAlteracao } from '../lib/notificacaoNoCelular'
+import {
+  ESPERA_PARA_AGRUPAR_MS,
+  avisarNovasLicitacoesNoCelular,
+  enviarNoCelular,
+  idDoAgrupamentoDeNovas,
+  querNovasLicitacoesNoCelular,
+} from '../services/notificacaoNoCelular'
 
 async function jaNotificado(caminho: string[], valor: string): Promise<boolean> {
   const existente = await prisma.notification.findFirst({
@@ -34,6 +43,32 @@ export async function processarMatch(payload: NotificadorMatchPayload): Promise<
 
   const acesso = acessoDoDestinatarioComEmpresa(match.user)
   if (acesso.situacao === 'encerrado') await avisarFimDoAcessoUmaVez(match.user, acesso.acessoAte)
+  if (acesso.situacao === 'ativo' && !match.dentroDeObraCompleta) await agendarAvisoDeNovasLicitacoes(match.userId)
+}
+
+export async function agendarAvisoDeNovasLicitacoes(userId: string): Promise<boolean> {
+  if (!(await querNovasLicitacoesNoCelular(userId))) return false
+  const dados: NotificadorCelularPayload = { tipo: 'celular-novas-licitacoes', userId }
+  return enfileirarSemTravar(notificadorQueue, 'celular-novas-licitacoes', dados, 'Notificador Worker', {
+    jobId: idDoAgrupamentoDeNovas(userId),
+    delay: ESPERA_PARA_AGRUPAR_MS,
+    removeOnComplete: true,
+    removeOnFail: true,
+  })
+}
+
+async function avisarAlteracaoNoCelular(userId: string, tender: { id: string; objeto: string; objetoResumido: string | null }, campos: string[], chave: string) {
+  try {
+    if (await jaNotificado(['celularTenderChangeKey'], chave)) return
+    const rotulos = campos.map((campo) => ROTULO_CAMPO_ALTERADO[campo] ?? campo)
+    const mensagem = mensagemDeAlteracao(tender.id, tender.objetoResumido ?? tender.objeto, rotulos)
+    if ((await enviarNoCelular(userId, mensagem)).entregues === 0) return
+    await prisma.notification.create({
+      data: { userId, type: 'PUSH', title: mensagem.titulo, body: mensagem.corpo, sentAt: new Date(), metadata: { celularTenderChangeKey: chave, tenderId: tender.id, campos } },
+    })
+  } catch (err) {
+    console.error(`[Notificador Worker] Falha no aviso de alteração pelo celular do usuário ${userId}:`, err instanceof Error ? err.message : err)
+  }
 }
 
 async function processarRotina(payload: NotificadorRotinaPayload): Promise<void> {
@@ -43,8 +78,8 @@ async function processarRotina(payload: NotificadorRotinaPayload): Promise<void>
     if (falhas > 0) throw new Error(`${falhas} resumo(s) diário(s) não enviado(s)`)
     return
   }
-  const { empresas, enviados, falhas } = await enviarLembretesDePrazo()
-  console.log(`[Notificador Worker] Lembrete de prazo: ${enviados} enviado(s), ${falhas} falha(s), ${empresas} empresa(s) com prazo perto do fim.`)
+  const { empresas, enviados, falhas, noCelular } = await enviarLembretesDePrazo()
+  console.log(`[Notificador Worker] Lembrete de prazo: ${enviados} enviado(s), ${noCelular} no celular, ${falhas} falha(s), ${empresas} empresa(s) com prazo perto do fim.`)
   if (falhas > 0) throw new Error(`${falhas} lembrete(s) de prazo não enviado(s)`)
 }
 
@@ -54,13 +89,14 @@ export async function processarAlteracao(payload: NotificadorAlteracaoPayload): 
   // A chave de idempotência inclui os campos alterados: uma segunda
   // prorrogação da mesma licitação é um aviso novo, não uma repetição.
   const chave = `${tenderId}:${userId}:${[...campos].sort().join(',')}`
-  if (await jaNotificado(['tenderChangeKey'], chave)) return
 
   const [tender, user] = await Promise.all([
     prisma.tender.findUnique({ where: { id: tenderId } }),
-    prisma.user.findUnique({ where: { id: userId }, select: { ...SELECT_DO_DESTINATARIO, receberAvisoDeAlteracao: true } }),
+    prisma.user.findUnique({ where: { id: userId }, select: { ...SELECT_DO_DESTINATARIO, receberAvisoDeAlteracao: true, celularAvisoDeAlteracao: true } }),
   ])
-  if (!tender || !user || !user.receberAvisoDeAlteracao || acessoDoDestinatarioComEmpresa(user).situacao !== 'ativo') return
+  if (!tender || !user || acessoDoDestinatarioComEmpresa(user).situacao !== 'ativo') return
+  if (user.celularAvisoDeAlteracao) await avisarAlteracaoNoCelular(user.id, tender, campos, chave)
+  if (!user.receberAvisoDeAlteracao || (await jaNotificado(['tenderChangeKey'], chave))) return
 
   await sendTenderChangedEmail({
     to: user.email,
@@ -98,6 +134,10 @@ export function startNotificadorWorker() {
       }
       if (dados.tipo === 'alteracao') {
         await processarAlteracao(dados)
+        return
+      }
+      if (dados.tipo === 'celular-novas-licitacoes') {
+        await avisarNovasLicitacoesNoCelular(dados.userId)
         return
       }
       await processarRotina(dados)

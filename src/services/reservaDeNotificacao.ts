@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client'
+import { Prisma, type NotificationTypeEnum } from '@prisma/client'
 import { prisma } from './tenderService'
 
 export const RESERVA_ABANDONADA_APOS_MS = 15 * 60 * 1000
@@ -9,6 +9,7 @@ export interface NotificacaoParaReservar {
   title: string
   body: string
   metadata: Prisma.InputJsonObject
+  type?: NotificationTypeEnum
 }
 
 function ehChaveRepetida(err: unknown): boolean {
@@ -17,7 +18,7 @@ function ehChaveRepetida(err: unknown): boolean {
 
 async function criarReserva(dados: NotificacaoParaReservar, agora: Date): Promise<boolean> {
   try {
-    await prisma.notification.create({ data: { ...dados, type: 'EMAIL', sentAt: null, createdAt: agora } })
+    await prisma.notification.create({ data: { type: 'EMAIL', ...dados, sentAt: null, createdAt: agora } })
     return true
   } catch (err) {
     if (ehChaveRepetida(err)) return false

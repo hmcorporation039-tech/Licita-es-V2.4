@@ -26,6 +26,7 @@ import { uasgRouter } from './routes/uasg'
 import { catalogRouter } from './routes/catalog'
 import { radarRouter } from './routes/radar'
 import { contaRouter } from './routes/conta'
+import { celularRouter } from './routes/celular'
 import { estudosRouter } from './routes/estudos'
 import { descadastroRouter } from './routes/descadastro'
 import { requireAuth } from './authMiddleware'
@@ -113,6 +114,7 @@ app.use('/api/uasg', requireAuth, uasgRouter)
 app.use('/api/catalog', requireAuth, catalogRouter)
 app.use('/api/radar', requireAuth, radarLimiter, radarRouter)
 app.use('/api/conta', requireAuth, contaRouter)
+app.use('/api/celular', requireAuth, celularRouter)
 app.use('/api/estudos', requireAuth, estudosRouter)
 
 const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {

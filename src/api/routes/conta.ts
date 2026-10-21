@@ -35,6 +35,8 @@ contaRouter.get(
           id: true, email: true, name: true, companyRole: true, createdAt: true, emailVerifiedAt: true,
           termsAcceptedAt: true, termsVersion: true, accessExpiresAt: true, active: true,
           receberResumoDiario: true, receberLembreteDePrazo: true, receberAvisoDeDocumento: true, receberAvisoDeAlteracao: true,
+          celularNovasLicitacoes: true, celularLembreteDePrazo: true, celularAvisoDeAlteracao: true,
+          pushSubscriptions: { select: { aparelho: true, createdAt: true, ultimoEnvioEm: true } },
         },
       }),
       prisma.company.findUnique({

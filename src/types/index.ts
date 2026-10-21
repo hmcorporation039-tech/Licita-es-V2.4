@@ -251,4 +251,9 @@ export interface NotificadorRotinaPayload {
   tipo: 'resumo-diario' | 'lembrete-de-prazo'
 }
 
-export type NotificadorJobPayload = NotificadorMatchPayload | NotificadorAlteracaoPayload | NotificadorRotinaPayload
+export interface NotificadorCelularPayload {
+  tipo: 'celular-novas-licitacoes'
+  userId: string
+}
+
+export type NotificadorJobPayload = NotificadorMatchPayload | NotificadorAlteracaoPayload | NotificadorRotinaPayload | NotificadorCelularPayload
