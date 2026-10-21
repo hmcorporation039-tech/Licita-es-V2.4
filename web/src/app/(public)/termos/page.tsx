@@ -70,7 +70,7 @@ export default function TermosPage() {
 
         <h2>4. Teste grátis, planos e pagamento</h2>
         <ul>
-          <li>O teste grátis dura 7 dias a partir da confirmação do e-mail, não pede cartão e não vira assinatura automaticamente.</li>
+          <li>O teste grátis dura 14 dias a partir da confirmação do e-mail, não pede cartão e não vira assinatura automaticamente.</li>
           <li>
             Os planos, seus limites (itens monitorados, usuários e análises por mês) e preços são os divulgados na página de planos
             no momento da contratação. Ao atingir um limite, novas ações daquele tipo ficam indisponíveis até a renovação do período

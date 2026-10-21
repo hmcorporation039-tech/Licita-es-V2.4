@@ -650,7 +650,7 @@ function Planos({ dados }: { dados: PlanosResposta }) {
           id="planos-titulo"
           fino="Planos para"
           forte="cada tamanho de empresa"
-          apoio={`Comece com ${dados.trialDias || 7} dias grátis, sem cartão e sem fidelidade.`}
+          apoio={`Comece com ${dados.trialDias || 14} dias grátis, sem cartão e sem fidelidade.`}
         />
         <Revelar>
           <ul className="az-planos">
@@ -707,7 +707,7 @@ function Planos({ dados }: { dados: PlanosResposta }) {
                     </LinkDeCadastro>
                   ) : p.precoMensalCentavos ? (
                     <LinkDeCadastro origem="planos" className="az-pilula az-pilula-contorno az-pilula-cheia">
-                      Testar {dados.trialDias || 7} dias grátis
+                      Testar {dados.trialDias || 14} dias grátis
                     </LinkDeCadastro>
                   ) : null}
                 </li>

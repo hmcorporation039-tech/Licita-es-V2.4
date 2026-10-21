@@ -113,8 +113,8 @@ function AcoesDePrazo({ u, onPrazo }: { u: AdminUser; onPrazo: (u: AdminUser, di
   const semPrazo = u.accessExpiresAt === null
   if (emTeste(u)) {
     return (
-      <Button size="sm" variant={semPrazo ? 'secondary' : 'ghost'} icon={CalendarPlus} title="Acesso até hoje + 7 dias" onClick={() => onPrazo(u, 7)}>
-        {semPrazo ? 'Definir prazo de 7 dias' : isExpired(u.accessExpiresAt) ? 'Reabrir teste por 7 dias' : 'Estender teste'}
+      <Button size="sm" variant={semPrazo ? 'secondary' : 'ghost'} icon={CalendarPlus} title="Acesso até hoje + 14 dias" onClick={() => onPrazo(u, 14)}>
+        {semPrazo ? 'Definir prazo de 14 dias' : isExpired(u.accessExpiresAt) ? 'Reabrir teste por 14 dias' : 'Estender teste'}
       </Button>
     )
   }

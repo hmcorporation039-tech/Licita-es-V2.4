@@ -41,7 +41,7 @@ import {
   tokenUtilizavel,
 } from '../lib/tokensDeConta'
 
-export const TRIAL_DIAS = 7
+export const TRIAL_DIAS = 14
 
 export function fimDoTesteNaConfirmacao(acessoAte: Date | null, planCode: string, agora: Date, dias: number = TRIAL_DIAS): Date | null {
   if (acessoAte === null || planCode !== 'TESTE') return acessoAte
