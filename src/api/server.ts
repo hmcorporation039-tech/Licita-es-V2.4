@@ -33,6 +33,7 @@ import { suporteRouter } from './routes/suporte'
 import { adminChamadosRouter } from './routes/adminChamados'
 import { adminCobrancaRouter } from './routes/adminCobranca'
 import { cobrancaPublicaRouter, cobrancaRouter, webhookDoAsaasRouter } from './routes/cobranca'
+import { segundoFatorRouter } from './routes/segundoFator'
 import { atribuirCodigoDeRastreio } from './rastreio'
 import { registrarErro, textoDaFalha } from '../services/errosDoSistema'
 import { descadastroRouter } from './routes/descadastro'
@@ -132,6 +133,7 @@ app.use('/api/celular', requireAuth, celularRouter)
 app.use('/api/estudos', requireAuth, estudosRouter)
 app.use('/api/suporte', requireAuth, suporteRouter)
 app.use('/api/cobranca', requireAuth, cobrancaRouter)
+app.use('/api/segundo-fator', requireAuth, segundoFatorRouter)
 
 function guardarErroDaApi(req: Parameters<ErrorRequestHandler>[1], err: unknown, status: number) {
   return registrarErro({

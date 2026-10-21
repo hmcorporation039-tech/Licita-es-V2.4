@@ -12,6 +12,8 @@ import { verifySessionToken } from '../services/authService'
 import { ApiError } from './asyncHandler'
 import { empresaTemDonoComAcesso } from '../lib/acessoDaEmpresa'
 import { PLANO_DE_TESTE, acessoExpirou, detalhesDoAcessoEncerrado, mensagemDeAcessoEncerrado } from '../lib/acessoEncerrado'
+import { confirmacaoRecente, segundoFatorDoAdminExigido } from '../lib/segundoFator'
+import { segundoFatorAtivo } from '../services/segundoFator'
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -21,6 +23,8 @@ declare global {
       companyId?: string
       companyRole?: string
       isAdmin?: boolean
+      segundoFatorAtivo?: boolean
+      segundoFatorEm?: number
     }
   }
 }
@@ -64,6 +68,8 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
     req.companyId = user.companyId
     req.companyRole = user.companyRole
     req.isAdmin = user.isAdmin
+    req.segundoFatorAtivo = segundoFatorAtivo(user)
+    req.segundoFatorEm = payload.segundoFatorEm
     next()
   } catch (err) {
     next(err)
@@ -73,6 +79,24 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
 export function requireAdmin(req: Request, _res: Response, next: NextFunction) {
   if (!req.isAdmin) {
     next(new ApiError(403, 'Apenas administradores podem fazer isso'))
+    return
+  }
+  if (segundoFatorDoAdminExigido()) {
+    if (!req.segundoFatorAtivo) {
+      next(new ApiError(403, 'Ative o login em duas etapas em Minha conta para usar a administração.', { code: 'SEGUNDO_FATOR_PENDENTE' }))
+      return
+    }
+    if (req.segundoFatorEm === undefined) {
+      next(new ApiError(403, 'Saia e entre de novo com o código do aplicativo para usar a administração.', { code: 'SEGUNDO_FATOR_NECESSARIO' }))
+      return
+    }
+  }
+  next()
+}
+
+export function exigirConfirmacaoRecente(req: Request, _res: Response, next: NextFunction) {
+  if (segundoFatorDoAdminExigido() && !confirmacaoRecente(req.segundoFatorEm, new Date())) {
+    next(new ApiError(403, 'Digite o código do aplicativo para confirmar esta ação.', { code: 'SEGUNDO_FATOR_RECENTE' }))
     return
   }
   next()

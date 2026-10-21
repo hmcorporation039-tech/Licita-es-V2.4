@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { Prisma } from '@prisma/client'
 import { prisma } from '../../services/tenderService'
 import { asyncHandler, ApiError } from '../asyncHandler'
-import { requireAdmin, requireAuth } from '../authMiddleware'
+import { exigirConfirmacaoRecente, requireAdmin, requireAuth } from '../authMiddleware'
 import { escritaSensivelLimiter } from '../rateLimit'
 import { registrarAuditoria } from '../../services/auditService'
 import { cancelarPeloAdministrador, painelDaCobranca, reembolsarPrimeiroPagamento, sincronizarAssinatura } from '../../services/cobranca'
@@ -55,6 +55,7 @@ adminCobrancaRouter.post(
 adminCobrancaRouter.post(
   '/cobranca/assinaturas/:id/reembolsar',
   escritaSensivelLimiter,
+  exigirConfirmacaoRecente,
   asyncHandler(async (req, res) => {
     await reembolsarPrimeiroPagamento(idDoParametro(req), req.userId!)
     res.json({ ok: true })
@@ -64,6 +65,7 @@ adminCobrancaRouter.post(
 adminCobrancaRouter.post(
   '/cobranca/assinaturas/:id/cancelar',
   escritaSensivelLimiter,
+  exigirConfirmacaoRecente,
   asyncHandler(async (req, res) => {
     await cancelarPeloAdministrador(idDoParametro(req), req.userId!)
     res.json({ ok: true })
@@ -72,6 +74,7 @@ adminCobrancaRouter.post(
 
 adminCobrancaRouter.post(
   '/cupons',
+  exigirConfirmacaoRecente,
   escritaSensivelLimiter,
   asyncHandler(async (req, res) => {
     const d = novoCupomSchema.parse(req.body)
@@ -97,6 +100,7 @@ adminCobrancaRouter.post(
 
 adminCobrancaRouter.patch(
   '/cupons/:id',
+  exigirConfirmacaoRecente,
   escritaSensivelLimiter,
   asyncHandler(async (req, res) => {
     const id = idDoParametro(req)

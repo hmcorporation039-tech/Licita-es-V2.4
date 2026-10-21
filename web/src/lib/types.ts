@@ -98,6 +98,7 @@ export interface AdminUser {
   accessExpiresAt: string | null
   createdAt: string
   hasPassword: boolean
+  segundoFatorAtivo?: boolean
   emailConfirmado: boolean
   planCode: string
 }

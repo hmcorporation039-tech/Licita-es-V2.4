@@ -71,21 +71,46 @@ export interface SessionTokenPayload {
   // Confrontado com User.tokenVersion no authMiddleware. Tokens emitidos antes
   // desse campo existir vêm sem ele e são tratados como versão 0.
   tokenVersion: number
+  segundoFatorEm?: number
 }
 
-export function signSessionToken(userId: string, tokenVersion: number): string {
-  return jwt.sign({ userId, tokenVersion } satisfies SessionTokenPayload, getJwtSecret(), {
+export function signSessionToken(userId: string, tokenVersion: number, segundoFatorEm?: number): string {
+  const payload: SessionTokenPayload = segundoFatorEm === undefined ? { userId, tokenVersion } : { userId, tokenVersion, segundoFatorEm }
+  return jwt.sign({ ...payload, tipo: 'sessao' }, getJwtSecret(), {
     expiresIn: duracaoDaSessao() as jwt.SignOptions['expiresIn'],
   })
+}
+
+export function agoraEmSegundos(agora = new Date()): number {
+  return Math.floor(agora.getTime() / 1000)
+}
+
+const VALIDADE_DO_DESAFIO = '5m'
+
+export function assinarDesafioDoSegundoFator(userId: string, tokenVersion: number): string {
+  return jwt.sign({ userId, tokenVersion, tipo: 'desafio-segundo-fator' }, getJwtSecret(), { expiresIn: VALIDADE_DO_DESAFIO })
+}
+
+export function lerDesafioDoSegundoFator(desafio: string): { userId: string; tokenVersion: number } | null {
+  try {
+    const decoded = jwt.verify(desafio, getJwtSecret(), { algorithms: ['HS256'] })
+    if (typeof decoded === 'object' && decoded && decoded.tipo === 'desafio-segundo-fator' && typeof decoded.userId === 'string' && typeof decoded.tokenVersion === 'number') {
+      return { userId: decoded.userId, tokenVersion: decoded.tokenVersion }
+    }
+    return null
+  } catch {
+    return null
+  }
 }
 
 export function verifySessionToken(token: string): SessionTokenPayload | null {
   try {
     const decoded = jwt.verify(token, getJwtSecret(), { algorithms: ['HS256'] })
-    if (typeof decoded === 'object' && decoded && typeof decoded.userId === 'string') {
+    if (typeof decoded === 'object' && decoded && typeof decoded.userId === 'string' && (decoded.tipo === undefined || decoded.tipo === 'sessao')) {
       return {
         userId: decoded.userId,
         tokenVersion: typeof decoded.tokenVersion === 'number' ? decoded.tokenVersion : 0,
+        ...(typeof decoded.segundoFatorEm === 'number' ? { segundoFatorEm: decoded.segundoFatorEm } : {}),
       }
     }
     return null

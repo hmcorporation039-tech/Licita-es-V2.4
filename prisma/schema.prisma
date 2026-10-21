@@ -57,6 +57,12 @@ model User {
   celularLembreteDePrazo  Boolean @default(true) @map("celular_lembrete_de_prazo")
   celularAvisoDeAlteracao Boolean @default(true) @map("celular_aviso_de_alteracao")
 
+  totpSegredo               String?   @map("totp_segredo")
+  totpSegredoNovo           String?   @map("totp_segredo_novo")
+  totpAtivadoEm             DateTime? @map("totp_ativado_em")
+  totpUltimoPasso           Int?      @map("totp_ultimo_passo")
+  totpCodigosDeRecuperacao  String[]  @default([]) @map("totp_codigos_de_recuperacao")
+
   // Toda conta pertence a uma Company — mesmo quem usa sozinho (pessoa
   // física). Ver comentário no model Company. NOT NULL só depois da
   // migration 00000000000005_empresas_constraints (ver scripts/empresasBackfill.ts).

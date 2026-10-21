@@ -11,7 +11,7 @@ import { prisma } from '../../services/tenderService'
 import { generateTempPassword, hashPassword, normalizeEmail } from '../../services/authService'
 import { senhaSchema } from '../passwordPolicy'
 import { asyncHandler, ApiError } from '../asyncHandler'
-import { requireAdmin, requireAuth } from '../authMiddleware'
+import { exigirConfirmacaoRecente, requireAdmin, requireAuth } from '../authMiddleware'
 import { escritaSensivelLimiter } from '../rateLimit'
 import { registrarAuditoria } from '../../services/auditService'
 import { TRIAL_DIAS, enviarConviteDeAcesso } from '../../services/contaService'
@@ -57,6 +57,7 @@ const createUserSchema = z.object({
 
 adminRouter.post(
   '/users',
+  exigirConfirmacaoRecente,
   escritaSensivelLimiter,
   asyncHandler(async (req, res) => {
     const body = createUserSchema.parse(req.body)
@@ -130,6 +131,7 @@ adminRouter.get(
         emailVerifiedAt: true,
         createdAt: true,
         passwordHash: true,
+        totpAtivadoEm: true,
         company: { select: { planCode: true } },
       },
     })
@@ -144,6 +146,7 @@ adminRouter.get(
         emailConfirmado: u.emailVerifiedAt != null,
         createdAt: u.createdAt,
         hasPassword: u.passwordHash != null,
+        segundoFatorAtivo: u.totpAtivadoEm != null,
         planCode: u.company.planCode,
       }))
     )
@@ -162,6 +165,7 @@ const updateUserSchema = z.object({
 
 adminRouter.patch(
   '/users/:id',
+  exigirConfirmacaoRecente,
   asyncHandler(async (req, res) => {
     const body = updateUserSchema.parse(req.body)
     const existing = await prisma.user.findUnique({ where: { id: req.params.id } })
@@ -236,6 +240,7 @@ const resetPasswordSchema = z.object({
 
 adminRouter.post(
   '/users/:id/reset-password',
+  exigirConfirmacaoRecente,
   escritaSensivelLimiter,
   asyncHandler(async (req, res) => {
     const body = resetPasswordSchema.parse(req.body)

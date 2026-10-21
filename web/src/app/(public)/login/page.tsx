@@ -8,6 +8,9 @@ import { api, ApiRequestError, CODIGO_ACESSO_EXPIRADO } from '@/lib/api'
 import AcessoEncerrado, { lerDadosDoAcessoEncerrado, type DadosDoAcessoEncerrado } from '@/components/AcessoEncerrado'
 import { setSession } from '@/lib/session'
 import { User } from '@/lib/types'
+import { guardarAvisoDeRecuperacao } from '@/lib/segundoFator'
+
+type RespostaDoLogin = { token: string; user: User } | { segundoFator: true; desafio: string }
 
 const BOTAO_COMO_LINK =
   'self-start text-sm font-medium text-accent underline decoration-accent-line underline-offset-[3px] hover:decoration-accent'
@@ -20,7 +23,15 @@ export default function LoginPage() {
   const [info, setInfo] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [encerrado, setEncerrado] = useState<DadosDoAcessoEncerrado | null>(null)
+  const [desafio, setDesafio] = useState<string | null>(null)
+  const [codigo, setCodigo] = useState('')
+  const [comRecuperacao, setComRecuperacao] = useState(false)
   const router = useRouter()
+
+  function entrarCom(token: string, user: User) {
+    setSession(token, user)
+    router.push('/dashboard')
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -29,9 +40,13 @@ export default function LoginPage() {
     setNaoConfirmado(false)
     setLoading(true)
     try {
-      const { token, user } = await api.post<{ token: string; user: User }>('/api/auth/login', { email, password })
-      setSession(token, user)
-      router.push('/dashboard')
+      const r = await api.post<RespostaDoLogin>('/api/auth/login', { email, password })
+      if ('segundoFator' in r) {
+        setDesafio(r.desafio)
+        setCodigo('')
+        return
+      }
+      entrarCom(r.token, r.user)
     } catch (err) {
       if (err instanceof ApiRequestError && err.code === CODIGO_ACESSO_EXPIRADO) {
         setEncerrado(lerDadosDoAcessoEncerrado(err.detalhes))
@@ -39,6 +54,26 @@ export default function LoginPage() {
       }
       setError(err instanceof ApiRequestError ? err.message : 'Erro ao entrar')
       setNaoConfirmado(err instanceof ApiRequestError && err.code === 'EMAIL_NAO_VERIFICADO')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function enviarCodigo(e: React.FormEvent) {
+    e.preventDefault()
+    if (!desafio) return
+    setError(null)
+    setLoading(true)
+    try {
+      const r = await api.post<{ token: string; user: User; viaCodigoDeRecuperacao: boolean; codigosDeRecuperacaoRestantes: number }>('/api/auth/login/segundo-fator', { desafio, codigo })
+      if (r.viaCodigoDeRecuperacao) guardarAvisoDeRecuperacao(r.codigosDeRecuperacaoRestantes)
+      entrarCom(r.token, r.user)
+    } catch (err) {
+      if (err instanceof ApiRequestError && err.code === 'DESAFIO_EXPIRADO') {
+        setDesafio(null)
+        setPassword('')
+      }
+      setError(err instanceof ApiRequestError ? err.message : 'Erro ao entrar')
     } finally {
       setLoading(false)
     }
@@ -69,6 +104,59 @@ export default function LoginPage() {
             setPassword('')
           }}
         />
+      </PublicCard>
+    )
+  }
+
+  if (desafio) {
+    return (
+      <PublicCard title="Login em duas etapas" fala="Só mais um passo: o código do seu aplicativo.">
+        <form onSubmit={enviarCodigo} className="flex flex-col gap-4">
+          {comRecuperacao ? (
+            <Field label="Código de recuperação" hint="Um dos 8 códigos que você guardou ao ativar. Cada um vale uma vez.">
+              <Input autoComplete="off" autoCapitalize="characters" spellCheck={false} placeholder="ABCDE-FGHJK" maxLength={20} value={codigo} onChange={(e) => setCodigo(e.target.value)} autoFocus />
+            </Field>
+          ) : (
+            <Field label="Código do aplicativo" hint="Abra o Google Authenticator (ou o aplicativo que você usou) e digite os 6 números da Licita Bela.">
+              <Input
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                pattern="[0-9 ]*"
+                placeholder="000 000"
+                maxLength={7}
+                value={codigo}
+                onChange={(e) => setCodigo(e.target.value)}
+                autoFocus
+              />
+            </Field>
+          )}
+          <FormError>{error}</FormError>
+          <Button type="submit" variant="primary" loading={loading} disabled={loading || codigo.trim().length < 6} className="pb-cta w-full">
+            {loading ? 'Conferindo…' : 'Entrar'}
+          </Button>
+          <button
+            type="button"
+            className={BOTAO_COMO_LINK}
+            onClick={() => {
+              setComRecuperacao(!comRecuperacao)
+              setCodigo('')
+              setError(null)
+            }}
+          >
+            {comRecuperacao ? 'Usar o código do aplicativo' : 'Perdi o celular: usar um código de recuperação'}
+          </button>
+          <button
+            type="button"
+            className={BOTAO_COMO_LINK}
+            onClick={() => {
+              setDesafio(null)
+              setPassword('')
+              setError(null)
+            }}
+          >
+            Voltar
+          </button>
+        </form>
       </PublicCard>
     )
   }
