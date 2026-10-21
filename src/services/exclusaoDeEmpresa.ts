@@ -68,6 +68,8 @@ export async function excluirEmpresa(companyId: string, executar: boolean): Prom
     prisma.tenderChecklist.deleteMany({ where: { companyId } }),
     prisma.requirementProgress.deleteMany({ where: { companyId } }),
     prisma.editalPergunta.deleteMany({ where: { companyId } }),
+    prisma.chamado.deleteMany({ where: { companyId } }),
+    prisma.erroDoSistema.updateMany({ where: { OR: [{ companyId }, { userId: { in: ids } }] }, data: { companyId: null, userId: null, navegador: null } }),
     prisma.notification.deleteMany({ where: { userId: { in: ids } } }),
     prisma.authToken.deleteMany({ where: { userId: { in: ids } } }),
     prisma.aiUsage.updateMany({ where: { userId: { in: ids } }, data: { userId: null } }),

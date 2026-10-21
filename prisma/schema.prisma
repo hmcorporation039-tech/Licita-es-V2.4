@@ -74,6 +74,9 @@ model User {
   authTokens         AuthToken[]
   costStudies        CostStudy[]
   perguntasAoEdital  EditalPergunta[]
+  chamados           Chamado[]
+  mensagensDeChamado ChamadoMensagem[]
+  errosDoSistema     ErroDoSistema[]
 
   @@index([companyId])
   @@map("users")
@@ -143,6 +146,8 @@ model Company {
   tenderMatches        TenderMatch[]
   costStudies          CostStudy[]
   perguntasAoEdital    EditalPergunta[]
+  chamados             Chamado[]
+  errosDoSistema       ErroDoSistema[]
 
   @@map("companies")
 }
@@ -223,58 +228,58 @@ enum EstadoDaBusca {
 // ============================================================
 
 model Tender {
-  id                 String         @id @default(uuid())
-  fonte              FonteEnum // 'PNCP' | 'COMPRASNET'
-  fonteId            String         @unique @map("fonte_id") // ID único da fonte
-  modalidade         ModalidadeEnum
-  situacao           SituacaoEnum   @default(ABERTA)
-  objeto             String         @db.Text
-  objetoResumido     String?        @map("objeto_resumido") @db.VarChar(500)
+  id                   String         @id @default(uuid())
+  fonte                FonteEnum // 'PNCP' | 'COMPRASNET'
+  fonteId              String         @unique @map("fonte_id") // ID único da fonte
+  modalidade           ModalidadeEnum
+  situacao             SituacaoEnum   @default(ABERTA)
+  objeto               String         @db.Text
+  objetoResumido       String?        @map("objeto_resumido") @db.VarChar(500)
   // Versões sem acento/minúsculas de objeto/orgao/municipio, mantidas em sincronia
   // na gravação — usadas pela busca (ver tenders.ts) pra "uberlandia" achar
   // "Uberlândia" sem precisar da extensão unaccent do Postgres.
-  objetoNorm         String?        @map("objeto_norm") @db.Text
-  objetoResumidoNorm String?        @map("objeto_resumido_norm") @db.Text
-  orgaoNorm          String?        @map("orgao_norm")
-  municipioNorm      String?        @map("municipio_norm")
-  valorEstimado      Decimal?       @map("valor_estimado")
+  objetoNorm           String?        @map("objeto_norm") @db.Text
+  objetoResumidoNorm   String?        @map("objeto_resumido_norm") @db.Text
+  orgaoNorm            String?        @map("orgao_norm")
+  municipioNorm        String?        @map("municipio_norm")
+  valorEstimado        Decimal?       @map("valor_estimado")
   // Preenchido pelo PNCP só quando a contratação já foi homologada/contratada —
   // ao contrário de situacaoCompraId, que na prática fica parado em "Divulgada
   // no PNCP" pra dispensa/inexigibilidade mesmo depois de concluída (ver
   // situacaoUpdateService.ts). É o sinal confiável de que o processo encerrou.
-  valorHomologado    Decimal?       @map("valor_homologado")
+  valorHomologado      Decimal?       @map("valor_homologado")
   // Registro de Preços — só o PNCP preenche isso hoje (campo "srp" do payload).
-  srp                Boolean?
-  uf                 String?        @db.Char(2)
-  municipio          String?
-  municipioIbge      String?        @map("municipio_ibge")
-  municipioLat       Float?         @map("municipio_lat")
-  municipioLng       Float?         @map("municipio_lng")
-  orgao              String?
-  orgaoCnpj          String?        @map("orgao_cnpj") @db.VarChar(14)
-  unidade            String?
-  aberturaAt         DateTime?      @map("abertura_at")
-  encerramentoAt     DateTime?      @map("encerramento_at")
-  publicadoAt        DateTime?      @map("publicado_at")
-  linkEdital         String?        @map("link_edital")
-  plataformaDeOrigem String?        @map("plataforma_de_origem")
-  numeroControle     String?        @map("numero_controle")
-  anoDoProcesso      Int?           @map("ano_do_processo")
-  duplicataDe        String?        @map("duplicata_de")
-  motivoOculta       String?        @map("motivo_oculta")
-  prazoImprovavel    Boolean        @default(dbgenerated("false")) @map("prazo_improvavel")
-  rawJson            Json           @map("raw_json")
+  srp                  Boolean?
+  uf                   String?        @db.Char(2)
+  municipio            String?
+  municipioIbge        String?        @map("municipio_ibge")
+  municipioLat         Float?         @map("municipio_lat")
+  municipioLng         Float?         @map("municipio_lng")
+  orgao                String?
+  orgaoCnpj            String?        @map("orgao_cnpj") @db.VarChar(14)
+  unidade              String?
+  aberturaAt           DateTime?      @map("abertura_at")
+  encerramentoAt       DateTime?      @map("encerramento_at")
+  publicadoAt          DateTime?      @map("publicado_at")
+  linkEdital           String?        @map("link_edital")
+  plataformaDeOrigem   String?        @map("plataforma_de_origem")
+  numeroControle       String?        @map("numero_controle")
+  anoDoProcesso        Int?           @map("ano_do_processo")
+  duplicataDe          String?        @map("duplicata_de")
+  motivoOculta         String?        @map("motivo_oculta")
+  prazoImprovavel      Boolean        @default(dbgenerated("false")) @map("prazo_improvavel")
+  rawJson              Json           @map("raw_json")
   // Impressao digital dos campos que importam (ver lib/tenderContentHash.ts).
   // Orgaos republicam licitacao o tempo todo; comparar o hash deixa a coleta
   // atualizar so o que mudou, sem reescrever milhares de registros por ciclo.
-  contentHash        String?        @map("content_hash")
+  contentHash          String?        @map("content_hash")
   // Ultima vez que a situacao real foi reconsultada no PNCP — usado para
   // fazer rodizio em vez de varrer a base inteira a cada execucao.
-  situacaoCheckedAt  DateTime?      @map("situacao_checked_at")
-  resultadoConferidoEm DateTime?    @map("resultado_conferido_em")
-  resultadoFinal     Boolean        @default(false) @map("resultado_final")
-  createdAt          DateTime       @default(now()) @map("created_at")
-  updatedAt          DateTime       @updatedAt @map("updated_at")
+  situacaoCheckedAt    DateTime?      @map("situacao_checked_at")
+  resultadoConferidoEm DateTime?      @map("resultado_conferido_em")
+  resultadoFinal       Boolean        @default(false) @map("resultado_final")
+  createdAt            DateTime       @default(now()) @map("created_at")
+  updatedAt            DateTime       @updatedAt @map("updated_at")
 
   items               TenderItem[]
   tenderMatches       TenderMatch[]
@@ -407,24 +412,24 @@ enum SituacaoEnum {
 // ============================================================
 
 model TenderItem {
-  id                 String   @id @default(uuid())
-  tenderId           String   @map("tender_id")
-  numeroItem         Int?     @map("numero_item")
-  descricao          String   @db.Text
+  id                      String    @id @default(uuid())
+  tenderId                String    @map("tender_id")
+  numeroItem              Int?      @map("numero_item")
+  descricao               String    @db.Text
   // Mesma razao das colunas *_norm de Tender: o matcher procura a palavra-chave
   // tambem na descricao do item, e o pre-filtro no banco precisa achar
   // "cirurgico" dentro de "cirurgico" sem depender da extensao unaccent.
-  descricaoNorm      String?  @map("descricao_norm") @db.Text
+  descricaoNorm           String?   @map("descricao_norm") @db.Text
   // Descrição detalhada do item (PNCP: informacaoComplementar) e critério de
   // julgamento do item (PNCP: criterioJulgamentoNome) — ver pncpItemsService.
-  descricaoDetalhada String?  @map("descricao_detalhada") @db.Text
-  criterioJulgamento String?  @map("criterio_julgamento")
-  catmatCode         String?  @map("catmat_code")
-  catserCode         String?  @map("catser_code")
-  unidadeMedida      String?  @map("unidade_medida")
-  quantidade         Decimal?
-  valorUnitario      Decimal? @map("valor_unitario")
-  valorTotal         Decimal? @map("valor_total")
+  descricaoDetalhada      String?   @map("descricao_detalhada") @db.Text
+  criterioJulgamento      String?   @map("criterio_julgamento")
+  catmatCode              String?   @map("catmat_code")
+  catserCode              String?   @map("catser_code")
+  unidadeMedida           String?   @map("unidade_medida")
+  quantidade              Decimal?
+  valorUnitario           Decimal?  @map("valor_unitario")
+  valorTotal              Decimal?  @map("valor_total")
   situacaoDoResultado     String?   @map("situacao_do_resultado")
   vencedorNi              String?   @map("vencedor_ni")
   vencedorNome            String?   @map("vencedor_nome")
@@ -434,7 +439,7 @@ model TenderItem {
   valorTotalHomologado    Decimal?  @map("valor_total_homologado")
   dataDoResultado         DateTime? @map("data_do_resultado") @db.Date
   fornecedoresRegistrados Int?      @map("fornecedores_registrados")
-  createdAt          DateTime @default(now()) @map("created_at")
+  createdAt               DateTime  @default(now()) @map("created_at")
 
   tender Tender @relation(fields: [tenderId], references: [id], onDelete: Cascade)
 
@@ -611,23 +616,23 @@ model CompanyDocumentFile {
 // ============================================================
 
 model TenderAnalysis {
-  id            String         @id @default(uuid())
-  tenderId      String         @unique @map("tender_id")
-  status        AnalysisStatus @default(PENDING)
-  documentoNome String?        @map("documento_nome")
+  id                   String         @id @default(uuid())
+  tenderId             String         @unique @map("tender_id")
+  status               AnalysisStatus @default(PENDING)
+  documentoNome        String?        @map("documento_nome")
   // Resultado FINAL: a análise revisada, ou o rascunho do analista quando não houve revisão.
-  resultado     Json? // { resumo, valorEstimado, ..., matrizExigencias, riscos }
+  resultado            Json? // { resumo, valorEstimado, ..., matrizExigencias, riscos }
   // Análise em dupla: o que o analista (Gemini) entregou ANTES da revisão — só o admin vê, para auditar.
-  rascunho      Json?
+  rascunho             Json?
   // Relatório da revisão: status, veredito, resumo, alterações campo a campo, modelos usados.
-  revisao       Json?
+  revisao              Json?
   // 'dupla' | 'gemini' | 'claude' — como esta análise foi produzida.
-  pipeline      String?
-  errorMsg      String?        @map("error_msg") @db.Text
-  conversaStatus       String?   @map("conversa_status")
-  conversaAtualizadaEm DateTime? @map("conversa_atualizada_em")
-  createdAt     DateTime       @default(now()) @map("created_at")
-  updatedAt     DateTime       @updatedAt @map("updated_at")
+  pipeline             String?
+  errorMsg             String?        @map("error_msg") @db.Text
+  conversaStatus       String?        @map("conversa_status")
+  conversaAtualizadaEm DateTime?      @map("conversa_atualizada_em")
+  createdAt            DateTime       @default(now()) @map("created_at")
+  updatedAt            DateTime       @updatedAt @map("updated_at")
 
   tender Tender @relation(fields: [tenderId], references: [id], onDelete: Cascade)
 
@@ -952,4 +957,68 @@ model PregaoLance {
 
   @@index([acompanhamentoId, createdAt])
   @@map("pregao_lances")
+}
+
+model ErroDoSistema {
+  id               String   @id @default(uuid())
+  origem           String
+  codigoDeRastreio String?  @map("codigo_de_rastreio")
+  metodo           String?
+  rota             String?
+  status           Int?
+  mensagem         String   @db.Text
+  pilha            String?  @db.Text
+  tela             String?
+  navegador        String?
+  versao           String?
+  userId           String?  @map("user_id")
+  user             User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  companyId        String?  @map("company_id")
+  company          Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@index([codigoDeRastreio])
+  @@index([userId, createdAt])
+  @@index([createdAt])
+  @@map("erros_do_sistema")
+}
+
+model Chamado {
+  id                String            @id @default(uuid())
+  numero            Int               @unique @default(autoincrement())
+  companyId         String            @map("company_id")
+  company           Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  userId            String?           @map("user_id")
+  user              User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  tipo              String
+  status            String            @default("ABERTO")
+  origem            String            @default("FORMULARIO")
+  assunto           String
+  relato            String            @db.Text
+  contexto          Json              @default("{}")
+  diagnostico       Json?
+  diagnosticoStatus String?           @map("diagnostico_status")
+  diagnosticoEm     DateTime?         @map("diagnostico_em")
+  resolvidoEm       DateTime?         @map("resolvido_em")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @default(now()) @updatedAt @map("updated_at")
+  mensagens         ChamadoMensagem[]
+
+  @@index([companyId, createdAt])
+  @@index([status, createdAt])
+  @@map("chamados")
+}
+
+model ChamadoMensagem {
+  id        String   @id @default(uuid())
+  chamadoId String   @map("chamado_id")
+  chamado   Chamado  @relation(fields: [chamadoId], references: [id], onDelete: Cascade)
+  autor     String
+  userId    String?  @map("user_id")
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  texto     String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([chamadoId, createdAt])
+  @@map("chamado_mensagens")
 }

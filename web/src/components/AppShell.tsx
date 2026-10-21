@@ -10,6 +10,7 @@ import {
   FileText,
   Inbox,
   LayoutGrid,
+  LifeBuoy,
   ListChecks,
   LogOut,
   Menu,
@@ -28,6 +29,8 @@ import Bela, { BotaoDaBela } from '@/components/Bela'
 import { cx } from '@/components/ui'
 import AvisoDeTermos from '@/components/AvisoDeTermos'
 import { desligarAoSair, sincronizarEsteAparelho } from '@/lib/notificacaoNoCelular'
+import { lembrarTela } from '@/lib/suporte'
+import CapturaDeErros from '@/components/CapturaDeErros'
 
 interface ItemDeMenu {
   href: string
@@ -60,7 +63,13 @@ const GRUPOS: GrupoDeMenu[] = [
       { href: '/conta', label: 'Conta', icon: UserRound },
     ],
   },
-  { nome: 'Ajuda', itens: [{ href: '/guia', label: 'Guia', icon: BookOpen }] },
+  {
+    nome: 'Ajuda',
+    itens: [
+      { href: '/guia', label: 'Guia', icon: BookOpen },
+      { href: '/suporte', label: 'Suporte', icon: LifeBuoy },
+    ],
+  },
   { nome: 'Plataforma', soAdmin: true, itens: [{ href: '/admin', label: 'Administração', icon: ShieldCheck }] },
 ]
 
@@ -132,6 +141,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
     setUser(getSessionUser())
     setMenuAberto(false)
     setBelaAberta(false)
+    if (pathname) lembrarTela(pathname)
   }, [pathname])
 
   useEffect(() => {
@@ -206,6 +216,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       <Bela aberta={belaAberta} onFechar={() => setBelaAberta(false)} />
+      <CapturaDeErros />
 
       <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-7">
         <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-6">

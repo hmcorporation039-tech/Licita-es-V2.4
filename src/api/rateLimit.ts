@@ -219,3 +219,21 @@ export const exportacaoPlanilhaLimiter = rateLimit({
   keyGenerator: (req) => req.userId ?? 'anonimo',
   message: { error: 'Muitas planilhas geradas — aguarde alguns minutos e tente de novo' },
 })
+
+export const errosDaTelaLimiter = rateLimit({
+  windowMs: JANELA_MS,
+  limit: limite(30),
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  keyGenerator: (req) => req.userId ?? 'anonimo',
+  message: { error: 'Muitos erros enviados — aguarde alguns minutos' },
+})
+
+export const suporteLimiter = rateLimit({
+  windowMs: JANELA_MS,
+  limit: limite(40),
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  keyGenerator: (req) => req.userId ?? 'anonimo',
+  message: { error: 'Muitas mensagens seguidas — aguarde alguns minutos e tente de novo' },
+})

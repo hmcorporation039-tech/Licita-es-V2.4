@@ -29,6 +29,10 @@ import { contaRouter } from './routes/conta'
 import { celularRouter } from './routes/celular'
 import { conversaComOEditalRouter } from './routes/conversaComOEdital'
 import { estudosRouter } from './routes/estudos'
+import { suporteRouter } from './routes/suporte'
+import { adminChamadosRouter } from './routes/adminChamados'
+import { atribuirCodigoDeRastreio } from './rastreio'
+import { registrarErro, textoDaFalha } from '../services/errosDoSistema'
 import { descadastroRouter } from './routes/descadastro'
 import { requireAuth } from './authMiddleware'
 import { ApiError } from './asyncHandler'
@@ -70,6 +74,7 @@ app.use(
   })
 )
 
+app.use(atribuirCodigoDeRastreio)
 app.use(express.json({ limit: '1mb' }))
 
 // Liveness: o processo está de pé (não toca no banco).
@@ -98,6 +103,7 @@ app.use('/api/public', publicRouter)
 app.use('/api/descadastro', descadastroRouter)
 app.use('/api/admin', adminRouter)
 app.use('/api/admin', adminGestaoRouter)
+app.use('/api/admin', adminChamadosRouter)
 
 // Todo o resto da plataforma exige sessão válida — a identidade do
 // usuário vem do token (req.userId), não de um campo enviado pelo cliente.
@@ -118,6 +124,21 @@ app.use('/api/radar', requireAuth, radarLimiter, radarRouter)
 app.use('/api/conta', requireAuth, contaRouter)
 app.use('/api/celular', requireAuth, celularRouter)
 app.use('/api/estudos', requireAuth, estudosRouter)
+app.use('/api/suporte', requireAuth, suporteRouter)
+
+function guardarErroDaApi(req: Parameters<ErrorRequestHandler>[1], err: unknown, status: number) {
+  return registrarErro({
+    origem: 'api',
+    ...textoDaFalha(err),
+    codigoDeRastreio: req.codigoDeRastreio,
+    metodo: req.method,
+    rota: `${req.baseUrl}${req.route?.path ?? req.path}`,
+    status,
+    navegador: req.header('user-agent'),
+    userId: req.userId,
+    companyId: req.companyId,
+  })
+}
 
 const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
   if (err instanceof ZodError) {
@@ -125,6 +146,7 @@ const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
     return
   }
   if (err instanceof ApiError) {
+    if (err.status >= 500) void guardarErroDaApi(req, err, err.status)
     res.status(err.status).json({ error: err.message, ...err.extra })
     return
   }
@@ -143,7 +165,8 @@ const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
   console.error('[API] Erro não tratado:', err)
   // Rota sem ids (ex.: /api/tenders/:id) para o silêncio agrupar erros iguais.
   void alertarFalha('api', `${req.method} ${req.baseUrl}${req.route?.path ?? ''}`, err)
-  res.status(500).json({ error: 'Erro interno' })
+  void guardarErroDaApi(req, err, 500)
+  res.status(500).json({ error: 'Erro interno', codigo: req.codigoDeRastreio })
 }
 app.use(errorHandler)
 
