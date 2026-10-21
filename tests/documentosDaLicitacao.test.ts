@@ -10,6 +10,7 @@ import { calcularAlertasLegais } from '../src/lib/alertasLegais'
 import { renderizarPdf } from '../src/services/documentos/renderizarPdf'
 import { renderizarDocx } from '../src/services/documentos/renderizarDocx'
 import { deflateSync } from 'node:zlib'
+import { PDFParse } from 'pdf-parse'
 import { dimensoesDaImagem, encaixar, imagemLegivel } from '../src/services/documentos/papelTimbrado'
 
 const empresa: EmpresaParaDocumento = {
@@ -157,6 +158,48 @@ describe('papel timbrado', () => {
     expect(strFromU8(arquivos['word/document.xml'])).toContain('PROPOSTA COMERCIAL')
     const cabecalhos = Object.keys(arquivos).filter((n) => n.startsWith('word/header'))
     expect(cabecalhos.some((n) => strFromU8(arquivos[n]).includes('H&amp;M Engenharia'))).toBe(true)
+  })
+})
+
+describe('assinatura junto do texto', () => {
+  const proponente = dadosDoProponente(empresa)
+  const timbrado = { proponente, logo: null }
+  const propostaCom = (itens: number) =>
+    propostaComercial(
+      proponente,
+      certame,
+      Array.from({ length: itens }, (_, i) => ({ numero: i + 1, descricao: `Carne bovina tipo ${i + 1}, resfriada, embalada a vácuo`, unidade: 'kg', quantidade: 10 + i, precoUnitario: 39.9 })),
+      { validadeDias: 60, prazoDeEntrega: '', condicoesDePagamento: '' },
+      quando,
+    ).documento
+
+  async function paginas(pdf: Buffer): Promise<string[]> {
+    const parser = new PDFParse({ data: pdf })
+    try {
+      return (await parser.getText()).pages.map((p) => p.text)
+    } finally {
+      await parser.destroy()
+    }
+  }
+
+  it('no PDF, a página da assinatura sempre traz o último parágrafo, qualquer que seja o tamanho da tabela', async () => {
+    const assinaturaSozinha: number[] = []
+    for (let itens = 1; itens <= 40; itens++) {
+      const texto = await paginas(await renderizarPdf(propostaCom(itens), timbrado))
+      const ultima = texto[texto.length - 1]
+      expect(ultima).toContain('Sócio-administrador')
+      if (!ultima.includes('Dados bancários para pagamento')) assinaturaSozinha.push(itens)
+    }
+    expect(assinaturaSozinha).toEqual([])
+  }, 60_000)
+
+  it('no Word, o último parágrafo e a assinatura ficam na mesma página', async () => {
+    const xml = strFromU8(unzipSync(new Uint8Array(await renderizarDocx(propostaCom(12), timbrado)))['word/document.xml'])
+    const paragrafos = xml.match(/<w:p[ >][\s\S]*?<\/w:p>/g) ?? []
+    const doTexto = (trecho: string) => paragrafos.find((p) => p.includes(trecho)) ?? ''
+    expect(doTexto('Dados bancários para pagamento')).toContain('<w:keepNext/>')
+    expect(doTexto('14 de outubro de 2026')).toContain('<w:keepNext/>')
+    expect(doTexto('Declaramos que nos preços propostos')).not.toContain('<w:keepNext/>')
   })
 })
 
