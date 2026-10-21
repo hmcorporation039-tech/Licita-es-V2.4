@@ -168,3 +168,20 @@ export async function enviarAvisoDeDocumentoRepetido(to: string, tipoDoDocumento
     ),
   })
 }
+
+export async function enviarRespostaDoChamado(to: string, chamado: { numero: number; assunto: string }, resposta: string): Promise<boolean> {
+  const link = `${appUrl()}/suporte/chamados/${chamado.numero}`
+  const trecho = resposta.length > 1500 ? `${resposta.slice(0, 1499)}…` : resposta
+  return enviar({
+    to,
+    link,
+    subject: `Resposta ao chamado #${chamado.numero}`,
+    html: moldura(
+      `Resposta ao chamado #${chamado.numero}`,
+      `<p>O suporte respondeu ao seu chamado <strong>${escapeHtml(chamado.assunto)}</strong>:</p>
+       <p style="white-space:pre-line">${escapeHtml(trecho)}</p>`,
+      link,
+      'Ver o chamado'
+    ),
+  })
+}

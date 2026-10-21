@@ -3,6 +3,7 @@
 // ============================================================
 
 import { clearSessionUser, getSessionToken } from './session'
+import { lembrarErro, novoCodigoDeRastreio } from './suporte'
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3333'
 
@@ -61,10 +62,12 @@ function camposComErro(detalhes: DetalheDeValidacao[]): Record<string, string> {
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const token = getSessionToken()
+  const codigo = novoCodigoDeRastreio()
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      'X-Request-Id': codigo,
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options?.headers,
     },
@@ -89,6 +92,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     const detalhes: DetalheDeValidacao[] = Array.isArray(body.details) ? body.details : []
     const mensagens = [...new Set(detalhes.map((d) => d.message).filter((m): m is string => Boolean(m)))]
     const mensagem = mensagens.length > 0 ? mensagens.join('. ') : (body.error ?? `Erro ${res.status}`)
+    if (res.status !== 401) lembrarErro({ codigo, rota: path, status: res.status, mensagem: String(mensagem).slice(0, 300) })
     throw new ApiRequestError(res.status, mensagem, typeof body.code === 'string' ? body.code : undefined, camposComErro(detalhes), body)
   }
 

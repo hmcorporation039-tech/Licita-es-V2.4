@@ -27,6 +27,8 @@ import { startRematchItemWorker } from './rematchItem'
 import { refreshAllOpenSituacoes } from '../services/situacaoUpdateService'
 import { anonimizarAuditoriaAntiga, cleanupOldUnmatchedTenders, cleanupOldWorkerLogs } from '../services/retentionService'
 import { apagarTextosDeEditaisAntigos } from '../services/textosDoEdital'
+import { apagarErrosAntigos, registrarErro, textoDaFalha } from '../services/errosDoSistema'
+import { apagarChamadosAntigos } from '../services/chamados'
 import { checkExpiringDocuments } from '../services/documentAlertService'
 import { configuracaoDeIa } from '../services/analiseEmDupla'
 import { textoDoDiagnostico } from '../lib/diagnosticoDeChave'
@@ -69,6 +71,7 @@ async function main() {
       const tentativas = job?.opts?.attempts ?? 1
       if (job && job.attemptsMade < tentativas) return
       void alertarFalha('worker ' + w.name, job?.name ?? 'job', err)
+      void registrarErro({ origem: 'worker', ...textoDaFalha(err), rota: `${w.name}/${job?.name ?? 'job'}` })
     })
   }
 
@@ -137,6 +140,9 @@ async function main() {
       console.log(`[Retenção] ${anonimizados} registro(s) de auditoria com mais de 5 anos anonimizado(s).`)
       const { licitacoes } = await apagarTextosDeEditaisAntigos()
       console.log(`[Retenção] Texto guardado para a conversa apagado de ${licitacoes} licitação(ões) encerrada(s).`)
+      const { apagados: erros } = await apagarErrosAntigos()
+      const { apagados: chamados } = await apagarChamadosAntigos()
+      console.log(`[Retenção] ${erros} erro(s) do sistema e ${chamados} chamado(s) resolvido(s) antigos apagados.`)
     } catch (err) {
       console.error('[Retenção] Erro na limpeza:', err)
       void alertarFalha('rotina', 'retenção', err)

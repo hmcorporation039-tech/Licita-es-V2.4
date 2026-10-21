@@ -124,6 +124,11 @@ export default function PrivacidadePage() {
           </li>
           <li>Pedido de exclusão: atendido em até 15 dias, com confirmação por e-mail.</li>
           <li>
+            Chamados de suporte: o que você escreveu, as respostas e, para ajudar a resolver, a última tela aberta, o navegador, o
+            horário e os códigos dos erros recentes da sessão. Ficam até 1 ano depois de resolvidos.
+          </li>
+          <li>Registro de erros do sistema (sem senhas nem chaves): 30 dias.</li>
+          <li>
             Perguntas ao edital: enquanto a conta existir. O texto do edital guardado para a conversa é apagado 30 dias depois do fim
             do prazo da licitação.
           </li>

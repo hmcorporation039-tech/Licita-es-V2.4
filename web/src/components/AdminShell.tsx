@@ -15,6 +15,7 @@ const ABAS = [
   { href: '/admin/auditoria', label: 'Auditoria' },
   { href: '/admin/uso-ia', label: 'Consumo de IA' },
   { href: '/admin/planos', label: 'Planos' },
+  { href: '/admin/chamados', label: 'Chamados' },
 ]
 
 export function AdminTabs() {
