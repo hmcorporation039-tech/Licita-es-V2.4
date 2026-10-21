@@ -1,5 +1,5 @@
 import PausarLetreiro from './PausarLetreiro'
-import { fontesNaFaixa } from '@/lib/fontes'
+import { fontesNaFaixa, plataformasNaFaixa } from '@/lib/fontes'
 
 interface FonteOficial {
   nome: string
@@ -50,9 +50,34 @@ function Marca({ fonte }: { fonte: FonteOficial }) {
   )
 }
 
-export default function FaixaDeFontes({ marcas }: { marcas?: string[] | null }) {
-  const fontes = fontesNaFaixa(FONTES_OFICIAIS, marcas)
+const numeroBr = (valor: number) => valor.toLocaleString('pt-BR')
+
+function Letreiro({ fontes }: { fontes: FonteOficial[] }) {
   const total = fontes.length
+  return (
+    <div id={ID_DO_LETREIRO} className="az-letreiro">
+      <ul className="az-letreiro-trilho">
+        {[...fontes, ...fontes].map((fonte, i) => (
+          <li key={`${fonte.nome}-${i}`} aria-hidden={i >= total || undefined} className={i >= total ? 'az-letreiro-copia' : undefined}>
+            <Marca fonte={fonte} />
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+export default function FaixaDeFontes({
+  marcas,
+  plataformas,
+  principaisPlataformas,
+}: {
+  marcas?: string[] | null
+  plataformas?: number | null
+  principaisPlataformas?: string[] | null
+}) {
+  const doPncp = plataformasNaFaixa(plataformas, principaisPlataformas)
+  const fontes = doPncp ? fontesNaFaixa(FONTES_OFICIAIS.filter((f) => f.nome !== 'PNCP'), marcas) : fontesNaFaixa(FONTES_OFICIAIS, marcas)
   return (
     <section aria-labelledby="fontes-titulo" className="az-fontes az-escuro">
       <div className="az-conteiner az-fontes-topo">
@@ -62,16 +87,21 @@ export default function FaixaDeFontes({ marcas }: { marcas?: string[] | null }) 
         </div>
         <PausarLetreiro alvo={ID_DO_LETREIRO} />
       </div>
-      <div id={ID_DO_LETREIRO} className="az-letreiro">
-        <ul className="az-letreiro-trilho">
-          {[...fontes, ...fontes].map((fonte, i) => (
-            <li key={`${fonte.nome}-${i}`} aria-hidden={i >= total || undefined} className={i >= total ? 'az-letreiro-copia' : undefined}>
-              <Marca fonte={fonte} />
-            </li>
-          ))}
-        </ul>
-      </div>
-      <p className="az-conteiner az-fontes-aviso">Logotipos das fontes públicas de dados acompanhadas pela Licita Bela. A Licita Bela não tem vínculo com esses órgãos.</p>
+      {doPncp && (
+        <div className="az-conteiner az-fontes-pncp">
+          <p>
+            Licitações publicadas no <b>PNCP</b> por <b>{numeroBr(doPncp.total)} {doPncp.total === 1 ? 'portal ou sistema de compras' : 'portais e sistemas de compras'}</b>
+            {doPncp.nomes.length > 0 ? `, como ${doPncp.nomes.join(', ')}…` : '.'}
+          </p>
+          <p className="az-fontes-proprias">+ fontes próprias:</p>
+        </div>
+      )}
+      <Letreiro fontes={fontes} />
+      <p className="az-conteiner az-fontes-aviso">
+        {doPncp
+          ? 'Logotipos das fontes públicas de dados acompanhadas pela Licita Bela. Os portais citados são os sistemas de origem que o próprio PNCP informa em cada licitação: a Licita Bela lê essas licitações no PNCP e não tem integração direta nem vínculo com esses portais ou com os órgãos.'
+          : 'Logotipos das fontes públicas de dados acompanhadas pela Licita Bela. A Licita Bela não tem vínculo com esses órgãos.'}
+      </p>
     </section>
   )
 }

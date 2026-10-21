@@ -82,6 +82,7 @@ function dadosPersistidos(tender: NormalizedTender) {
     encerramentoAt: tender.encerramentoAt,
     publicadoAt: tender.publicadoAt,
     linkEdital: tender.linkEdital,
+    plataformaDeOrigem: tender.plataformaDeOrigem,
     numeroControle: tender.numeroControle,
     anoDoProcesso: anoDoProcesso(tender.fonte, tender.numeroControle),
     rawJson: tender.rawJson as Prisma.InputJsonValue,
@@ -136,12 +137,16 @@ export async function saveTender(recebido: NormalizedTender): Promise<SaveResult
       publicadoAt: true,
       linkEdital: true,
       numeroControle: true,
+      plataformaDeOrigem: true,
     },
   })
 
   if (existing) {
     const hashAtual = tenderContentHash(tender)
     if (existing.contentHash === hashAtual) {
+      if (tender.plataformaDeOrigem && tender.plataformaDeOrigem !== existing.plataformaDeOrigem) {
+        await prisma.tender.update({ where: { id: existing.id }, data: { plataformaDeOrigem: tender.plataformaDeOrigem } })
+      }
       return { isNew: false, tenderId: existing.id, isDupe: true, changed: false, changedFields: [] }
     }
 

@@ -22,6 +22,9 @@ export interface EstatisticasPublicas {
   estados?: number
   fontes: number
   marcas?: string[]
+  orgaos?: number
+  plataformas?: number
+  principaisPlataformas?: string[]
   atualizadoEm: string | null
 }
 

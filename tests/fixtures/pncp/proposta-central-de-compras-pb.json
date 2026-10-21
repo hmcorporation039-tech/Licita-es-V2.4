@@ -1,0 +1,53 @@
+{
+  "valorTotalEstimado": 9732643.43,
+  "modalidadeId": 6,
+  "modalidadeNome": "Pregão - Eletrônico",
+  "modoDisputaId": 3,
+  "modoDisputaNome": "Aberto-Fechado",
+  "tipoInstrumentoConvocatorioCodigo": 1,
+  "tipoInstrumentoConvocatorioNome": "Edital",
+  "fontesOrcamentarias": [],
+  "situacaoCompraId": 1,
+  "situacaoCompraNome": "Divulgada no PNCP",
+  "usuarioNome": "Central de Compras da Paraíba/PB",
+  "valorTotalHomologado": null,
+  "orgaoEntidade": {
+    "cnpj": "08761140000194",
+    "razaoSocial": "SECRETARIA DE ESTADO DA ADMINISTRACAO",
+    "poderId": "E",
+    "esferaId": "E"
+  },
+  "dataAtualizacao": "2026-10-20T10:17:40",
+  "dataInclusao": "2025-03-13T14:10:37",
+  "numeroControlePNCP": "08761140000194-1-000040/2025",
+  "anoCompra": 2025,
+  "srp": true,
+  "sequencialCompra": 40,
+  "emendaParlamentar": null,
+  "numeroCompra": "19000-008",
+  "processo": "19.000.000175.2024",
+  "objetoCompra": "REGISTRO DE PREÇOS PARA AQUISIÇÃO DE EQUIPAMENTOS DE SEGURANÇA",
+  "informacaoComplementar": "EQUIPAMENTOS DE SEGURANÇA PARA GAR",
+  "dataAberturaProposta": "2026-11-09T09:00:00",
+  "dataEncerramentoProposta": "2026-11-09T23:59:59",
+  "dataPublicacaoPncp": "2025-03-13T14:10:37",
+  "dataAtualizacaoGlobal": "2026-10-20T10:22:34",
+  "unidadeOrgao": {
+    "ufNome": "Paraíba",
+    "ufSigla": "PB",
+    "municipioNome": "João Pessoa",
+    "nomeUnidade": "SECRETARIA DE ESTADO DA ADMINISTRACAO",
+    "codigoIbge": "2507507",
+    "codigoUnidade": "19101"
+  },
+  "orgaoSubRogado": null,
+  "unidadeSubRogada": null,
+  "amparoLegal": {
+    "nome": "Lei 14.133/2021, Art. 28, I",
+    "descricao": "pregão: modalidade de licitação obrigatória para aquisição de bens e serviços comuns",
+    "codigo": 1
+  },
+  "linkSistemaOrigem": "https://www.centraldecompras.pb.gov.br/appls/sgc/edital.nsf/Web?OpenAgent&pageClassName=EditalPage&action=abrir&unid=F762B112005FE9A103258E9600445CA4",
+  "linkProcessoEletronico": null,
+  "justificativaPresencial": ""
+}

@@ -245,6 +245,7 @@ model Tender {
   encerramentoAt     DateTime?      @map("encerramento_at")
   publicadoAt        DateTime?      @map("publicado_at")
   linkEdital         String?        @map("link_edital")
+  plataformaDeOrigem String?        @map("plataforma_de_origem")
   numeroControle     String?        @map("numero_controle")
   anoDoProcesso      Int?           @map("ano_do_processo")
   duplicataDe        String?        @map("duplicata_de")
