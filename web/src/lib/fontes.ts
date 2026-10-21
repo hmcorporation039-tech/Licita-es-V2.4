@@ -21,3 +21,43 @@ export function fontesNaFaixa<T extends { nome: string }>(fontes: T[], marcasCom
   const filtradas = fontes.filter((f) => presentes.has(f.nome))
   return filtradas.length > 0 ? filtradas : fontes
 }
+
+const MAXIMO_DE_PLATAFORMAS_NA_FAIXA = 8
+const NOME_LONGO_DEMAIS_NA_FAIXA = 28
+
+const numeroBr = (valor: number) => valor.toLocaleString('pt-BR')
+
+function contagemValida(valor: unknown): number | null {
+  if (typeof valor !== 'number' || !Number.isFinite(valor) || valor < 1) return null
+  return Math.floor(valor)
+}
+
+export function maisDe(valor: unknown): string | null {
+  const n = contagemValida(valor)
+  if (n === null) return null
+  if (n <= 100) return numeroBr(n)
+  return `mais de ${numeroBr(Math.floor((n - 1) / 100) * 100)}`
+}
+
+export function alcanceNoHeroi(orgaos: unknown, municipios: unknown): string | null {
+  const textoDosOrgaos = maisDe(orgaos)
+  if (!textoDosOrgaos) return null
+  const orgaosPorExtenso = `${textoDosOrgaos} ${contagemValida(orgaos) === 1 ? 'órgão público' : 'órgãos públicos'}`
+  const nDeMunicipios = contagemValida(municipios)
+  if (!nDeMunicipios) return `de ${orgaosPorExtenso}`
+  return `de ${orgaosPorExtenso} em ${numeroBr(nDeMunicipios)} ${nDeMunicipios === 1 ? 'município' : 'municípios'}`
+}
+
+function nomeCabeNaFaixa(nome: unknown): nome is string {
+  if (typeof nome !== 'string') return false
+  const limpo = nome.trim()
+  if (limpo.length === 0 || limpo.length > NOME_LONGO_DEMAIS_NA_FAIXA) return false
+  return !(limpo.includes(' ') && limpo === limpo.toUpperCase())
+}
+
+export function plataformasNaFaixa(plataformas: unknown, principais: unknown): { total: number; nomes: string[] } | null {
+  const total = contagemValida(plataformas)
+  if (!total) return null
+  const nomes = (Array.isArray(principais) ? principais : []).filter(nomeCabeNaFaixa).map((nome) => nome.trim()).slice(0, MAXIMO_DE_PLATAFORMAS_NA_FAIXA)
+  return { total, nomes }
+}

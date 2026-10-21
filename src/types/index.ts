@@ -178,6 +178,7 @@ export interface NormalizedTender {
   encerramentoAt?: Date
   publicadoAt?: Date
   linkEdital?: string
+  plataformaDeOrigem?: string
   numeroControle?: string
   rawJson: Record<string, unknown>
   items?: NormalizedTenderItem[]

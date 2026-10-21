@@ -28,7 +28,7 @@ import BuscarNoRamo from '@/components/entrada/BuscarNoRamo'
 import ChegandoAgora from '@/components/entrada/ChegandoAgora'
 import EfeitosDaEntrada from '@/components/entrada/EfeitosDaEntrada'
 import FaixaDeFontes, { FONTES_OFICIAIS } from '@/components/entrada/FaixaDeFontes'
-import { fontesComLicitacaoAberta } from '@/lib/fontes'
+import { alcanceNoHeroi, fontesComLicitacaoAberta } from '@/lib/fontes'
 import FalaDaBelaNoHeroi from '@/components/entrada/FalaDaBelaNoHeroi'
 import LinkDeCadastro from '@/components/entrada/LinkDeCadastro'
 import NumeroQueSobe from '@/components/entrada/NumeroQueSobe'
@@ -201,6 +201,8 @@ const perguntasFrequentes = (trialDias: number | null): Array<{ pergunta: string
 
 const numero = (valor: number) => valor.toLocaleString('pt-BR')
 const textoDasFontesNoHeroi = (fontes: number | null) => (fontes && fontes > 1 ? `em ${fontes} fontes públicas` : 'nas fontes públicas oficiais')
+const textoDoAlcanceNoHeroi = (estatisticas: EstatisticasPublicas | null) =>
+  alcanceNoHeroi(estatisticas?.orgaos, estatisticas?.municipios) ?? textoDasFontesNoHeroi(fontesComLicitacaoAberta(estatisticas?.fontes, FONTES_OFICIAIS.length))
 const brl = (centavos: number) => (centavos / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
 function numeroDoWhatsApp(): string | null {
@@ -281,6 +283,15 @@ function Provas({ estatisticas, trialDias }: { estatisticas: EstatisticasPublica
           </dd>
         </div>
       )}
+      {estatisticas?.orgaos ? (
+        <div>
+          <dt className="sr-only">Órgãos públicos com licitação aberta</dt>
+          <dd>
+            <NumeroQueSobe valor={estatisticas.orgaos} className="az-provas-numero" />
+            <span className="az-provas-rotulo">{estatisticas.orgaos === 1 ? 'órgão público com licitação aberta' : 'órgãos públicos com licitação aberta'}</span>
+          </dd>
+        </div>
+      ) : null}
       {estatisticas?.municipios ? (
         <div>
           <dt className="sr-only">Municípios com licitação aberta</dt>
@@ -344,7 +355,7 @@ function Heroi({
               <span className="az-claro">tudo num lugar só</span>
             </h1>
             <p className="az-heroi-sub">
-              Você diz o que vende. A Licita Bela encontra as licitações abertas {textoDasFontesNoHeroi(fontesComLicitacaoAberta(estatisticas?.fontes, FONTES_OFICIAIS.length))}, avisa o que encerra primeiro e monta a proposta no papel timbrado da sua empresa.
+              Você diz o que vende. A Licita Bela encontra as licitações abertas {textoDoAlcanceNoHeroi(estatisticas)}, avisa o que encerra primeiro e monta a proposta no papel timbrado da sua empresa.
             </p>
             <VitrineDeBusca />
             <Provas estatisticas={estatisticas} trialDias={trialDias} />
@@ -812,7 +823,7 @@ export default async function Entrada() {
         totalDaBela={totaisPorTermo[TERMO_DA_BELA] ?? null}
         prazoDaBela={primeiroPrazoPorTermo[TERMO_DA_BELA] ?? null}
       />
-        <FaixaDeFontes marcas={estatisticas?.marcas ?? null} />
+        <FaixaDeFontes marcas={estatisticas?.marcas ?? null} plataformas={estatisticas?.plataformas ?? null} principaisPlataformas={estatisticas?.principaisPlataformas ?? null} />
         <Ramos totaisPorTermo={totaisPorTermo} />
         <ConhecaABela trialDias={trialDias} />
         <Tour trialDias={trialDias} />

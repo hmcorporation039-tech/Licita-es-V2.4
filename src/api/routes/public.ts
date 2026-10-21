@@ -17,6 +17,7 @@ import { vitrineLimiter } from '../rateLimit'
 import { idsQueCitamOTexto } from '../../services/buscaDeLicitacoes'
 import { Prisma } from '@prisma/client'
 import { marcasComLicitacao } from '../../lib/marcasDasFontes'
+import { alcanceDasLicitacoes } from '../../services/alcanceDasLicitacoes'
 
 export const publicRouter = Router()
 
@@ -69,12 +70,13 @@ publicRouter.get(
       return
     }
     const comPrazo = whereLicitacaoComPrazoConfirmado()
-    const [abertas, porMunicipio, porFonte, doSistemaS, ultimaColeta] = await Promise.all([
+    const [abertas, porMunicipio, porFonte, doSistemaS, ultimaColeta, alcance] = await Promise.all([
       prisma.tender.count({ where: comPrazo }),
       prisma.tender.groupBy({ by: ['municipioIbge', 'uf'], where: { AND: [comPrazo, { municipioIbge: { not: null } }] } }),
       prisma.tender.groupBy({ by: ['fonte'], where: { AND: [comPrazo, { fonte: { not: 'SISTEMA_S' } }] }, _count: { _all: true } }),
       prisma.tender.groupBy({ by: ['orgao'], where: { AND: [comPrazo, { fonte: 'SISTEMA_S' }] }, _count: { _all: true } }),
       prisma.workerLog.findFirst({ where: { status: { in: ['SUCCESS', 'PARTIAL'] }, finishedAt: { not: null } }, orderBy: { finishedAt: 'desc' }, select: { finishedAt: true } }),
+      alcanceDasLicitacoes(comPrazo),
     ])
     const marcas = marcasComLicitacao([
       ...porFonte.filter((f) => f._count._all > 0).map((f) => ({ fonte: f.fonte, orgao: null })),
@@ -82,7 +84,17 @@ publicRouter.get(
     ])
     const municipios = new Set(porMunicipio.map((g) => g.municipioIbge)).size
     const estados = new Set(porMunicipio.map((g) => g.uf).filter((uf): uf is string => Boolean(uf))).size
-    const valor = { abertas, municipios, estados, fontes: marcas.length, marcas, atualizadoEm: ultimaColeta?.finishedAt ?? null }
+    const valor = {
+      abertas,
+      municipios,
+      estados,
+      fontes: marcas.length,
+      marcas,
+      orgaos: alcance.orgaos,
+      plataformas: alcance.plataformas,
+      principaisPlataformas: alcance.principaisPlataformas,
+      atualizadoEm: ultimaColeta?.finishedAt ?? null,
+    }
     gravarCache('estatisticas', valor)
     res.setHeader('Cache-Control', 'public, max-age=300')
     res.json(valor)

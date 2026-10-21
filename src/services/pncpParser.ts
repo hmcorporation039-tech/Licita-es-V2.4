@@ -12,6 +12,7 @@ import {
 import { getMunicipioByIbge, findMunicipioByNomeUf } from '../lib/geoService'
 import { dataDeBrasilia } from '../lib/dataDeBrasilia'
 import { valorHomologadoConfirmado } from '../lib/homologacao'
+import { normalizarPlataformaDeOrigem } from '../lib/plataformaDeOrigem'
 
 // Trunca string longa para resumo
 function truncate(str: string, max = 500): string {
@@ -91,6 +92,7 @@ export function parsePNCPTender(raw: Record<string, any>): NormalizedTender {
     encerramentoAt: dataDeBrasilia(raw.dataEncerramentoProposta),
     publicadoAt: dataDeBrasilia(raw.dataPublicacaoPncp),
     linkEdital: raw.linkSistemaOrigem ?? raw.linkEdital,
+    plataformaDeOrigem: normalizarPlataformaDeOrigem(raw.usuarioNome),
     numeroControle: raw.numeroControlePNCP,
     rawJson: rawJsonEssencial(raw),
     items: raw.itens ? parsePNCPItems(raw.itens) : undefined,

@@ -7,6 +7,7 @@ import { PublicCard, type DestaqueDoPainel } from '@/components/PublicShell'
 import { Button, Checkbox, cx, Field, FormError, Input, Notice, TextLink } from '@/components/ui'
 import { api, ApiRequestError } from '@/lib/api'
 import { estadoDaSigla } from '@/lib/estados'
+import { maisDe } from '@/lib/fontes'
 import type { Limites } from '@/lib/adminTypes'
 import { resumoDosLimites } from '@/lib/planos'
 import { guardarUtm, lerUtm, rastrear, type Utm } from '@/lib/rastreamento'
@@ -38,25 +39,33 @@ function falaDaBela(interesse: Interesse | null): string {
   return `Confirmou o e-mail, eu começo a procurar ${interesse.termo} ${estado ? estado.local : 'em todo o Brasil'}.`
 }
 
-function destaquesDoPainel(abertas: number | null, trialDias: number | null, limitesDoTeste: Limites | null): DestaqueDoPainel[] {
+function detalheDasAbertas(orgaos: number | null): string {
+  const quantos = maisDe(orgaos)
+  if (!quantos || !orgaos) return 'nas fontes que a Bela acompanha'
+  return orgaos === 1 ? `de ${quantos} órgão público` : `de ${quantos} órgãos públicos`
+}
+
+function destaquesDoPainel(abertas: number | null, orgaos: number | null, trialDias: number | null, limitesDoTeste: Limites | null): DestaqueDoPainel[] {
   const dias = trialDias ?? TRIAL_DIAS_PADRAO
   const limites = resumoDosLimites(limitesDoTeste)
   const lista: DestaqueDoPainel[] = [
     { texto: <b>{dias} dias grátis, sem cartão</b>, detalhe: 'e sem compromisso' },
     { texto: 'No teste grátis', detalhe: limites ?? 'com limites de uso: veja os planos' },
   ]
-  if (abertas) lista.push({ texto: <><b>{abertas.toLocaleString('pt-BR')}</b> licitações abertas agora</>, detalhe: 'nas fontes que a Bela acompanha' })
+  if (abertas) lista.push({ texto: <><b>{abertas.toLocaleString('pt-BR')}</b> licitações abertas agora</>, detalhe: detalheDasAbertas(orgaos) })
   return lista
 }
 
 export default function FormularioDeCadastro({
   interesseInicial,
   abertas,
+  orgaos = null,
   trialDias,
   limitesDoTeste,
 }: {
   interesseInicial: InteresseInicial | null
   abertas: number | null
+  orgaos?: number | null
   trialDias: number | null
   limitesDoTeste: Limites | null
 }) {
@@ -133,7 +142,7 @@ export default function FormularioDeCadastro({
     <PublicCard
       title="Criar conta"
       fala={falaDaBela(interesse)}
-      destaques={destaquesDoPainel(abertas, trialDias, limitesDoTeste)}
+      destaques={destaquesDoPainel(abertas, orgaos, trialDias, limitesDoTeste)}
       description={
         <>
           Teste gratuito, sem cartão. Um teste por CPF ou CNPJ. Já tem conta? <TextLink href="/login">Entrar</TextLink>.

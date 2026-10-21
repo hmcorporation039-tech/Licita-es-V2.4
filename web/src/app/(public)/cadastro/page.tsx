@@ -26,6 +26,7 @@ export default async function CadastroPage({ searchParams }: PageProps<'/cadastr
     <FormularioDeCadastro
       interesseInicial={interesseDaBusca(primeiroValor(busca.q), primeiroValor(busca.uf))}
       abertas={estatisticas?.abertas ?? null}
+      orgaos={estatisticas?.orgaos ?? null}
       trialDias={planos?.trialDias ?? null}
       limitesDoTeste={planos?.planos.find((p) => p.codigo === 'TESTE')?.limites ?? null}
     />
