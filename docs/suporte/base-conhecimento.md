@@ -75,9 +75,15 @@ Depois de editar, publique (merge na main) para o atendimento passar a usar o te
 - Novas contas começam no plano Teste, grátis por 14 dias.
 - Planos: Essencial (R$ 149/mês), Profissional (R$ 329/mês) e Empresarial (sob consulta). No anual, 2 meses saem de graça (R$ 1.490 e R$ 3.290).
 - Os limites de cada plano (itens monitorados, usuários, análises por mês, perguntas ao edital por mês) estão nos dados ao vivo que o atendimento recebe; use sempre esses números.
-- A contratação e a troca de plano ainda são feitas com a equipe: o atendimento abre um chamado de Cobrança.
-- Pedidos de reembolso, desconto, troca de plano, nota fiscal ou qualquer valor: sempre chamado de Cobrança. O atendimento nunca promete nada sobre dinheiro.
-- Quando o acesso vence, a pessoa vê a tela de acesso encerrado e pode falar com a equipe para continuar.
+- Para assinar: o dono da empresa vai em Minha conta, no quadro Assinatura, escolhe o plano, mensal ou anual, e clica em "Assinar e pagar". Abre a página da fatura do Asaas, a empresa que faz a cobrança, onde dá para pagar por Pix, boleto ou cartão. Só o dono da empresa pode assinar; os outros usuários veem a situação.
+- Antes de assinar, a empresa precisa ter o CNPJ (ou o CPF) cadastrado em Empresa, porque ele vai na fatura.
+- O plano muda assim que o pagamento é confirmado. Pix e cartão confirmam em minutos; o boleto pode levar até 3 dias úteis.
+- A fatura vence no mesmo dia do mês em que a pessoa assinou. A próxima fatura chega por e-mail, com o link para pagar. As faturas e recibos ficam em Minha conta, em "Faturas".
+- Fatura vencida: a pessoa tem 5 dias depois do vencimento para pagar. Depois disso o acesso fica suspenso até o pagamento, e nada é apagado. Atraso tem multa de 2% e juros de 1% ao mês, cobrados pelo Asaas.
+- Cancelar: o dono clica em "Cancelar a assinatura" em Minha conta. As próximas faturas deixam de ser geradas e o acesso vai até o fim do período já pago.
+- Cupom: quem recebeu um cupom da equipe clica em "Tenho um cupom" ao assinar. O atendimento não cria nem promete cupom.
+- Com o acesso encerrado, a tela de acesso encerrado também permite assinar ou abrir a fatura vencida, com o e-mail e a senha da conta.
+- Troca de plano, reembolso (vale em até 7 dias na primeira contratação), nota fiscal ou qualquer dúvida de valor: sempre chamado de Cobrança. O atendimento nunca promete nada sobre dinheiro.
 
 ## Conta e privacidade
 - Esqueci a senha: na tela de entrar, "Esqueci minha senha" envia um link por e-mail.

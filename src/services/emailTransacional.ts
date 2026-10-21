@@ -185,3 +185,58 @@ export async function enviarRespostaDoChamado(to: string, chamado: { numero: num
     ),
   })
 }
+
+export interface FaturaDoEmail {
+  plano: string
+  valor: string
+  vencimento: string
+  link: string
+}
+
+export async function enviarFaturaDaAssinatura(to: string, fatura: FaturaDoEmail): Promise<boolean> {
+  return enviar({
+    to,
+    link: fatura.link,
+    subject: `Fatura da Licita Bela: vence em ${fatura.vencimento}`,
+    html: moldura(
+      'Sua fatura está disponível',
+      `<p>A fatura do plano <strong>${escapeHtml(fatura.plano)}</strong> já está disponível.</p>
+       <p>Valor: <strong>${escapeHtml(fatura.valor)}</strong><br>Vencimento: <strong>${escapeHtml(fatura.vencimento)}</strong></p>
+       <p>Você pode pagar por Pix, boleto ou cartão na página da fatura, que é do Asaas, a empresa que faz a nossa cobrança.</p>`,
+      fatura.link,
+      'Pagar a fatura'
+    ),
+  })
+}
+
+export async function enviarAvisoDeFaturaVencida(to: string, fatura: FaturaDoEmail & { limite: string }): Promise<boolean> {
+  return enviar({
+    to,
+    link: fatura.link,
+    subject: 'Fatura da Licita Bela vencida',
+    html: moldura(
+      'Sua fatura venceu',
+      `<p>Não identificamos o pagamento da fatura do plano <strong>${escapeHtml(fatura.plano)}</strong>, de <strong>${escapeHtml(fatura.valor)}</strong>, que venceu em ${escapeHtml(fatura.vencimento)}.</p>
+       <p>Para não perder o acesso, pague até <strong>${escapeHtml(fatura.limite)}</strong>. Depois dessa data o acesso fica suspenso até o pagamento, e nada é apagado.</p>
+       <p>Se já pagou, desconsidere: a confirmação do boleto pode levar até 3 dias úteis.</p>`,
+      fatura.link,
+      'Pagar a fatura'
+    ),
+  })
+}
+
+export async function enviarPagamentoConfirmado(to: string, pagamento: { plano: string; valor: string; acessoAte: string }): Promise<boolean> {
+  const link = `${appUrl()}/conta`
+  return enviar({
+    to,
+    link,
+    subject: 'Pagamento confirmado: Licita Bela',
+    html: moldura(
+      'Pagamento confirmado',
+      `<p>Recebemos o pagamento de <strong>${escapeHtml(pagamento.valor)}</strong> do plano <strong>${escapeHtml(pagamento.plano)}</strong>. Obrigado!</p>
+       <p>O período pago vai até <strong>${escapeHtml(pagamento.acessoAte)}</strong>. O recibo fica na página da fatura do Asaas, e o histórico em Minha conta.</p>`,
+      link,
+      'Ver minha assinatura'
+    ),
+  })
+}
