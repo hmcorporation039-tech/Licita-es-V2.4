@@ -73,6 +73,7 @@ model User {
   participationPlans TenderParticipationPlan[]
   authTokens         AuthToken[]
   costStudies        CostStudy[]
+  perguntasAoEdital  EditalPergunta[]
 
   @@index([companyId])
   @@map("users")
@@ -141,6 +142,7 @@ model Company {
   requirementProgress  RequirementProgress[]
   tenderMatches        TenderMatch[]
   costStudies          CostStudy[]
+  perguntasAoEdital    EditalPergunta[]
 
   @@map("companies")
 }
@@ -282,6 +284,8 @@ model Tender {
   pregoes             PregaoAcompanhamento[]
   requirementProgress RequirementProgress[]
   costStudies         CostStudy[]
+  textosDosDocumentos TenderDocumentText[]
+  perguntasAoEdital   EditalPergunta[]
 
   @@index([fonte])
   @@index([uf])
@@ -620,6 +624,8 @@ model TenderAnalysis {
   // 'dupla' | 'gemini' | 'claude' — como esta análise foi produzida.
   pipeline      String?
   errorMsg      String?        @map("error_msg") @db.Text
+  conversaStatus       String?   @map("conversa_status")
+  conversaAtualizadaEm DateTime? @map("conversa_atualizada_em")
   createdAt     DateTime       @default(now()) @map("created_at")
   updatedAt     DateTime       @updatedAt @map("updated_at")
 
@@ -640,6 +646,40 @@ enum AnalysisStatus {
 // ============================================================
 // NOTIFICAÇÕES
 // ============================================================
+
+model TenderDocumentText {
+  id        String   @id @default(uuid())
+  tenderId  String   @map("tender_id")
+  ordem     Int
+  nome      String
+  paginas   Int      @default(0)
+  escaneado Boolean  @default(false)
+  texto     String   @default("") @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tender Tender @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+
+  @@unique([tenderId, ordem])
+  @@map("tender_document_texts")
+}
+
+model EditalPergunta {
+  id        String   @id @default(uuid())
+  tenderId  String   @map("tender_id")
+  companyId String   @map("company_id")
+  userId    String?  @map("user_id")
+  pergunta  String   @db.Text
+  resposta  Json
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tender  Tender  @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([tenderId, companyId, createdAt])
+  @@index([companyId, createdAt])
+  @@map("edital_perguntas")
+}
 
 model Notification {
   id        String               @id @default(uuid())

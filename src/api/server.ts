@@ -27,6 +27,7 @@ import { catalogRouter } from './routes/catalog'
 import { radarRouter } from './routes/radar'
 import { contaRouter } from './routes/conta'
 import { celularRouter } from './routes/celular'
+import { conversaComOEditalRouter } from './routes/conversaComOEdital'
 import { estudosRouter } from './routes/estudos'
 import { descadastroRouter } from './routes/descadastro'
 import { requireAuth } from './authMiddleware'
@@ -104,6 +105,7 @@ app.use('/api/company', requireAuth, companyRouter)
 app.use('/api/monitored-items', requireAuth, monitoredItemsRouter)
 app.use('/api/tenders/:id/documentos', requireAuth, documentosDaLicitacaoRouter)
 app.use('/api/tenders/:id/pregao', requireAuth, pregaoRouter)
+app.use('/api/tenders/:id/conversa', requireAuth, conversaComOEditalRouter)
 app.use('/api/bela', requireAuth, belaRouter)
 app.use('/api/tenders', requireAuth, tendersRouter)
 app.use('/api/matches', requireAuth, matchesRouter)

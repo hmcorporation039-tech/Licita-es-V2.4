@@ -30,13 +30,14 @@
 | 8 | Prevenção de abuso no cadastro | CPF/CNPJ (um teste por documento), IP (limite de tentativas e verificação anti-robô) | Impedir testes repetidos e cadastro automatizado | Legítimo interesse (IX) | Postgres; memória do servidor; Cloudflare quando ativado | Railway, Cloudflare | Enquanto a conta existir; IP do limitador por 15 min |
 | 9 | Origem do cadastro | Parâmetros UTM, termo e UF pesquisados na página inicial | Medir de onde vêm os clientes e criar o primeiro item monitorado | Legítimo interesse (IX) | Postgres; armazenamento local do navegador | Railway | Enquanto a conta existir |
 | 10 | Consulta de CEP | CEP digitado | Preencher o endereço | Execução de contrato (V) | Não é guardado pela consulta | ViaCEP, BrasilAPI | Sem guarda |
-| 11 | Análise de edital por IA | Nenhum dado do cliente. Só o texto público do edital | Resumo do edital | Não se aplica (dado público, sem dado do cliente) | Postgres | Anthropic, Google | Enquanto a licitação existir |
+| 11 | Análise de edital por IA | Nenhum dado do cliente. Só o texto público do edital | Resumo do edital | Não se aplica (dado público, sem dado do cliente) | Postgres | Anthropic, Google | Enquanto a licitação existir; o texto guardado para a conversa é apagado 30 dias após o encerramento |
 | 12 | Voz da Bela | Áudio falado pelo usuário | Transformar a fala em texto no pregão | Execução de contrato (V) | Não é guardado pela Licita Bela; processado pelo navegador | Google, quando o navegador é o Chrome | Sem guarda pela Licita Bela |
 | 13 | Resultado de licitações | Nome, CNPJ e porte do vencedor; CPF mascarado quando pessoa física | Mostrar resultado e preços vencedores | Legítimo interesse (IX) sobre dado tornado público pelo órgão (art. 7, § 4º) | Postgres | Railway | Enquanto a licitação existir |
 | 14 | Backups do banco | Tudo o que está no banco | Recuperar dados após falha | Legítimo interesse (IX) e segurança (art. 46) | PC do Márcio, disco C: criptografado com BitLocker | — | Até 90 dias; os mais antigos vão para a lixeira a cada backup novo |
 | 15 | Sessão no navegador | Token de sessão, id, e-mail e nome do usuário, preferência de voz, UTM | Manter o usuário conectado | Execução de contrato (V) | Armazenamento local do navegador do usuário | — | Até sair da conta ou limpar o navegador; sessão vale 7 dias |
 | 16 | Pedidos de titular | E-mail, empresa, motivo | Atender acesso, correção, exclusão e portabilidade | Obrigação legal (II) | Postgres; alerta ao administrador | Railway, Resend | Registro do pedido anonimizado após a exclusão |
 | 17 | Notificações no celular | Endereço de entrega do navegador, chaves de criptografia da inscrição, tipo de aparelho, preferências por aviso | Avisar sobre licitações novas, prazos e alterações quando o usuário ativa no aparelho | Execução de contrato (V) | Postgres; serviço de push do navegador | Railway; Google, Apple, Mozilla ou Microsoft (push do navegador) | Até desativar, sair da conta no aparelho, 5 falhas seguidas ou recusa do serviço de push |
+| 18 | Conversa com o edital | Pergunta digitada pelo usuário, resposta da IA, autor e data | Responder dúvidas sobre os documentos da licitação, com a página citada | Execução de contrato (V) | Postgres (só a empresa do usuário vê) | Railway; Google (Gemini recebe o texto do edital e a pergunta) | Enquanto a conta existir; apagada com a exclusão da empresa e incluída na exportação de dados |
 
 ## 3. Operadores e transferência internacional
 
@@ -48,7 +49,7 @@
 | Resend | E-mail, nome e conteúdo dos avisos | EUA | Termos e DPA do fornecedor (aceitar e arquivar) |
 | Cloudflare | IP na verificação anti-robô, quando ativada | Global | Termos e DPA do fornecedor (aceitar e arquivar) |
 | Anthropic | Texto público de editais | EUA | Termos comerciais da API (sem dado pessoal do cliente) |
-| Google | Texto público de editais; áudio da voz quando o navegador é o Chrome | Global | Termos da API Gemini; política do navegador |
+| Google | Texto público de editais e perguntas da conversa com o edital; áudio da voz quando o navegador é o Chrome | Global | Termos da API Gemini; política do navegador |
 | ViaCEP, BrasilAPI | CEP | Brasil | Serviço público, sem dado identificador |
 | Serviços de push (Google FCM, Apple, Mozilla, Microsoft) | Endereço de entrega e mensagem criptografada de ponta a ponta (o serviço não lê o conteúdo) | Global | Termos do navegador; só quando o usuário ativa |
 | Asaas (quando ligar a cobrança) | Dados de pagamento e do pagador | Brasil | Contrato do intermediador |

@@ -26,6 +26,7 @@ import { startAnaliseWorker } from './analise'
 import { startRematchItemWorker } from './rematchItem'
 import { refreshAllOpenSituacoes } from '../services/situacaoUpdateService'
 import { anonimizarAuditoriaAntiga, cleanupOldUnmatchedTenders, cleanupOldWorkerLogs } from '../services/retentionService'
+import { apagarTextosDeEditaisAntigos } from '../services/textosDoEdital'
 import { checkExpiringDocuments } from '../services/documentAlertService'
 import { configuracaoDeIa } from '../services/analiseEmDupla'
 import { textoDoDiagnostico } from '../lib/diagnosticoDeChave'
@@ -134,6 +135,8 @@ async function main() {
       console.log(`[Retenção] ${logs} log(s) de worker removido(s).`)
       const { anonimizados } = await anonimizarAuditoriaAntiga()
       console.log(`[Retenção] ${anonimizados} registro(s) de auditoria com mais de 5 anos anonimizado(s).`)
+      const { licitacoes } = await apagarTextosDeEditaisAntigos()
+      console.log(`[Retenção] Texto guardado para a conversa apagado de ${licitacoes} licitação(ões) encerrada(s).`)
     } catch (err) {
       console.error('[Retenção] Erro na limpeza:', err)
       void alertarFalha('rotina', 'retenção', err)

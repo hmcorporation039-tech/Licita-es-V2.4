@@ -4,7 +4,7 @@
 // admin); aqui só se resolve "qual é o limite efetivo" e "estourou?".
 // ============================================================
 
-export const RECURSOS = ['itensMonitorados', 'usuarios', 'analisesIaMes'] as const
+export const RECURSOS = ['itensMonitorados', 'usuarios', 'analisesIaMes', 'perguntasAoEditalMes'] as const
 export type Recurso = (typeof RECURSOS)[number]
 
 // null = ilimitado
@@ -14,12 +14,14 @@ export const ROTULO_RECURSO: Record<Recurso, string> = {
   itensMonitorados: 'itens monitorados',
   usuarios: 'usuários',
   analisesIaMes: 'análises de edital no mês',
+  perguntasAoEditalMes: 'perguntas ao edital no mês',
 }
 
 const ROTULO_RECURSO_NO_SINGULAR: Record<Recurso, string> = {
   itensMonitorados: 'item monitorado',
   usuarios: 'usuário',
   analisesIaMes: 'análise de edital no mês',
+  perguntasAoEditalMes: 'pergunta ao edital no mês',
 }
 
 export function quantidadeDoRecurso(recurso: Recurso, quantidade: number): string {
@@ -32,6 +34,7 @@ export const LIMITES_PADRAO: LimitesDoPlano = {
   itensMonitorados: 3,
   usuarios: 1,
   analisesIaMes: 3,
+  perguntasAoEditalMes: 10,
 }
 
 function ehLimiteValido(v: unknown): v is number | null {

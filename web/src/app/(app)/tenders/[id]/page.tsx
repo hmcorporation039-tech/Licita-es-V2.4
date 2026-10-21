@@ -25,6 +25,7 @@ import type { PrazosDaSessao } from '@/lib/adminTypes'
 import PainelDoFiscal from '@/components/PainelDoFiscal'
 import AvisoDeClausulas from '@/components/AvisoDeClausulas'
 import MatrizDeExigencias from '@/components/MatrizDeExigencias'
+import ConversaComOEdital from '@/components/ConversaComOEdital'
 import RelatorioDaRevisao from '@/components/RelatorioDaRevisao'
 import DocumentosDaLicitacao from '@/components/DocumentosDaLicitacao'
 import AvisoDeVersaoDoPncp from '@/components/AvisoDeVersaoDoPncp'
@@ -863,6 +864,7 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
                       </ul>
                     </section>
                   )}
+                  <ConversaComOEdital tenderId={id} />
                 </div>
               )}
             </Panel>

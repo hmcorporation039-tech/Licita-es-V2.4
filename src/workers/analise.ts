@@ -7,7 +7,7 @@
 
 import { Worker, Job } from 'bullmq'
 import { redisConnection } from '../queues'
-import { runEditalAnalysis } from '../services/editalAnalysisService'
+import { prepararConversaDoEdital, runEditalAnalysis } from '../services/editalAnalysisService'
 import { AnaliseJobPayload } from '../types'
 
 export function concorrenciaDaAnalise(env: NodeJS.ProcessEnv = process.env): number {
@@ -19,6 +19,10 @@ export function startAnaliseWorker() {
   const worker = new Worker<AnaliseJobPayload>(
     'analise',
     async (job: Job<AnaliseJobPayload>) => {
+      if (job.name === 'preparar-conversa') {
+        await prepararConversaDoEdital(job.data.tenderId)
+        return
+      }
       await runEditalAnalysis(job.data.tenderId, { companyId: job.data.companyId, userId: job.data.userId })
     },
     {

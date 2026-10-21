@@ -11,6 +11,7 @@ const CAMPOS: { chave: keyof Limites; rotulo: string }[] = [
   { chave: 'itensMonitorados', rotulo: 'Itens monitorados' },
   { chave: 'usuarios', rotulo: 'Usuários' },
   { chave: 'analisesIaMes', rotulo: 'Análises de IA / mês' },
+  { chave: 'perguntasAoEditalMes', rotulo: 'Perguntas ao edital / mês' },
 ]
 
 export default function AdminPlanosPage() {
@@ -174,7 +175,7 @@ function NovoPlano({ onCriado, onErro }: { onCriado: () => void; onErro: (m: str
       await api.post('/api/admin/plans', {
         code: code.trim().toUpperCase(),
         name: nome.trim(),
-        limits: { itensMonitorados: 3, usuarios: 1, analisesIaMes: 3 },
+        limits: { itensMonitorados: 3, usuarios: 1, analisesIaMes: 3, perguntasAoEditalMes: 10 },
       })
       setCode('')
       setNome('')
