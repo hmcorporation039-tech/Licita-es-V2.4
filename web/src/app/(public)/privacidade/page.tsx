@@ -32,6 +32,10 @@ export default function PrivacidadePage() {
             lances registrados, avisos enviados e pedidos de análise.
           </li>
           <li>
+            <strong>Notificações no celular:</strong> quando você as ativa em um aparelho, guardamos o endereço de entrega criado pelo
+            seu navegador, as chaves que protegem as mensagens e o tipo de aparelho (por exemplo, &ldquo;Android · Chrome&rdquo;).
+          </li>
+          <li>
             <strong>Segurança e auditoria:</strong> registro de acessos e ações (data, usuário, endereço IP e navegador).
           </li>
           <li>
@@ -72,6 +76,10 @@ export default function PrivacidadePage() {
           <li><strong>Upstash</strong>: fila de tarefas.</li>
           <li><strong>Resend</strong>: envio de e-mails (seu e-mail, nome e o conteúdo do aviso).</li>
           <li><strong>Cloudflare</strong>: verificação anti-robô no cadastro, quando ativada (endereço IP).</li>
+          <li>
+            <strong>Serviço de notificações do navegador</strong> (Google, Apple, Mozilla ou Microsoft, conforme o aparelho): entrega
+            as notificações que você ativou. A mensagem vai criptografada e só o seu aparelho consegue ler o conteúdo.
+          </li>
           <li><strong>ViaCEP e BrasilAPI</strong>: consulta do endereço pelo CEP que você digita.</li>
           <li>
             <strong>Anthropic e Google</strong>: provedores de inteligência artificial. Recebem apenas o texto público do edital
@@ -100,7 +108,8 @@ export default function PrivacidadePage() {
         <h2>5. Cookies e armazenamento no navegador</h2>
         <p>
           A plataforma não usa cookies próprios nem pixels de publicidade. Guardamos no armazenamento local do seu navegador a
-          sessão de acesso, a preferência de voz da Bela e os parâmetros do link pelo qual você chegou. Esses dados ficam no seu
+          sessão de acesso, a preferência de voz da Bela, os parâmetros do link pelo qual você chegou e qual usuário ativou as
+          notificações naquele aparelho. Esses dados ficam no seu
           aparelho e são apagados quando você sai da conta ou limpa os dados do navegador. Se passarmos a usar ferramentas de
           medição de anúncios, esta Política será atualizada e pediremos seu consentimento antes.
         </p>
@@ -113,6 +122,10 @@ export default function PrivacidadePage() {
             exclusão. Contas sem acesso há mais de 12 meses podem ser excluídas, com aviso prévio por e-mail.
           </li>
           <li>Pedido de exclusão: atendido em até 15 dias, com confirmação por e-mail.</li>
+          <li>
+            Aparelhos com notificação: até você desativar, sair da conta naquele aparelho ou o navegador deixar de aceitar as
+            mensagens.
+          </li>
           <li>
             Registros de acesso: no mínimo 6 meses, como exige o Marco Civil da Internet, e no máximo 5 anos. Depois desse prazo, ou
             quando a conta é excluída, eles são anonimizados (sem e-mail, IP e navegador).

@@ -53,6 +53,10 @@ model User {
   receberAvisoDeDocumento Boolean @default(true) @map("receber_aviso_de_documento")
   receberAvisoDeAlteracao Boolean @default(true) @map("receber_aviso_de_alteracao")
 
+  celularNovasLicitacoes  Boolean @default(true) @map("celular_novas_licitacoes")
+  celularLembreteDePrazo  Boolean @default(true) @map("celular_lembrete_de_prazo")
+  celularAvisoDeAlteracao Boolean @default(true) @map("celular_aviso_de_alteracao")
+
   // Toda conta pertence a uma Company — mesmo quem usa sozinho (pessoa
   // física). Ver comentário no model Company. NOT NULL só depois da
   // migration 00000000000005_empresas_constraints (ver scripts/empresasBackfill.ts).
@@ -63,6 +67,7 @@ model User {
   monitoredItems     MonitoredItem[]
   tenderMatches      TenderMatch[]
   notifications      Notification[]
+  pushSubscriptions  PushSubscription[]
   checklists         TenderChecklist[]
   companyDocuments   CompanyDocument[]
   participationPlans TenderParticipationPlan[]
@@ -651,6 +656,23 @@ model Notification {
 
   @@index([userId])
   @@map("notifications")
+}
+
+model PushSubscription {
+  id             String    @id @default(uuid())
+  userId         String    @map("user_id")
+  endpoint       String    @unique
+  p256dh         String
+  auth           String
+  aparelho       String?
+  falhasSeguidas Int       @default(0) @map("falhas_seguidas")
+  ultimoEnvioEm  DateTime? @map("ultimo_envio_em")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_subscriptions")
 }
 
 enum NotificationTypeEnum {

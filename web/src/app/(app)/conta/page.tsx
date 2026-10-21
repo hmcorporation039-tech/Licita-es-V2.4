@@ -7,6 +7,7 @@ import { api, ApiRequestError } from '@/lib/api'
 import { clearSessionUser, replaceSessionToken } from '@/lib/session'
 import UsoDoPlano from '@/components/UsoDoPlano'
 import PainelDoAcesso from '@/components/PrazoDoAcesso'
+import NotificacoesNoCelular from '@/components/NotificacoesNoCelular'
 import { Button, Carregando, Checkbox, Field, FormError, Input, Notice, PageHeader, Panel, Textarea, useDialogo } from '@/components/ui'
 
 export default function ContaPage() {
@@ -59,6 +60,7 @@ export default function ContaPage() {
       <div className="flex w-full max-w-xl flex-col gap-6">
         <PainelDoAcesso />
         <UsoDoPlano />
+        <NotificacoesNoCelular userId={user.id} />
 
         <Panel title="Trocar senha">
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">

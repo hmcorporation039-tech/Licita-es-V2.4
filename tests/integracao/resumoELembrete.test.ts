@@ -243,10 +243,10 @@ rodar('Resumo diário e lembrete de prazo por e-mail', () => {
       const { enviarLembretesDaEmpresa } = await import('../../src/services/lembreteDePrazo')
 
       vi.mocked(email.sendLembreteDePrazoEmail).mockRejectedValueOnce(new Error('Resend recusou'))
-      expect(await enviarLembretesDaEmpresa(outraEmpresa.companyId, agora)).toEqual({ enviados: 0, falhas: 1 })
+      expect(await enviarLembretesDaEmpresa(outraEmpresa.companyId, agora)).toEqual({ enviados: 0, falhas: 1, noCelular: 0 })
       expect(await prisma.notification.count({ where: { userId: outraEmpresa.id } })).toBe(0)
 
-      expect(await enviarLembretesDaEmpresa(outraEmpresa.companyId, new Date(agora.getTime() + HORA_MS))).toEqual({ enviados: 1, falhas: 0 })
+      expect(await enviarLembretesDaEmpresa(outraEmpresa.companyId, new Date(agora.getTime() + HORA_MS))).toEqual({ enviados: 1, falhas: 0, noCelular: 0 })
     }, 60_000)
   })
 })

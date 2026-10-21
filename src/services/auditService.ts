@@ -63,6 +63,9 @@ export const ACOES = [
   'MEMBRO_REMOVIDO',
   'PREFERENCIAS_DE_EMAIL_ALTERADAS',
   'DESCADASTRO_POR_LINK',
+  'CELULAR_ATIVADO',
+  'CELULAR_DESATIVADO',
+  'PREFERENCIAS_DO_CELULAR_ALTERADAS',
 ] as const
 export type AcaoAuditoria = (typeof ACOES)[number]
 

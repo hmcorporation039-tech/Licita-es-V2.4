@@ -76,7 +76,7 @@ describe('cada rotina de e-mail pula quem desligou o aviso', () => {
     ])
     dubles.prisma.user.findMany.mockResolvedValue([usuario('ligado'), usuario('desligado', { receberLembreteDePrazo: false })])
     const resultado = await enviarLembretesDaEmpresa('empresa-1', AGORA)
-    expect(resultado).toEqual({ enviados: 1, falhas: 0 })
+    expect(resultado).toEqual({ enviados: 1, falhas: 0, noCelular: 0 })
     expect(dubles.email.sendLembreteDePrazoEmail).toHaveBeenCalledTimes(1)
     expect(dubles.email.sendLembreteDePrazoEmail.mock.calls[0]).toContain('ligado@teste.local')
     expect(dubles.reserva.reservarNotificacao).toHaveBeenCalledTimes(1)

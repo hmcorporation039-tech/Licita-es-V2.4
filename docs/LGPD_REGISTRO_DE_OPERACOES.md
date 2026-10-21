@@ -36,6 +36,7 @@
 | 14 | Backups do banco | Tudo o que está no banco | Recuperar dados após falha | Legítimo interesse (IX) e segurança (art. 46) | PC do Márcio, disco C: criptografado com BitLocker | — | Até 90 dias; os mais antigos vão para a lixeira a cada backup novo |
 | 15 | Sessão no navegador | Token de sessão, id, e-mail e nome do usuário, preferência de voz, UTM | Manter o usuário conectado | Execução de contrato (V) | Armazenamento local do navegador do usuário | — | Até sair da conta ou limpar o navegador; sessão vale 7 dias |
 | 16 | Pedidos de titular | E-mail, empresa, motivo | Atender acesso, correção, exclusão e portabilidade | Obrigação legal (II) | Postgres; alerta ao administrador | Railway, Resend | Registro do pedido anonimizado após a exclusão |
+| 17 | Notificações no celular | Endereço de entrega do navegador, chaves de criptografia da inscrição, tipo de aparelho, preferências por aviso | Avisar sobre licitações novas, prazos e alterações quando o usuário ativa no aparelho | Execução de contrato (V) | Postgres; serviço de push do navegador | Railway; Google, Apple, Mozilla ou Microsoft (push do navegador) | Até desativar, sair da conta no aparelho, 5 falhas seguidas ou recusa do serviço de push |
 
 ## 3. Operadores e transferência internacional
 
@@ -49,6 +50,7 @@
 | Anthropic | Texto público de editais | EUA | Termos comerciais da API (sem dado pessoal do cliente) |
 | Google | Texto público de editais; áudio da voz quando o navegador é o Chrome | Global | Termos da API Gemini; política do navegador |
 | ViaCEP, BrasilAPI | CEP | Brasil | Serviço público, sem dado identificador |
+| Serviços de push (Google FCM, Apple, Mozilla, Microsoft) | Endereço de entrega e mensagem criptografada de ponta a ponta (o serviço não lê o conteúdo) | Global | Termos do navegador; só quando o usuário ativa |
 | Asaas (quando ligar a cobrança) | Dados de pagamento e do pagador | Brasil | Contrato do intermediador |
 
 **Pendente:** confirmar com o advogado se os DPAs dos fornecedores atendem à Resolução CD/ANPD 19/2024 (cláusulas-padrão contratuais) ou se é preciso aditivo.
@@ -73,7 +75,7 @@
 | Correção | Menus Conta e Empresa |
 | Exclusão | Dono: menu Conta › pedir exclusão (até 15 dias). Convidado: menu Conta › excluir meus dados. Demais titulares: e-mail do encarregado |
 | Portabilidade | Exportação em JSON; arquivos do cofre pelo e-mail do encarregado |
-| Oposição a avisos | Preferências de e-mail e link de descadastro em cada aviso |
+| Oposição a avisos | Preferências de e-mail, link de descadastro em cada aviso e preferências de notificação no celular (menu Conta) |
 | Informação sobre compartilhamento | Política de Privacidade, seção 3 |
 
 **Prazo interno de resposta:** 15 dias corridos a partir do pedido.
