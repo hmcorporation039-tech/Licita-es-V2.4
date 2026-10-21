@@ -304,16 +304,16 @@ rodar('API com banco real', () => {
 
   // -----------------------------------------------------------------
   describe('cotas por plano', () => {
-    it('plano TESTE: permite 3 itens e barra o 4º com 402 e código estável', async () => {
-      for (let n = 1; n <= 3; n++) {
+    it('plano TESTE: permite 10 itens e barra o 11º com 402 e código estável', async () => {
+      for (let n = 1; n <= 10; n++) {
         expect((await http('POST', '/api/monitored-items', 'teste', { name: `item ${n}`, keywords: ['cabo'] })).status).toBe(201)
       }
-      const quarto = await http('POST', '/api/monitored-items', 'teste', { name: 'item 4', keywords: ['cabo'] })
-      expect(quarto.status).toBe(402)
-      expect(quarto.body.code).toBe('COTA_EXCEDIDA')
-      expect(quarto.body.recurso).toBe('itensMonitorados')
-      expect(quarto.body.limite).toBe(3)
-      expect(quarto.body.usado).toBe(3)
+      const decimoPrimeiro = await http('POST', '/api/monitored-items', 'teste', { name: 'item 11', keywords: ['cabo'] })
+      expect(decimoPrimeiro.status).toBe(402)
+      expect(decimoPrimeiro.body.code).toBe('COTA_EXCEDIDA')
+      expect(decimoPrimeiro.body.recurso).toBe('itensMonitorados')
+      expect(decimoPrimeiro.body.limite).toBe(10)
+      expect(decimoPrimeiro.body.usado).toBe(10)
     })
 
     it('plano TESTE: 1 usuário — convidar membro é barrado', async () => {
@@ -327,23 +327,23 @@ rodar('API com banco real', () => {
       expect(r.status).toBe(200)
       expect(r.body.plano.codigo).toBe('TESTE')
       const itens = r.body.recursos.find((x: { recurso: string }) => x.recurso === 'itensMonitorados')
-      expect(itens).toMatchObject({ usado: 3, limite: 3, excedido: false, noLimite: true })
+      expect(itens).toMatchObject({ usado: 10, limite: 10, excedido: false, noLimite: true })
       const usuarios = r.body.recursos.find((x: { recurso: string }) => x.recurso === 'usuarios')
       expect(usuarios).toMatchObject({ usado: 1, limite: 1, excedido: false, noLimite: true })
     })
 
     it('o admin muda o plano e o limite sobe; ajuste pontual vence o plano', async () => {
-      const antes = await http('PATCH', `/api/admin/companies/${ids.empresateste}`, 'admin', { planCode: 'ESSENCIAL' }) // 10 itens
+      const antes = await http('PATCH', `/api/admin/companies/${ids.empresateste}`, 'admin', { planCode: 'ESSENCIAL' }) // 30 itens
       expect(antes.status).toBe(200)
-      expect((await http('POST', '/api/monitored-items', 'teste', { name: 'item 4', keywords: ['cabo'] })).status).toBe(201)
+      expect((await http('POST', '/api/monitored-items', 'teste', { name: 'item 11', keywords: ['cabo'] })).status).toBe(201)
 
       const ajuste = await http('PATCH', `/api/admin/companies/${ids.empresateste}`, 'admin', { quotaOverrides: { itensMonitorados: 4 } })
       expect(ajuste.status).toBe(200)
-      expect((await http('POST', '/api/monitored-items', 'teste', { name: 'item 5', keywords: ['cabo'] })).status).toBe(402)
+      expect((await http('POST', '/api/monitored-items', 'teste', { name: 'item 12', keywords: ['cabo'] })).status).toBe(402)
 
       const limpo = await http('PATCH', `/api/admin/companies/${ids.empresateste}`, 'admin', { quotaOverrides: null })
       expect(limpo.status).toBe(200)
-      expect((await http('POST', '/api/monitored-items', 'teste', { name: 'item 5', keywords: ['cabo'] })).status).toBe(201)
+      expect((await http('POST', '/api/monitored-items', 'teste', { name: 'item 12', keywords: ['cabo'] })).status).toBe(201)
     })
 
     it('plano inexistente é recusado; limite inválido também', async () => {

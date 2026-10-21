@@ -29,6 +29,8 @@ import { reviewEdital } from './llm/claudeReviewer'
 import { ConfiguracaoDeIa, configuracaoDeIa, executarPipeline } from './analiseEmDupla'
 import { pareceErroDeChave, textoDoDiagnostico } from '../lib/diagnosticoDeChave'
 import { assertUrlDownloadPermitida } from '../lib/urlGuard'
+import { guardarTextosDoEdital, marcarConversa } from './textosDoEdital'
+import type { StatusDaConversa } from '../lib/conversaComOEdital'
 
 interface DocumentoDisponivel extends DocumentoComTitulo {
   uri: string
@@ -228,6 +230,9 @@ export async function runEditalAnalysis(
     }
 
     const documentoNome = documentos.map((d) => d.nome).join(' · ')
+    await guardarTextosDoEdital(tenderId, documentos).catch((err) =>
+      console.error('[Conversa com o edital] Falha ao guardar o texto do edital:', err instanceof Error ? err.message : err)
+    )
 
     // Quem analisa e quem revisa (injeção para teste; senão, pela configuração).
     let analista = deps.analista
@@ -340,5 +345,18 @@ export async function runEditalAnalysis(
       data: { status: 'FAILED', errorMsg },
     })
     throw err
+  }
+}
+
+export async function prepararConversaDoEdital(tenderId: string, deps: Pick<DependenciasDaAnalise, 'obterDocumentos'> = {}): Promise<StatusDaConversa> {
+  try {
+    const tender = await prisma.tender.findUnique({ where: { id: tenderId } })
+    if (!tender) return 'FALHOU'
+    const documentos = deps.obterDocumentos ? await deps.obterDocumentos(tender) : await baixarDocumentos(await listarDocumentosDisponiveis(tender))
+    return await guardarTextosDoEdital(tenderId, documentos)
+  } catch (err) {
+    console.error(`[Conversa com o edital] Falha ao preparar ${tenderId}:`, err instanceof Error ? err.message : err)
+    await marcarConversa(tenderId, 'FALHOU')
+    return 'FALHOU'
   }
 }

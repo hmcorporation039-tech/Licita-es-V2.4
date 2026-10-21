@@ -4,6 +4,7 @@ export interface Limites {
   itensMonitorados: number | null
   usuarios: number | null
   analisesIaMes: number | null
+  perguntasAoEditalMes: number | null
 }
 
 export interface RecursoDoPlano {

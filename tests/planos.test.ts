@@ -4,9 +4,9 @@ import { avisoDoUsoDoPlano, resumoDosLimites, situacaoDoRecurso } from '../web/s
 
 describe('resumo dos limites do teste grátis no cadastro', () => {
   it('mostra os limites reais do plano, no singular e no plural', () => {
-    expect(resumoDosLimites({ itensMonitorados: 3, usuarios: 1, analisesIaMes: 3 })).toBe('até 3 itens monitorados, 1 usuário e 3 análises de edital')
-    expect(resumoDosLimites({ itensMonitorados: null, usuarios: 2, analisesIaMes: null })).toBe('até 2 usuários')
-    expect(resumoDosLimites({ itensMonitorados: null, usuarios: null, analisesIaMes: null })).toBeNull()
+    expect(resumoDosLimites({ itensMonitorados: 3, usuarios: 1, analisesIaMes: 3, perguntasAoEditalMes: 30 })).toBe('até 3 itens monitorados, 1 usuário, 3 análises de edital e 30 perguntas ao edital')
+    expect(resumoDosLimites({ itensMonitorados: null, usuarios: 2, analisesIaMes: null, perguntasAoEditalMes: null })).toBe('até 2 usuários')
+    expect(resumoDosLimites({ itensMonitorados: null, usuarios: null, analisesIaMes: null, perguntasAoEditalMes: null })).toBeNull()
     expect(resumoDosLimites(null)).toBeNull()
   })
 })
@@ -22,10 +22,11 @@ describe('quantidadeDoRecurso', () => {
 
 describe('lerLimites', () => {
   it('lê limites válidos, inclusive null (ilimitado)', () => {
-    expect(lerLimites({ itensMonitorados: null, usuarios: 5, analisesIaMes: 40 })).toEqual({
+    expect(lerLimites({ itensMonitorados: null, usuarios: 5, analisesIaMes: 40, perguntasAoEditalMes: null })).toEqual({
       itensMonitorados: null,
       usuarios: 5,
       analisesIaMes: 40,
+      perguntasAoEditalMes: null,
     })
   })
 
@@ -37,14 +38,14 @@ describe('lerLimites', () => {
 })
 
 describe('limitesEfetivos', () => {
-  const plano = { itensMonitorados: 10, usuarios: 1, analisesIaMes: 10 }
+  const plano = { itensMonitorados: 10, usuarios: 1, analisesIaMes: 10, perguntasAoEditalMes: 150 }
 
   it('sem ajuste vale o plano', () => {
     expect(limitesEfetivos(plano, null)).toEqual(plano)
   })
 
   it('o ajuste combinado com o cliente vence o plano, só nas chaves informadas', () => {
-    expect(limitesEfetivos(plano, { itensMonitorados: 30 })).toEqual({ itensMonitorados: 30, usuarios: 1, analisesIaMes: 10 })
+    expect(limitesEfetivos(plano, { itensMonitorados: 30 })).toEqual({ itensMonitorados: 30, usuarios: 1, analisesIaMes: 10, perguntasAoEditalMes: 150 })
     expect(limitesEfetivos(plano, { usuarios: null }).usuarios).toBeNull()
   })
 })

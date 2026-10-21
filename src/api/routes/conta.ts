@@ -28,7 +28,7 @@ contaRouter.get(
   asyncHandler(async (req, res) => {
     const companyId = req.companyId!
     const dono = req.companyRole === 'OWNER'
-    const [usuario, empresa, membros, itens, documentos, planos, checklists, exigencias, matches, analises, eventos] = await Promise.all([
+    const [usuario, empresa, membros, itens, documentos, planos, checklists, exigencias, matches, analises, eventos, perguntasAoEdital] = await Promise.all([
       prisma.user.findUnique({
         where: { id: req.userId! },
         select: {
@@ -63,6 +63,12 @@ contaRouter.get(
         take: 1000,
         select: { createdAt: true, action: true, entityType: true, actorEmail: true },
       }),
+      prisma.editalPergunta.findMany({
+        where: { companyId, ...(dono ? {} : { userId: req.userId! }) },
+        orderBy: { createdAt: 'desc' },
+        take: 5000,
+        select: { tenderId: true, pergunta: true, resposta: true, createdAt: true },
+      }),
     ])
 
     await registrarAuditoria(req, { action: 'DADOS_EXPORTADOS', entityType: 'empresa', entityId: companyId })
@@ -81,6 +87,7 @@ contaRouter.get(
       progressoDeExigencias: exigencias,
       totais: { licitacoesCompativeisEncontradas: matches, analisesDeEditalSolicitadas: analises },
       historicoDeAcoes: eventos,
+      perguntasAoEdital,
     })
   })
 )

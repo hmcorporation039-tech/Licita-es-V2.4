@@ -45,7 +45,7 @@ export async function registrarUsoDeIa(args: {
   durationMs: number
   status: 'OK' | 'ERRO'
   // 'analise' (analista) ou 'revisao' (revisor). A cota do cliente conta só 'analise'.
-  etapa?: 'analise' | 'revisao'
+  etapa?: 'analise' | 'revisao' | 'pergunta'
 }): Promise<void> {
   try {
     await prisma.aiUsage.create({

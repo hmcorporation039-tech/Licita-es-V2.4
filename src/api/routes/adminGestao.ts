@@ -218,6 +218,7 @@ const patchCompanySchema = z.object({
       itensMonitorados: limiteSchema.optional(),
       usuarios: limiteSchema.optional(),
       analisesIaMes: limiteSchema.optional(),
+      perguntasAoEditalMes: limiteSchema.optional(),
     })
     .strict()
     .nullable()
@@ -277,6 +278,7 @@ const limitsSchema = z
     itensMonitorados: limiteSchema,
     usuarios: limiteSchema,
     analisesIaMes: limiteSchema,
+    perguntasAoEditalMes: limiteSchema.optional(),
   })
   .strict()
 
@@ -315,7 +317,7 @@ adminGestaoRouter.put(
     const { limits, ...resto } = body
     const plan = await prisma.subscriptionPlan.update({
       where: { code: antes.code },
-      data: { ...resto, ...(limits ? { limits: limits as Prisma.InputJsonValue } : {}) },
+      data: { ...resto, ...(limits ? { limits: { ...(antes.limits as Record<string, unknown>), ...limits } as Prisma.InputJsonValue } : {}) },
     })
     await registrarAuditoria(req, {
       action: 'PLANO_ALTERADO',

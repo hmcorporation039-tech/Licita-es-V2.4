@@ -76,6 +76,7 @@ const CAMPOS: { chave: keyof Limites; rotulo: string }[] = [
   { chave: 'itensMonitorados', rotulo: 'Itens monitorados' },
   { chave: 'usuarios', rotulo: 'Usuários' },
   { chave: 'analisesIaMes', rotulo: 'Análises de IA / mês' },
+  { chave: 'perguntasAoEditalMes', rotulo: 'Perguntas ao edital / mês' },
 ]
 
 function Secao({ titulo, contagem, descricao, acoes, children }: { titulo: string; contagem?: number; descricao?: ReactNode; acoes?: ReactNode; children: ReactNode }) {

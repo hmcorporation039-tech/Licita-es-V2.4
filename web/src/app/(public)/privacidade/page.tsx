@@ -29,7 +29,7 @@ export default function PrivacidadePage() {
           </li>
           <li>
             <strong>Uso da plataforma:</strong> itens monitorados, licitações escolhidas, estudos de custos, planos de disputa e
-            lances registrados, avisos enviados e pedidos de análise.
+            lances registrados, avisos enviados, pedidos de análise e as perguntas feitas ao edital, com as respostas.
           </li>
           <li>
             <strong>Notificações no celular:</strong> quando você as ativa em um aparelho, guardamos o endereço de entrega criado pelo
@@ -82,8 +82,9 @@ export default function PrivacidadePage() {
           </li>
           <li><strong>ViaCEP e BrasilAPI</strong>: consulta do endereço pelo CEP que você digita.</li>
           <li>
-            <strong>Anthropic e Google</strong>: provedores de inteligência artificial. Recebem apenas o texto público do edital
-            para gerar o resumo. Não enviamos seus dados cadastrais, financeiros nem os documentos do cofre.
+            <strong>Anthropic e Google</strong>: provedores de inteligência artificial. Recebem o texto público do edital para gerar
+            o resumo e, quando você pergunta ao edital, a pergunta que você digitou. Não enviamos seus dados cadastrais, financeiros
+            nem os documentos do cofre; por isso, evite escrever dados pessoais nas perguntas.
           </li>
           <li>
             <strong>Reconhecimento de voz do navegador</strong>: quando você fala com a Bela, a plataforma usa o recurso de voz do
@@ -122,6 +123,10 @@ export default function PrivacidadePage() {
             exclusão. Contas sem acesso há mais de 12 meses podem ser excluídas, com aviso prévio por e-mail.
           </li>
           <li>Pedido de exclusão: atendido em até 15 dias, com confirmação por e-mail.</li>
+          <li>
+            Perguntas ao edital: enquanto a conta existir. O texto do edital guardado para a conversa é apagado 30 dias depois do fim
+            do prazo da licitação.
+          </li>
           <li>
             Aparelhos com notificação: até você desativar, sair da conta naquele aparelho ou o navegador deixar de aceitar as
             mensagens.

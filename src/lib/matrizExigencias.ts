@@ -26,7 +26,9 @@ export interface VerificacaoDaExigencia {
   documentoConfirmado: string | null
 }
 
-export type ExigenciaVerificada = ExigenciaDoEdital & { verificacao: VerificacaoDaExigencia }
+export type ComVerificacao<T> = T & { verificacao: VerificacaoDaExigencia }
+
+export type ExigenciaVerificada = ComVerificacao<ExigenciaDoEdital>
 
 export interface DocumentoParaVerificar {
   nome: string
@@ -110,13 +112,13 @@ function fracaoDeShingles(alvo: string, doc: string): number {
   return total === 0 ? 0 : achados / total
 }
 
-export function verificarExigencias(matriz: ExigenciaDoEdital[], documentos: DocumentoParaVerificar[]): ExigenciaVerificada[] {
+export function verificarExigencias<T extends Pick<ExigenciaDoEdital, 'texto' | 'documento'>>(matriz: T[], documentos: DocumentoParaVerificar[]): ComVerificacao<T>[] {
   const preparados = documentos.map(preparar)
   const comTexto = preparados.filter((d): d is DocumentoPreparado => d !== null)
 
   return matriz.map((exigencia) => {
     const alvo = comprimir(semReticencias(exigencia.texto))
-    const naoVerificavel = (): ExigenciaVerificada => ({
+    const naoVerificavel = (): ComVerificacao<T> => ({
       ...exigencia,
       verificacao: { status: 'nao-verificavel', paginaConfirmada: null, documentoConfirmado: null },
     })
