@@ -633,7 +633,8 @@ function Confianca({ trialDias }: { trialDias: number | null }) {
   )
 }
 
-function Limite({ valor, singular, plural }: { valor: number | null; singular: string; plural: string }) {
+function Limite({ valor, singular, plural }: { valor: number | null | undefined; singular: string; plural: string }) {
+  if (valor === undefined) return null
   if (valor === null) return <>Sem limite de {plural}</>
   return (
     <>
@@ -700,12 +701,14 @@ function Planos({ dados }: { dados: PlanosResposta }) {
                         <Limite valor={p.limites.analisesIaMes} singular="análise de edital por mês" plural="análises de edital por mês" />
                       </span>
                     </li>
-                    <li>
-                      <Check size={16} strokeWidth={3} aria-hidden />
-                      <span>
-                        <Limite valor={p.limites.perguntasAoEditalMes} singular="pergunta ao edital por mês" plural="perguntas ao edital por mês" />
-                      </span>
-                    </li>
+                    {p.limites.perguntasAoEditalMes !== undefined && (
+                      <li>
+                        <Check size={16} strokeWidth={3} aria-hidden />
+                        <span>
+                          <Limite valor={p.limites.perguntasAoEditalMes} singular="pergunta ao edital por mês" plural="perguntas ao edital por mês" />
+                        </span>
+                      </li>
+                    )}
                   </ul>
                   {teste ? (
                     <LinkDeCadastro origem="planos" className="az-pilula az-pilula-verde az-pilula-cheia">
