@@ -31,12 +31,16 @@ export default function SuportePage() {
   const [enviando, setEnviando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [aberto, setAberto] = useState<number | null>(null)
+  const [foraDoAr, setForaDoAr] = useState(false)
 
   const carregar = useCallback(() => {
     api
       .get<ResumoDoChamado[]>('/api/suporte/chamados')
       .then(setChamados)
-      .catch((e) => setErro(e instanceof ApiRequestError ? e.message : 'Não foi possível carregar os chamados'))
+      .catch((e) => {
+        if (e instanceof ApiRequestError && e.status === 404) setForaDoAr(true)
+        else setErro(e instanceof ApiRequestError ? e.message : 'Não foi possível carregar os chamados')
+      })
   }, [])
 
   useEffect(() => {
@@ -69,6 +73,12 @@ export default function SuportePage() {
     <>
       <PageHeader eyebrow="Ajuda" title="Suporte" description="Conte o que aconteceu ou tire uma dúvida. Respondemos em dias úteis, das 9h às 18h, em até 1 dia útil." />
 
+      {foraDoAr && (
+        <Notice tone="warn" title="O suporte pelo sistema está sendo atualizado">
+          Enquanto isso, escreva para <strong>suporte@licitabela.com.br</strong> que respondemos por e-mail.
+        </Notice>
+      )}
+
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <Panel title="Abrir um chamado">
           <form onSubmit={abrir} className="flex flex-col gap-4">
@@ -100,7 +110,7 @@ export default function SuportePage() {
             </p>
             <FormError>{erro}</FormError>
             <div>
-              <Button type="submit" variant="primary" icon={Send} loading={enviando} disabled={enviando || assunto.trim().length < 3 || relato.trim().length < 10}>
+              <Button type="submit" variant="primary" icon={Send} loading={enviando} disabled={foraDoAr || enviando || assunto.trim().length < 3 || relato.trim().length < 10}>
                 Enviar chamado
               </Button>
             </div>
