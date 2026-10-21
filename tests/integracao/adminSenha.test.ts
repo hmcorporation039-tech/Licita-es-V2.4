@@ -121,8 +121,8 @@ rodar('Admin: redefinir a senha de um usuário', () => {
     expect((await http('POST', '/api/auth/reset-password', { token, novaSenha: 'Senha-do-convite-1' })).status).toBe(200)
     expect((await http('POST', '/api/auth/login', { email: `teste-${sufixo}@teste.local`, password: 'Senha-do-convite-1' })).status).toBe(200)
     const dias = (new Date(r.body.accessExpiresAt).getTime() - Date.now()) / 86_400_000
-    expect(dias).toBeGreaterThan(6.9)
-    expect(dias).toBeLessThanOrEqual(7)
+    expect(dias).toBeGreaterThan(13.9)
+    expect(dias).toBeLessThanOrEqual(14)
   })
 
   it('conta em teste não pode ficar sem prazo; conta de plano pago pode', async () => {

@@ -100,7 +100,7 @@ rodar('Cadastro público e recuperação de senha', () => {
   describe('cadastro e confirmação de e-mail por código', () => {
     let codigoInicial = ''
 
-    it('cria conta de teste (7 dias), plano TESTE, termos registrados — e responde 202', async () => {
+    it('cria conta de teste (14 dias), plano TESTE, termos registrados — e responde 202', async () => {
       const r = await http('POST', '/api/auth/register', cadastro())
       expect(r.status).toBe(202)
 
@@ -113,8 +113,8 @@ rodar('Cadastro público e recuperação de senha', () => {
       expect(user.company.planCode).toBe('TESTE')
       expect(user.company.tipo).toBe('PESSOA_FISICA')
       const dias = (user.accessExpiresAt.getTime() - Date.now()) / 86_400_000
-      expect(dias).toBeGreaterThan(6.9)
-      expect(dias).toBeLessThan(7.1)
+      expect(dias).toBeGreaterThan(13.9)
+      expect(dias).toBeLessThan(14.1)
     })
 
     it('o e-mail traz o código e a instrução com a marca — sem link, botão ou nome; no banco fica só o HMAC', async () => {
@@ -159,13 +159,13 @@ rodar('Cadastro público e recuperação de senha', () => {
       expect(desconhecido.body).toEqual(conhecido.body) // não revela se o e-mail tem conta
     })
 
-    it('confirma com o código certo, uma vez só; reusar falha; depois o login funciona; os 7 dias contam da confirmação', async () => {
+    it('confirma com o código certo, uma vez só; reusar falha; depois o login funciona; os 14 dias contam da confirmação', async () => {
       await prisma.user.update({ where: { email: email('fulano') }, data: { accessExpiresAt: new Date(Date.now() + 4 * 86_400_000) } })
       expect((await http('POST', '/api/auth/verify-email', { email: email('fulano'), codigo: codigoInicial })).status).toBe(200)
       const confirmado = await prisma.user.findUnique({ where: { email: email('fulano') } })
       const dias = (confirmado.accessExpiresAt.getTime() - Date.now()) / 86_400_000
-      expect(dias).toBeGreaterThan(6.9)
-      expect(dias).toBeLessThan(7.1)
+      expect(dias).toBeGreaterThan(13.9)
+      expect(dias).toBeLessThan(14.1)
       expect((await http('POST', '/api/auth/verify-email', { email: email('fulano'), codigo: codigoInicial })).status).toBe(400)
       const login = await http('POST', '/api/auth/login', { email: email('fulano'), password: SENHA })
       expect(login.status).toBe(200)
@@ -547,7 +547,7 @@ rodar('Cadastro público e recuperação de senha', () => {
     it('GET /api/public/plans é público, lista planos ativos e não expõe preço indefinido', async () => {
       const r = await http('GET', '/api/public/plans')
       expect(r.status).toBe(200)
-      expect(r.body.trialDias).toBe(7)
+      expect(r.body.trialDias).toBe(14)
       expect(r.body.planos.map((p: { codigo: string }) => p.codigo)).toEqual(expect.arrayContaining(['TESTE', 'ESSENCIAL', 'PROFISSIONAL', 'EMPRESARIAL']))
       expect(r.body.planos[0].limites).toHaveProperty('itensMonitorados')
       expect(r.body.planos[0].precoMensalCentavos).toBeNull()
