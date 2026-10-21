@@ -319,7 +319,7 @@ rodar('Preço vencedor: resultado das licitações do PNCP', () => {
     expect(depois).toMatchObject({ resultadoFinal: true, situacao: 'ENCERRADA', valorHomologado: null })
   })
 
-  it('licitação acompanhada sem itens no banco ganha os itens e o vencedor, sem duplicar na segunda varredura nem na coleta sob demanda', async () => {
+  it('licitação acompanhada sem itens no banco ganha os itens e o vencedor, só é reconferida depois de 48 h por ter encerrado há mais de 30 dias, e não duplica nem na coleta sob demanda', async () => {
     await prisma.tender.create({ data: licitacao('semItens', new Date(AGORA.getTime() - 50 * DIA_MS)) })
     await criarMatch(ids.semItens, 'a')
     respostas.set(listaDeItens('semItens'), [itemDoPncp(1, 'Homologado', true), itemDoPncp(2, 'Em andamento', false)])
@@ -348,7 +348,11 @@ rodar('Preço vencedor: resultado das licitações do PNCP', () => {
     expect((await prisma.tender.findUniqueOrThrow({ where: { id: ids.semItens } })).resultadoFinal).toBe(false)
 
     chamadas.length = 0
-    const segunda = await conferir({ agora: new Date(AGORA.getTime() + 29 * HORA_MS), teto: 50, buscar })
+    await conferir({ agora: new Date(AGORA.getTime() + 29 * HORA_MS), teto: 50, buscar })
+    expect(chamadasDa('semItens')).toEqual([])
+
+    chamadas.length = 0
+    const segunda = await conferir({ agora: new Date(AGORA.getTime() + 65 * HORA_MS), teto: 50, buscar })
     expect(chamadasDa('semItens')).toEqual([listaDeItens('semItens')])
     expect(segunda.itensCriados).toBe(0)
 
