@@ -354,7 +354,9 @@ rodar('API com banco real', () => {
 
     it('análises de IA do mês: só as OK contam, e o admin nunca é limitado', async () => {
       await prisma.company.update({ where: { id: ids.empresab }, data: { planCode: 'TESTE' } })
-      for (let n = 0; n < 3; n++) {
+      const planoTeste = await prisma.subscriptionPlan.findUnique({ where: { code: 'TESTE' } })
+      const limiteDoTeste = (planoTeste.limits as { analisesIaMes: number }).analisesIaMes
+      for (let n = 0; n < limiteDoTeste; n++) {
         await prisma.aiUsage.create({
           data: { companyId: ids.empresab, userId: ids.b, provider: 'claude', model: 'm', inputTokens: 10, outputTokens: 5, status: 'OK' },
         })
