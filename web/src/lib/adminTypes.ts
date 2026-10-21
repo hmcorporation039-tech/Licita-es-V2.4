@@ -172,6 +172,10 @@ export const ROTULO_ACAO: Record<string, string> = {
   PREGAO_VALOR_FINAL_MINIMO_DESMARCADO: 'Valor final mínimo desmarcado no plano de disputa',
   EXPORTACAO_PLANILHA: 'Planilha do Excel exportada',
   TERMOS_ACEITOS: 'Termos de Uso e Política de Privacidade aceitos',
+  DADOS_PROPRIOS_EXCLUIDOS: 'Usuário excluiu os próprios dados',
+  MEMBRO_REMOVIDO: 'Membro removido pelo dono (dados excluídos)',
+  PREFERENCIAS_DE_EMAIL_ALTERADAS: 'Preferências de e-mail alteradas',
+  DESCADASTRO_POR_LINK: 'Descadastro de e-mail pelo link',
 }
 
 export interface CriterioDeAderencia {

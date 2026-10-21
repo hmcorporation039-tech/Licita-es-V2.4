@@ -10,6 +10,7 @@ import { formatarDiaDoCalendario, formatarDiaEHoraDeBrasilia, formatarPrazoDaLic
 import { appUrl } from '../lib/appUrl'
 import { quandoVence, quantidadeCom } from '../lib/plural'
 import { momentoDoFimDoPrazo, textoDoTempoRestante } from '../lib/prazoDoAviso'
+import { cabecalhosDeDescadastro, type LinksDeDescadastro } from '../lib/descadastro'
 
 const EMAIL_FROM = process.env.EMAIL_FROM ?? 'noreply@seudominio.com.br'
 
@@ -119,6 +120,7 @@ export interface LicitacaoDoLembrete extends LicitacaoDoAviso {
 export interface EmailMontado {
   assunto: string
   html: string
+  cabecalhos?: Record<string, string>
 }
 
 export const MAX_LICITACOES_NO_RESUMO = 15
@@ -178,7 +180,11 @@ export function assuntoDoResumoDiario(total: number): string {
   return `${quantidadeCom(total, 'licitação nova', 'licitações novas')} para você hoje`
 }
 
-export function montarEmailDoResumoDiario(licitacoes: LicitacaoDoResumo[], env: NodeJS.ProcessEnv = process.env): EmailMontado {
+export function montarEmailDoResumoDiario(
+  licitacoes: LicitacaoDoResumo[],
+  env: NodeJS.ProcessEnv = process.env,
+  descadastro?: LinksDeDescadastro
+): EmailMontado {
   const total = licitacoes.length
   const visiveis = licitacoes.slice(0, MAX_LICITACOES_NO_RESUMO)
   const restantes = total - visiveis.length
@@ -193,7 +199,9 @@ export function montarEmailDoResumoDiario(licitacoes: LicitacaoDoResumo[], env: 
       notaDosCartoes: restantes > 0 ? `E mais ${quantidadeCom(restantes, 'licitação', 'licitações')} no painel.` : undefined,
       botao: { texto: restantes > 0 ? 'Ver todas as licitações' : 'Abrir meus matches', link: `${appUrl(env)}/matches` },
       motivo: 'Você recebe este resumo uma vez por dia porque monitora itens na Licita Bela.',
+      descadastro: descadastro?.pagina,
     }),
+    cabecalhos: cabecalhosDeDescadastro(descadastro),
   }
 }
 
@@ -201,7 +209,12 @@ export function assuntoDoLembreteDePrazo(total: number): string {
   return `Prazo encerrando: ${quantidadeCom(total, 'licitação escolhida', 'licitações escolhidas')}`
 }
 
-export function montarEmailDoLembreteDePrazo(licitacoes: LicitacaoDoLembrete[], agora: Date, env: NodeJS.ProcessEnv = process.env): EmailMontado {
+export function montarEmailDoLembreteDePrazo(
+  licitacoes: LicitacaoDoLembrete[],
+  agora: Date,
+  env: NodeJS.ProcessEnv = process.env,
+  descadastro?: LinksDeDescadastro
+): EmailMontado {
   const ordenadas = [...licitacoes].sort((a, b) => a.fimDoPrazo.getTime() - b.fimDoPrazo.getTime())
   const total = ordenadas.length
   return {
@@ -221,7 +234,9 @@ export function montarEmailDoLembreteDePrazo(licitacoes: LicitacaoDoLembrete[], 
       }),
       botao: { texto: 'Abrir licitações escolhidas', link: `${appUrl(env)}/escolhidas` },
       motivo: 'Você recebeu este lembrete porque sua empresa marcou estas licitações como "Vou participar" na Licita Bela.',
+      descadastro: descadastro?.pagina,
     }),
+    cabecalhos: cabecalhosDeDescadastro(descadastro),
   }
 }
 
@@ -230,16 +245,27 @@ async function enviarEmailMontado(to: string, email: EmailMontado): Promise<bool
     console.warn(`[emailService] RESEND_API_KEY não configurada — "${email.assunto}" não foi enviado.`)
     return false
   }
-  await enviarPeloResend(getResendClient(), { from: EMAIL_FROM, to, subject: email.assunto, html: email.html })
+  await enviarPeloResend(getResendClient(), {
+    from: EMAIL_FROM,
+    to,
+    subject: email.assunto,
+    html: email.html,
+    ...(email.cabecalhos ? { headers: email.cabecalhos } : {}),
+  })
   return true
 }
 
-export async function sendResumoDiarioEmail(to: string, licitacoes: LicitacaoDoResumo[]): Promise<boolean> {
-  return enviarEmailMontado(to, montarEmailDoResumoDiario(licitacoes))
+export async function sendResumoDiarioEmail(to: string, licitacoes: LicitacaoDoResumo[], descadastro?: LinksDeDescadastro): Promise<boolean> {
+  return enviarEmailMontado(to, montarEmailDoResumoDiario(licitacoes, process.env, descadastro))
 }
 
-export async function sendLembreteDePrazoEmail(to: string, licitacoes: LicitacaoDoLembrete[], agora: Date): Promise<boolean> {
-  return enviarEmailMontado(to, montarEmailDoLembreteDePrazo(licitacoes, agora))
+export async function sendLembreteDePrazoEmail(
+  to: string,
+  licitacoes: LicitacaoDoLembrete[],
+  agora: Date,
+  descadastro?: LinksDeDescadastro
+): Promise<boolean> {
+  return enviarEmailMontado(to, montarEmailDoLembreteDePrazo(licitacoes, agora, process.env, descadastro))
 }
 
 export interface DocumentExpiryEmailParams {
@@ -247,6 +273,7 @@ export interface DocumentExpiryEmailParams {
   documentName: string
   diasRestantes: number
   dataValidade: Date
+  descadastro?: LinksDeDescadastro
 }
 
 export async function sendDocumentExpiryEmail(params: DocumentExpiryEmailParams) {
@@ -255,13 +282,15 @@ export async function sendDocumentExpiryEmail(params: DocumentExpiryEmailParams)
     return
   }
 
-  const { to, documentName, diasRestantes, dataValidade } = params
+  const { to, documentName, diasRestantes, dataValidade, descadastro } = params
   const vencido = diasRestantes < 0
   const dataFormatada = formatarDiaDoCalendario(dataValidade)
+  const cabecalhos = cabecalhosDeDescadastro(descadastro)
 
   await enviarPeloResend(getResendClient(), {
     from: EMAIL_FROM,
     to,
+    ...(cabecalhos ? { headers: cabecalhos } : {}),
     subject: vencido ? `Documento vencido: ${documentName}` : `Documento ${quandoVence(diasRestantes)}: ${documentName}`,
     html: emailDaMarca({
       previa: vencido ? `${documentName} venceu` : `${documentName} ${quandoVence(diasRestantes)}`,
@@ -272,6 +301,7 @@ export async function sendDocumentExpiryEmail(params: DocumentExpiryEmailParams)
         { rotulo: 'Validade', valor: `${dataFormatada} ${vencido ? '(já venceu)' : `(${quandoVence(diasRestantes)})`}` },
       ],
       botao: { texto: 'Abrir meus documentos', link: `${appUrl()}/empresa` },
+      descadastro: descadastro?.pagina,
     }),
   })
 }
@@ -292,6 +322,7 @@ export interface TenderChangedEmailParams {
   encerramentoAt?: Date | null
   fonte?: string
   linkEdital?: string | null
+  descadastro?: LinksDeDescadastro
 }
 
 export async function sendTenderChangedEmail(params: TenderChangedEmailParams) {
@@ -300,12 +331,14 @@ export async function sendTenderChangedEmail(params: TenderChangedEmailParams) {
     return
   }
 
-  const { to, tenderObjeto, campos, orgao, encerramentoAt, fonte, linkEdital } = params
+  const { to, tenderObjeto, campos, orgao, encerramentoAt, fonte, linkEdital, descadastro } = params
   const rotulos = campos.map((campo) => ROTULO_CAMPO_ALTERADO[campo] ?? campo)
+  const cabecalhos = cabecalhosDeDescadastro(descadastro)
 
   await enviarPeloResend(getResendClient(), {
     from: EMAIL_FROM,
     to,
+    ...(cabecalhos ? { headers: cabecalhos } : {}),
     subject: 'Uma licitação que você acompanha foi alterada',
     html: emailDaMarca({
       previa: `O que mudou: ${rotulos.join(', ')}`,
@@ -320,6 +353,7 @@ export async function sendTenderChangedEmail(params: TenderChangedEmailParams) {
       ],
       botao: linkEdital ? { texto: 'Ver edital atualizado', link: linkEdital } : undefined,
       motivo: 'Você recebeu este aviso porque acompanha esta licitação na Licita Bela. Confira o edital antes de enviar a proposta.',
+      descadastro: descadastro?.pagina,
     }),
   })
 }

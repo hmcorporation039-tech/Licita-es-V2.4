@@ -44,6 +44,7 @@ export interface ConteudoDoEmail {
   botao?: LinkDoEmail
   linkSecundario?: LinkDoEmail
   motivo?: string
+  descadastro?: string
 }
 
 function botaoHtml({ texto, link }: LinkDoEmail): string {
@@ -108,6 +109,12 @@ function cartoesHtml(cartoes: CartaoDoEmail[], nota?: string): string {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:8px;border-collapse:separate">${cartoes.map(cartaoHtml).join('')}</table>${notaHtml}`
 }
 
+function descadastroHtml(link: string | undefined): string {
+  const href = link ? safeHttpUrl(link) : null
+  if (!href) return ''
+  return `<br>Não quer mais receber este tipo de e-mail? <a href="${escapeHtml(href)}" style="color:${COR.apagado};text-decoration:underline">Descadastrar</a>`
+}
+
 export function emailDaMarca(conteudo: ConteudoDoEmail): string {
   const motivo = conteudo.motivo ?? 'Você recebeu este e-mail por causa da sua conta na Licita Bela.'
   return `<!doctype html>
@@ -136,7 +143,7 @@ export function emailDaMarca(conteudo: ConteudoDoEmail): string {
           </tr>
           <tr>
             <td style="padding:18px 12px 0;text-align:center;font-size:12px;line-height:1.6;color:${COR.apagado}">
-              ${escapeHtml(motivo)}<br>${RODAPE_DA_EMPRESA}
+              ${escapeHtml(motivo)}${descadastroHtml(conteudo.descadastro)}<br>${RODAPE_DA_EMPRESA}
             </td>
           </tr>
         </table>

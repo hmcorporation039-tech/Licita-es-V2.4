@@ -14,9 +14,11 @@ import { verifyPasswordConstantTime } from '../../services/authService'
 import { registrarAuditoria } from '../../services/auditService'
 import { avisarAdministrador } from '../../services/alertaOperacional'
 import { requireCompanyOwner } from '../authMiddleware'
-import { escritaSensivelLimiter } from '../rateLimit'
+import { changePasswordLimiter, escritaSensivelLimiter } from '../rateLimit'
 import { ApiError, asyncHandler } from '../asyncHandler'
 import { TERMOS_VERSAO } from '../../lib/legal'
+import { excluirDadosDoUsuario, metadataDaExclusao } from '../../services/exclusaoDeUsuario'
+import { CAMPO_DA_PREFERENCIA, TIPOS_DE_AVISO, type TipoDeAviso } from '../../lib/descadastro'
 
 export const contaRouter = Router()
 
@@ -32,6 +34,7 @@ contaRouter.get(
         select: {
           id: true, email: true, name: true, companyRole: true, createdAt: true, emailVerifiedAt: true,
           termsAcceptedAt: true, termsVersion: true, accessExpiresAt: true, active: true,
+          receberResumoDiario: true, receberLembreteDePrazo: true, receberAvisoDeDocumento: true, receberAvisoDeAlteracao: true,
         },
       }),
       prisma.company.findUnique({
@@ -138,5 +141,83 @@ contaRouter.post(
     await prisma.user.update({ where: { id: req.userId! }, data: { termsAcceptedAt: aceitoEm, termsVersion: TERMOS_VERSAO } })
     await registrarAuditoria(req, { action: 'TERMOS_ACEITOS', entityType: 'usuario', entityId: req.userId!, metadata: { versao: TERMOS_VERSAO } })
     res.json({ versaoAceita: TERMOS_VERSAO, aceitoEm })
+  })
+)
+
+const SELECT_DAS_PREFERENCIAS = {
+  receberResumoDiario: true,
+  receberLembreteDePrazo: true,
+  receberAvisoDeDocumento: true,
+  receberAvisoDeAlteracao: true,
+} as const
+
+type PreferenciasGravadas = Record<(typeof CAMPO_DA_PREFERENCIA)[TipoDeAviso], boolean>
+
+function preferenciasPorTipo(gravadas: PreferenciasGravadas): Record<TipoDeAviso, boolean> {
+  return Object.fromEntries(TIPOS_DE_AVISO.map((tipo) => [tipo, gravadas[CAMPO_DA_PREFERENCIA[tipo]]])) as Record<TipoDeAviso, boolean>
+}
+
+contaRouter.get(
+  '/preferencias-de-email',
+  asyncHandler(async (req, res) => {
+    const gravadas = await prisma.user.findUniqueOrThrow({ where: { id: req.userId! }, select: SELECT_DAS_PREFERENCIAS })
+    res.json({ preferencias: preferenciasPorTipo(gravadas) })
+  })
+)
+
+const preferenciasSchema = z
+  .object(Object.fromEntries(TIPOS_DE_AVISO.map((tipo) => [tipo, z.boolean().optional()])) as Record<TipoDeAviso, z.ZodOptional<z.ZodBoolean>>)
+  .strict()
+
+contaRouter.patch(
+  '/preferencias-de-email',
+  escritaSensivelLimiter,
+  asyncHandler(async (req, res) => {
+    const pedido = preferenciasSchema.parse(req.body)
+    const data: Partial<PreferenciasGravadas> = {}
+    for (const tipo of TIPOS_DE_AVISO) {
+      const valor = pedido[tipo]
+      if (valor !== undefined) data[CAMPO_DA_PREFERENCIA[tipo]] = valor
+    }
+    const gravadas = await prisma.user.update({ where: { id: req.userId! }, data, select: SELECT_DAS_PREFERENCIAS })
+    if (Object.keys(data).length > 0) {
+      await registrarAuditoria(req, { action: 'PREFERENCIAS_DE_EMAIL_ALTERADAS', entityType: 'usuario', entityId: req.userId!, metadata: pedido })
+    }
+    res.json({ preferencias: preferenciasPorTipo(gravadas) })
+  })
+)
+
+contaRouter.get(
+  '/opcoes-de-exclusao',
+  asyncHandler(async (req, res) => {
+    const dono = req.companyRole === 'OWNER'
+    const outrosDonosAtivos = dono
+      ? await prisma.user.count({ where: { companyId: req.companyId!, companyRole: 'OWNER', active: true, id: { not: req.userId! } } })
+      : 0
+    res.json({
+      papel: dono ? 'OWNER' : 'MEMBER',
+      podeExcluirSoOsMeusDados: !dono || outrosDonosAtivos > 0,
+      podePedirExclusaoDaEmpresa: dono,
+    })
+  })
+)
+
+const exclusaoDosMeusDadosSchema = z.object({ senha: z.string().min(1).max(200) })
+
+contaRouter.post(
+  '/excluir-meus-dados',
+  changePasswordLimiter,
+  asyncHandler(async (req, res) => {
+    const { senha } = exclusaoDosMeusDadosSchema.parse(req.body)
+    const user = await prisma.user.findUnique({ where: { id: req.userId! }, select: { passwordHash: true } })
+    if (!(await verifyPasswordConstantTime(senha, user?.passwordHash))) throw new ApiError(400, 'Senha incorreta.')
+
+    const resumo = await excluirDadosDoUsuario({ userId: req.userId!, companyId: req.companyId! })
+    await registrarAuditoria(
+      null,
+      { action: 'DADOS_PROPRIOS_EXCLUIDOS', entityType: 'usuario', entityId: resumo.userId, companyId: resumo.companyId, metadata: metadataDaExclusao(resumo) },
+      { userId: null, email: null }
+    )
+    res.json({ mensagem: 'Seus dados pessoais foram excluídos. Os dados da empresa continuam com ela.' })
   })
 )

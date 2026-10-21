@@ -2,7 +2,7 @@
 
 import { formatarData } from '@/lib/datas'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { Download, Eye, FilePlus, Paperclip, Pause, Play, Save, Trash2, Upload, UserPlus, UserRoundCog, X } from 'lucide-react'
+import { Download, Eye, FilePlus, Paperclip, Pause, Play, Save, Trash2, Upload, UserPlus, UserRoundCog, UserX, X } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
 import { abrirArquivo, api, ApiRequestError, baixarArquivo, enviarArquivo } from '@/lib/api'
 import { ArquivoDoDocumento, Company, CompanyDocument, CompanyMember, CompanyType } from '@/lib/types'
@@ -404,6 +404,26 @@ export default function EmpresaPage() {
     }
   }
 
+  async function removerMembro(membro: CompanyMember) {
+    setError(null)
+    setInfo(null)
+    const confirmado = await confirmar({
+      titulo: `Remover ${membro.email}?`,
+      mensagem:
+        'A conta e os dados pessoais desta pessoa são apagados na hora e ela perde o acesso. Os itens, documentos, estudos e planos que ela cadastrou continuam com a empresa, no seu nome. Não dá para desfazer. Se quiser só suspender o acesso, use Desativar.',
+      confirmarRotulo: 'Remover',
+      perigo: true,
+    })
+    if (!confirmado) return
+    try {
+      await api.delete(`/api/company/members/${membro.id}`)
+      setInfo(`${membro.email} foi removido da empresa e os dados pessoais foram excluídos.`)
+      await load()
+    } catch (err) {
+      setError(err instanceof ApiRequestError ? err.message : 'Erro ao remover o usuário')
+    }
+  }
+
   function onSelectDocTipo(value: string) {
     setDocTipo(value)
     if (value && !docNome) {
@@ -789,7 +809,7 @@ export default function EmpresaPage() {
 
       <Panel title="Usuários da empresa">
         <div className="flex flex-col gap-6">
-          <TableWrap minWidth={souOwner ? 640 : 420}>
+          <TableWrap minWidth={souOwner ? 760 : 420}>
             <Table>
               <THead>
                 <tr>
@@ -826,6 +846,9 @@ export default function EmpresaPage() {
                               </Button>
                               <Button size="sm" variant="ghost" icon={m.active ? Pause : Play} onClick={() => alternarAtivo(m)}>
                                 {m.active ? 'Desativar' : 'Ativar'}
+                              </Button>
+                              <Button size="sm" variant="danger" icon={UserX} onClick={() => removerMembro(m)}>
+                                Remover
                               </Button>
                             </div>
                           )}

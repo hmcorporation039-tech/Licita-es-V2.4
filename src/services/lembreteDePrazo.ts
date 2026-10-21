@@ -3,6 +3,7 @@ import { prisma } from './tenderService'
 import { sendLembreteDePrazoEmail, type LicitacaoDoLembrete } from './emailService'
 import { SELECT_DO_DESTINATARIO, acessoDoDestinatarioComEmpresa } from './avisoDeAcessoEncerrado'
 import { confirmarEnvio, desfazerReservas, reservarNotificacao } from './reservaDeNotificacao'
+import { linksDeDescadastro } from '../lib/descadastro'
 import { MARCOS_DO_LEMBRETE_EM_HORAS, marcoDoLembrete, momentoDoFimDoPrazo, type MarcoDoLembrete } from '../lib/prazoDoAviso'
 
 const HORA_MS = 60 * 60 * 1000
@@ -90,16 +91,18 @@ export async function enviarLembretesDaEmpresa(companyId: string, agora: Date = 
   const pendentes = await licitacoesNaJanela(companyId, agora)
   if (pendentes.length === 0) return { enviados: 0, falhas: 0 }
 
-  const usuarios = await prisma.user.findMany({ where: { companyId }, select: SELECT_DO_DESTINATARIO })
+  const usuarios = await prisma.user.findMany({ where: { companyId }, select: { ...SELECT_DO_DESTINATARIO, receberLembreteDePrazo: true } })
   let enviados = 0
   let falhas = 0
   for (const usuario of usuarios) {
+    if (!usuario.receberLembreteDePrazo) continue
     if (acessoDoDestinatarioComEmpresa(usuario, agora.getTime()).situacao !== 'ativo') continue
     const reservados = await reservarLembretesDoUsuario(usuario.id, pendentes, agora)
     if (reservados.length === 0) continue
     const ids = reservados.map((r) => r.id)
     try {
-      if (!(await sendLembreteDePrazoEmail(usuario.email, reservados.map((r) => r.licitacao), agora))) {
+      const descadastro = linksDeDescadastro(usuario.id, 'lembrete-de-prazo')
+      if (!(await sendLembreteDePrazoEmail(usuario.email, reservados.map((r) => r.licitacao), agora, descadastro))) {
         await desfazerReservas(ids)
         continue
       }

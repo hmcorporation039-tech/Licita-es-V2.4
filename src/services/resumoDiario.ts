@@ -5,6 +5,7 @@ import { confirmarEnvio, desfazerReservas, reservarNotificacao } from './reserva
 import { whereDaLicitacaoNoFeed } from '../lib/feedDeMatches'
 import { diaDeBrasilia } from '../lib/dataDeBrasilia'
 import { quantidadeCom } from '../lib/plural'
+import { linksDeDescadastro } from '../lib/descadastro'
 
 const HORA_MS = 60 * 60 * 1000
 const DIA_MS = 24 * HORA_MS
@@ -15,7 +16,7 @@ export const FOLGA_ENTRE_RESUMOS_MS = HORA_MS
 
 const PREFIXO_DO_RESUMO = 'resumo-diario'
 
-export type ResultadoDoResumo = 'enviado' | 'sem-novidade' | 'ja-enviado' | 'sem-acesso' | 'nao-enviado'
+export type ResultadoDoResumo = 'enviado' | 'sem-novidade' | 'ja-enviado' | 'sem-acesso' | 'nao-enviado' | 'desligado'
 
 export interface ResumosDoDia {
   usuarios: number
@@ -104,8 +105,9 @@ async function matchesNovosDoUsuario(userId: string, agora: Date): Promise<Match
 }
 
 export async function enviarResumoDoUsuario(userId: string, agora: Date = new Date()): Promise<ResultadoDoResumo> {
-  const usuario = await prisma.user.findUnique({ where: { id: userId }, select: SELECT_DO_DESTINATARIO })
+  const usuario = await prisma.user.findUnique({ where: { id: userId }, select: { ...SELECT_DO_DESTINATARIO, receberResumoDiario: true } })
   if (!usuario || acessoDoDestinatarioComEmpresa(usuario, agora.getTime()).situacao !== 'ativo') return 'sem-acesso'
+  if (!usuario.receberResumoDiario) return 'desligado'
 
   const { id, matches, jaEnviado } = await matchesNovosDoUsuario(userId, agora)
   if (jaEnviado) return 'ja-enviado'
@@ -129,7 +131,7 @@ export async function enviarResumoDoUsuario(userId: string, agora: Date = new Da
   if (!reservado) return 'ja-enviado'
 
   try {
-    if (!(await sendResumoDiarioEmail(usuario.email, licitacoes))) {
+    if (!(await sendResumoDiarioEmail(usuario.email, licitacoes, linksDeDescadastro(usuario.id, 'resumo-diario')))) {
       await desfazerReservas([id])
       return 'nao-enviado'
     }

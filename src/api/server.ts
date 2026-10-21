@@ -27,6 +27,7 @@ import { catalogRouter } from './routes/catalog'
 import { radarRouter } from './routes/radar'
 import { contaRouter } from './routes/conta'
 import { estudosRouter } from './routes/estudos'
+import { descadastroRouter } from './routes/descadastro'
 import { requireAuth } from './authMiddleware'
 import { ApiError } from './asyncHandler'
 import { globalLimiter, radarLimiter } from './rateLimit'
@@ -92,6 +93,7 @@ app.use('/api', globalLimiter)
 // (ver /api/admin/users), não existe mais autocadastro aberto.
 app.use('/api/auth', authRouter)
 app.use('/api/public', publicRouter)
+app.use('/api/descadastro', descadastroRouter)
 app.use('/api/admin', adminRouter)
 app.use('/api/admin', adminGestaoRouter)
 
