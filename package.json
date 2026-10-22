@@ -42,7 +42,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit -p tsconfig.check.json",
     "verify": "npm run typecheck && npm run lint && npm run test",
-    "workers": "ts-node src/workers/index.ts"
+    "workers": "ts-node src/workers/index.ts",
+    "vigia": "cross-env DOTENV_CONFIG_PATH=scripts/ops/.env.backup ts-node -r dotenv/config scripts/ops/vigia.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.116.0",
