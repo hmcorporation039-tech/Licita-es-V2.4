@@ -25,6 +25,8 @@ export const ITENS_POR_PAGINA = 50
 export const TETO_PADRAO_DE_REQUISICOES = 600
 export const JANELA_DO_RESULTADO_DIAS = 120
 export const INTERVALO_ENTRE_CONFERENCIAS_MS = 12 * 60 * 60 * 1000
+export const DIAS_DE_CONFERENCIA_FREQUENTE = 30
+export const INTERVALO_ENTRE_CONFERENCIAS_ESPACADAS_MS = 48 * 60 * 60 * 1000
 const DIA_MS = 24 * 60 * 60 * 1000
 const SITUACOES_QUE_PASSAM_A_HOMOLOGADA: SituacaoEnum[] = ['ABERTA', 'ENCERRADA', 'SUSPENSA']
 
@@ -262,6 +264,8 @@ interface LinhaCandidata {
 export async function licitacoesParaConferir(agora: Date, limite: number): Promise<LinhaCandidata[]> {
   const inicioDaJanela = new Date(agora.getTime() - JANELA_DO_RESULTADO_DIAS * DIA_MS)
   const conferidaAntesDe = new Date(agora.getTime() - INTERVALO_ENTRE_CONFERENCIAS_MS)
+  const encerradaRecentementeDesde = new Date(agora.getTime() - DIAS_DE_CONFERENCIA_FREQUENTE * DIA_MS)
+  const conferidaEspacadaAntesDe = new Date(agora.getTime() - INTERVALO_ENTRE_CONFERENCIAS_ESPACADAS_MS)
   return prisma.$queryRaw<LinhaCandidata[]>`
     SELECT t.id,
            t.situacao::text AS situacao,
@@ -274,7 +278,11 @@ export async function licitacoesParaConferir(agora: Date, limite: number): Promi
       AND t.resultado_final = false
       AND t.encerramento_at >= ${inicioDaJanela}
       AND t.encerramento_at <= ${agora}
-      AND (t.resultado_conferido_em IS NULL OR t.resultado_conferido_em < ${conferidaAntesDe})
+      AND (
+        t.resultado_conferido_em IS NULL
+        OR (t.encerramento_at >= ${encerradaRecentementeDesde} AND t.resultado_conferido_em < ${conferidaAntesDe})
+        OR t.resultado_conferido_em < ${conferidaEspacadaAntesDe}
+      )
       AND (
         EXISTS (SELECT 1 FROM tender_matches m WHERE m.tender_id = t.id)
         OR EXISTS (SELECT 1 FROM tender_participation_plans p WHERE p.tender_id = t.id)
