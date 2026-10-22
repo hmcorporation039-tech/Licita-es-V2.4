@@ -158,7 +158,7 @@ export default function PrivacidadePage() {
           automatizadas.
         </p>
         <ul>
-          <li>Pelos menus <strong>Conta</strong> e <strong>Empresa</strong>, você corrige seus dados; em <strong>Conta</strong>, também baixa uma cópia dos dados de cadastro e pede a exclusão da conta.</li>
+          <li>Pelos menus <strong>Conta</strong> e <strong>Empresa</strong>, você corrige seus dados; em <strong>Conta</strong>, também baixa uma cópia completa dos seus dados (um arquivo ZIP com os dados em formato aberto, os documentos do cofre, a logomarca e planilhas que abrem no Excel) e pede a exclusão da conta.</li>
           <li>
             Usuário convidado por uma empresa exclui os próprios dados na hora, em <strong>Conta</strong>. Os itens, documentos e
             estudos que ele cadastrou continuam com a empresa. O dono da empresa também pode remover um usuário, com o mesmo efeito.
@@ -169,7 +169,7 @@ export default function PrivacidadePage() {
             com um clique. Os e-mails da conta, como código de acesso, convite, troca de senha e avisos de segurança, não podem ser
             desligados.
           </li>
-          <li>Os demais pedidos, inclusive a cópia dos documentos do cofre e dos estudos, são feitos pelo e-mail do encarregado abaixo.</li>
+          <li>Os demais pedidos são feitos pelo e-mail do encarregado abaixo.</li>
         </ul>
 
         <h2>8. Segurança</h2>

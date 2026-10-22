@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Download, KeyRound, Trash2, UserX } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
-import { api, ApiRequestError } from '@/lib/api'
+import { api, ApiRequestError, baixarArquivo } from '@/lib/api'
 import { clearSessionUser, replaceSessionToken } from '@/lib/session'
 import UsoDoPlano from '@/components/UsoDoPlano'
 import AssinaturaDaEmpresa from '@/components/AssinaturaDaEmpresa'
@@ -197,18 +197,26 @@ function SeusDados() {
     setBaixando(true)
     setErro(null)
     try {
-      const dados = await api.get<unknown>('/api/conta/meus-dados')
-      const url = URL.createObjectURL(new Blob([JSON.stringify(dados, null, 2)], { type: 'application/json' }))
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `meus-dados-${new Date().toISOString().slice(0, 10)}.json`
-      a.click()
-      URL.revokeObjectURL(url)
+      await baixarArquivo('/api/conta/meus-dados.zip', `licita-bela-meus-dados-${new Date().toISOString().slice(0, 10)}.zip`)
     } catch (e) {
+      if (e instanceof ApiRequestError && e.status === 404) {
+        await baixarSoOsDados().catch((outro) => setErro(outro instanceof ApiRequestError ? outro.message : 'Não foi possível gerar o arquivo'))
+        return
+      }
       setErro(e instanceof ApiRequestError ? e.message : 'Não foi possível gerar o arquivo')
     } finally {
       setBaixando(false)
     }
+  }
+
+  async function baixarSoOsDados() {
+    const dados = await api.get<unknown>('/api/conta/meus-dados')
+    const url = URL.createObjectURL(new Blob([JSON.stringify(dados, null, 2)], { type: 'application/json' }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `meus-dados-${new Date().toISOString().slice(0, 10)}.json`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   function abrir(exclusao: Exclusao) {
@@ -267,8 +275,8 @@ function SeusDados() {
       title="Seus dados"
       description={
         dono
-          ? 'Baixe uma cópia dos dados da sua conta e da empresa, ou peça a exclusão definitiva.'
-          : 'Baixe uma cópia dos seus dados ou exclua os seus dados pessoais.'
+          ? 'Baixe uma cópia dos dados da sua conta e da empresa (um arquivo ZIP com os documentos do cofre, a logo e planilhas), ou peça a exclusão definitiva.'
+          : 'Baixe uma cópia dos seus dados (um arquivo ZIP com os documentos do cofre e planilhas) ou exclua os seus dados pessoais.'
       }
     >
       <div className="flex flex-col gap-4">

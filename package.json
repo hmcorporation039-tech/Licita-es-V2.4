@@ -42,7 +42,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit -p tsconfig.check.json",
     "verify": "npm run typecheck && npm run lint && npm run test",
-    "workers": "ts-node src/workers/index.ts"
+    "workers": "ts-node src/workers/index.ts",
+    "vigia": "cross-env DOTENV_CONFIG_PATH=scripts/ops/.env.backup ts-node -r dotenv/config scripts/ops/vigia.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.116.0",
@@ -59,6 +60,7 @@
     "express-rate-limit": "^8.7.0",
     "fflate": "0.8.3",
     "helmet": "^8.3.0",
+    "https-proxy-agent": "^7.0.6",
     "ioredis": "^5.4.1",
     "jsonwebtoken": "^9.0.3",
     "pdf-parse": "^2.4.5",

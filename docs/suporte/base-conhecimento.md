@@ -87,7 +87,7 @@ Depois de editar, publique (merge na main) para o atendimento passar a usar o te
 
 ## Conta e privacidade
 - Esqueci a senha: na tela de entrar, "Esqueci minha senha" envia um link por e-mail.
-- Exportar meus dados e pedir exclusão: em Conta. A exclusão é atendida em até 15 dias.
+- Exportar meus dados e pedir exclusão: em Conta. "Baixar meus dados" gera um arquivo ZIP com todos os dados em formato aberto (dados.json), uma planilha das licitações encontradas, a lista do cofre e os próprios arquivos do cofre e a logomarca. Dá para baixar até 6 vezes por hora. A exclusão é atendida em até 15 dias.
 - A Política de Privacidade e os Termos de Uso ficam no rodapé do site.
 
 ## O que a Licita Bela não faz
