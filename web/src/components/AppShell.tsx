@@ -7,6 +7,7 @@ import {
   BookOpen,
   Bookmark,
   Building2,
+  KeyRound,
   FileText,
   Inbox,
   LayoutGrid,
@@ -60,6 +61,7 @@ const GRUPOS: GrupoDeMenu[] = [
     itens: [
       { href: '/items', label: 'Itens monitorados', icon: ListChecks },
       { href: '/empresa', label: 'Empresa e documentos', icon: Building2 },
+      { href: '/portais', label: 'Meus Portais', icon: KeyRound },
       { href: '/conta', label: 'Conta', icon: UserRound },
     ],
   },
