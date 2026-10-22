@@ -16,7 +16,7 @@ import {
   TextRun,
   WidthType,
 } from 'docx'
-import type { Bloco, DocumentoDaLicitacao } from '../../lib/documentosDaLicitacao/modelo'
+import { vemAntesDaAssinatura, type Bloco, type DocumentoDaLicitacao } from '../../lib/documentosDaLicitacao/modelo'
 import { dimensoesDaImagem, encaixar, imagemLegivel, linhasDaAssinatura, linhasDoRodape, type Timbrado } from './papelTimbrado'
 
 const FONTE = 'Arial'
@@ -95,22 +95,26 @@ function tabela(t: Tabela): Table {
 
 function assinatura(local: string, t: Timbrado): Paragraph[] {
   return [
-    new Paragraph({ alignment: AlignmentType.RIGHT, spacing: { before: 240, after: 720 }, children: [texto(local)] }),
-    new Paragraph({ alignment: AlignmentType.CENTER, children: [texto('_______________________________________________')] }),
+    new Paragraph({ alignment: AlignmentType.RIGHT, keepNext: true, keepLines: true, spacing: { before: 240, after: 720 }, children: [texto(local)] }),
+    new Paragraph({ alignment: AlignmentType.CENTER, keepNext: true, children: [texto('_______________________________________________')] }),
     ...linhasDaAssinatura(t.proponente).map(
-      (l, i) => new Paragraph({ alignment: AlignmentType.CENTER, children: [texto(l, { negrito: i === 0, tamanho: 19, cor: i === 0 ? undefined : COR_SUAVE })] }),
+      (l, i, todas) =>
+        new Paragraph({ alignment: AlignmentType.CENTER, ...(i < todas.length - 1 ? { keepNext: true } : {}), children: [texto(l, { negrito: i === 0, tamanho: 19, cor: i === 0 ? undefined : COR_SUAVE })] }),
     ),
   ]
 }
 
 export async function renderizarDocx(documento: DocumentoDaLicitacao, timbrado: Timbrado): Promise<Buffer> {
   const corpo: Array<Paragraph | Table> = []
-  for (const bloco of documento.blocos) {
+  documento.blocos.forEach((bloco, indice) => {
     if (bloco.tipo === 'titulo') {
       corpo.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 120, after: 240 }, children: [texto(bloco.texto, { negrito: true, tamanho: 25 })] }))
     } else if (bloco.tipo === 'paragrafo') {
-      if (!bloco.texto.trim()) continue
-      corpo.push(new Paragraph({ alignment: AlignmentType.JUSTIFIED, spacing: { after: 160, line: 300 }, children: [texto(bloco.texto)] }))
+      if (!bloco.texto.trim()) return
+      const juntoDaAssinatura = vemAntesDaAssinatura(documento.blocos, indice)
+      corpo.push(
+        new Paragraph({ alignment: AlignmentType.JUSTIFIED, ...(juntoDaAssinatura ? { keepNext: true, keepLines: true } : {}), spacing: { after: 160, line: 300 }, children: [texto(bloco.texto)] }),
+      )
     } else if (bloco.tipo === 'tabela') {
       corpo.push(tabela(bloco), new Paragraph({ spacing: { after: 160 }, children: [] }))
     } else if (bloco.tipo === 'assinatura') {
@@ -118,7 +122,7 @@ export async function renderizarDocx(documento: DocumentoDaLicitacao, timbrado: 
     } else if (bloco.tipo === 'quebra') {
       corpo.push(new Paragraph({ children: [new PageBreak()] }))
     }
-  }
+  })
 
   const arquivo = new Document({
     creator: timbrado.proponente.razaoSocial,

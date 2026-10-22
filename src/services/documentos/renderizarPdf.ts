@@ -1,10 +1,11 @@
 import PDFDocument from 'pdfkit'
-import type { Bloco, DocumentoDaLicitacao } from '../../lib/documentosDaLicitacao/modelo'
+import { vemAntesDaAssinatura, type Bloco, type DocumentoDaLicitacao } from '../../lib/documentosDaLicitacao/modelo'
 import { dimensoesDaImagem, encaixar, imagemLegivel, linhasDaAssinatura, linhasDoRodape, type Timbrado } from './papelTimbrado'
 
 const MARGEM = 56
 const TOPO = 112
 const BASE = 86
+const ALTURA_DA_ASSINATURA = 125
 const COR = { texto: '#1a1c1f', suave: '#5b5f66', linha: '#d3d0c7', fundo: '#f3f1ec' }
 
 type Tabela = Extract<Bloco, { tipo: 'tabela' }>
@@ -65,7 +66,7 @@ export function renderizarPdf(documento: DocumentoDaLicitacao, timbrado: Timbrad
     }
 
     const desenharAssinatura = (local: string) => {
-      garantirEspaco(125)
+      garantirEspaco(ALTURA_DA_ASSINATURA)
       doc.moveDown(0.6).font('Helvetica').fontSize(10.5).fillColor(COR.texto).text(local, MARGEM, doc.y, { width: largura, align: 'right' })
       doc.moveDown(3.2)
       const y = doc.y
@@ -79,13 +80,22 @@ export function renderizarPdf(documento: DocumentoDaLicitacao, timbrado: Timbrad
       doc.moveDown(1)
     }
 
-    for (const bloco of documento.blocos) {
+    const alturaDoParagrafo = (texto: string) => {
+      doc.font('Helvetica').fontSize(10.5)
+      return doc.heightOfString(texto, { width: largura, align: 'justify', lineGap: 2.5 }) + doc.currentLineHeight() * 0.7
+    }
+
+    documento.blocos.forEach((bloco, indice) => {
       if (bloco.tipo === 'titulo') {
         garantirEspaco(50)
         doc.moveDown(0.4).font('Helvetica-Bold').fontSize(12.5).fillColor(COR.texto).text(bloco.texto, MARGEM, doc.y, { width: largura, align: 'center' })
         doc.moveDown(0.8)
       } else if (bloco.tipo === 'paragrafo') {
-        if (!bloco.texto.trim()) continue
+        if (!bloco.texto.trim()) return
+        if (vemAntesDaAssinatura(documento.blocos, indice)) {
+          const comAAssinatura = alturaDoParagrafo(bloco.texto) + ALTURA_DA_ASSINATURA
+          if (comAAssinatura <= limite() - TOPO) garantirEspaco(comAAssinatura)
+        }
         doc.font('Helvetica').fontSize(10.5).fillColor(COR.texto).text(bloco.texto, MARGEM, doc.y, { width: largura, align: 'justify', lineGap: 2.5 })
         doc.moveDown(0.7)
       } else if (bloco.tipo === 'tabela') {
@@ -95,7 +105,7 @@ export function renderizarPdf(documento: DocumentoDaLicitacao, timbrado: Timbrad
       } else if (bloco.tipo === 'quebra') {
         doc.addPage()
       }
-    }
+    })
 
     const { proponente, logo } = timbrado
     const dims = logo && imagemLegivel(logo.conteudo) ? dimensoesDaImagem(logo.conteudo) : null

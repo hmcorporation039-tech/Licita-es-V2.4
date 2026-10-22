@@ -28,6 +28,15 @@ export const blocoSchema = z.discriminatedUnion('tipo', [
   z.object({ tipo: z.literal('quebra') }),
 ])
 
+export function vemAntesDaAssinatura(blocos: Bloco[], indice: number): boolean {
+  for (let j = indice + 1; j < blocos.length; j++) {
+    const bloco = blocos[j]
+    if (bloco.tipo === 'paragrafo' && !bloco.texto.trim()) continue
+    return bloco.tipo === 'assinatura'
+  }
+  return false
+}
+
 function caracteresDosBlocos(blocos: Array<z.infer<typeof blocoSchema>>): number {
   return blocos.reduce((total, b) => {
     if (b.tipo === 'titulo' || b.tipo === 'paragrafo') return total + b.texto.length
