@@ -944,6 +944,8 @@ model PregaoAcompanhamento {
   valorFinal     Decimal?           @map("valor_final") @db.Decimal(16, 2)
   encerradoEm    DateTime?          @map("encerrado_em")
   planoDeDisputa Json?              @map("plano_de_disputa")
+  roboAtivo          Boolean        @default(false) @map("robo_ativo")
+  intervaloLancesSeg Int            @default(15) @map("intervalo_lances_seg")
   createdAt      DateTime           @default(now()) @map("created_at")
   updatedAt      DateTime           @updatedAt @map("updated_at")
 
