@@ -33,12 +33,15 @@ import { apagarConversasAntigas } from '../services/atendimento'
 import { checkExpiringDocuments } from '../services/documentAlertService'
 import { configuracaoDeIa } from '../services/analiseEmDupla'
 import { textoDoDiagnostico } from '../lib/diagnosticoDeChave'
+import { enderecoDaPonteSemSenha } from '../lib/httpClient'
 import { alertarFalha, instalarAlertasDoProcesso } from '../services/alertaOperacional'
 import { preencherAnoDoProcesso } from '../services/anoDoProcessoBackfill'
 import { verificarColetoresParados } from '../services/saudeDosColetores'
 
 async function main() {
   console.log('🚀 Iniciando workers da plataforma de licitações...')
+  const ponte = enderecoDaPonteSemSenha()
+  console.log(ponte ? `[Ponte Brasil] TCE-RS, Infraero e Sistema S saem por ${ponte}` : '[Ponte Brasil] desligada: TCE-RS, Infraero e Sistema S saem direto')
 
   // Sobe os workers em paralelo
   const workerPNCP = startColetorPNCPWorker()
