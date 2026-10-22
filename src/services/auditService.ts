@@ -83,6 +83,8 @@ export const ACOES = [
   'SEGUNDO_FATOR_CODIGOS_RENOVADOS',
   'SEGUNDO_FATOR_CONFIRMADO',
   'SEGUNDO_FATOR_DESLIGADO',
+  'PORTAL_CREDENCIAL_SALVA',
+  'PORTAL_CREDENCIAL_REMOVIDA',
 ] as const
 export type AcaoAuditoria = (typeof ACOES)[number]
 

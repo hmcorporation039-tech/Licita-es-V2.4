@@ -159,6 +159,7 @@ model Company {
   mensagensDeSuporte   MensagemDeSuporte[]
   assinaturas          Assinatura[]
   pagamentos           Pagamento[]
+  credenciaisDePortal  PortalCredencial[]
 
   @@map("companies")
 }
@@ -1134,4 +1135,25 @@ model EventoDeCobranca {
 
   @@index([createdAt])
   @@map("eventos_de_cobranca")
+}
+
+model PortalCredencial {
+  id                 String    @id @default(uuid())
+  companyId          String    @map("company_id")
+  portal             String
+  login              String
+  senhaCifrada       Bytes     @map("senha_cifrada")
+  chaveVersao        Int       @default(1) @map("chave_versao")
+  consentimentoEm    DateTime? @map("consentimento_em")
+  consentimentoTexto String?   @map("consentimento_texto")
+  ultimoTesteEm      DateTime? @map("ultimo_teste_em")
+  ultimoTesteOk      Boolean?  @map("ultimo_teste_ok")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, portal])
+  @@index([companyId])
+  @@map("portal_credenciais")
 }
