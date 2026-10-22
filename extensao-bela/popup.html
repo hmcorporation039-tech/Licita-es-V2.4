@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Bela na disputa</title>
+    <style>
+      :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+      body { width: 300px; margin: 0; padding: 14px; }
+      h1 { font-size: 15px; margin: 0 0 10px; }
+      button { width: 100%; height: 40px; font-size: 14px; border-radius: 8px; border: 0; cursor: pointer; }
+      button.on { background: #15803d; color: #fff; }
+      button.off { background: #e5e7eb; color: #111; }
+      .linha { margin-top: 12px; font-size: 13px; }
+      .rotulo { color: #6b7280; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+      .valor { font-variant-numeric: tabular-nums; font-size: 18px; font-weight: 600; }
+      .aviso { margin-top: 10px; font-size: 12px; color: #6b7280; }
+      .acesso-ok { color: #15803d; }
+      .acesso-falta { color: #b45309; }
+    </style>
+  </head>
+  <body>
+    <h1>Bela na disputa</h1>
+    <button id="alternar" class="off">Ativar leitura</button>
+    <div class="linha"><span class="rotulo">Acesso</span><div id="acesso" class="acesso-falta">—</div></div>
+    <div class="linha"><span class="rotulo">Melhor lance lido</span><div id="lance" class="valor">—</div></div>
+    <div class="linha"><span class="rotulo">Sugestão da Bela</span><div id="sugestao" class="valor">—</div></div>
+    <div class="aviso" id="status">Só leitura: não envia lance e não guarda senha.</div>
+    <script type="module" src="popup.mjs"></script>
+  </body>
+</html>
