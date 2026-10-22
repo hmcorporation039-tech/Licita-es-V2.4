@@ -9,7 +9,7 @@ import { api, ApiRequestError } from '@/lib/api'
 import { getSessionUser } from '@/lib/session'
 import { AdminUser } from '@/lib/types'
 import type { PlanoComercial } from '@/lib/adminTypes'
-import { AdminCabecalho } from '@/components/AdminShell'
+import AdminShell from '@/components/AdminShell'
 import {
   Button,
   Carregando,
@@ -102,7 +102,14 @@ function emTeste(u: AdminUser): boolean {
 
 function Situacao({ u }: { u: AdminUser }) {
   if (!u.active) return <StatusTag tone="danger">Desativado</StatusTag>
-  if (u.isAdmin) return <StatusTag>Equipe</StatusTag>
+  if (u.isAdmin) {
+    return (
+      <span className="inline-flex flex-wrap gap-1">
+        <StatusTag>Equipe</StatusTag>
+        {u.segundoFatorAtivo === false && <StatusTag tone="warn">Sem login em duas etapas</StatusTag>}
+      </span>
+    )
+  }
   if (isExpired(u.accessExpiresAt)) return <StatusTag tone="warn">{u.planCode === 'TESTE' ? 'Teste encerrado' : 'Acesso expirado'}</StatusTag>
   if (emTeste(u) && u.accessExpiresAt === null) return <StatusTag tone="warn">Teste sem prazo</StatusTag>
   return <StatusTag>{u.planCode === 'TESTE' ? 'Em teste' : 'Ativo'}</StatusTag>
@@ -264,212 +271,215 @@ export default function AdminUsuariosPage() {
   const falhouAoCarregar = Boolean(error) && !loading && users.length === 0
 
   return (
-    <>
-      <AdminCabecalho titulo="Usuários" />
+    <AdminShell titulo="Usuários">
+      {() => (
+        <>
 
-      <Panel title="Criar usuário" description="A empresa do usuário é criada junto, no plano escolhido.">
-        <form onSubmit={handleCreate} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="E-mail" required>
-            <Input type="email" autoComplete="off" value={email} onChange={(e) => setEmail(e.target.value)} />
-          </Field>
-          <Field label="Nome" hint="Opcional.">
-            <Input autoComplete="off" value={name} onChange={(e) => setName(e.target.value)} />
-          </Field>
-          <Field label="Senha" hint="Opcional. Se ficar vazia, o sistema gera uma.">
-            <SenhaComAlternancia value={password} onChange={(e) => setPassword(e.target.value)} />
-          </Field>
-          <Field label="Dias de acesso" hint="Vazio = sem prazo.">
-            <Input type="number" min={1} inputMode="numeric" value={diasValidade} onChange={(e) => setDiasValidade(e.target.value)} className="font-mono" />
-          </Field>
-          <Field label="Plano da empresa">
-            <Select value={planCode} onChange={(e) => setPlanCode(e.target.value)}>
-              {planos.map((p) => (
-                <option key={p.code} value={p.code}>
-                  {p.name}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <div className="flex items-end pb-2.5">
-            <Checkbox label="Também é administrador" checked={isAdminField} onChange={(e) => setIsAdminField(e.target.checked)} />
-          </div>
+          <Panel title="Criar usuário" description="A empresa do usuário é criada junto, no plano escolhido.">
+            <form onSubmit={handleCreate} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field label="E-mail" required>
+                <Input type="email" autoComplete="off" value={email} onChange={(e) => setEmail(e.target.value)} />
+              </Field>
+              <Field label="Nome" hint="Opcional.">
+                <Input autoComplete="off" value={name} onChange={(e) => setName(e.target.value)} />
+              </Field>
+              <Field label="Senha" hint="Opcional. Se ficar vazia, o sistema gera uma.">
+                <SenhaComAlternancia value={password} onChange={(e) => setPassword(e.target.value)} />
+              </Field>
+              <Field label="Dias de acesso" hint="Vazio = sem prazo.">
+                <Input type="number" min={1} inputMode="numeric" value={diasValidade} onChange={(e) => setDiasValidade(e.target.value)} className="font-mono" />
+              </Field>
+              <Field label="Plano da empresa">
+                <Select value={planCode} onChange={(e) => setPlanCode(e.target.value)}>
+                  {planos.map((p) => (
+                    <option key={p.code} value={p.code}>
+                      {p.name}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <div className="flex items-end pb-2.5">
+                <Checkbox label="Também é administrador" checked={isAdminField} onChange={(e) => setIsAdminField(e.target.checked)} />
+              </div>
 
-          {!falhouAoCarregar && <FormError className="sm:col-span-2">{error}</FormError>}
-          {conviteEnviadoPara && (
-            <div className="sm:col-span-2">
-              <Notice tone="ok" title={`Convite enviado para ${conviteEnviadoPara}`}>
-                A pessoa recebe o login e um link para criar a própria senha, válido por 72 horas.
-              </Notice>
-            </div>
-          )}
-          {senhaCriada && (
-            <div className="sm:col-span-2">
-              <SenhaGerada titulo="Senha gerada para" email={senhaCriada.email} senha={senhaCriada.senha} />
-            </div>
-          )}
+              {!falhouAoCarregar && <FormError className="sm:col-span-2">{error}</FormError>}
+              {conviteEnviadoPara && (
+                <div className="sm:col-span-2">
+                  <Notice tone="ok" title={`Convite enviado para ${conviteEnviadoPara}`}>
+                    A pessoa recebe o login e um link para criar a própria senha, válido por 72 horas.
+                  </Notice>
+                </div>
+              )}
+              {senhaCriada && (
+                <div className="sm:col-span-2">
+                  <SenhaGerada titulo="Senha gerada para" email={senhaCriada.email} senha={senhaCriada.senha} />
+                </div>
+              )}
 
-          <div className="sm:col-span-2">
-            <Button type="submit" variant="primary" icon={UserPlus} loading={creating}>
-              {creating ? 'Criando…' : 'Criar usuário'}
-            </Button>
-          </div>
-        </form>
-      </Panel>
+              <div className="sm:col-span-2">
+                <Button type="submit" variant="primary" icon={UserPlus} loading={creating}>
+                  {creating ? 'Criando…' : 'Criar usuário'}
+                </Button>
+              </div>
+            </form>
+          </Panel>
 
-      <section aria-labelledby="usuarios-lista" className="flex min-w-0 flex-col gap-2.5">
-        <h2 id="usuarios-lista" className="text-sm font-semibold text-ink">
-          Usuários cadastrados
-          {users.length > 0 && <span className="ml-1.5 font-mono text-xs font-normal text-muted">{users.length}</span>}
-        </h2>
+          <section aria-labelledby="usuarios-lista" className="flex min-w-0 flex-col gap-2.5">
+            <h2 id="usuarios-lista" className="text-sm font-semibold text-ink">
+              Usuários cadastrados
+              {users.length > 0 && <span className="ml-1.5 font-mono text-xs font-normal text-muted">{users.length}</span>}
+            </h2>
 
-        {loading && users.length === 0 ? (
-          <Carregando linhas={6} />
-        ) : falhouAoCarregar ? (
-          <ErrorState
-            message={error}
-            onRetry={() => {
-              setError(null)
-              load()
-            }}
-          />
-        ) : users.length === 0 ? (
-          <EmptyState title="Nenhum usuário cadastrado." description="Use o formulário acima para criar o primeiro acesso." />
-        ) : (
-          <TableWrap minWidth={1080}>
-            <Table aria-busy={loading || undefined}>
-              <THead>
-                <tr>
-                  <Th>Usuário</Th>
-                  <Th>Situação</Th>
-                  <Th>Pendências</Th>
-                  <Th align="right">Acesso até</Th>
-                  <Th align="right">Ações</Th>
-                </tr>
-              </THead>
-              <tbody>
-                {users.map((u) => {
-                  const editando = passwordEditId === u.id
-                  const msgDaLinha = senhaMsg?.id === u.id ? senhaMsg : null
-                  const formId = `senha-${u.id}`
-                  const souEu = meuId !== null && u.id === meuId
-                  const semPrazo = u.accessExpiresAt === null
-                  const restantes = u.accessExpiresAt && !isExpired(u.accessExpiresAt) ? diasRestantes(u.accessExpiresAt) : null
-                  return (
-                    <Fragment key={u.id}>
-                      <Tr selected={editando}>
-                        <Td>
-                          <div className="flex min-w-0 flex-col gap-0.5">
-                            <span className="flex flex-wrap items-center gap-1.5">
-                              <span className="text-sm text-ink">{u.email}</span>
-                              {u.isAdmin && <StatusTag>Admin</StatusTag>}
-                              {souEu && <StatusTag tone="accent">Você</StatusTag>}
-                            </span>
-                            <span className="text-xs text-muted">{u.name ?? 'sem nome'}</span>
-                          </div>
-                        </Td>
-                        <Td>
-                          <Situacao u={u} />
-                        </Td>
-                        <Td>
-                          <div className="flex flex-wrap gap-1.5">
-                            {!u.emailConfirmado && <StatusTag>e-mail não confirmado</StatusTag>}
-                            {!u.hasPassword && <StatusTag>sem senha definida</StatusTag>}
-                            {u.emailConfirmado && u.hasPassword && <span className="text-muted">—</span>}
-                          </div>
-                        </Td>
-                        <Td numeric muted>
-                          {semPrazo ? (
-                            <span className="font-sans">sem prazo</span>
-                          ) : (
-                            <div className="flex flex-col items-end gap-0.5">
-                              <span>{formatarData(u.accessExpiresAt)}</span>
-                              {restantes !== null && (
-                                <span className="font-sans text-xs">{restantes === 1 ? 'falta 1 dia' : `faltam ${restantes} dias`}</span>
+            {loading && users.length === 0 ? (
+              <Carregando linhas={6} />
+            ) : falhouAoCarregar ? (
+              <ErrorState
+                message={error}
+                onRetry={() => {
+                  setError(null)
+                  load()
+                }}
+              />
+            ) : users.length === 0 ? (
+              <EmptyState title="Nenhum usuário cadastrado." description="Use o formulário acima para criar o primeiro acesso." />
+            ) : (
+              <TableWrap minWidth={1080}>
+                <Table aria-busy={loading || undefined}>
+                  <THead>
+                    <tr>
+                      <Th>Usuário</Th>
+                      <Th>Situação</Th>
+                      <Th>Pendências</Th>
+                      <Th align="right">Acesso até</Th>
+                      <Th align="right">Ações</Th>
+                    </tr>
+                  </THead>
+                  <tbody>
+                    {users.map((u) => {
+                      const editando = passwordEditId === u.id
+                      const msgDaLinha = senhaMsg?.id === u.id ? senhaMsg : null
+                      const formId = `senha-${u.id}`
+                      const souEu = meuId !== null && u.id === meuId
+                      const semPrazo = u.accessExpiresAt === null
+                      const restantes = u.accessExpiresAt && !isExpired(u.accessExpiresAt) ? diasRestantes(u.accessExpiresAt) : null
+                      return (
+                        <Fragment key={u.id}>
+                          <Tr selected={editando}>
+                            <Td>
+                              <div className="flex min-w-0 flex-col gap-0.5">
+                                <span className="flex flex-wrap items-center gap-1.5">
+                                  <span className="text-sm text-ink">{u.email}</span>
+                                  {u.isAdmin && <StatusTag>Admin</StatusTag>}
+                                  {souEu && <StatusTag tone="accent">Você</StatusTag>}
+                                </span>
+                                <span className="text-xs text-muted">{u.name ?? 'sem nome'}</span>
+                              </div>
+                            </Td>
+                            <Td>
+                              <Situacao u={u} />
+                            </Td>
+                            <Td>
+                              <div className="flex flex-wrap gap-1.5">
+                                {!u.emailConfirmado && <StatusTag>e-mail não confirmado</StatusTag>}
+                                {!u.hasPassword && <StatusTag>sem senha definida</StatusTag>}
+                                {u.emailConfirmado && u.hasPassword && <span className="text-muted">—</span>}
+                              </div>
+                            </Td>
+                            <Td numeric muted>
+                              {semPrazo ? (
+                                <span className="font-sans">sem prazo</span>
+                              ) : (
+                                <div className="flex flex-col items-end gap-0.5">
+                                  <span>{formatarData(u.accessExpiresAt)}</span>
+                                  {restantes !== null && (
+                                    <span className="font-sans text-xs">{restantes === 1 ? 'falta 1 dia' : `faltam ${restantes} dias`}</span>
+                                  )}
+                                </div>
                               )}
-                            </div>
-                          )}
-                        </Td>
-                        <Td>
-                          <div className="flex flex-wrap justify-end gap-1">
-                            {!u.emailConfirmado && (
-                              <Button size="sm" variant="secondary" icon={MailCheck} onClick={() => confirmarEmail(u)}>
-                                Confirmar e-mail
-                              </Button>
-                            )}
-                            <AcoesDePrazo u={u} onPrazo={extend} />
-                            {!souEu && (
-                              <Button size="sm" variant="ghost" icon={Power} onClick={() => toggleActive(u)}>
-                                {u.active ? 'Desativar' : 'Ativar'}
-                              </Button>
-                            )}
-                            <Button
-                              size="sm"
-                              variant={editando ? 'secondary' : 'ghost'}
-                              icon={KeyRound}
-                              aria-expanded={editando}
-                              aria-controls={editando ? formId : undefined}
-                              onClick={() => {
-                                setSenhaMsg(null)
-                                setPasswordEditId(passwordEditId === u.id ? null : u.id)
-                                setPasswordValue('')
-                              }}
-                            >
-                              Trocar senha
-                            </Button>
-                          </div>
-                        </Td>
-                      </Tr>
-
-                      {editando && (
-                        <Tr selected>
-                          <Td colSpan={5}>
-                            <div id={formId} className="flex flex-wrap items-start gap-3">
-                              <Field
-                                label={`Nova senha para ${u.email}`}
-                                hint={
-                                  passwordValue
-                                    ? `${passwordValue.length}/${SENHA_MIN} caracteres${passwordValue.length < SENHA_MIN ? ' — ainda curta' : ''}`
-                                    : `Mínimo ${SENHA_MIN} caracteres. Deixe vazio para gerar automaticamente.`
-                                }
-                                error={msgDaLinha?.tipo === 'erro' ? <span role="alert">{msgDaLinha.texto}</span> : undefined}
-                                className="w-full max-w-md"
-                              >
-                                <SenhaComAlternancia value={passwordValue} onChange={(e) => setPasswordValue(e.target.value)} autoFocus />
-                              </Field>
-                              <div className="flex gap-2 pt-[22px]">
-                                <Button variant="primary" loading={passwordSaving} onClick={() => resetPassword(u)}>
-                                  {passwordSaving ? 'Salvando…' : 'Confirmar'}
-                                </Button>
-                                <Button variant="ghost" onClick={() => setPasswordEditId(null)}>
-                                  Cancelar
+                            </Td>
+                            <Td>
+                              <div className="flex flex-wrap justify-end gap-1">
+                                {!u.emailConfirmado && (
+                                  <Button size="sm" variant="secondary" icon={MailCheck} onClick={() => confirmarEmail(u)}>
+                                    Confirmar e-mail
+                                  </Button>
+                                )}
+                                <AcoesDePrazo u={u} onPrazo={extend} />
+                                {!souEu && (
+                                  <Button size="sm" variant="ghost" icon={Power} onClick={() => toggleActive(u)}>
+                                    {u.active ? 'Desativar' : 'Ativar'}
+                                  </Button>
+                                )}
+                                <Button
+                                  size="sm"
+                                  variant={editando ? 'secondary' : 'ghost'}
+                                  icon={KeyRound}
+                                  aria-expanded={editando}
+                                  aria-controls={editando ? formId : undefined}
+                                  onClick={() => {
+                                    setSenhaMsg(null)
+                                    setPasswordEditId(passwordEditId === u.id ? null : u.id)
+                                    setPasswordValue('')
+                                  }}
+                                >
+                                  Trocar senha
                                 </Button>
                               </div>
-                            </div>
-                          </Td>
-                        </Tr>
-                      )}
+                            </Td>
+                          </Tr>
 
-                      {!editando && msgDaLinha && (
-                        <Tr>
-                          <Td colSpan={5}>
-                            {msgDaLinha.senhaGerada ? (
-                              <SenhaGerada titulo="Nova senha gerada para" email={u.email} senha={msgDaLinha.senhaGerada} />
-                            ) : (
-                              <Notice tone={msgDaLinha.tipo === 'erro' ? 'danger' : 'ok'}>
-                                <span className="break-all">{msgDaLinha.texto}</span>
-                              </Notice>
-                            )}
-                          </Td>
-                        </Tr>
-                      )}
-                    </Fragment>
-                  )
-                })}
-              </tbody>
-            </Table>
-          </TableWrap>
-        )}
-      </section>
-    </>
+                          {editando && (
+                            <Tr selected>
+                              <Td colSpan={5}>
+                                <div id={formId} className="flex flex-wrap items-start gap-3">
+                                  <Field
+                                    label={`Nova senha para ${u.email}`}
+                                    hint={
+                                      passwordValue
+                                        ? `${passwordValue.length}/${SENHA_MIN} caracteres${passwordValue.length < SENHA_MIN ? ' — ainda curta' : ''}`
+                                        : `Mínimo ${SENHA_MIN} caracteres. Deixe vazio para gerar automaticamente.`
+                                    }
+                                    error={msgDaLinha?.tipo === 'erro' ? <span role="alert">{msgDaLinha.texto}</span> : undefined}
+                                    className="w-full max-w-md"
+                                  >
+                                    <SenhaComAlternancia value={passwordValue} onChange={(e) => setPasswordValue(e.target.value)} autoFocus />
+                                  </Field>
+                                  <div className="flex gap-2 pt-[22px]">
+                                    <Button variant="primary" loading={passwordSaving} onClick={() => resetPassword(u)}>
+                                      {passwordSaving ? 'Salvando…' : 'Confirmar'}
+                                    </Button>
+                                    <Button variant="ghost" onClick={() => setPasswordEditId(null)}>
+                                      Cancelar
+                                    </Button>
+                                  </div>
+                                </div>
+                              </Td>
+                            </Tr>
+                          )}
+
+                          {!editando && msgDaLinha && (
+                            <Tr>
+                              <Td colSpan={5}>
+                                {msgDaLinha.senhaGerada ? (
+                                  <SenhaGerada titulo="Nova senha gerada para" email={u.email} senha={msgDaLinha.senhaGerada} />
+                                ) : (
+                                  <Notice tone={msgDaLinha.tipo === 'erro' ? 'danger' : 'ok'}>
+                                    <span className="break-all">{msgDaLinha.texto}</span>
+                                  </Notice>
+                                )}
+                              </Td>
+                            </Tr>
+                          )}
+                        </Fragment>
+                      )
+                    })}
+                  </tbody>
+                </Table>
+              </TableWrap>
+            )}
+          </section>
+        </>
+      )}
+    </AdminShell>
   )
 }

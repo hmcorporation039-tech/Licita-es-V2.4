@@ -3,10 +3,13 @@
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState, type ReactNode } from 'react'
 import { useRequireSession } from '@/hooks/useRequireSession'
-import { api } from '@/lib/api'
+import { api, ApiRequestError } from '@/lib/api'
 import type { PlanoComercial } from '@/lib/adminTypes'
 import type { SessionUser } from '@/lib/session'
-import { PageHeader, StatusTag, TabLinks, cx } from '@/components/ui'
+import { esquecerAvisoDeRecuperacao, lerAvisoDeRecuperacao, type SituacaoDoSegundoFator } from '@/lib/segundoFator'
+import { Notice, PageHeader, StatusTag, TabLinks, cx } from '@/components/ui'
+import LoginEmDuasEtapas from './LoginEmDuasEtapas'
+import ConfirmacaoDoSegundoFator from './ConfirmacaoDoSegundoFator'
 
 const ABAS = [
   { href: '/admin', label: 'Visão geral', exato: true },
@@ -77,20 +80,75 @@ export function RotuloDoPlano({ codigo, nome, sempreMostrarCodigo = false, class
   )
 }
 
+type Liberacao = 'carregando' | 'liberado' | 'pendente'
+
+function useLiberacaoDoAdmin(ativo: boolean): Liberacao {
+  const [liberacao, setLiberacao] = useState<Liberacao>('carregando')
+  useEffect(() => {
+    if (!ativo) return
+    let vivo = true
+    api
+      .get<SituacaoDoSegundoFator>('/api/segundo-fator')
+      .then((s) => {
+        if (vivo) setLiberacao(s.ativo ? 'liberado' : 'pendente')
+      })
+      .catch((err) => {
+        if (vivo) setLiberacao(err instanceof ApiRequestError && err.status === 404 ? 'liberado' : 'pendente')
+      })
+    return () => {
+      vivo = false
+    }
+  }, [ativo])
+  return liberacao
+}
+
 export default function AdminShell({ titulo, children }: { titulo: string; children: (user: SessionUser) => ReactNode }) {
   const user = useRequireSession()
   const router = useRouter()
+  const liberacao = useLiberacaoDoAdmin(Boolean(user?.isAdmin))
+  const [codigosRestantes, setCodigosRestantes] = useState<number | null>(null)
+
+  useEffect(() => {
+    setCodigosRestantes(lerAvisoDeRecuperacao())
+  }, [])
 
   useEffect(() => {
     if (user && !user.isAdmin) router.replace('/dashboard')
   }, [user, router])
 
-  if (!user || !user.isAdmin) return null
+  if (!user || !user.isAdmin || liberacao === 'carregando') return null
 
   return (
     <>
       <AdminCabecalho titulo={titulo} />
-      {children(user)}
+      {codigosRestantes !== null && (
+        <Notice
+          tone="warn"
+          title="Você entrou com um código de recuperação"
+          action={
+            <button
+              type="button"
+              className="text-sm font-medium text-accent underline underline-offset-[3px]"
+              onClick={() => {
+                esquecerAvisoDeRecuperacao()
+                setCodigosRestantes(null)
+              }}
+            >
+              Entendi
+            </button>
+          }
+        >
+          Restam {codigosRestantes} códigos. Se perdeu o celular, cadastre o aplicativo de novo em Minha conta, em &quot;Trocar de celular&quot;.
+        </Notice>
+      )}
+      {liberacao === 'pendente' ? (
+        <div className="w-full max-w-xl">
+          <LoginEmDuasEtapas obrigatorio onAtivado={() => window.location.reload()} />
+        </div>
+      ) : (
+        children(user)
+      )}
+      <ConfirmacaoDoSegundoFator />
     </>
   )
 }

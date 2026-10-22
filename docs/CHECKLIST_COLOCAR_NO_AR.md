@@ -31,6 +31,7 @@ bruta e se passar por qualquer usuário, inclusive o admin.
 - [ ] Veja o log da API logo depois do deploy. Se aparecer `[Segurança] JWT_SECRET tem menos de 32 caracteres`,
       gere um novo (PowerShell: `-join ((48..57)+(65..90)+(97..122) | Get-Random -Count 64 | % {[char]$_})`)
       e troque em **API e Workers**. Efeito: todo mundo precisa entrar de novo uma vez.
+- [ ] Trocar o `JWT_SECRET` depois que os administradores ativaram o login em duas etapas invalida o aplicativo deles: rode `scripts/ops/segundoFator.ts desligar <email>` para cada um e ative de novo (ver docs/LOGIN_EM_DUAS_ETAPAS.md).
 
 ## 4. Banco de dados e backup
 

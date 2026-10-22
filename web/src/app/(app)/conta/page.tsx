@@ -9,6 +9,7 @@ import UsoDoPlano from '@/components/UsoDoPlano'
 import AssinaturaDaEmpresa from '@/components/AssinaturaDaEmpresa'
 import PainelDoAcesso, { type CobrancaNaConta } from '@/components/PrazoDoAcesso'
 import NotificacoesNoCelular from '@/components/NotificacoesNoCelular'
+import LoginEmDuasEtapas from '@/components/LoginEmDuasEtapas'
 import { Button, Carregando, Checkbox, Field, FormError, Input, Notice, PageHeader, Panel, Textarea, useDialogo } from '@/components/ui'
 
 export default function ContaPage() {
@@ -87,6 +88,8 @@ export default function ContaPage() {
             </div>
           </form>
         </Panel>
+
+        {user.isAdmin && <LoginEmDuasEtapas />}
 
         <EmailsQueVoceRecebe />
 

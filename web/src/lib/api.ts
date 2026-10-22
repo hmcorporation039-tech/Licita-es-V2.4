@@ -4,6 +4,7 @@
 
 import { clearSessionUser, getSessionToken } from './session'
 import { lembrarErro, novoCodigoDeRastreio } from './suporte'
+import { CODIGO_CONFIRMACAO_RECENTE, confirmarSegundoFator } from './segundoFator'
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3333'
 
@@ -60,7 +61,7 @@ function camposComErro(detalhes: DetalheDeValidacao[]): Record<string, string> {
   return campos
 }
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
+async function request<T>(path: string, options?: RequestInit, jaConfirmou = false): Promise<T> {
   const token = getSessionToken()
   const codigo = novoCodigoDeRastreio()
   const res = await fetch(`${API_URL}${path}`, {
@@ -78,6 +79,9 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const body = await res.json().catch(() => ({}))
 
   if (!res.ok) {
+    if (res.status === 403 && body.code === CODIGO_CONFIRMACAO_RECENTE && !jaConfirmou && (await confirmarSegundoFator())) {
+      return request<T>(path, options, true)
+    }
     // Sessão inválida/expirada — limpa e manda pro login, exceto se a
     // própria tentativa de login que falhou (senão criaria um loop).
     if (res.status === 401 && !ehTelaDeEntrada(path) && typeof window !== 'undefined') {
@@ -111,11 +115,12 @@ export const api = {
     request<T>(path, { method: 'DELETE', body: data ? JSON.stringify(data) : undefined }),
 }
 
-export async function buscarArquivo(path: string): Promise<Blob> {
+export async function buscarArquivo(path: string, jaConfirmou = false): Promise<Blob> {
   const token = getSessionToken()
   const res = await fetch(`${API_URL}${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
+    if (res.status === 403 && body.code === CODIGO_CONFIRMACAO_RECENTE && !jaConfirmou && (await confirmarSegundoFator())) return buscarArquivo(path, true)
     throw new ApiRequestError(res.status, body.error ?? `Erro ${res.status}`)
   }
   return res.blob()

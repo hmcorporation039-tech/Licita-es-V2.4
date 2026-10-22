@@ -6,6 +6,7 @@
 
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit'
 import type { Request } from 'express'
+import { lerDesafioDoSegundoFator } from '../services/authService'
 
 const JANELA_MS = 15 * 60 * 1000
 
@@ -236,6 +237,30 @@ export const suporteLimiter = rateLimit({
   legacyHeaders: false,
   keyGenerator: (req) => req.userId ?? 'anonimo',
   message: { error: 'Muitas mensagens seguidas — aguarde alguns minutos e tente de novo' },
+})
+
+export const segundoFatorNoLoginLimiter = rateLimit({
+  windowMs: JANELA_MS,
+  limit: limite(10),
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  keyGenerator: (req) => {
+    const desafio = (req.body as { desafio?: unknown } | undefined)?.desafio
+    const lido = typeof desafio === 'string' ? lerDesafioDoSegundoFator(desafio) : null
+    return 'segundo-fator:' + (lido?.userId ?? ipKeyGenerator(req.ip ?? ''))
+  },
+  message: { error: 'Muitos códigos errados. Aguarde 15 minutos ou use um código de recuperação mais tarde.' },
+})
+
+export const segundoFatorLimiter = rateLimit({
+  windowMs: JANELA_MS,
+  limit: limite(10),
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  keyGenerator: (req) => 'segundo-fator:' + (req.userId ?? ipKeyGenerator(req.ip ?? '')),
+  message: { error: 'Muitos códigos errados. Aguarde 15 minutos e tente de novo.' },
 })
 
 export const exportacaoDosDadosLimiter = rateLimit({

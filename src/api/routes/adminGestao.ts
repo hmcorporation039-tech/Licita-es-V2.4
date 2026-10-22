@@ -11,7 +11,7 @@ import { Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { prisma } from '../../services/tenderService'
 import { asyncHandler, ApiError } from '../asyncHandler'
-import { requireAdmin, requireAuth } from '../authMiddleware'
+import { exigirConfirmacaoRecente, requireAdmin, requireAuth } from '../authMiddleware'
 import { escritaSensivelLimiter } from '../rateLimit'
 import { registrarAuditoria, ACOES } from '../../services/auditService'
 import { limitesDaEmpresa, resumoDeCotas } from '../../services/quotaService'
@@ -228,6 +228,7 @@ const patchCompanySchema = z.object({
 
 adminGestaoRouter.patch(
   '/companies/:id',
+  exigirConfirmacaoRecente,
   escritaSensivelLimiter,
   asyncHandler(async (req, res) => {
     const body = patchCompanySchema.parse(req.body)
@@ -296,6 +297,7 @@ const planBase = {
 
 adminGestaoRouter.post(
   '/plans',
+  exigirConfirmacaoRecente,
   escritaSensivelLimiter,
   asyncHandler(async (req, res) => {
     const body = z.object({ code: z.string().regex(/^[A-Z][A-Z0-9_]{1,39}$/), ...planBase }).parse(req.body)
@@ -310,6 +312,7 @@ adminGestaoRouter.post(
 
 adminGestaoRouter.put(
   '/plans/:code',
+  exigirConfirmacaoRecente,
   escritaSensivelLimiter,
   asyncHandler(async (req, res) => {
     const body = z.object(planBase).partial().parse(req.body)
@@ -383,6 +386,7 @@ function celulaCsv(valor: unknown): string {
 
 adminGestaoRouter.get(
   '/audit/export',
+  exigirConfirmacaoRecente,
   escritaSensivelLimiter,
   asyncHandler(async (req, res) => {
     const q = auditQuery.parse({ ...req.query, limit: 200 })

@@ -7,7 +7,10 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { prisma } from '../../services/tenderService'
 import {
+  agoraEmSegundos,
+  assinarDesafioDoSegundoFator,
   hashPassword,
+  lerDesafioDoSegundoFator,
   normalizeEmail,
   signSessionToken,
   verifyPasswordConstantTime,
@@ -16,7 +19,7 @@ import { senhaSchema } from '../passwordPolicy'
 import { asyncHandler, ApiError } from '../asyncHandler'
 import { requireAuth } from '../authMiddleware'
 import { registrarAuditoria } from '../../services/auditService'
-import { loginLimiter, loginPorContaLimiter, loginPorContaGlobalLimiter, codigoPorContaLimiter, changePasswordLimiter, cadastroLimiter, recuperacaoLimiter } from '../rateLimit'
+import { loginLimiter, loginPorContaLimiter, loginPorContaGlobalLimiter, codigoPorContaLimiter, changePasswordLimiter, cadastroLimiter, recuperacaoLimiter, segundoFatorNoLoginLimiter } from '../rateLimit'
 import { captchaValido, emailDescartavel, maxCadastrosPorHora } from '../../lib/protecaoCadastro'
 import { alertarFalha, avisarAdministrador } from '../../services/alertaOperacional'
 import { cnpjValido, cpfValido } from '../../lib/documentos'
@@ -40,6 +43,7 @@ import { criarItemDoCadastro } from './monitoredItems'
 import { aguardarFimDaBusca } from '../../services/rematchService'
 import { assinar } from '../../services/cobranca'
 import { assinaturaSchema } from './cobranca'
+import { conferirSegundoFator, segundoFatorAtivo, usuarioParaConferir } from '../../services/segundoFator'
 
 export const authRouter = Router()
 
@@ -296,6 +300,11 @@ authRouter.post(
       )
     }
 
+    if (segundoFatorAtivo(user)) {
+      res.json({ segundoFator: true, desafio: assinarDesafioDoSegundoFator(user.id, user.tokenVersion) })
+      return
+    }
+
     const token = signSessionToken(user.id, user.tokenVersion)
     await registrarAuditoria(
       req,
@@ -305,6 +314,53 @@ authRouter.post(
     res.json({
       token,
       user: { id: user.id, email: user.email, name: user.name, isAdmin: user.isAdmin },
+    })
+  })
+)
+
+const segundoFatorNoLoginSchema = z.object({
+  desafio: z.string().min(20).max(2000),
+  codigo: z.string().trim().min(6).max(20),
+})
+
+authRouter.post(
+  '/login/segundo-fator',
+  loginLimiter,
+  segundoFatorNoLoginLimiter,
+  asyncHandler(async (req, res) => {
+    const { desafio, codigo } = segundoFatorNoLoginSchema.parse(req.body)
+    const lido = lerDesafioDoSegundoFator(desafio)
+    if (!lido) throw new ApiError(401, 'O tempo para digitar o código acabou. Entre de novo com e-mail e senha.', { code: 'DESAFIO_EXPIRADO' })
+    const user = await prisma.user.findUnique({ where: { id: lido.userId } })
+    if (!user || !user.active || user.tokenVersion !== lido.tokenVersion || !user.emailVerifiedAt || (user.accessExpiresAt && acessoExpirou(user.accessExpiresAt))) {
+      throw new ApiError(401, 'O tempo para digitar o código acabou. Entre de novo com e-mail e senha.', { code: 'DESAFIO_EXPIRADO' })
+    }
+    const conferencia = await conferirSegundoFator(await usuarioParaConferir(user.id), codigo)
+    if (!conferencia.ok) {
+      await registrarAuditoria(
+        req,
+        { action: 'SEGUNDO_FATOR_INCORRETO', entityType: 'usuario', entityId: user.id, companyId: user.companyId, metadata: { momento: 'login' } },
+        { userId: user.id, email: user.email }
+      )
+      throw new ApiError(401, 'Código incorreto. Digite o código que está aparecendo agora no aplicativo, ou um código de recuperação.', { code: 'SEGUNDO_FATOR_INCORRETO' })
+    }
+    if (conferencia.via === 'recuperacao') {
+      await registrarAuditoria(
+        req,
+        { action: 'SEGUNDO_FATOR_CODIGO_DE_RECUPERACAO_USADO', entityType: 'usuario', entityId: user.id, companyId: user.companyId, metadata: { restantes: conferencia.codigosRestantes } },
+        { userId: user.id, email: user.email }
+      )
+    }
+    await registrarAuditoria(
+      req,
+      { action: 'LOGIN_OK', entityType: 'usuario', entityId: user.id, companyId: user.companyId, metadata: { segundoFator: conferencia.via } },
+      { userId: user.id, email: user.email }
+    )
+    res.json({
+      token: signSessionToken(user.id, user.tokenVersion, agoraEmSegundos()),
+      user: { id: user.id, email: user.email, name: user.name, isAdmin: user.isAdmin },
+      viaCodigoDeRecuperacao: conferencia.via === 'recuperacao',
+      codigosDeRecuperacaoRestantes: conferencia.codigosRestantes,
     })
   })
 )
@@ -393,7 +449,7 @@ authRouter.post(
     })
 
     await registrarAuditoria(req, { action: 'SENHA_ALTERADA', entityType: 'usuario', entityId: user.id })
-    res.json({ token: signSessionToken(atualizado.id, atualizado.tokenVersion) })
+    res.json({ token: signSessionToken(atualizado.id, atualizado.tokenVersion, req.segundoFatorEm) })
   })
 )
 
