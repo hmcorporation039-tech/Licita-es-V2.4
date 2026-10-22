@@ -6,6 +6,7 @@ import { asyncHandler, ApiError } from '../asyncHandler'
 import { estudoCalculoLimiter } from '../rateLimit'
 import { calcularEstudo } from '../../lib/estudoDeCustos'
 import { avaliarLance, avaliarMeuLance, limitesDoAlvo, type Avaliacao } from '../../lib/bela/copiloto'
+import { planejarRobo } from '../../lib/bela/roboDeDisputa'
 import { alvosDoPregao } from '../../lib/alvosDoPregao'
 import { regrasDoEdital } from '../../lib/bela/regrasDoEdital'
 import { checklistDaDisputa, desatualizado, escolhaDe, lerPlanoSalvo, passoDosLances, regrasEfetivas, valorFinalMinimo } from '../../lib/bela/planoDeDisputa'
@@ -54,6 +55,7 @@ async function montarPainel(companyId: string, tenderId: string) {
     const meusValores = doAlvo.filter((l) => l.origem === 'MEU_LANCE').map((l) => Number(l.valor))
     const meus = meusValores.length
     const meuMenor = meus > 0 ? Math.min(...meusValores) : null
+    const melhorInformado = doAlvo.find((l) => l.origem === 'MELHOR_LANCE')
     const avaliacao: Avaliacao | null = !maisRecente
       ? null
       : maisRecente.origem === 'MEU_LANCE'
@@ -70,6 +72,8 @@ async function montarPainel(companyId: string, tenderId: string) {
       custo: Math.round(a.limites.custoComRateio * 100) / 100,
       ...limitesDoAlvo(a.limites),
       meusLances: meus,
+      melhorLance: melhorInformado ? Number(melhorInformado.valor) : null,
+      meuMenorLance: meuMenor,
       avaliacao,
       planoDeDisputa: {
         base: escolha.base,
@@ -102,6 +106,22 @@ async function montarPainel(companyId: string, tenderId: string) {
       decrementoAjustado: passo.ajustado,
       avisoDoDecremento: passo.aviso,
       checklist: checklistDaDisputa(doEdital, passo),
+    },
+    robo: {
+      ativo: acompanhamento.roboAtivo,
+      intervaloLancesSeg: acompanhamento.intervaloLancesSeg,
+      disponivel: doEdital.vedacaoARobo === null,
+      instrucoes: planejarRobo(
+        painelDosAlvos.map((a) => ({
+          id: a.id,
+          rotulo: a.rotulo,
+          melhorLance: a.melhorLance,
+          meuMenorLance: a.meuMenorLance,
+          piso: a.planoDeDisputa.valorFinalMinimo,
+          meusLances: a.meusLances,
+        })),
+        regras
+      ),
     },
     alvos: painelDosAlvos,
     lances: lances.map((l) => ({ id: l.id, alvo: l.alvo, origem: l.origem, valor: Number(l.valor), margemPct: num(l.margemPct), createdAt: l.createdAt })),
@@ -167,6 +187,8 @@ const configSchema = z.object({
   decrementoPct: z.number().min(0.01).max(20).optional(),
   maxLances: z.number().int().min(1).max(10).optional(),
   criterio: z.enum(['UNITARIO', 'TOTAL_DO_ITEM']).optional(),
+  roboAtivo: z.boolean().optional(),
+  intervaloLancesSeg: z.number().int().min(5).max(120).optional(),
 })
 
 pregaoRouter.put(
@@ -175,8 +197,15 @@ pregaoRouter.put(
   asyncHandler(async (req, res) => {
     const config = configSchema.parse(req.body)
     await carregar(req.companyId!, req.params.id)
-    await acompanhamentoDe(req.companyId!, req.params.id)
+    const anterior = await acompanhamentoDe(req.companyId!, req.params.id)
     await prisma.pregaoAcompanhamento.update({ where: { companyId_tenderId: { companyId: req.companyId!, tenderId: req.params.id } }, data: config })
+    if (config.roboAtivo !== undefined && config.roboAtivo !== anterior.roboAtivo) {
+      await registrarAuditoria(req, {
+        action: config.roboAtivo ? 'PREGAO_ROBO_ATIVADO' : 'PREGAO_ROBO_DESATIVADO',
+        entityType: 'tender',
+        entityId: req.params.id,
+      })
+    }
     res.json(publico(await montarPainel(req.companyId!, req.params.id)))
   })
 )

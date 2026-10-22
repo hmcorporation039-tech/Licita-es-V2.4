@@ -402,8 +402,28 @@ export interface AlvoDoPregao {
   minimoComMargem: number | null
   equilibrio: number | null
   meusLances: number
+  melhorLance: number | null
+  meuMenorLance: number | null
   avaliacao: AvaliacaoDoLance | null
   planoDeDisputa: PlanoDoAlvo
+}
+
+export type AcaoDoRobo = 'dar' | 'travar' | 'aguardar'
+
+export interface InstrucaoDoRobo {
+  alvo: string
+  rotulo: string
+  acao: AcaoDoRobo
+  valor: number | null
+  motivo: string | null
+  texto: string
+}
+
+export interface RoboDoPregao {
+  ativo: boolean
+  intervaloLancesSeg: number
+  disponivel: boolean
+  instrucoes: InstrucaoDoRobo[]
 }
 
 export type BaseDoValorFinal = 'MARGEM' | 'EQUILIBRIO'
@@ -462,6 +482,7 @@ export interface PainelDoPregao {
   config: ConfigDoPregao
   regras: { decrementoPct: number; maxLances: number; intervaloMinimoReais?: number | null }
   disputa: DisputaDoPregao
+  robo: RoboDoPregao
   alvos: AlvoDoPregao[]
   lances: LanceDoPregao[]
 }

@@ -24,16 +24,19 @@ import { useEscuta, useFalaDaBela } from "@/hooks/useBela";
 import { api, ApiRequestError } from "@/lib/api";
 import { formatarData } from "@/lib/datas";
 import type {
+  AcaoDoRobo,
   AlvoDoPregao,
   AvaliacaoDoLance,
   BaseDoValorFinal,
   ConfigDoPregao,
   CriterioDoPregao,
   FaixaDoLance,
+  InstrucaoDoRobo,
   LanceDoPregao,
   PainelDoPregao,
   PedidoDaBela,
   ResultadoDoPregao,
+  RoboDoPregao,
 } from "@/lib/types";
 import {
   Button,
@@ -71,6 +74,7 @@ type Acao =
   | "meu"
   | "desfazer"
   | "config"
+  | "robo"
   | "resultado"
   | "interpretar"
   | "plano";
@@ -111,6 +115,19 @@ const ESTILO_DA_FAIXA: Record<
     texto: "text-danger",
     rotulo: "Prejuízo: não cubra",
   },
+};
+
+const ESTILO_DA_ACAO_DO_ROBO: Record<
+  AcaoDoRobo,
+  { caixa: string; texto: string; rotulo: string }
+> = {
+  dar: { caixa: "border-ok-line bg-ok-soft", texto: "text-ok", rotulo: "Dar lance" },
+  travar: {
+    caixa: "border-danger-line bg-danger-soft",
+    texto: "text-danger",
+    rotulo: "Travar",
+  },
+  aguardar: { caixa: "border-line bg-surface", texto: "text-muted", rotulo: "Aguardar" },
 };
 
 function brl(valor: number): string {
@@ -628,6 +645,158 @@ function CriterioDoLance({
   );
 }
 
+function InstrucaoDoRoboView({
+  instrucao,
+  destaque = false,
+  salvando,
+  desabilitado,
+  onDarLance,
+}: {
+  instrucao: InstrucaoDoRobo;
+  destaque?: boolean;
+  salvando: boolean;
+  desabilitado: boolean;
+  onDarLance: (alvo: string, valor: number) => void;
+}) {
+  const estilo = ESTILO_DA_ACAO_DO_ROBO[instrucao.acao];
+  return (
+    <div className={cx("rounded border px-3 py-2", estilo.caixa)}>
+      <div className="flex items-center justify-between gap-2">
+        <span className="min-w-0 truncate text-sm font-medium text-ink">
+          {instrucao.rotulo}
+        </span>
+        <span className={cx("shrink-0 text-xs font-semibold uppercase", estilo.texto)}>
+          {estilo.rotulo}
+        </span>
+      </div>
+      <p className="mt-1 text-sm text-ink-2">{instrucao.texto}</p>
+      {instrucao.acao === "dar" && instrucao.valor !== null && (
+        <Button
+          icon={Gavel}
+          loading={salvando}
+          disabled={desabilitado || salvando}
+          onClick={() => onDarLance(instrucao.alvo, instrucao.valor as number)}
+          className="mt-2 h-10! w-full"
+        >
+          Dei esse lance no portal ({brl(instrucao.valor)})
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function RoboDeLance({
+  robo,
+  alvoAtual,
+  desabilitado,
+  salvando,
+  onMudar,
+  onDarLance,
+}: {
+  robo: RoboDoPregao;
+  alvoAtual: string;
+  desabilitado: boolean;
+  salvando: boolean;
+  onMudar: (patch: { roboAtivo?: boolean; intervaloLancesSeg?: number }) => void;
+  onDarLance: (alvo: string, valor: number) => void;
+}) {
+  const [intervalo, setIntervalo] = useState(String(robo.intervaloLancesSeg));
+
+  if (!robo.disponivel) {
+    return (
+      <Panel title="Robô de lance">
+        <Notice tone="danger" title="Indisponível neste edital">
+          A análise do edital achou proibição de lances automatizados. Use só
+          lances manuais.
+        </Notice>
+      </Panel>
+    );
+  }
+
+  const doAlvoAtual = robo.instrucoes.find((i) => i.alvo === alvoAtual) ?? null;
+  const outras = robo.instrucoes.filter((i) => i.alvo !== alvoAtual);
+
+  return (
+    <Panel title="Robô de lance">
+      <div className="flex flex-col gap-3">
+        <Checkbox
+          label="Ativar o robô nesta disputa"
+          checked={robo.ativo}
+          disabled={desabilitado || salvando}
+          onChange={(e) => onMudar({ roboAtivo: e.target.checked })}
+        />
+        <p className="text-xs text-muted">
+          Modo confirmação: a Bela decide o lance pelo seu piso (valor final
+          mínimo) e nunca abaixo dele. Você confirma o lance no portal. O modo
+          automático — a Bela dando o lance sozinha — entra quando validarmos o
+          portal ao vivo.
+        </p>
+
+        {robo.ativo && (
+          <>
+            {doAlvoAtual && (
+              <InstrucaoDoRoboView
+                instrucao={doAlvoAtual}
+                destaque
+                salvando={salvando}
+                desabilitado={desabilitado}
+                onDarLance={onDarLance}
+              />
+            )}
+            {outras.length > 0 && (
+              <div className="flex flex-col gap-2 border-t border-line-soft pt-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+                  Outros itens
+                </p>
+                {outras.map((i) => (
+                  <InstrucaoDoRoboView
+                    key={i.alvo}
+                    instrucao={i}
+                    salvando={salvando}
+                    desabilitado={desabilitado}
+                    onDarLance={onDarLance}
+                  />
+                ))}
+              </div>
+            )}
+
+            <Field
+              label="Intervalo entre lances (segundos)"
+              hint="Respeita o tempo mínimo do portal; vale para o modo automático."
+            >
+              <div className="flex gap-2">
+                <Input
+                  type="number"
+                  min={5}
+                  max={120}
+                  step={1}
+                  value={intervalo}
+                  onChange={(e) => setIntervalo(e.target.value)}
+                  disabled={desabilitado || salvando}
+                  className="h-11! min-w-0 flex-1 font-mono sm:h-10!"
+                />
+                <Button
+                  icon={Save}
+                  loading={salvando}
+                  disabled={desabilitado || salvando}
+                  onClick={() => {
+                    const n = Number(intervalo);
+                    if (Number.isInteger(n) && n >= 5 && n <= 120)
+                      onMudar({ intervaloLancesSeg: n });
+                  }}
+                  className="h-11! sm:h-10!"
+                >
+                  Salvar
+                </Button>
+              </div>
+            </Field>
+          </>
+        )}
+      </div>
+    </Panel>
+  );
+}
+
 function Configuracao({
   config,
   salvando,
@@ -983,6 +1152,26 @@ export default function PregaoComABelaPage({
     if (!novo) return false;
     fala.dizer(`Anotado: seu lance de ${brl(valor)}.`);
     return true;
+  }
+
+  async function registrarMeuLanceEm(destino: string, valor: number) {
+    const novo = await executar("meu", () =>
+      api.post<PainelDoPregao>(`/api/tenders/${id}/pregao/lances`, {
+        alvo: destino,
+        origem: "MEU_LANCE",
+        valor,
+      }),
+    );
+    if (novo) fala.dizer(`Anotado: seu lance de ${brl(valor)}.`);
+  }
+
+  async function salvarRobo(patch: {
+    roboAtivo?: boolean;
+    intervaloLancesSeg?: number;
+  }) {
+    await executar("robo", () =>
+      api.put<PainelDoPregao>(`/api/tenders/${id}/pregao/config`, patch),
+    );
   }
 
   async function interpretar(texto: string) {
@@ -1345,6 +1534,16 @@ export default function PregaoComABelaPage({
               void salvarPlano({ cadastradoNoPortal })
             }
             onCopiado={avisarCopia}
+          />
+          <RoboDeLance
+            robo={painelAtual.robo}
+            alvoAtual={alvo.id}
+            desabilitado={encerrado || ocupado}
+            salvando={enviando === "robo"}
+            onMudar={(patch) => void salvarRobo(patch)}
+            onDarLance={(destino, valor) =>
+              void registrarMeuLanceEm(destino, valor)
+            }
           />
           <ChecklistDaDisputa disputa={painelAtual.disputa} idDaLicitacao={id} />
           {painelAtual.disputa.decrementoAjustado &&
