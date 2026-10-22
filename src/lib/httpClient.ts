@@ -4,6 +4,7 @@
 // ============================================================
 
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios'
+import { HttpsProxyAgent } from 'https-proxy-agent'
 
 // Delay simples para respeitar rate limit
 function sleep(ms: number): Promise<void> {
@@ -33,6 +34,24 @@ export function ehPaginaDeLimiteDeRequisicoes(corpo: unknown): boolean {
 interface OpcoesDoCliente {
   detectarPaginaDeLimite?: boolean
   repetirEmLimiteOuIndisponivel?: boolean
+  pelaPonteNoBrasil?: boolean
+}
+
+export function agenteDaPonteNoBrasil(endereco: string | undefined = process.env.PROXY_BRASIL_URL): HttpsProxyAgent<string> | undefined {
+  const limpo = endereco?.trim()
+  if (!limpo) return undefined
+  return new HttpsProxyAgent(limpo)
+}
+
+export function enderecoDaPonteSemSenha(endereco: string | undefined = process.env.PROXY_BRASIL_URL): string | null {
+  const limpo = endereco?.trim()
+  if (!limpo) return null
+  try {
+    const url = new URL(limpo)
+    return `${url.hostname}:${url.port || '80'}`
+  } catch {
+    return 'endereço inválido'
+  }
 }
 
 export function esperaAntesDeTentarDeNovo(tentativa: number, retryAfter?: string | null): number {
@@ -50,7 +69,9 @@ export function createRateLimitedClient(
   headers: Record<string, string> = { Accept: 'application/json' },
   opcoes: OpcoesDoCliente = {}
 ): AxiosInstance {
+  const ponte = opcoes.pelaPonteNoBrasil ? agenteDaPonteNoBrasil() : undefined
   const client = axios.create({
+    ...(ponte ? { httpAgent: ponte, httpsAgent: ponte, proxy: false as const } : {}),
     baseURL,
     timeout: 30_000,
     // Portal comprometido ou lento não pode devolver centenas de MB e derrubar o worker por memória.
@@ -121,13 +142,13 @@ const HTML_HEADERS = {
 
 export const novacapClient = createRateLimitedClient('https://app.novacap.df.gov.br/sislicitapublica', 1500, HTML_HEADERS)
 export const fiegClient = createRateLimitedClient('https://www.sistemafieg.org.br', 1500, HTML_HEADERS)
-export const sescGoClient = createRateLimitedClient('https://www3.sescgo.com.br', 1500, HTML_HEADERS)
+export const sescGoClient = createRateLimitedClient('https://www3.sescgo.com.br', 1500, HTML_HEADERS, { pelaPonteNoBrasil: true })
 
 // Departamentos Regionais do SESC (exceto GO): cada unidade tem um site próprio,
 // então este cliente não tem baseURL — o coletor passa a URL completa de cada
 // página (ver services/sescRegional/). O intervalo entre requisições é global
 // do cliente, o que espaça também as idas a sites diferentes.
-export const sescRegionalClient = createRateLimitedClient('', 1500, HTML_HEADERS)
+export const sescRegionalClient = createRateLimitedClient('', 1500, HTML_HEADERS, { pelaPonteNoBrasil: true })
 
 // SEST SENAT — API JSON real (Angular por trás), mas devolve o histórico
 // nacional inteiro numa chamada só (sem filtro de ano que funcione no
@@ -162,18 +183,18 @@ export const senacTransparenciaClient = createRateLimitedClient('https://transpa
 senacTransparenciaClient.defaults.timeout = 60_000
 senacTransparenciaClient.defaults.maxContentLength = 20 * 1024 * 1024
 
-export const portalDaIndustriaClient = createRateLimitedClient('', 1200, { Accept: 'application/json', 'Accept-Encoding': 'gzip' })
+export const portalDaIndustriaClient = createRateLimitedClient('', 1200, { Accept: 'application/json', 'Accept-Encoding': 'gzip' }, { pelaPonteNoBrasil: true })
 portalDaIndustriaClient.defaults.timeout = 60_000
 portalDaIndustriaClient.defaults.maxContentLength = 20 * 1024 * 1024
 
-export const paradigmaDaIndustriaClient = createRateLimitedClient('', 1200, { Accept: 'application/json, text/html;q=0.9, */*;q=0.8' })
+export const paradigmaDaIndustriaClient = createRateLimitedClient('', 1200, { Accept: 'application/json, text/html;q=0.9, */*;q=0.8' }, { pelaPonteNoBrasil: true })
 paradigmaDaIndustriaClient.defaults.timeout = 60_000
 
-export const sistemaSHtmlClient = createRateLimitedClient('', 1200, HTML_HEADERS)
+export const sistemaSHtmlClient = createRateLimitedClient('', 1200, HTML_HEADERS, { pelaPonteNoBrasil: true })
 sistemaSHtmlClient.defaults.timeout = 60_000
 sistemaSHtmlClient.defaults.maxContentLength = 20 * 1024 * 1024
 
-export const infraeroClient = createRateLimitedClient('https://licitacao.infraero.gov.br', 1500, { Accept: 'text/html,application/xhtml+xml' })
+export const infraeroClient = createRateLimitedClient('https://licitacao.infraero.gov.br', 1500, { Accept: 'text/html,application/xhtml+xml' }, { pelaPonteNoBrasil: true })
 
 export const diarioMunicipalClient = createRateLimitedClient('https://www.diariomunicipal.com.br', 2000, HTML_HEADERS)
 diarioMunicipalClient.defaults.timeout = 60_000
@@ -188,7 +209,7 @@ tceToClient.defaults.maxRedirects = 0
 infraeroClient.defaults.maxContentLength = 2 * 1024 * 1024
 export const tcePiClient = createRateLimitedClient('https://sistemas.tce.pi.gov.br', 2000, HTML_HEADERS)
 tcePiClient.defaults.maxContentLength = 5 * 1024 * 1024
-export const tceRsClient = createRateLimitedClient('https://dados.tce.rs.gov.br', 3000, { Accept: 'application/zip, */*' })
+export const tceRsClient = createRateLimitedClient('https://dados.tce.rs.gov.br', 3000, { Accept: 'application/zip, */*' }, { pelaPonteNoBrasil: true })
 tceRsClient.defaults.timeout = 60_000
 tceRsClient.defaults.maxRedirects = 0
 export const famemClient = createRateLimitedClient('https://diariooficial.famem.org.br', 2000, HTML_HEADERS, { repetirEmLimiteOuIndisponivel: false })
