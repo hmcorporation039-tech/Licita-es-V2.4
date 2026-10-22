@@ -76,10 +76,10 @@
 
 | Direito | Como |
 |---|---|
-| Confirmação e acesso | Menu Conta › baixar meus dados; o restante pelo e-mail do encarregado |
+| Confirmação e acesso | Menu Conta › Baixar meus dados (ZIP); o restante pelo e-mail do encarregado |
 | Correção | Menus Conta e Empresa |
 | Exclusão | Dono: menu Conta › pedir exclusão (até 15 dias). Convidado: menu Conta › excluir meus dados. Demais titulares: e-mail do encarregado |
-| Portabilidade | Exportação em JSON; arquivos do cofre pelo e-mail do encarregado |
+| Portabilidade | Pacote ZIP em Conta: dados.json, planilhas CSV (licitações encontradas e cofre), arquivos do cofre com SHA-256 e logomarca. O membro recebe os dados da empresa que vê na plataforma e as próprias ações; dados dos colegas e cobrança só na cópia do dono |
 | Oposição a avisos | Preferências de e-mail, link de descadastro em cada aviso e preferências de notificação no celular (menu Conta) |
 | Informação sobre compartilhamento | Política de Privacidade, seção 3 |
 

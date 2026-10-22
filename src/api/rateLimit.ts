@@ -237,3 +237,12 @@ export const suporteLimiter = rateLimit({
   keyGenerator: (req) => req.userId ?? 'anonimo',
   message: { error: 'Muitas mensagens seguidas — aguarde alguns minutos e tente de novo' },
 })
+
+export const exportacaoDosDadosLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: limite(6),
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  keyGenerator: (req) => 'exportacao:' + (req.userId ?? ipKeyGenerator(req.ip ?? '')),
+  message: { error: 'Você já baixou a cópia dos seus dados várias vezes na última hora. Tente de novo mais tarde.' },
+})

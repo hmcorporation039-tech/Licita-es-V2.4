@@ -1,6 +1,6 @@
 // ============================================================
 // api/routes/conta.ts — Direitos do titular (LGPD, art. 18): acesso/portabilidade
-// dos dados (exportação em JSON) e pedido de exclusão da conta.
+// dos dados (exportação em JSON e no pacote ZIP com os arquivos) e pedido de exclusão da conta.
 //
 // A exclusão não é imediata de propósito: o pedido vai ao administrador, que
 // confere (ex.: contrato, débitos, pedido feito por engano) e executa com
@@ -14,11 +14,12 @@ import { verifyPasswordConstantTime } from '../../services/authService'
 import { registrarAuditoria } from '../../services/auditService'
 import { avisarAdministrador } from '../../services/alertaOperacional'
 import { requireCompanyOwner } from '../authMiddleware'
-import { changePasswordLimiter, escritaSensivelLimiter } from '../rateLimit'
+import { changePasswordLimiter, escritaSensivelLimiter, exportacaoDosDadosLimiter } from '../rateLimit'
 import { ApiError, asyncHandler } from '../asyncHandler'
 import { TERMOS_VERSAO } from '../../lib/legal'
 import { excluirDadosDoUsuario, metadataDaExclusao } from '../../services/exclusaoDeUsuario'
 import { CAMPO_DA_PREFERENCIA, TIPOS_DE_AVISO, type TipoDeAviso } from '../../lib/descadastro'
+import { dadosDoTitular, escreverPacoteDosDados } from '../../services/exportacaoDosDados'
 
 export const contaRouter = Router()
 
@@ -27,85 +28,32 @@ contaRouter.get(
   escritaSensivelLimiter,
   asyncHandler(async (req, res) => {
     const companyId = req.companyId!
-    const dono = req.companyRole === 'OWNER'
-    const [usuario, empresa, membros, itens, documentos, planos, checklists, exigencias, matches, analises, eventos, perguntasAoEdital, chamados, assinaturas] = await Promise.all([
-      prisma.user.findUnique({
-        where: { id: req.userId! },
-        select: {
-          id: true, email: true, name: true, companyRole: true, createdAt: true, emailVerifiedAt: true,
-          termsAcceptedAt: true, termsVersion: true, accessExpiresAt: true, active: true,
-          receberResumoDiario: true, receberLembreteDePrazo: true, receberAvisoDeDocumento: true, receberAvisoDeAlteracao: true,
-          celularNovasLicitacoes: true, celularLembreteDePrazo: true, celularAvisoDeAlteracao: true,
-          pushSubscriptions: { select: { aparelho: true, createdAt: true, ultimoEnvioEm: true } },
-        },
-      }),
-      prisma.company.findUnique({
-        where: { id: companyId },
-        select: {
-          id: true, tipo: true, name: true, cnpj: true, cpf: true, email: true, telefone: true, responsavel: true,
-          endereco: true, cep: true, planCode: true, createdAt: true,
-        },
-      }),
-      // Outros membros: só o dono recebe a lista (os dados são de terceiros).
-      dono
-        ? prisma.user.findMany({ where: { companyId }, select: { email: true, name: true, companyRole: true, active: true, createdAt: true } })
-        : Promise.resolve([]),
-      prisma.monitoredItem.findMany({ where: { companyId } }),
-      prisma.companyDocument.findMany({ where: { companyId } }),
-      prisma.tenderParticipationPlan.findMany({ where: { companyId } }),
-      prisma.tenderChecklist.findMany({ where: { companyId } }),
-      prisma.requirementProgress.findMany({ where: { companyId } }),
-      prisma.tenderMatch.count({ where: { companyId } }),
-      prisma.aiUsage.count({ where: { companyId } }),
-      prisma.auditLog.findMany({
-        where: { companyId, ...(dono ? {} : { actorUserId: req.userId! }) },
-        orderBy: { createdAt: 'desc' },
-        take: 1000,
-        select: { createdAt: true, action: true, entityType: true, actorEmail: true },
-      }),
-      prisma.editalPergunta.findMany({
-        where: { companyId, ...(dono ? {} : { userId: req.userId! }) },
-        orderBy: { createdAt: 'desc' },
-        take: 5000,
-        select: { tenderId: true, pergunta: true, resposta: true, createdAt: true },
-      }),
-      prisma.chamado.findMany({
-        where: dono ? { companyId } : { companyId, userId: req.userId! },
-        orderBy: { createdAt: 'desc' },
-        select: { numero: true, tipo: true, status: true, assunto: true, relato: true, contexto: true, createdAt: true, mensagens: { orderBy: { createdAt: 'asc' }, select: { autor: true, texto: true, createdAt: true } } },
-      }),
-      dono
-        ? prisma.assinatura.findMany({
-            where: { companyId },
-            orderBy: { createdAt: 'desc' },
-            select: {
-              planCode: true, ciclo: true, status: true, valorCentavos: true, valorCheioCentavos: true, descontoAte: true, pagoAte: true, canceladaEm: true, createdAt: true,
-              pagamentos: { orderBy: { vencimento: 'desc' }, select: { status: true, forma: true, valorCentavos: true, vencimento: true, pagoEm: true, estornadoEm: true } },
-            },
-          })
-        : Promise.resolve([]),
-    ])
-
+    const dados = await dadosDoTitular({ companyId, userId: req.userId!, dono: req.companyRole === 'OWNER' })
     await registrarAuditoria(req, { action: 'DADOS_EXPORTADOS', entityType: 'empresa', entityId: companyId })
     const nome = `meus-dados-${new Date().toISOString().slice(0, 10)}.json`
     res.setHeader('Content-Disposition', `attachment; filename="${nome}"`)
-    res.json({
-      geradoEm: new Date().toISOString(),
-      observacao: 'Cópia dos seus dados pessoais e da sua empresa guardados na plataforma (LGPD, art. 18).',
-      usuario,
-      empresa,
-      membros,
-      itensMonitorados: itens,
-      documentosDaEmpresa: documentos,
-      planosDeParticipacao: planos,
-      checklists,
-      progressoDeExigencias: exigencias,
-      totais: { licitacoesCompativeisEncontradas: matches, analisesDeEditalSolicitadas: analises },
-      historicoDeAcoes: eventos,
-      perguntasAoEdital,
-      chamadosDeSuporte: chamados,
-      assinaturasEPagamentos: assinaturas,
-    })
+    res.json(dados)
+  })
+)
+
+contaRouter.get(
+  '/meus-dados.zip',
+  exportacaoDosDadosLimiter,
+  asyncHandler(async (req, res) => {
+    const companyId = req.companyId!
+    const nome = `licita-bela-meus-dados-${new Date().toISOString().slice(0, 10)}.zip`
+    res.setHeader('Content-Type', 'application/zip')
+    res.setHeader('Content-Disposition', `attachment; filename="${nome}"`)
+    res.setHeader('Cache-Control', 'private, no-store')
+    res.setHeader('X-Content-Type-Options', 'nosniff')
+    try {
+      const r = await escreverPacoteDosDados({ companyId, userId: req.userId!, dono: req.companyRole === 'OWNER' }, res)
+      await registrarAuditoria(req, { action: 'DADOS_EXPORTADOS', entityType: 'empresa', entityId: companyId, metadata: { formato: 'zip', arquivosDoCofre: r.arquivosDoCofre, bytes: r.bytes } })
+    } catch (err) {
+      if (!res.headersSent) throw err
+      console.error('[Exportação] Pacote interrompido:', err instanceof Error ? err.message : err)
+      res.destroy()
+    }
   })
 )
 
