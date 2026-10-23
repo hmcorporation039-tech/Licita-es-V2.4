@@ -132,6 +132,18 @@ interface ListaDeLicitacoes extends Paginated<Tender> {
   totais?: { comPrazoConfirmado: number; semDataInformada: number }
 }
 
+function numerosDePagina(atual: number, total: number): (number | 'gap')[] {
+  const paginas = [...new Set([1, total, atual - 1, atual, atual + 1])].filter((n) => n >= 1 && n <= total).sort((a, b) => a - b)
+  const saida: (number | 'gap')[] = []
+  let anterior = 0
+  for (const n of paginas) {
+    if (n - anterior > 1) saida.push('gap')
+    saida.push(n)
+    anterior = n
+  }
+  return saida
+}
+
 function siglasValidas(texto: string): string[] {
   return [...new Set(texto.toUpperCase().split(/[\s,;]+/).filter((sigla) => SIGLAS_DAS_UFS.has(sigla)))]
 }
@@ -158,6 +170,7 @@ export default function TendersPage() {
   const [versaoDosFiltros, setVersaoDosFiltros] = useState(0)
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [page, setPage] = useState(1)
+  const [hidratado, setHidratado] = useState(false)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -165,15 +178,52 @@ export default function TendersPage() {
     const qInicial = daUrl('q')
     const ufsIniciais = siglasValidas(daUrl('uf'))
     const municipioInicial = daUrl('municipio')
+    const orgaoInicial = daUrl('orgao')
+    const numeroInicial = daUrl('numero')
+    const publicacaoInicioInicial = daUrl('publicacaoInicio')
+    const publicacaoFimInicial = daUrl('publicacaoFim')
     const modalidadesIniciais = lerModalidadesDaUrl(params.get('modalidade'))
+    const paginaInicial = Number(daUrl('page'))
     const ufValida = ufsIniciais.length > 0
     if (qInicial) setQ(qInicial)
     if (ufValida) setUf(ufsIniciais.join(', '))
     if (municipioInicial) setMunicipio(municipioInicial)
+    if (orgaoInicial) setOrgao(orgaoInicial)
+    if (numeroInicial) setNumero(numeroInicial)
+    if (publicacaoInicioInicial) setPublicacaoInicio(publicacaoInicioInicial)
+    if (publicacaoFimInicial) setPublicacaoFim(publicacaoFimInicial)
     if (modalidadesIniciais.length > 0) setModalidades(modalidadesIniciais)
+    if (daUrl('ordem') === 'recentes') setOrdem('recentes')
+    const agruparUrl = daUrl('agruparPor')
+    if (agruparUrl === 'estado' || agruparUrl === 'modalidade') setAgruparPor(agruparUrl)
     if (params.get('relacionadas') === '0') setSomenteRelacionadas(false)
-    if (qInicial || ufValida || municipioInicial) setAdvancedOpen(true)
+    if (Number.isInteger(paginaInicial) && paginaInicial > 1) setPage(paginaInicial)
+    if (qInicial || ufValida || municipioInicial || orgaoInicial || numeroInicial || publicacaoInicioInicial || publicacaoFimInicial) setAdvancedOpen(true)
+    setHidratado(true)
   }, [])
+
+  useEffect(() => {
+    if (!hidratado) return
+    const params = new URLSearchParams()
+    if (q) params.set('q', q)
+    const ufs = siglasValidas(uf)
+    if (ufs.length) params.set('uf', ufs.join(','))
+    if (municipio) params.set('municipio', municipio)
+    if (orgao) params.set('orgao', orgao)
+    if (numero) params.set('numero', numero)
+    const modalidade = parametroDeModalidade(modalidades)
+    if (modalidade) params.set('modalidade', modalidade)
+    if (publicacaoInicio) params.set('publicacaoInicio', publicacaoInicio)
+    if (publicacaoFim) params.set('publicacaoFim', publicacaoFim)
+    if (ordem === 'recentes') params.set('ordem', 'recentes')
+    if (agrupar) params.set('agruparPor', agruparPor)
+    if (!somenteRelacionadas) params.set('relacionadas', '0')
+    if (page > 1) params.set('page', String(page))
+    const nova = params.toString()
+    if (nova !== window.location.search.replace(/^\?/, '')) {
+      window.history.replaceState(null, '', nova ? `?${nova}` : window.location.pathname)
+    }
+  }, [hidratado, q, uf, municipio, orgao, numero, modalidades, publicacaoInicio, publicacaoFim, ordem, agruparPor, somenteRelacionadas, page])
 
   useEffect(() => {
     if (!user) return
@@ -528,10 +578,30 @@ export default function TendersPage() {
               <span>
                 Página <span className="font-mono text-ink">{data.page}</span> de <span className="font-mono">{data.totalPages}</span>
               </span>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap items-center gap-1.5">
                 <Button size="sm" icon={ChevronLeft} disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
                   Anterior
                 </Button>
+                <div className="flex items-center gap-1">
+                  {numerosDePagina(data.page, data.totalPages).map((n, i) =>
+                    n === 'gap' ? (
+                      <span key={`gap-${i}`} className="px-1 text-faint" aria-hidden>
+                        …
+                      </span>
+                    ) : (
+                      <Button
+                        key={n}
+                        size="sm"
+                        variant={n === data.page ? 'primary' : 'ghost'}
+                        aria-current={n === data.page ? 'page' : undefined}
+                        onClick={() => setPage(n)}
+                        className="min-w-9 justify-center font-mono"
+                      >
+                        {n}
+                      </Button>
+                    )
+                  )}
+                </div>
                 <Button size="sm" iconRight={ChevronRight} disabled={page >= data.totalPages} onClick={() => setPage((p) => p + 1)}>
                   Próxima
                 </Button>
