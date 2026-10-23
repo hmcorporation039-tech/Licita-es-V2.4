@@ -17,3 +17,23 @@ export const MODALIDADE_OPTIONS: { value: string; label: string }[] = [
   { value: 'DIALOGO_COMPETITIVO', label: 'Diálogo Competitivo' },
   { value: 'OUTROS', label: 'Outros' },
 ]
+
+const ROTULO_POR_VALOR = new Map(MODALIDADE_OPTIONS.map((o) => [o.value, o.label]))
+const ORDEM_POR_VALOR = new Map(MODALIDADE_OPTIONS.map((o, i) => [o.value, i]))
+
+export function rotuloDaModalidade(value: string): string {
+  return ROTULO_POR_VALOR.get(value) ?? value
+}
+
+export function agruparPorModalidade<T>(itens: T[], modalidadeDe: (item: T) => string): { value: string; label: string; itens: T[] }[] {
+  const porValor = new Map<string, T[]>()
+  for (const item of itens) {
+    const valor = modalidadeDe(item)
+    const grupo = porValor.get(valor)
+    if (grupo) grupo.push(item)
+    else porValor.set(valor, [item])
+  }
+  return Array.from(porValor.entries())
+    .map(([value, itens]) => ({ value, label: rotuloDaModalidade(value), itens }))
+    .sort((a, b) => (ORDEM_POR_VALOR.get(a.value) ?? 999) - (ORDEM_POR_VALOR.get(b.value) ?? 999))
+}

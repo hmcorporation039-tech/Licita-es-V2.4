@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronRight, SlidersHorizontal, X } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
 import { api, ApiRequestError } from '@/lib/api'
 import { Paginated, Tender } from '@/lib/types'
-import { MODALIDADE_OPTIONS } from '@/lib/modalidades'
+import { MODALIDADE_OPTIONS, agruparPorModalidade } from '@/lib/modalidades'
 import {
   GRUPOS_DE_MODALIDADE,
   VALOR_DE_VARIAS_MODALIDADES,
@@ -152,7 +152,8 @@ export default function TendersPage() {
   const [publicacaoFim, setPublicacaoFim] = useState('')
   const [q, setQ] = useState('')
   const [somenteRelacionadas, setSomenteRelacionadas] = useState(true)
-  const [agrupar, setAgrupar] = useState(false)
+  const [agruparPor, setAgruparPor] = useState<'nao' | 'estado' | 'modalidade'>('nao')
+  const agrupar = agruparPor !== 'nao'
   const [ordem, setOrdem] = useState<Ordem>('prazo')
   const [versaoDosFiltros, setVersaoDosFiltros] = useState(0)
   const [advancedOpen, setAdvancedOpen] = useState(false)
@@ -191,7 +192,10 @@ export default function TendersPage() {
       if (publicacaoFim) qs.set('publicacaoFim', publicacaoFim)
       if (q) qs.set('q', q)
       if (somenteRelacionadas) qs.set('somenteRelacionadas', 'true')
-      if (agrupar) qs.set('agrupar', 'true')
+      if (agrupar) {
+        qs.set('agrupar', 'true')
+        qs.set('agruparPor', agruparPor)
+      }
       api
         .get<ListaDeLicitacoes>(`/api/tenders?${qs.toString()}`)
         .then(setData)
@@ -199,10 +203,10 @@ export default function TendersPage() {
         .finally(() => setLoading(false))
     }, 300)
     return () => clearTimeout(timeout)
-  }, [user, orgao, numero, modalidades, municipio, uf, publicacaoInicio, publicacaoFim, q, somenteRelacionadas, agrupar, ordem, page, tentativa])
+  }, [user, orgao, numero, modalidades, municipio, uf, publicacaoInicio, publicacaoFim, q, somenteRelacionadas, agruparPor, ordem, page, tentativa])
 
   const grupos = (() => {
-    if (!agrupar || !data) return null
+    if (agruparPor !== 'estado' || !data) return null
     const porUf = new Map<string, Map<string, Tender[]>>()
     for (const t of data.items) {
       const ufKey = t.uf ?? 'UF não informada'
@@ -218,6 +222,8 @@ export default function TendersPage() {
       orgaos: Array.from(porOrgao.entries()).map(([orgao, tenders]) => ({ orgao, tenders })),
     }))
   })()
+
+  const gruposPorModalidade = agruparPor === 'modalidade' && data ? agruparPorModalidade(data.items, (t) => t.modalidade) : null
 
   function clearFilters() {
     setPage(1)
@@ -384,14 +390,21 @@ export default function TendersPage() {
                 setSomenteRelacionadas(e.target.checked)
               }}
             />
-            <Checkbox
-              label="Agrupar por Estado e Órgão"
-              checked={agrupar}
-              onChange={(e) => {
-                setPage(1)
-                setAgrupar(e.target.checked)
-              }}
-            />
+            <label className="flex items-center gap-2 text-sm text-ink-2">
+              Agrupar por
+              <Select
+                value={agruparPor}
+                onChange={(e) => {
+                  setPage(1)
+                  setAgruparPor(e.target.value as 'nao' | 'estado' | 'modalidade')
+                }}
+                className="w-48"
+              >
+                <option value="nao">Não agrupar</option>
+                <option value="estado">Estado e Órgão</option>
+                <option value="modalidade">Modalidade</option>
+              </Select>
+            </label>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Button
@@ -464,7 +477,23 @@ export default function TendersPage() {
                 </tr>
               </THead>
               <tbody>
-                {grupos
+                {gruposPorModalidade
+                  ? gruposPorModalidade.map((g) => (
+                      <Fragment key={`mod-${g.value}`}>
+                        <tr className="border-b border-line bg-sunken">
+                          <td colSpan={colunas} className="px-4 py-2 text-sm font-semibold text-ink">
+                            {g.label}{' '}
+                            <span className="font-normal text-muted">
+                              · <span className="font-mono">{g.itens.length}</span> {g.itens.length === 1 ? 'licitação' : 'licitações'}
+                            </span>
+                          </td>
+                        </tr>
+                        {g.itens.map((t) => (
+                          <TenderRow key={t.id} t={t} somenteRelacionadas={somenteRelacionadas} />
+                        ))}
+                      </Fragment>
+                    ))
+                  : grupos
                   ? grupos.map((g) => (
                       <Fragment key={`uf-${g.uf}`}>
                         <tr className="border-b border-line bg-sunken">

@@ -137,4 +137,13 @@ rodar('Somente licitações abertas', () => {
     expect(await nomes('DISPENSA_COM_DISPUTA,DISPENSA_SEM_DISPUTA')).toEqual(['dispensaRecente', 'sessaoFiegFutura'])
     expect((await buscar('DISPENSA_COM_DISPUTA,LEILAO_FALSO')).status).toBe(400)
   })
+
+  it('GET /api/tenders agrupando por modalidade devolve cada modalidade em bloco contíguo', async () => {
+    const r = (await (await fetch(`${base}/api/tenders?q=${sufixo}&pageSize=50&agrupar=true&agruparPor=modalidade`, { headers: { Authorization: `Bearer ${token}` } })).json()) as { items: { modalidade: string }[] }
+    const modalidades = r.items.map((t) => t.modalidade)
+    const blocos: string[] = []
+    for (const m of modalidades) if (blocos[blocos.length - 1] !== m) blocos.push(m)
+    expect(blocos.length).toBeGreaterThan(1)
+    expect(new Set(blocos).size).toBe(blocos.length)
+  })
 })

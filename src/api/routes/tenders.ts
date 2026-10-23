@@ -77,6 +77,7 @@ const querySchema = z.object({
     .enum(['true', 'false'])
     .optional()
     .transform((v) => v === 'true'),
+  agruparPor: z.enum(['estado', 'modalidade']).default('estado'),
   ordem: z.enum(['prazo', 'recentes']).default('prazo'),
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().positive().max(100).default(20),
@@ -84,9 +85,9 @@ const querySchema = z.object({
 
 type MatchDaLista = { score: number; matchedByCode: boolean; matchedKeywords: string[]; dentroDeObraCompleta: boolean; monitoredItem: { id: string; name: string } }
 
-function ordemDaLista(agrupar: boolean, ordem: 'prazo' | 'recentes'): Prisma.TenderOrderByWithRelationInput[] {
+function ordemDaLista(agrupar: boolean, ordem: 'prazo' | 'recentes', agruparPor: 'estado' | 'modalidade'): Prisma.TenderOrderByWithRelationInput[] {
   return [
-    ...(agrupar ? [{ uf: 'asc' as const }, { orgao: 'asc' as const }] : []),
+    ...(agrupar ? (agruparPor === 'modalidade' ? [{ modalidade: 'asc' as const }] : [{ uf: 'asc' as const }, { orgao: 'asc' as const }]) : []),
     ...(ordem === 'prazo'
       ? [{ encerramentoAt: { sort: 'asc' as const, nulls: 'last' as const } }, { aberturaAt: { sort: 'asc' as const, nulls: 'last' as const } }]
       : []),
@@ -118,6 +119,7 @@ tendersRouter.get(
       q,
       somenteRelacionadas,
       agrupar,
+      agruparPor,
       ordem,
       page,
       pageSize,
@@ -143,7 +145,7 @@ tendersRouter.get(
     if (companyId) condicoes.push({ tenderMatches: { some: { companyId } } })
     const where: Prisma.TenderWhereInput = { AND: condicoes }
 
-    const orderBy = ordemDaLista(agrupar, ordem)
+    const orderBy = ordemDaLista(agrupar, ordem, agruparPor)
     const grupos = gruposDaLista(where, companyId)
     const select = companyId
       ? { ...TENDER_PUBLICO, tenderMatches: { where: { companyId }, include: { monitoredItem: { select: { id: true, name: true } } } } }

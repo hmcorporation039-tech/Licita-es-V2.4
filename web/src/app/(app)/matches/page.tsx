@@ -12,12 +12,14 @@ import SeloObraCompleta from '@/components/SeloObraCompleta'
 import ExportarParaExcel from '@/components/ExportarParaExcel'
 import { ROTULOS_DE_FONTE } from '@/lib/fontes'
 import { fimDasPropostas, localDaLicitacao } from '@/lib/licitacaoNaTela'
+import { agruparPorModalidade } from '@/lib/modalidades'
 
 type MatchComEscolha = TenderMatch & { escolhida?: boolean }
 
 type MatchesDaPagina = Paginated<MatchComEscolha> & { ordenacaoPorNotaLimitadaA?: number | null }
 
 const TAMANHO_DA_PAGINA = 30
+const TAMANHO_AO_AGRUPAR = 100
 
 const SALVANDO = 'salvando'
 
@@ -36,6 +38,7 @@ export default function MatchesPage() {
   const [page, setPage] = useState(1)
   const [unreadOnly, setUnreadOnly] = useState(false)
   const [ordem, setOrdem] = useState<'recentes' | 'nota'>('nota')
+  const [agruparModalidade, setAgruparModalidade] = useState(false)
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState(false)
   const [interesseMsg, setInteresseMsg] = useState<Record<string, string>>({})
@@ -46,7 +49,7 @@ export default function MatchesPage() {
     if (!user) return
     setLoading(true)
     setErro(false)
-    const qs = new URLSearchParams({ page: String(page), pageSize: String(TAMANHO_DA_PAGINA) })
+    const qs = new URLSearchParams({ page: String(page), pageSize: String(agruparModalidade ? TAMANHO_AO_AGRUPAR : TAMANHO_DA_PAGINA) })
     if (unreadOnly) qs.set('unreadOnly', 'true')
     if (ordem === 'nota') qs.set('ordem', 'nota')
     api
@@ -56,7 +59,7 @@ export default function MatchesPage() {
       .finally(() => setLoading(false))
   }
 
-  useEffect(load, [user, unreadOnly, ordem, page])
+  useEffect(load, [user, unreadOnly, ordem, agruparModalidade, page])
 
   async function markAsRead(matchId: string) {
     if (!user) return
@@ -101,6 +104,67 @@ export default function MatchesPage() {
 
   if (!user) return null
 
+  const renderItemDoMatch = (m: MatchComEscolha) => (
+    <li key={m.id} className="flex flex-col gap-3 px-4 py-3.5 md:flex-row md:items-start md:justify-between md:gap-6">
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <p className="flex items-center gap-2 text-xs text-muted">
+          {!m.read && (
+            <>
+              <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-accent" />
+              <span className="sr-only">Não lido.</span>
+            </>
+          )}
+          <span className="truncate">Item: {m.monitoredItem.name}</span>
+        </p>
+        <Link href={`/tenders/${m.tenderId}`} className={cx('text-sm text-ink hover:text-accent hover:underline', m.read ? 'font-medium' : 'font-semibold')}>
+          {m.tender.objetoResumido ?? m.tender.objeto}
+        </Link>
+        <p className="truncate text-xs text-muted" title={m.tender.orgao ?? undefined}>
+          {m.tender.orgao ?? 'Órgão n/d'} · {localDaLicitacao(m.tender)}
+        </p>
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
+          <StatusTag mono>{rotuloDaFonte(m.tender.fonte)}</StatusTag>
+          <span className="font-mono">{formatValor(m.tender.valorEstimado)}</span>
+        </p>
+        {m.dentroDeObraCompleta && (
+          <span className="self-start">
+            <SeloObraCompleta />
+          </span>
+        )}
+        <NotaDeAderencia aderencia={m.aderencia} />
+        {m.matchedKeywords.length > 0 && <p className="text-xs text-faint">Palavras: {m.matchedKeywords.join(', ')}</p>}
+      </div>
+      <div className="flex shrink-0 flex-col items-start gap-1.5 md:items-end">
+        <span className="text-2xs font-medium text-muted">Prazo das propostas</span>
+        <Prazo data={fimDasPropostas(m.tender)} className="md:items-end md:text-right" />
+        <div className="flex flex-wrap items-center gap-2">
+          {m.escolhida ? (
+            <>
+              <StatusTag tone="accent">Escolhida</StatusTag>
+              <LinkButton href="/escolhidas" size="sm" variant="ghost" iconRight={ArrowRight}>
+                Ver em Escolhidas
+              </LinkButton>
+            </>
+          ) : (
+            <Button size="sm" icon={Star} loading={interesseMsg[m.id] === SALVANDO} onClick={() => marcarInteresse(m.id, m.tenderId)}>
+              Marcar como interessado
+            </Button>
+          )}
+          {!m.read && (
+            <Button size="sm" variant="ghost" icon={Check} onClick={() => markAsRead(m.id)}>
+              Marcar como lido
+            </Button>
+          )}
+        </div>
+        {interesseMsg[m.id] && interesseMsg[m.id] !== SALVANDO && (
+          <p role="alert" className="text-xs text-danger">
+            {interesseMsg[m.id]}
+          </p>
+        )}
+      </div>
+    </li>
+  )
+
   return (
     <>
       <PageHeader
@@ -142,6 +206,15 @@ export default function MatchesPage() {
             }}
             className="pb-2.5"
           />
+          <Checkbox
+            label="Separar por modalidade"
+            checked={agruparModalidade}
+            onChange={(e) => {
+              setPage(1)
+              setAgruparModalidade(e.target.checked)
+            }}
+            className="pb-2.5"
+          />
         </div>
 
         <p className="flex items-start gap-1.5 text-xs text-muted">
@@ -175,69 +248,19 @@ export default function MatchesPage() {
               </LinkButton>
             }
           />
-        ) : (
-          <ul className="flex flex-col divide-y divide-line-soft rounded border border-line bg-surface">
-            {data.items.map((m) => (
-              <li key={m.id} className="flex flex-col gap-3 px-4 py-3.5 md:flex-row md:items-start md:justify-between md:gap-6">
-                <div className="flex min-w-0 flex-1 flex-col gap-1">
-                  <p className="flex items-center gap-2 text-xs text-muted">
-                    {!m.read && (
-                      <>
-                        <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-accent" />
-                        <span className="sr-only">Não lido.</span>
-                      </>
-                    )}
-                    <span className="truncate">Item: {m.monitoredItem.name}</span>
-                  </p>
-                  <Link href={`/tenders/${m.tenderId}`} className={cx('text-sm text-ink hover:text-accent hover:underline', m.read ? 'font-medium' : 'font-semibold')}>
-                    {m.tender.objetoResumido ?? m.tender.objeto}
-                  </Link>
-                  <p className="truncate text-xs text-muted" title={m.tender.orgao ?? undefined}>
-                    {m.tender.orgao ?? 'Órgão n/d'} · {localDaLicitacao(m.tender)}
-                  </p>
-                  <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
-                    <StatusTag mono>{rotuloDaFonte(m.tender.fonte)}</StatusTag>
-                    <span className="font-mono">{formatValor(m.tender.valorEstimado)}</span>
-                  </p>
-                  {m.dentroDeObraCompleta && (
-                    <span className="self-start">
-                      <SeloObraCompleta />
-                    </span>
-                  )}
-                  <NotaDeAderencia aderencia={m.aderencia} />
-                  {m.matchedKeywords.length > 0 && <p className="text-xs text-faint">Palavras: {m.matchedKeywords.join(', ')}</p>}
-                </div>
-                <div className="flex shrink-0 flex-col items-start gap-1.5 md:items-end">
-                  <span className="text-2xs font-medium text-muted">Prazo das propostas</span>
-                  <Prazo data={fimDasPropostas(m.tender)} className="md:items-end md:text-right" />
-                  <div className="flex flex-wrap items-center gap-2">
-                    {m.escolhida ? (
-                      <>
-                        <StatusTag tone="accent">Escolhida</StatusTag>
-                        <LinkButton href="/escolhidas" size="sm" variant="ghost" iconRight={ArrowRight}>
-                          Ver em Escolhidas
-                        </LinkButton>
-                      </>
-                    ) : (
-                      <Button size="sm" icon={Star} loading={interesseMsg[m.id] === SALVANDO} onClick={() => marcarInteresse(m.id, m.tenderId)}>
-                        Marcar como interessado
-                      </Button>
-                    )}
-                    {!m.read && (
-                      <Button size="sm" variant="ghost" icon={Check} onClick={() => markAsRead(m.id)}>
-                        Marcar como lido
-                      </Button>
-                    )}
-                  </div>
-                  {interesseMsg[m.id] && interesseMsg[m.id] !== SALVANDO && (
-                    <p role="alert" className="text-xs text-danger">
-                      {interesseMsg[m.id]}
-                    </p>
-                  )}
-                </div>
-              </li>
+        ) : agruparModalidade ? (
+          <div className="flex flex-col gap-5">
+            {agruparPorModalidade(data.items, (m) => m.tender.modalidade).map((g) => (
+              <div key={g.value}>
+                <p className="mb-2 flex items-baseline gap-2 text-sm font-semibold text-ink">
+                  {g.label} <span className="font-mono text-xs font-normal text-muted">{g.itens.length}</span>
+                </p>
+                <ul className="flex flex-col divide-y divide-line-soft rounded border border-line bg-surface">{g.itens.map(renderItemDoMatch)}</ul>
+              </div>
             ))}
-          </ul>
+          </div>
+        ) : (
+          <ul className="flex flex-col divide-y divide-line-soft rounded border border-line bg-surface">{data.items.map(renderItemDoMatch)}</ul>
         )}
 
         {!erro && !loading && data && data.totalPages > 1 && (
