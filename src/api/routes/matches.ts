@@ -12,6 +12,7 @@ import { registrarAuditoria } from '../../services/auditService'
 import { whereDaLicitacaoNoFeed } from '../../lib/feedDeMatches'
 import { TENDER_PUBLICO } from '../../lib/tenderPublico'
 import { Aderencia, calcularAderencia } from '../../lib/aderencia'
+import { misturarPorFonte } from '../../lib/misturaDeFontes'
 import { exportacaoPlanilhaLimiter } from '../rateLimit'
 import { gerarPlanilhaXlsx } from '../../lib/planilhaXlsx'
 import {
@@ -56,7 +57,7 @@ const CAMPOS_DA_NOTA = {
   matchedByCode: true,
   matchedKeywords: true,
   dentroDeObraCompleta: true,
-  tender: { select: { uf: true, valorEstimado: true, encerramentoAt: true, municipioLat: true, municipioLng: true } },
+  tender: { select: { fonte: true, uf: true, valorEstimado: true, encerramentoAt: true, municipioLat: true, municipioLng: true } },
   monitoredItem: { select: { keywords: true, ufs: true, valorMin: true, valorMax: true, raioKm: true, origemLat: true, origemLng: true } },
 } satisfies Prisma.TenderMatchSelect
 
@@ -130,12 +131,13 @@ matchesRouter.get(
         prisma.tenderMatch.count({ where }),
       ])
       const ordenados = leves
-        .map((m) => ({ id: m.id, createdAt: m.createdAt, nota: aderenciaDoMatch(m).nota }))
+        .map((m) => ({ id: m.id, createdAt: m.createdAt, fonte: m.tender.fonte, nota: aderenciaDoMatch(m).nota }))
         .sort((a, b) => b.nota - a.nota || b.createdAt.getTime() - a.createdAt.getTime())
+      const misturados = misturarPorFonte(ordenados, (o) => o.fonte === 'PNCP')
       total = contagem
-      totalPaginavel = ordenados.length
+      totalPaginavel = misturados.length
       if (contagem > LIMITE_ORDENACAO_POR_NOTA) ordenacaoPorNotaLimitadaA = LIMITE_ORDENACAO_POR_NOTA
-      const ids = ordenados.slice((page - 1) * pageSize, page * pageSize).map((o) => o.id)
+      const ids = misturados.slice((page - 1) * pageSize, page * pageSize).map((o) => o.id)
       const completos = await prisma.tenderMatch.findMany({
         where: { id: { in: ids } },
         include: { tender: { select: TENDER_PUBLICO }, monitoredItem: true },
@@ -143,17 +145,34 @@ matchesRouter.get(
       const porId = new Map(completos.map((m) => [m.id, m]))
       items = ids.map((id) => porId.get(id)).filter((m): m is MatchComTudo => m !== undefined)
     } else {
-      ;[items, total] = await Promise.all([
+      const [leves, contagem] = await Promise.all([
         prisma.tenderMatch.findMany({
           where,
           orderBy: [{ dentroDeObraCompleta: 'asc' }, { createdAt: 'desc' }],
-          skip: (page - 1) * pageSize,
-          take: pageSize,
-          include: { tender: { select: TENDER_PUBLICO }, monitoredItem: true },
+          select: { id: true, dentroDeObraCompleta: true, tender: { select: { fonte: true } } },
         }),
         prisma.tenderMatch.count({ where }),
       ])
-      totalPaginavel = total
+      const ehPncp = (m: (typeof leves)[number]) => m.tender.fonte === 'PNCP'
+      const ordenados = [
+        ...misturarPorFonte(
+          leves.filter((m) => !m.dentroDeObraCompleta),
+          ehPncp
+        ),
+        ...misturarPorFonte(
+          leves.filter((m) => m.dentroDeObraCompleta),
+          ehPncp
+        ),
+      ]
+      total = contagem
+      totalPaginavel = ordenados.length
+      const ids = ordenados.slice((page - 1) * pageSize, page * pageSize).map((m) => m.id)
+      const completos = await prisma.tenderMatch.findMany({
+        where: { id: { in: ids } },
+        include: { tender: { select: TENDER_PUBLICO }, monitoredItem: true },
+      })
+      const porId = new Map(completos.map((m) => [m.id, m]))
+      items = ids.map((id) => porId.get(id)).filter((m): m is MatchComTudo => m !== undefined)
     }
 
     const planosEscolhidos = await prisma.tenderParticipationPlan.findMany({

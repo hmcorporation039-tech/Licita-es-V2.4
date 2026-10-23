@@ -10,6 +10,7 @@ import { buildAutoMilestones } from '../../lib/participationPlanTemplate'
 import { asyncHandler } from '../asyncHandler'
 import { whereDaLicitacaoNoFeed } from '../../lib/feedDeMatches'
 import { TENDER_PUBLICO } from '../../lib/tenderPublico'
+import { misturarPorFonte } from '../../lib/misturaDeFontes'
 import { fimDoPrazoDaLicitacao, horaDeBrasilia } from '../../lib/dataDeBrasilia'
 import { dataDaSessao } from '../../lib/dataDaSessao'
 import { calcularPrazosDaSessao, lerDataTexto, type Dia } from '../../lib/diasUteis'
@@ -19,6 +20,8 @@ export const dashboardRouter = Router()
 
 const DOC_ALERT_DAYS = 15
 const PRAZO_JANELA_DIAS = 14
+const ULTIMOS_MATCHES_NO_PAINEL = 5
+const JANELA_PARA_MISTURAR_ULTIMOS = 40
 export const ROTULO_DO_LIMITE_DE_IMPUGNACAO = 'Limite para impugnar ou pedir esclarecimento'
 
 function inicioDoDiaDeBrasilia(dia: Dia): Date {
@@ -39,7 +42,7 @@ dashboardRouter.get(
       prisma.tenderMatch.findMany({
         where: { companyId, tender: whereDaLicitacaoNoFeed() },
         orderBy: [{ dentroDeObraCompleta: 'asc' }, { createdAt: 'desc' }],
-        take: 5,
+        take: JANELA_PARA_MISTURAR_ULTIMOS,
         include: { tender: { select: TENDER_PUBLICO }, monitoredItem: { select: { name: true } } },
       }),
       prisma.companyDocument.findMany({ where: { companyId, dataValidade: { not: null } } }),
@@ -50,6 +53,18 @@ dashboardRouter.get(
         },
       }),
     ])
+
+    const ehPncp = (m: (typeof ultimosMatches)[number]) => m.tender.fonte === 'PNCP'
+    const ultimosMisturados = [
+      ...misturarPorFonte(
+        ultimosMatches.filter((m) => !m.dentroDeObraCompleta),
+        ehPncp
+      ),
+      ...misturarPorFonte(
+        ultimosMatches.filter((m) => m.dentroDeObraCompleta),
+        ehPncp
+      ),
+    ].slice(0, ULTIMOS_MATCHES_NO_PAINEL)
 
     const now = Date.now()
     const docAlertCutoff = now + DOC_ALERT_DAYS * 24 * 60 * 60 * 1000
@@ -111,7 +126,7 @@ dashboardRouter.get(
       buscasEmAndamento,
       matchesNaoLidos,
       matchesTotal,
-      ultimosMatches,
+      ultimosMatches: ultimosMisturados,
       documentosVencendoEmBreve,
       proximosPrazos,
     })
