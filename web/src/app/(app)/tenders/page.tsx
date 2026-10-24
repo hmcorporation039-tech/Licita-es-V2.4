@@ -39,6 +39,7 @@ import {
   Tr,
 } from '@/components/ui'
 import SeloObraCompleta from '@/components/SeloObraCompleta'
+import InteressePetronect from '@/components/InteressePetronect'
 import { ROTULOS_DE_FONTE } from '@/lib/fontes'
 import { ESTADOS } from '@/lib/estados'
 import { dataDaLicitacao } from '@/lib/datas'
@@ -313,6 +314,8 @@ export default function TendersPage() {
           )
         }
       />
+
+      <InteressePetronect />
 
       <Panel bodyClassName="flex flex-col gap-4">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
