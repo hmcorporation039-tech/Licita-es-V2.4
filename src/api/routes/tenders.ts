@@ -77,7 +77,7 @@ const querySchema = z.object({
     .enum(['true', 'false'])
     .optional()
     .transform((v) => v === 'true'),
-  agruparPor: z.enum(['estado', 'modalidade']).default('estado'),
+  agruparPor: z.enum(['estado', 'modalidade', 'orgao']).default('estado'),
   ordem: z.enum(['prazo', 'recentes']).default('prazo'),
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().positive().max(100).default(20),
@@ -85,9 +85,11 @@ const querySchema = z.object({
 
 type MatchDaLista = { score: number; matchedByCode: boolean; matchedKeywords: string[]; dentroDeObraCompleta: boolean; monitoredItem: { id: string; name: string } }
 
-function ordemDaLista(agrupar: boolean, ordem: 'prazo' | 'recentes', agruparPor: 'estado' | 'modalidade'): Prisma.TenderOrderByWithRelationInput[] {
+function ordemDaLista(agrupar: boolean, ordem: 'prazo' | 'recentes', agruparPor: 'estado' | 'modalidade' | 'orgao'): Prisma.TenderOrderByWithRelationInput[] {
+  const agrupamento: Prisma.TenderOrderByWithRelationInput[] =
+    agruparPor === 'modalidade' ? [{ modalidade: 'asc' }] : agruparPor === 'orgao' ? [{ orgao: 'asc' }] : [{ uf: 'asc' }, { orgao: 'asc' }]
   return [
-    ...(agrupar ? (agruparPor === 'modalidade' ? [{ modalidade: 'asc' as const }] : [{ uf: 'asc' as const }, { orgao: 'asc' as const }]) : []),
+    ...(agrupar ? agrupamento : []),
     ...(ordem === 'prazo'
       ? [{ encerramentoAt: { sort: 'asc' as const, nulls: 'last' as const } }, { aberturaAt: { sort: 'asc' as const, nulls: 'last' as const } }]
       : []),

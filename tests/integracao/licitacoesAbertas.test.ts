@@ -146,4 +146,22 @@ rodar('Somente licitações abertas', () => {
     expect(blocos.length).toBeGreaterThan(1)
     expect(new Set(blocos).size).toBe(blocos.length)
   })
+
+  it('GET /api/tenders agrupando por órgão devolve cada órgão em bloco contíguo', async () => {
+    const marcador = `orgao${randomUUID().slice(0, 8)}`
+    const orgaos = ['Prefeitura de Alfa', 'Prefeitura de Beta', 'Prefeitura de Alfa', 'Prefeitura de Beta', 'Prefeitura de Gama']
+    await prisma.tender.createMany({
+      data: orgaos.map((orgao, i) => ({
+        fonte: 'PNCP', fonteId: `${marcador}-${i}`, modalidade: 'PREGAO_ELETRONICO', situacao: 'ABERTA',
+        objeto: `órgão ${marcador} ${i}`, objetoNorm: `orgao ${marcador} ${i}`,
+        orgao, encerramentoAt: dias(5), aberturaAt: dias(-5), publicadoAt: dias(-10), uf: 'SP', rawJson: {},
+      })),
+    })
+    const r = (await (await fetch(`${base}/api/tenders?q=${marcador}&pageSize=50&agrupar=true&agruparPor=orgao`, { headers: { Authorization: `Bearer ${token}` } })).json()) as { items: { orgao: string | null }[] }
+    const seq = r.items.map((t) => t.orgao)
+    const blocos: (string | null)[] = []
+    for (const o of seq) if (blocos[blocos.length - 1] !== o) blocos.push(o)
+    expect(new Set(seq).size).toBe(3)
+    expect(blocos.length).toBe(new Set(seq).size)
+  })
 })
