@@ -20,6 +20,7 @@ import { downloadPNCPDocument, isPdf, listPNCPDocuments, selecionarDocumentos } 
 import { listNovacapDocumentos } from './novacapParser'
 import { ordenarPorPrioridade, DocumentoComTitulo } from '../lib/documentPriority'
 import { extractPdf, temCamadaDeTexto } from './pdfTextService'
+import { extrairTextoDeOffice } from './leitorDeOffice'
 import { AnalysisRefusedError, EditalAnalyzer, EditalDocumento, ErroComUso } from './llm/types'
 import type { EditalReviewer } from './llm/revisao'
 import { QuemPediu, registrarUsoDeIa } from './aiUsageService'
@@ -136,7 +137,16 @@ async function baixarDocumentos(disponiveis: DocumentoDisponivel[]): Promise<Edi
 
     try {
       const buffer = await downloadPNCPDocument(doc.uri)
-      if (!isPdf(buffer)) continue
+      if (!isPdf(buffer)) {
+        // Planilha de composição (.xlsx) ou termo de referência em Word (.docx):
+        // extrai o texto e manda como os demais, dentro do mesmo orçamento.
+        const office = extrairTextoDeOffice(buffer)
+        if (office && caracteres + office.texto.length <= MAX_CARACTERES_TOTAL) {
+          selecionados.push({ nome: doc.titulo, tipo: 'texto', texto: office.texto })
+          caracteres += office.texto.length
+        }
+        continue
+      }
 
       let extraido: { texto: string; paginas: number; textoComPaginas: string } | null = null
       try {
