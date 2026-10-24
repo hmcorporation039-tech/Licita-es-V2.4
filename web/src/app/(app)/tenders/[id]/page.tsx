@@ -816,6 +816,7 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
                       { label: 'Adesão a ata (carona)', value: analysis.resultado.adesaoAta || '—' },
                       { label: 'Prazo para esclarecimento', value: analysis.resultado.prazoEsclarecimento },
                       { label: 'Prazo para impugnação', value: analysis.resultado.prazoImpugnacao },
+                      { label: 'Validade da proposta', value: analysis.resultado.validadeProposta || '—' },
                     ]}
                   />
 

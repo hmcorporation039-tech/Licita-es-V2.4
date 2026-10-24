@@ -38,6 +38,7 @@ export interface EditalAnalysisResult {
   adesaoAta: string
   prazoImpugnacao: string
   prazoEsclarecimento: string
+  validadeProposta: string
   // Campos que alimentam os alertas legais fixos (lib/alertasLegais.ts): o texto do
   // edital sobre cada exigência, com o percentual/valor exatamente como escrito.
   garantiaProposta: string
@@ -66,6 +67,7 @@ export const ANALYSIS_SCHEMA = {
     adesaoAta: { type: 'string' },
     prazoImpugnacao: { type: 'string' },
     prazoEsclarecimento: { type: 'string' },
+    validadeProposta: { type: 'string' },
     garantiaProposta: { type: 'string' },
     garantiaContratual: { type: 'string' },
     patrimonioLiquidoMinimo: { type: 'string' },
@@ -114,6 +116,7 @@ export const ANALYSIS_SCHEMA = {
     'adesaoAta',
     'prazoImpugnacao',
     'prazoEsclarecimento',
+    'validadeProposta',
     'garantiaProposta',
     'garantiaContratual',
     'patrimonioLiquidoMinimo',
@@ -139,6 +142,7 @@ Extraia (para qualquer campo não encontrado, escreva "não especificado no edit
 - adesaoAta: se permite adesão à ata de registro de preços ("carona"). Responda "Sim"/"Não"/"Não se aplica" e detalhe se houver
 - prazoImpugnacao: prazo e forma de impugnar o edital (ex: "até 3 dias úteis antes da abertura da sessão" ou uma data específica, se o edital indicar uma). Escreva "não especificado no edital" se não encontrar.
 - prazoEsclarecimento: prazo e forma de pedir esclarecimentos sobre o edital (mesma lógica do prazoImpugnacao — pode ser uma regra relativa à data da sessão, ou uma data absoluta). Escreva "não especificado no edital" se não encontrar.
+- validadeProposta: por quantos dias a proposta deve permanecer válida, como está escrito no edital (ex: "60 dias", "90 (noventa) dias corridos contados da data da sessão"). Escreva "não especificado no edital" se não encontrar.
 - garantiaProposta: o que o edital diz sobre garantia de proposta. Transcreva o trecho com o percentual ou valor exigido exatamente como está escrito (ex: "1% do valor estimado da contratação"). Se o edital não exige, escreva "não exigida".
 - garantiaContratual: o que o edital diz sobre garantia contratual (garantia de execução do contrato), com o percentual ou valor exatamente como escrito (ex: "5% do valor do contrato"). Se não exige, escreva "não exigida".
 - patrimonioLiquidoMinimo: exigência de capital mínimo ou de patrimônio líquido mínimo na habilitação econômico-financeira, com o percentual ou valor exatamente como escrito (ex: "10% do valor estimado" ou "R$ 500.000,00"). Se não exige, escreva "não exigido".
@@ -261,6 +265,7 @@ export function validarResultadoAnalise(bruto: unknown): EditalAnalysisResult {
     adesaoAta: texto(o.adesaoAta),
     prazoImpugnacao: texto(o.prazoImpugnacao),
     prazoEsclarecimento: texto(o.prazoEsclarecimento),
+    validadeProposta: texto(o.validadeProposta),
     garantiaProposta: texto(o.garantiaProposta),
     garantiaContratual: texto(o.garantiaContratual),
     patrimonioLiquidoMinimo: texto(o.patrimonioLiquidoMinimo),

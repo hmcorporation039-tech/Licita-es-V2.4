@@ -31,6 +31,7 @@ const CAMPOS_DE_TEXTO = [
   'adesaoAta',
   'prazoImpugnacao',
   'prazoEsclarecimento',
+  'validadeProposta',
   'garantiaProposta',
   'garantiaContratual',
   'patrimonioLiquidoMinimo',
