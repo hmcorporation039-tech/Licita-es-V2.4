@@ -43,7 +43,7 @@ export const revalidate = 600
 const TITULO = 'Licita Bela: licitações abertas para o que você vende'
 const DESCRICAO =
   'Busca diária no PNCP, no Sistema S e nos diários oficiais. Aviso do que encerra primeiro, alerta de cláusulas ilegais no edital e proposta no papel timbrado da sua empresa. Teste grátis, sem cartão.'
-const ENDERECO_PADRAO = 'https://licita-es-v2-4.vercel.app'
+const ENDERECO_PADRAO = 'https://www.licitabela.com.br'
 const IMAGEM_DE_COMPARTILHAMENTO = { url: '/bela/bela-compartilhar.jpg', width: 1200, height: 670, alt: 'Bela, a assistente da Licita Bela' }
 
 function enderecoDoSite(): URL {
@@ -58,6 +58,7 @@ export const metadata: Metadata = {
   metadataBase: enderecoDoSite(),
   title: TITULO,
   description: DESCRICAO,
+  alternates: { canonical: '/' },
   openGraph: {
     type: 'website',
     locale: 'pt_BR',

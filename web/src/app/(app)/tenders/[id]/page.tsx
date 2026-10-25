@@ -27,6 +27,7 @@ import AvisoDeClausulas from '@/components/AvisoDeClausulas'
 import MatrizDeExigencias from '@/components/MatrizDeExigencias'
 import ConversaComOEdital from '@/components/ConversaComOEdital'
 import RelatorioDaRevisao from '@/components/RelatorioDaRevisao'
+import ProgressoDaAnalise from '@/components/ProgressoDaAnalise'
 import DocumentosDaLicitacao from '@/components/DocumentosDaLicitacao'
 import AvisoDeVersaoDoPncp from '@/components/AvisoDeVersaoDoPncp'
 import { versaoDoPncp } from '@/lib/licitacaoNaTela'
@@ -758,12 +759,7 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
                 </div>
               )}
 
-              {analyzing && (
-                <p role="status" className="inline-flex items-center gap-2 text-sm text-muted">
-                  <Loader2 size={16} className="animate-spin" aria-hidden />
-                  Baixando e analisando o edital…
-                </p>
-              )}
+              {analyzing && <ProgressoDaAnalise revisando={analysis?.revisao?.status === 'EM_ANDAMENTO'} />}
 
               {!analyzing && analysis?.status === 'NO_DOCUMENTS' && (
                 <p className="text-sm text-muted">{analysis.errorMsg ?? 'Nenhum documento disponível para análise.'}</p>
@@ -816,6 +812,7 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
                       { label: 'Adesão a ata (carona)', value: analysis.resultado.adesaoAta || '—' },
                       { label: 'Prazo para esclarecimento', value: analysis.resultado.prazoEsclarecimento },
                       { label: 'Prazo para impugnação', value: analysis.resultado.prazoImpugnacao },
+                      { label: 'Validade da proposta', value: analysis.resultado.validadeProposta || '—' },
                     ]}
                   />
 

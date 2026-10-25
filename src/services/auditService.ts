@@ -87,6 +87,7 @@ export const ACOES = [
   'PORTAL_CREDENCIAL_REMOVIDA',
   'PREGAO_ROBO_ATIVADO',
   'PREGAO_ROBO_DESATIVADO',
+  'INTERESSE_DE_FONTE',
 ] as const
 export type AcaoAuditoria = (typeof ACOES)[number]
 

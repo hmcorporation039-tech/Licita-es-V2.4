@@ -32,3 +32,18 @@ entre empresas: não há IDOR nem rota sem autenticação.
 | Convite de membro cria a conta já confirmada, com senha do dono | Trocar por convite com link (token) por e-mail; junto com a fase de cobrança |
 | Índice `pg_trgm` para os filtros `contains` da lista de licitações | Otimização; avaliar quando a base crescer |
 | Limite de páginas no parser de PDF | O limite de tempo cobre o caso grave; avaliar um teto de páginas |
+
+## Atualização de dependências (24/10/2026)
+
+Quatro avisos novos do GitHub derrubaram o gate de auditoria do CI (`npm audit --audit-level=high`), travando o merge de todas as branches — nenhum tinha a ver com o código em revisão.
+
+| Pacote | Severidade | Origem | Tratamento |
+|---|---|---|---|
+| `body-parser` <1.20.9 | alta | transitiva (express) | `overrides` → `^1.20.9` |
+| `undici` 7.0.0–7.30.0 | alta | transitiva (cheerio) | `overrides` → `7.30.1` |
+| `ip-address` <=10.7.3 | média | transitiva | `overrides` → `10.7.4` |
+| `zod` <4.6.6 (GHSA-mrhx-c7xc-m3w5) | alta | **direta** | Exceção documentada no gate — ver abaixo |
+
+**Por que o zod é exceção, e não correção:** o conserto é o `zod@4`, uma troca de major que quebra todos os schemas de validação do back e da web. É uma migração, não um patch — não dá para fazer às pressas só para destravar um merge. O gate passou a ignorar **só** esse GHSA (`scripts/ci/auditoria-de-dependencias.mjs`, com o motivo no código); qualquer outro high/critical de produção continua derrubando o CI. O risco em aberto é DoS por memória ao validar coleção gigante, com a entrada já atrás de autenticação, rate-limit e limite de tamanho de corpo.
+
+**Backlog:** migrar para `zod@4` (back + web) e remover a exceção do gate.

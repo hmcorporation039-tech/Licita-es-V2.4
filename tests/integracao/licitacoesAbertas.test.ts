@@ -164,4 +164,32 @@ rodar('Somente licitações abertas', () => {
     expect(new Set(seq).size).toBe(3)
     expect(blocos.length).toBe(new Set(seq).size)
   })
+
+  // Regressão do "Ver todas": uma busca que casa com centenas de licitações
+  // nunca pode devolver tudo de uma vez (foi o que travava a tela). O servidor
+  // sempre pagina e o pageSize tem teto; um pageSize absurdo é recusado, não
+  // atendido. Mantém a lista sempre renderizável por mais resultados que haja.
+  it('GET /api/tenders com 400+ resultados nunca devolve tudo de uma vez', async () => {
+    const marcador = `vertodas${randomUUID().slice(0, 8)}`
+    const total = 450
+    await prisma.tender.createMany({
+      data: Array.from({ length: total }, (_, i) => ({
+        fonte: 'PNCP', fonteId: `${marcador}-${i}`, modalidade: 'PREGAO_ELETRONICO', situacao: 'ABERTA',
+        objeto: `licitação volume ${marcador} ${i}`, objetoNorm: `licitacao volume ${marcador} ${i}`,
+        encerramentoAt: dias(5), aberturaAt: dias(-5), publicadoAt: dias(-10), uf: 'SP', rawJson: {},
+      })),
+    })
+
+    const padrao = (await (await fetch(`${base}/api/tenders?q=${marcador}`, { headers: { Authorization: `Bearer ${token}` } })).json()) as { items: unknown[]; total: number; pageSize: number; totalPages: number }
+    expect(padrao.total).toBe(total)
+    expect(padrao.items.length).toBe(20)
+    expect(padrao.pageSize).toBe(20)
+    expect(padrao.totalPages).toBe(Math.ceil(total / 20))
+
+    const noTeto = (await (await fetch(`${base}/api/tenders?q=${marcador}&pageSize=100`, { headers: { Authorization: `Bearer ${token}` } })).json()) as { items: unknown[] }
+    expect(noTeto.items.length).toBe(100)
+
+    const absurdo = await fetch(`${base}/api/tenders?q=${marcador}&pageSize=9999`, { headers: { Authorization: `Bearer ${token}` } })
+    expect(absurdo.status).toBe(400)
+  })
 })

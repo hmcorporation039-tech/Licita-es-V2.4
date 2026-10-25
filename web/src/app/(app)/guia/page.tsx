@@ -1,5 +1,6 @@
-import { ExternalLink, TriangleAlert } from 'lucide-react'
+import { ChevronDown, ExternalLink, TriangleAlert } from 'lucide-react'
 import { PageHeader, TextLink, cx } from '@/components/ui'
+import { MODALIDADES_EDUCATIVO } from '@/lib/modalidadesEducativo'
 
 const PLATAFORMAS = [
   {
@@ -142,6 +143,53 @@ export default function GuiaPage() {
       />
 
       <div className="flex max-w-prose flex-col gap-10 pb-10 text-base leading-relaxed text-ink-2">
+        <section aria-labelledby="guia-modalidades" className="flex flex-col gap-3">
+          <h2 id="guia-modalidades" className="text-lg font-semibold text-ink">
+            Modalidades de licitação
+          </h2>
+          <p>
+            Cada licitação tem uma <strong className="font-semibold text-ink">modalidade</strong>, que define como é a disputa e quem pode participar.
+            Entenda as principais da Lei 14.133/2021 — e as que saíram de cena.
+          </p>
+          <ul className="flex flex-col gap-2">
+            {MODALIDADES_EDUCATIVO.map((m) => (
+              <li key={m.value}>
+                <details className="group rounded border border-line bg-surface">
+                  <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2.5 px-4 py-3">
+                    <span className="font-semibold text-ink">{m.label}</span>
+                    {m.legado && (
+                      <span className="rounded-full bg-sunken px-2 py-0.5 text-2xs font-semibold uppercase tracking-wide text-muted">Legado</span>
+                    )}
+                    <ChevronDown size={18} strokeWidth={2.25} aria-hidden className="ml-auto shrink-0 text-muted transition-transform group-open:rotate-180" />
+                  </summary>
+                  <div className="flex flex-col gap-3 border-t border-line-soft px-4 py-3.5 text-sm">
+                    {m.legado && (
+                      <p className="flex gap-2 rounded bg-sunken px-3 py-2 text-xs text-ink-2">
+                        <TriangleAlert size={14} strokeWidth={2} className="mt-px shrink-0 text-warn" aria-hidden />
+                        {m.legado}
+                      </p>
+                    )}
+                    <dl className="flex flex-col gap-2">
+                      {[
+                        ['O que é', m.oQueE],
+                        ['Quando é usada', m.quandoUsada],
+                        ['Quem pode participar', m.quemPode],
+                        ['Cuidados', m.cuidados],
+                      ].map(([rotulo, valor]) => (
+                        <div key={rotulo} className="flex flex-col gap-0.5 sm:flex-row sm:gap-3">
+                          <dt className="shrink-0 text-xs font-medium text-muted sm:w-36 sm:pt-0.5">{rotulo}</dt>
+                          <dd className="min-w-0">{valor}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </div>
+                </details>
+              </li>
+            ))}
+          </ul>
+          <p className="text-xs text-muted">Conteúdo educativo, não jurídico — o que vale é sempre o edital e a lei.</p>
+        </section>
+
         <section aria-labelledby="guia-erros" className="flex flex-col gap-3">
           <h2 id="guia-erros" className="text-lg font-semibold text-ink">
             Pontos de atenção — erros comuns

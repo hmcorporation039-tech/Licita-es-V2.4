@@ -328,6 +328,7 @@ export interface AnalysisResultado {
   adesaoAta: string
   prazoImpugnacao: string
   prazoEsclarecimento: string
+  validadeProposta: string
   exigenciasTecnicas: string[]
   documentosExigidos: string[]
   riscos: AnalysisRisco[]
