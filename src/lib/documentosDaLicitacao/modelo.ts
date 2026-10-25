@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const TIPOS_DE_DOCUMENTO = ['proposta', 'declaracoes', 'impugnacao', 'esclarecimento'] as const
+export const TIPOS_DE_DOCUMENTO = ['proposta', 'declaracoes', 'impugnacao', 'esclarecimento', 'recurso'] as const
 export type TipoDeDocumento = (typeof TIPOS_DE_DOCUMENTO)[number]
 
 const MAX_TEXTO = 5000

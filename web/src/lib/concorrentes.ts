@@ -1,4 +1,5 @@
-import { api, enviarArquivo } from './api'
+import { api, baixarArquivoPost, enviarArquivo } from './api'
+import type { DocumentoDaLicitacao, PreviaDoDocumento } from './types'
 
 export type StatusDaAnalise = 'PENDING' | 'RUNNING' | 'DONE' | 'FAILED' | 'NO_DOCUMENTS' | 'DISABLED'
 export type SituacaoDoAchado = 'atende' | 'nao_atende' | 'nao_comprovado' | 'indefinido'
@@ -45,3 +46,6 @@ export const obterConcorrente = (id: string) => api.get<AnaliseDeConcorrente>(`/
 export const removerConcorrente = (id: string) => api.delete<void>(`/api/concorrentes/${id}`)
 export const enviarDocumentoDoConcorrente = (id: string, arquivo: File) => enviarArquivo<AnaliseDeConcorrente>(`/api/concorrentes/${id}/arquivos`, arquivo, { metodo: 'POST' })
 export const analisarConcorrente = (id: string) => api.post<AnaliseDeConcorrente>(`/api/concorrentes/${id}/analisar`)
+export const previaDoRecurso = (id: string) => api.post<PreviaDoDocumento>(`/api/concorrentes/${id}/recurso/previa`)
+export const baixarRecurso = (id: string, formato: 'pdf' | 'docx', documento: DocumentoDaLicitacao, nome: string) =>
+  baixarArquivoPost(`/api/concorrentes/${id}/recurso/arquivo`, { formato, documento }, nome)

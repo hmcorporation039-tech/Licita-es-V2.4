@@ -8,12 +8,17 @@ import { Router } from 'express'
 import express from 'express'
 import { z } from 'zod'
 import { asyncHandler, ApiError } from '../asyncHandler'
-import { escritaSensivelLimiter } from '../rateLimit'
+import { escritaSensivelLimiter, estudoPdfLimiter } from '../rateLimit'
 import { prisma } from '../../services/tenderService'
 import { registrarAuditoria } from '../../services/auditService'
 import { exigirCotaDaRequisicao } from '../cotas'
 import { analiseQueue } from '../../queues'
 import { enfileirarSemTravar } from '../../queues/enfileirar'
+import { documentoSchema } from '../../lib/documentosDaLicitacao/modelo'
+import { recursoDeHabilitacao, type AchadoDoRecurso } from '../../lib/documentosDaLicitacao/recurso'
+import { carregarCertameParaDocumento, carregarTimbrado } from './documentosDaLicitacao'
+import { renderizarPdf } from '../../services/documentos/renderizarPdf'
+import { renderizarDocx } from '../../services/documentos/renderizarDocx'
 import {
   adicionarArquivo,
   ArquivoInvalido,
@@ -127,5 +132,68 @@ concorrentesRouter.post(
     }
 
     res.status(202).json(await obterAnalise(req.companyId!, req.params.id))
+  })
+)
+
+// ------------------------------------------------------------
+// Minuta de recurso (fatia 2): monta o recurso contra a habilitação do
+// concorrente a partir dos achados e renderiza no papel timbrado da empresa.
+// Reusa o proponente/certame e os renderizadores de documentosDaLicitacao.
+// ------------------------------------------------------------
+
+function achadosQueSustentam(resultado: unknown): AchadoDoRecurso[] {
+  const achados = (resultado as { achados?: AchadoDoRecurso[] } | null)?.achados
+  if (!Array.isArray(achados)) return []
+  return achados.filter((a) => a && (a.situacao === 'nao_atende' || a.situacao === 'nao_comprovado'))
+}
+
+async function analiseComAchados(companyId: string, id: string) {
+  const analise = await obterAnalise(companyId, id)
+  if (!analise) throw new ApiError(404, 'Análise não encontrada')
+  if (analise.status !== 'DONE') throw new ApiError(409, 'Rode a análise do concorrente antes de gerar o recurso.')
+  const achados = achadosQueSustentam(analise.resultado)
+  if (achados.length === 0) throw new ApiError(409, 'A análise não apontou motivo de inabilitação — não há base para o recurso.')
+  return { analise, achados }
+}
+
+concorrentesRouter.post(
+  '/:id/recurso/previa',
+  asyncHandler(async (req, res) => {
+    const { analise, achados } = await analiseComAchados(req.companyId!, req.params.id)
+    const [timbrado, certame] = await Promise.all([carregarTimbrado(req.companyId!), carregarCertameParaDocumento(analise.tenderId)])
+    const r = recursoDeHabilitacao(timbrado.proponente, certame, analise.nomeConcorrente, achados)
+    res.json({ ...r, temLogo: timbrado.logo !== null })
+  })
+)
+
+const nomeDoRecurso = (nomeConcorrente: string | null, id: string, extensao: string) => {
+  const base = `recurso-${(nomeConcorrente || id)}`
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-zA-Z0-9-]+/g, '-')
+    .replace(/-+/g, '-')
+    .slice(0, 80)
+  return `${base}.${extensao}`
+}
+
+const recursoArquivoSchema = z.object({ formato: z.enum(['pdf', 'docx']), documento: documentoSchema })
+
+concorrentesRouter.post(
+  '/:id/recurso/arquivo',
+  estudoPdfLimiter,
+  asyncHandler(async (req, res) => {
+    const { formato, documento } = recursoArquivoSchema.parse(req.body)
+    // Confere que a análise é desta empresa (isolamento) antes de gerar o arquivo.
+    const analise = await obterAnalise(req.companyId!, req.params.id)
+    if (!analise) throw new ApiError(404, 'Análise não encontrada')
+
+    const timbrado = await carregarTimbrado(req.companyId!)
+    const arquivo = formato === 'pdf' ? await renderizarPdf(documento, timbrado) : await renderizarDocx(documento, timbrado)
+    await registrarAuditoria(req, { action: 'DOCUMENTO_GERADO', entityType: 'concorrente', entityId: req.params.id, metadata: { tipo: 'recurso', formato } })
+
+    res.setHeader('Content-Type', formato === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+    res.setHeader('Content-Disposition', `attachment; filename="${nomeDoRecurso(analise.nomeConcorrente, req.params.id.slice(0, 8), formato)}"`)
+    res.setHeader('Cache-Control', 'private, no-store')
+    res.send(arquivo)
   })
 )

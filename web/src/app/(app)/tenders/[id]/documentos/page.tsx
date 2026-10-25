@@ -46,6 +46,7 @@ const TITULO_DA_PAGINA: Record<TipoDeDocumentoDaLicitacao, string> = {
   declaracoes: 'Declarações',
   impugnacao: 'Impugnação ao edital',
   esclarecimento: 'Pedido de esclarecimento',
+  recurso: 'Recurso contra a habilitação',
 }
 
 const PREFIXO_DO_ARQUIVO: Record<TipoDeDocumentoDaLicitacao, string> = {
@@ -53,6 +54,7 @@ const PREFIXO_DO_ARQUIVO: Record<TipoDeDocumentoDaLicitacao, string> = {
   declaracoes: 'declaracoes',
   impugnacao: 'impugnacao',
   esclarecimento: 'pedido-de-esclarecimento',
+  recurso: 'recurso',
 }
 
 const listaDaUrl = (valor: string | null) =>
