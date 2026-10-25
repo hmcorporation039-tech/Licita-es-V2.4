@@ -26,6 +26,7 @@ import { MESES_DO_HISTORICO, MINIMO_DE_CASOS } from '../../lib/precosVencedores'
 import { gerarPdfDoEstudo } from '../../services/estudoPdf'
 import { carregarDossie } from '../../services/dossieDaLicitacao'
 import { montarPacoteDeHabilitacao } from '../../lib/pacoteDeHabilitacao'
+import { sugerirCustosParaItens } from '../../services/baseDePrecos'
 
 export const estudosRouter = Router()
 
@@ -295,6 +296,19 @@ estudosRouter.get(
     })
     const resultado = await precosVencedoresDaLicitacao({ id: ctx.tender.id, duplicataDe: ctx.tender.duplicataDe }, itens)
     res.json({ meses: MESES_DO_HISTORICO, minimoDeCasos: MINIMO_DE_CASOS, itens: resultado })
+  })
+)
+
+// Agente de Orçamento: sugere o custo de cada item a partir da base de preços
+// da empresa (por similaridade de descrição). Não grava — a tela preenche os
+// campos de custo e o usuário confere antes de salvar.
+estudosRouter.post(
+  '/:tenderId/custos-da-base',
+  estudoPrecosLimiter,
+  asyncHandler(async (req, res) => {
+    const ctx = await carregar(req.companyId!, req.params.tenderId)
+    const sugestoes = await sugerirCustosParaItens(req.companyId!, ctx.itens.map((i) => ({ id: i.id, descricao: i.descricao })))
+    res.json({ sugestoes, encontrados: Object.keys(sugestoes).length })
   })
 )
 
