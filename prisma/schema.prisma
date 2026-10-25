@@ -81,6 +81,7 @@ model User {
   authTokens         AuthToken[]
   costStudies        CostStudy[]
   precosBase         PrecoBase[]
+  analisesDeConcorrente AnaliseDeConcorrente[]
   perguntasAoEdital  EditalPergunta[]
   chamados           Chamado[]
   mensagensDeChamado ChamadoMensagem[]
@@ -157,6 +158,7 @@ model Company {
   tenderMatches        TenderMatch[]
   costStudies          CostStudy[]
   precosBase           PrecoBase[]
+  analisesDeConcorrente AnaliseDeConcorrente[]
   perguntasAoEdital    EditalPergunta[]
   chamados             Chamado[]
   errosDoSistema       ErroDoSistema[]
@@ -306,6 +308,7 @@ model Tender {
   pregoes             PregaoAcompanhamento[]
   requirementProgress RequirementProgress[]
   costStudies         CostStudy[]
+  analisesDeConcorrente AnaliseDeConcorrente[]
   textosDosDocumentos TenderDocumentText[]
   perguntasAoEdital   EditalPergunta[]
 
@@ -971,6 +974,52 @@ enum TipoDeCusto {
 enum FonteDePreco {
   PROPRIA
   REFERENCIA
+}
+
+// ============================================================
+// ESTRATEGISTA DE HABILITAÇÃO — depois da disputa, o cliente sobe os documentos
+// de habilitação de um CONCORRENTE (os que o portal publica) e a IA cruza com
+// as exigências do edital (TenderAnalysis) para achar defeitos que embasem um
+// recurso. Uma análise por concorrente (vários por licitação). Os documentos do
+// concorrente são efêmeros (retenção), NÃO entram no cofre da empresa.
+// ============================================================
+
+model AnaliseDeConcorrente {
+  id              String               @id @default(uuid())
+  companyId       String               @map("company_id")
+  userId          String               @map("user_id")
+  tenderId        String               @map("tender_id")
+  nomeConcorrente String?              @map("nome_concorrente")
+  status          AnalysisStatus       @default(PENDING)
+  resultado       Json?
+  erro            String?
+  createdAt       DateTime             @default(now()) @map("created_at")
+  updatedAt       DateTime             @updatedAt @map("updated_at")
+
+  company  Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user     User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tender   Tender               @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  arquivos ConcorrenteArquivo[]
+
+  @@index([companyId, tenderId])
+  @@map("analises_de_concorrente")
+}
+
+model ConcorrenteArquivo {
+  id          String   @id @default(uuid())
+  analiseId   String   @map("analise_id")
+  companyId   String   @map("company_id")
+  nomeArquivo String   @map("nome_arquivo")
+  mimeType    String   @map("mime_type")
+  tamanho     Int
+  sha256      String
+  conteudo    Bytes
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  analise AnaliseDeConcorrente @relation(fields: [analiseId], references: [id], onDelete: Cascade)
+
+  @@index([analiseId])
+  @@map("concorrente_arquivos")
 }
 
 model CompanyLogo {
