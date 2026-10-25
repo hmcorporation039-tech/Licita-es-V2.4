@@ -25,6 +25,7 @@ import { SITUACAO_OPTIONS } from '@/lib/situacoes'
 import { safeHttpUrl } from '@/lib/safeUrl'
 import type { PrazosDaSessao } from '@/lib/adminTypes'
 import PainelDoFiscal from '@/components/PainelDoFiscal'
+import EstrategistaDeConcorrentes from '@/components/EstrategistaDeConcorrentes'
 import AvisoDeClausulas from '@/components/AvisoDeClausulas'
 import MatrizDeExigencias from '@/components/MatrizDeExigencias'
 import ConversaComOEdital from '@/components/ConversaComOEdital'
@@ -83,7 +84,7 @@ const TOM_DA_SEVERIDADE: Record<string, Tom> = {
   baixa: 'neutral',
 }
 
-const ABAS = ['informacoes', 'resultado', 'itens', 'analise', 'habilitacao', 'exigencias', 'checklist', 'plano', 'documentos'] as const
+const ABAS = ['informacoes', 'resultado', 'itens', 'analise', 'habilitacao', 'exigencias', 'concorrentes', 'checklist', 'plano', 'documentos'] as const
 
 type TabId = (typeof ABAS)[number]
 
@@ -500,6 +501,7 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
     { id: 'analise', label: 'Análise' },
     { id: 'habilitacao', label: 'Habilitação' },
     { id: 'exigencias', label: 'Exigências' },
+    { id: 'concorrentes', label: 'Concorrentes' },
     {
       id: 'checklist',
       label: (
@@ -671,6 +673,8 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
           {activeTab === 'habilitacao' && <PainelDoFiscal tenderId={id} />}
 
           {activeTab === 'exigencias' && <MatrizDeExigencias tenderId={id} />}
+
+          {activeTab === 'concorrentes' && <EstrategistaDeConcorrentes tenderId={id} />}
 
           {activeTab === 'documentos' && <DocumentosDaLicitacao tenderId={id} escolhida={escolhida} escolhendo={escolhendo} onEscolher={escolherLicitacao} />}
 
