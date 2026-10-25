@@ -819,11 +819,17 @@
   position: absolute;
   z-index: 3;
   top: 0;
-  right: 0;
+  left: 0;
+  right: auto;
   width: min(250px, 54%);
   padding: 10px 14px;
   font-size: 13.5px;
   animation: az-flutuar 6s ease-in-out infinite;
+}
+
+.az-palco-balao::after {
+  left: 30px;
+  right: auto;
 }
 
 .az-palco-celular {
@@ -905,6 +911,11 @@
     right: auto;
     left: 50%;
     width: 280px;
+  }
+
+  .az-palco-balao::after {
+    left: auto;
+    right: 34px;
   }
 
   .az-palco-celular {
