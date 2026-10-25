@@ -3,7 +3,7 @@
 import { formatarData, formatarDataDaLicitacao, palavraDias } from '@/lib/datas'
 import { Fragment, use, useCallback, useEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowRight, FileDown, FileSignature, FolderArchive, Gavel, Plus, RefreshCw, Save, Search, Trash2 } from 'lucide-react'
+import { ArrowRight, Coins, FileDown, FileSignature, FolderArchive, Gavel, Plus, RefreshCw, Save, Search, Trash2 } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
 import { api, ApiRequestError, baixarArquivo } from '@/lib/api'
 import { useAvisoDeAlteracoesNaoSalvas } from '@/hooks/useAvisoDeAlteracoesNaoSalvas'
@@ -128,6 +128,7 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
   const [erro, setErro] = useState<string | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
   const [salvando, setSalvando] = useState(false)
+  const [preenchendoDaBase, setPreenchendoDaBase] = useState(false)
   const [gerandoPacote, setGerandoPacote] = useState(false)
   const [sujo, setSujo] = useState(false)
   useAvisoDeAlteracoesNaoSalvas(sujo)
@@ -207,6 +208,39 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
       return false
     } finally {
       setSalvando(false)
+    }
+  }
+
+  // Agente de Orçamento: puxa o custo de cada item da base de preços da empresa
+  // (casando pela descrição). Preenche só os itens ainda sem custo, pra não
+  // apagar o que o usuário já digitou; ele confere e salva.
+  async function preencherDaBase() {
+    if (!dados) return
+    setPreenchendoDaBase(true)
+    setErro(null)
+    try {
+      const r = await api.post<{ sugestoes: Record<string, { custoUnit: number }>; encontrados: number }>(`/api/estudos/${id}/custos-da-base`, {})
+      const aPreencher = Object.keys(r.sugestoes).filter((itemId) => (dados.itens[itemId]?.custoUnit ?? null) === null)
+      if (aPreencher.length > 0) {
+        alterar((d) => {
+          const itens = { ...d.itens }
+          for (const itemId of aPreencher) {
+            const atual = itens[itemId] ?? { custoUnit: null, precoVendaUnit: null }
+            itens[itemId] = { ...atual, custoUnit: r.sugestoes[itemId].custoUnit }
+          }
+          return { ...d, itens }
+        })
+      }
+      const jaTinham = r.encontrados - aPreencher.length
+      setAviso(
+        r.encontrados === 0
+          ? 'Nenhum item casou com a sua base de preços. Cadastre os custos em “Base de preços” e tente de novo.'
+          : `${aPreencher.length} custo(s) preenchido(s) pela sua base${jaTinham > 0 ? ` (${jaTinham} item(ns) já tinham custo e foram mantidos)` : ''}. Confira e salve.`,
+      )
+    } catch (e) {
+      setErro(e instanceof ApiRequestError ? e.message : 'Não foi possível consultar sua base de preços.')
+    } finally {
+      setPreenchendoDaBase(false)
     }
   }
 
@@ -382,6 +416,13 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
               </Button>
             </div>
           )}
+
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <Button variant="secondary" icon={Coins} onClick={preencherDaBase} loading={preenchendoDaBase} disabled={preenchendoDaBase}>
+              Preencher custos pela minha base
+            </Button>
+            <TextLink href="/base-de-precos">Gerenciar base de preços</TextLink>
+          </div>
 
           <TableWrap minWidth={1400}>
             <Table>

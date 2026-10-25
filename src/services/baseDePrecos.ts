@@ -273,3 +273,72 @@ export async function importarPlanilha(companyId: string, userId: string, buffer
 }
 
 export class ImportacaoInvalida extends Error {}
+
+// ---- Casar a base com os itens de uma licitação (Agente de Orçamento) ----
+
+// Abaixo disto a descrição é parecida demais com qualquer coisa para sugerir.
+// É só sugestão (o usuário confere), então pode ser folgado.
+export const SIMILARIDADE_MINIMA_DA_BASE = 0.3
+
+export interface SugestaoDeCusto {
+  precoId: string
+  custoUnit: number
+  descricao: string
+  fonte: FonteDePreco
+  dataDoPreco: string
+  desatualizado: boolean
+  similaridade: number
+}
+
+type LinhaDaSugestao = {
+  item_id: string
+  id: string
+  descricao: string
+  custo_unitario: Prisma.Decimal | string
+  fonte: FonteDePreco
+  data_do_preco: Date
+  semelhanca: number | string
+}
+
+// Para cada item (id + descrição), acha o preço da base mais parecido por
+// trigramas (índice GIN em descricao_norm). Item sem nada acima do piso fica
+// de fora do resultado. Não grava nada — quem decide usar é a tela do estudo.
+export async function sugerirCustosParaItens(companyId: string, itens: { id: string; descricao: string }[]): Promise<Record<string, SugestaoDeCusto>> {
+  const pedidos = itens
+    .map((i) => ({ id: i.id, descricao: normalizarDescricao(i.descricao) }))
+    .filter((p) => p.descricao.length >= 3)
+  if (pedidos.length === 0) return {}
+  const ids = pedidos.map((p) => p.id)
+  const descricoes = pedidos.map((p) => p.descricao)
+
+  const linhas = await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT set_config('pg_trgm.similarity_threshold', ${String(SIMILARIDADE_MINIMA_DA_BASE)}, true)`
+    return tx.$queryRaw<LinhaDaSugestao[]>`
+      SELECT pedido.item_id, p.*
+      FROM unnest(${ids}::text[], ${descricoes}::text[]) AS pedido(item_id, descricao)
+      CROSS JOIN LATERAL (
+        SELECT pb.id, pb.descricao, pb.custo_unitario, pb.fonte, pb.data_do_preco,
+               similarity(pb.descricao_norm, pedido.descricao) AS semelhanca
+        FROM precos_base pb
+        WHERE pb.company_id = ${companyId}
+          AND pb.descricao_norm % pedido.descricao
+        ORDER BY semelhanca DESC, pb.data_do_preco DESC, pb.id
+        LIMIT 1
+      ) p`
+  })
+
+  const saida: Record<string, SugestaoDeCusto> = {}
+  for (const l of linhas) {
+    const data = l.data_do_preco
+    saida[l.item_id] = {
+      precoId: l.id,
+      custoUnit: Number(l.custo_unitario),
+      descricao: l.descricao,
+      fonte: l.fonte,
+      dataDoPreco: data.toISOString(),
+      desatualizado: estaDesatualizado(data),
+      similaridade: Math.round(Number(l.semelhanca) * 100) / 100,
+    }
+  }
+  return saida
+}

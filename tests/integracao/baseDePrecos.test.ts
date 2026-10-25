@@ -153,4 +153,42 @@ rodar('Base de preços', () => {
     })
     expect(r.status).toBe(422)
   })
+
+  it('sugere o custo dos itens do estudo a partir da base (Agente de Orçamento)', async () => {
+    const empresaA = await prisma.user.findFirst({ where: { email: `bp-a-${sufixo}@teste.local` }, select: { id: true, companyId: true } })
+
+    // Cadastra via API para a descricaoNorm usar a mesma normalização do match.
+    await fetch(`${base}/api/base-de-precos`, {
+      method: 'POST',
+      headers: auth(tokenA),
+      body: JSON.stringify({ descricao: `Cimento Portland CP II 50 kg ${sufixo}`, tipo: 'MATERIAL', custoUnitario: 34, fonte: 'PROPRIA' }),
+    })
+
+    const tender = await prisma.tender.create({
+      data: {
+        fonte: 'PNCP', fonteId: `estudo-${sufixo}`, modalidade: 'PREGAO_ELETRONICO', situacao: 'ABERTA',
+        objeto: `obra ${sufixo}`, objetoNorm: `obra ${sufixo}`, encerramentoAt: new Date(Date.now() + 5 * 86_400_000), uf: 'SP', rawJson: {},
+        items: {
+          create: [
+            { numeroItem: 1, descricao: `Cimento Portland CP II 50 kg ${sufixo}`, quantidade: '10', valorUnitario: '40' },
+            { numeroItem: 2, descricao: `Serviço de pintura acrílica ${sufixo}`, quantidade: '5', valorUnitario: '25' },
+          ],
+        },
+      },
+      include: { items: { orderBy: { numeroItem: 'asc' } } },
+    })
+    await prisma.tenderParticipationPlan.create({
+      data: { companyId: empresaA.companyId, userId: empresaA.id, tenderId: tender.id, status: 'VOU_PARTICIPAR', state: { doneIds: [], custom: [] } },
+    })
+
+    const r = (await (await fetch(`${base}/api/estudos/${tender.id}/custos-da-base`, { method: 'POST', headers: auth(tokenA) })).json()) as {
+      encontrados: number
+      sugestoes: Record<string, { custoUnit: number; fonte: string }>
+    }
+    const cimento = tender.items.find((i: { id: string; numeroItem: number | null }) => i.numeroItem === 1)!
+    const pintura = tender.items.find((i: { id: string; numeroItem: number | null }) => i.numeroItem === 2)!
+    expect(r.sugestoes[cimento.id]?.custoUnit).toBe(34)
+    expect(r.sugestoes[cimento.id]?.fonte).toBe('PROPRIA')
+    expect(r.sugestoes[pintura.id]).toBeUndefined() // não há pintura na base
+  })
 })
