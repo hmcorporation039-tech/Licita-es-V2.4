@@ -907,15 +907,17 @@
   }
 
   .az-palco-balao {
-    top: 30px;
-    right: auto;
-    left: 50%;
-    width: 280px;
+    top: 196px;
+    right: -14px;
+    left: auto;
+    width: 210px;
   }
 
   .az-palco-balao::after {
+    top: -9px;
+    bottom: auto;
     left: auto;
-    right: 34px;
+    right: 36px;
   }
 
   .az-palco-celular {
@@ -925,6 +927,13 @@
 
   .az-palco-legenda {
     text-align: right;
+  }
+}
+
+@media (min-width: 1280px) {
+  .az-palco-balao {
+    right: -2px;
+    width: 258px;
   }
 }
 
