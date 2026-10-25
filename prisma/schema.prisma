@@ -80,6 +80,7 @@ model User {
   favoritos          TenderFavorito[]
   authTokens         AuthToken[]
   costStudies        CostStudy[]
+  precosBase         PrecoBase[]
   perguntasAoEdital  EditalPergunta[]
   chamados           Chamado[]
   mensagensDeChamado ChamadoMensagem[]
@@ -155,6 +156,7 @@ model Company {
   requirementProgress  RequirementProgress[]
   tenderMatches        TenderMatch[]
   costStudies          CostStudy[]
+  precosBase           PrecoBase[]
   perguntasAoEdital    EditalPergunta[]
   chamados             Chamado[]
   errosDoSistema       ErroDoSistema[]
@@ -926,6 +928,49 @@ model CostStudy {
 
   @@unique([companyId, tenderId])
   @@map("cost_studies")
+}
+
+// ============================================================
+// AGENTE DE ORÇAMENTO — base de preços PRIVADA da empresa. Catálogo de custos
+// (material, mão de obra, serviço) que a empresa reaproveita entre licitações,
+// para não redigitar o custo de cada item a cada estudo. Alimenta o estudo de
+// custos (lib/estudoDeCustos.ts) casando a descrição do item do edital com a
+// desta base. Isolada por companyId como o resto. `fonte` separa preço PRÓPRIO
+// (o que a empresa paga) de REFERÊNCIA (ex.: SINAPI), que o usuário confirma.
+// `dataDoPreco` permite avisar quando o preço está velho (>90 dias).
+// ============================================================
+
+model PrecoBase {
+  id            String       @id @default(uuid())
+  companyId     String       @map("company_id")
+  userId        String       @map("user_id")
+  descricao     String
+  descricaoNorm String       @map("descricao_norm")
+  unidade       String?
+  tipo          TipoDeCusto  @default(MATERIAL)
+  custoUnitario Decimal      @map("custo_unitario") @db.Decimal(14, 2)
+  fonte         FonteDePreco @default(PROPRIA)
+  observacao    String?
+  dataDoPreco   DateTime     @default(now()) @map("data_do_preco")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@map("precos_base")
+}
+
+enum TipoDeCusto {
+  MATERIAL
+  MAO_DE_OBRA
+  SERVICO
+}
+
+enum FonteDePreco {
+  PROPRIA
+  REFERENCIA
 }
 
 model CompanyLogo {

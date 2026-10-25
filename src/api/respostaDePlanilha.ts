@@ -3,7 +3,7 @@ import { registrarAuditoria } from '../services/auditService'
 import { diaDeBrasilia } from '../lib/dataDeBrasilia'
 import { TIPO_DO_XLSX } from '../lib/planilhaXlsx'
 
-export type TipoDePlanilhaExportada = 'matches' | 'escolhidas'
+export type TipoDePlanilhaExportada = 'matches' | 'escolhidas' | 'base-de-precos'
 
 export function nomeDoArquivoDaPlanilha(tipo: TipoDePlanilhaExportada, agora: Date = new Date()): string {
   return `licita-bela-${tipo}-${diaDeBrasilia(agora)}.xlsx`
