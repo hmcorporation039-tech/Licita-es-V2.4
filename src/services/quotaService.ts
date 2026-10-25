@@ -62,7 +62,16 @@ export async function pedidosDeAnaliseNaUltimaHora(companyId: string, agora: Dat
 
 export async function usoDaEmpresa(companyId: string): Promise<UsoDaEmpresa> {
   const inicioDoMes = inicioDoMesBrasilia()
-  const [itensMonitorados, usuarios, analisesConcluidas, emAndamento, perguntasAoEditalMes, mensagensDeSuporteMes] = await Promise.all([
+  const [
+    itensMonitorados,
+    usuarios,
+    analisesConcluidas,
+    emAndamento,
+    perguntasAoEditalMes,
+    mensagensDeSuporteMes,
+    concorrenteConcluidas,
+    concorrenteEmAndamento,
+  ] = await Promise.all([
     // Conta todos (ativos ou não): senão desativar e recriar burlaria o limite.
     prisma.monitoredItem.count({ where: { companyId } }),
     prisma.user.count({ where: { companyId, active: true } }),
@@ -71,8 +80,19 @@ export async function usoDaEmpresa(companyId: string): Promise<UsoDaEmpresa> {
     analisesEmAndamento(companyId),
     prisma.editalPergunta.count({ where: { companyId, createdAt: { gte: inicioDoMes } } }),
     prisma.mensagemDeSuporte.count({ where: { companyId, papel: 'USUARIO', createdAt: { gte: inicioDoMes } } }),
+    // Análise de concorrente: cada execução bem-sucedida gasta IA (etapa própria).
+    prisma.aiUsage.count({ where: { companyId, status: 'OK', etapa: 'habilitacao-concorrente', createdAt: { gte: inicioDoMes } } }),
+    // Em curso (reservadas pela rota ou rodando no worker) ainda não gravaram consumo.
+    prisma.analiseDeConcorrente.count({ where: { companyId, status: 'RUNNING' } }),
   ])
-  return { itensMonitorados, usuarios, analisesIaMes: analisesConcluidas + emAndamento, perguntasAoEditalMes, mensagensDeSuporteMes }
+  return {
+    itensMonitorados,
+    usuarios,
+    analisesIaMes: analisesConcluidas + emAndamento,
+    perguntasAoEditalMes,
+    mensagensDeSuporteMes,
+    analisesDeConcorrenteMes: concorrenteConcluidas + concorrenteEmAndamento,
+  }
 }
 
 export async function resumoDeCotas(companyId: string) {

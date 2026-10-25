@@ -233,6 +233,15 @@ export interface AnaliseJobPayload {
   userId?: string
 }
 
+// Estrategista de Habilitação: análise por IA dos documentos de um concorrente.
+// Roda na mesma fila 'analise' (job 'analisar-concorrente'), mas por análise
+// (não por licitação) e sempre com a empresa dona, para o isolamento valer.
+export interface AnaliseDeConcorrenteJobPayload {
+  analiseId: string
+  companyId: string
+  userId: string
+}
+
 // Jobs de match antigos, já enfileirados no Redis, não têm o campo `tipo` —
 // o worker discrimina pela presença de tenderMatchId, não por ele.
 export interface NotificadorMatchPayload {

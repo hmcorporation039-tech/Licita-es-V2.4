@@ -18,16 +18,19 @@ rodar('Estrategista de Habilitação (base)', () => {
   const sufixo = randomUUID().slice(0, 8)
   let tokenA = ''
   let tokenB = ''
+  let companyA = ''
+  let userA = ''
   let tenderId = ''
 
-  async function tokenDeEmpresa(rotulo: string): Promise<string> {
+  async function credenciais(rotulo: string): Promise<{ token: string; userId: string; companyId: string }> {
     const { hashPassword } = await import('../../src/services/authService')
     const email = `conc-${rotulo}-${sufixo}@teste.local`
-    await prisma.user.create({
+    const user = await prisma.user.create({
       data: { email, passwordHash: await hashPassword('Senha-forte-123'), emailVerifiedAt: new Date(), company: { create: { name: `E ${rotulo} ${sufixo}` } } },
+      select: { id: true, companyId: true },
     })
     const r = (await (await fetch(base + '/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password: 'Senha-forte-123' }) })).json()) as { token: string }
-    return r.token
+    return { token: r.token, userId: user.id, companyId: user.companyId }
   }
 
   beforeAll(async () => {
@@ -40,8 +43,11 @@ rodar('Estrategista de Habilitação (base)', () => {
     desconectar = () => filas.redisConnection.disconnect()
     server = app.listen(0)
     base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`
-    tokenA = await tokenDeEmpresa('a')
-    tokenB = await tokenDeEmpresa('b')
+    const a = await credenciais('a')
+    tokenA = a.token
+    companyA = a.companyId
+    userA = a.userId
+    tokenB = (await credenciais('b')).token
     tenderId = (await prisma.tender.create({
       data: { fonte: 'PNCP', fonteId: `conc-${sufixo}`, modalidade: 'PREGAO_ELETRONICO', situacao: 'ABERTA', objeto: `obj ${sufixo}`, objetoNorm: `obj ${sufixo}`, encerramentoAt: new Date(Date.now() + 5 * 86_400_000), uf: 'SP', rawJson: {} },
     })).id
@@ -108,5 +114,54 @@ rodar('Estrategista de Habilitação (base)', () => {
     expect(del.status).toBe(204)
     const getDepois = await fetch(`${base}/api/concorrentes/${criada.id}`, { headers: auth(tokenA) })
     expect(getDepois.status).toBe(404)
+  })
+
+  it('analisa o concorrente (IA mockada), grava achados verificados e conta na cota', async () => {
+    const criada = (await (await fetch(`${base}/api/concorrentes`, { method: 'POST', headers: auth(tokenA), body: JSON.stringify({ tenderId, nomeConcorrente: 'Alfa Ltda' }) })).json()) as Analise
+    await fetch(`${base}/api/concorrentes/${criada.id}/arquivos`, { method: 'POST', headers: { Authorization: `Bearer ${tokenA}`, 'Content-Type': 'application/pdf' }, body: PDF })
+
+    const { executarAnaliseDeConcorrente } = await import('../../src/services/analiseDeConcorrente')
+    await executarAnaliseDeConcorrente(
+      companyA,
+      criada.id,
+      { companyId: companyA, userId: userA },
+      {
+        analista: async () => ({
+          resultado: {
+            resumo: 'Concorrente com pendência fiscal.',
+            recomendacao: 'Há base para impugnar a habilitação; revise com advogado.',
+            achados: [{ exigencia: 'Regularidade com o FGTS', categoria: 'fiscal', situacao: 'nao_atende', explicacao: 'CRF vencido.', trecho: 'certidao positiva de debito', documento: 'crf.pdf', gravidade: 'alta' }],
+          },
+          uso: { provider: 'gemini', model: 'mock', inputTokens: 1234, outputTokens: 56 },
+        }),
+      }
+    )
+
+    const depois = (await (await fetch(`${base}/api/concorrentes/${criada.id}`, { headers: auth(tokenA) })).json()) as Analise & {
+      resultado: { achados: { situacao: string; verificacao: { status: string } }[] }
+    }
+    expect(depois.status).toBe('DONE')
+    expect(depois.resultado.achados).toHaveLength(1)
+    expect(depois.resultado.achados[0].situacao).toBe('nao_atende')
+    expect(typeof depois.resultado.achados[0].verificacao.status).toBe('string')
+
+    const { resumoDeCotas } = await import('../../src/services/quotaService')
+    const cotas = await resumoDeCotas(companyA)
+    expect(cotas.recursos.find((r) => r.recurso === 'analisesDeConcorrenteMes')?.usado).toBeGreaterThanOrEqual(1)
+  })
+
+  it('bloqueia a análise quando a cota do plano está esgotada (402)', async () => {
+    await prisma.company.update({ where: { id: companyA }, data: { quotaOverrides: { analisesDeConcorrenteMes: 0 } } })
+    const criada = (await (await fetch(`${base}/api/concorrentes`, { method: 'POST', headers: auth(tokenA), body: JSON.stringify({ tenderId }) })).json()) as Analise
+    await fetch(`${base}/api/concorrentes/${criada.id}/arquivos`, { method: 'POST', headers: { Authorization: `Bearer ${tokenA}`, 'Content-Type': 'application/pdf' }, body: PDF })
+    const r = await fetch(`${base}/api/concorrentes/${criada.id}/analisar`, { method: 'POST', headers: auth(tokenA) })
+    expect(r.status).toBe(402)
+    await prisma.company.update({ where: { id: companyA }, data: { quotaOverrides: {} } })
+  })
+
+  it('não deixa analisar sem nenhum documento (400)', async () => {
+    const criada = (await (await fetch(`${base}/api/concorrentes`, { method: 'POST', headers: auth(tokenA), body: JSON.stringify({ tenderId }) })).json()) as Analise
+    const r = await fetch(`${base}/api/concorrentes/${criada.id}/analisar`, { method: 'POST', headers: auth(tokenA) })
+    expect(r.status).toBe(400)
   })
 })

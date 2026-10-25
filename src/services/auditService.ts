@@ -94,6 +94,7 @@ export const ACOES = [
   'CONCORRENTE_ANALISE_CRIADA',
   'CONCORRENTE_ANALISE_REMOVIDA',
   'CONCORRENTE_ARQUIVO_ENVIADO',
+  'CONCORRENTE_ANALISE_SOLICITADA',
 ] as const
 export type AcaoAuditoria = (typeof ACOES)[number]
 

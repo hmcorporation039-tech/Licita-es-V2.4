@@ -11,14 +11,19 @@ import { asyncHandler, ApiError } from '../asyncHandler'
 import { escritaSensivelLimiter } from '../rateLimit'
 import { prisma } from '../../services/tenderService'
 import { registrarAuditoria } from '../../services/auditService'
+import { exigirCotaDaRequisicao } from '../cotas'
+import { analiseQueue } from '../../queues'
+import { enfileirarSemTravar } from '../../queues/enfileirar'
 import {
   adicionarArquivo,
   ArquivoInvalido,
   criarAnalise,
   LimiteDeArquivos,
   listarAnalises,
+  marcarAnaliseEmAndamento,
   obterAnalise,
   removerAnalise,
+  reverterAnaliseParaPendente,
   TAMANHO_MAXIMO_ARQUIVO,
 } from '../../services/analiseDeConcorrente'
 
@@ -92,5 +97,35 @@ concorrentesRouter.post(
       if (err instanceof ArquivoInvalido) throw new ApiError(err.message.includes('não encontrada') ? 404 : 415, err.message)
       throw err
     }
+  })
+)
+
+// Dispara a análise por IA (roda na fila 'analise'). A cota é conferida antes de
+// reservar: a reserva (status RUNNING) já conta como "em andamento" na própria cota.
+concorrentesRouter.post(
+  '/:id/analisar',
+  escritaSensivelLimiter,
+  asyncHandler(async (req, res) => {
+    const analise = await obterAnalise(req.companyId!, req.params.id)
+    if (!analise) throw new ApiError(404, 'Análise não encontrada')
+    if (analise.arquivos.length === 0) throw new ApiError(400, 'Envie ao menos um documento do concorrente antes de analisar.')
+
+    await exigirCotaDaRequisicao(req, 'analisesDeConcorrenteMes')
+    await marcarAnaliseEmAndamento(req.companyId!, req.params.id)
+    await registrarAuditoria(req, { action: 'CONCORRENTE_ANALISE_SOLICITADA', entityType: 'concorrente', entityId: req.params.id })
+
+    const enfileirou = await enfileirarSemTravar(
+      analiseQueue,
+      'analisar-concorrente',
+      { analiseId: req.params.id, companyId: req.companyId!, userId: req.userId! },
+      'Análise de concorrente',
+      { deduplication: { id: `concorrente-${req.params.id}` } }
+    )
+    if (!enfileirou) {
+      await reverterAnaliseParaPendente(req.companyId!, req.params.id)
+      throw new ApiError(503, 'A fila de análise está indisponível no momento — tente de novo em alguns minutos')
+    }
+
+    res.status(202).json(await obterAnalise(req.companyId!, req.params.id))
   })
 )
