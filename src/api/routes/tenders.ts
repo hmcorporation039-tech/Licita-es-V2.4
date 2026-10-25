@@ -214,6 +214,33 @@ tendersRouter.get(
   })
 )
 
+// "Minhas salvas" — as licitações favoritadas da empresa (marcador leve, ver
+// model TenderFavorito). Precisa vir ANTES de GET '/:id', senão o Express
+// casa "favoritas" como se fosse um id de licitação.
+tendersRouter.get(
+  '/favoritas',
+  asyncHandler(async (req, res) => {
+    const favoritos = await prisma.tenderFavorito.findMany({
+      where: { companyId: req.companyId! },
+      orderBy: { createdAt: 'desc' },
+      include: { tender: { select: TENDER_PUBLICO } },
+    })
+    res.json(favoritos.map((f) => ({ favoritadaEm: f.createdAt, tender: f.tender })))
+  })
+)
+
+// Só os ids favoritados, para a lista marcar a estrela sem baixar tudo.
+tendersRouter.get(
+  '/favoritas/ids',
+  asyncHandler(async (req, res) => {
+    const favoritos = await prisma.tenderFavorito.findMany({
+      where: { companyId: req.companyId! },
+      select: { tenderId: true },
+    })
+    res.json({ ids: favoritos.map((f) => f.tenderId) })
+  })
+)
+
 tendersRouter.get(
   '/:id',
   asyncHandler(async (req, res) => {
@@ -623,6 +650,39 @@ async function buildPlanResponse(tenderId: string, status: string, state: PlanSt
 // Retorna o plano de participação, criando um vazio na primeira vez. Os
 // marcos automáticos (datas da licitação + prazos da análise por IA) são
 // recalculados a cada consulta — ver participationPlanTemplate.ts.
+// Favoritar / desfavoritar uma licitação (marcador leve "ver depois", ver
+// model TenderFavorito). Idempotente dos dois lados: favoritar de novo não
+// duplica; desfavoritar o que não está salvo não dá erro.
+tendersRouter.post(
+  '/:id/favorito',
+  escritaSensivelLimiter,
+  asyncHandler(async (req, res) => {
+    const companyId = req.companyId!
+
+    const tender = await prisma.tender.findUnique({ where: { id: req.params.id }, select: { id: true } })
+    if (!tender) throw new ApiError(404, 'Licitação não encontrada')
+
+    await prisma.tenderFavorito.upsert({
+      where: { companyId_tenderId: { companyId, tenderId: req.params.id } },
+      update: {},
+      create: { companyId, userId: req.userId!, tenderId: req.params.id },
+    })
+
+    await registrarAuditoria(req, { action: 'LICITACAO_FAVORITADA', entityType: 'tender', entityId: req.params.id })
+    res.status(201).json({ favoritada: true })
+  })
+)
+
+tendersRouter.delete(
+  '/:id/favorito',
+  escritaSensivelLimiter,
+  asyncHandler(async (req, res) => {
+    await prisma.tenderFavorito.deleteMany({ where: { companyId: req.companyId!, tenderId: req.params.id } })
+    await registrarAuditoria(req, { action: 'LICITACAO_DESFAVORITADA', entityType: 'tender', entityId: req.params.id })
+    res.json({ favoritada: false })
+  })
+)
+
 tendersRouter.get(
   '/:id/plano',
   asyncHandler(async (req, res) => {
