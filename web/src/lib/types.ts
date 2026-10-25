@@ -308,6 +308,11 @@ export interface ParticipationPlanListItem {
   tender: Tender
 }
 
+export interface FavoritaListItem {
+  favoritadaEm: string
+  tender: Tender
+}
+
 export type AnalysisStatus = 'PENDING' | 'RUNNING' | 'DONE' | 'FAILED' | 'NO_DOCUMENTS' | 'DISABLED'
 
 export interface AnalysisRisco {

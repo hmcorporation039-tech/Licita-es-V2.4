@@ -4,6 +4,8 @@ import { Fragment, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { ChevronLeft, ChevronRight, SlidersHorizontal, X } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
+import { useFavoritas } from '@/hooks/useFavoritas'
+import BotaoFavorito from '@/components/BotaoFavorito'
 import { api, ApiRequestError } from '@/lib/api'
 import { Paginated, Tender } from '@/lib/types'
 import { MODALIDADE_OPTIONS, agruparPorModalidade } from '@/lib/modalidades'
@@ -81,7 +83,7 @@ const CLASSIFICACAO_LABEL: Record<string, string> = {
   media: 'Relevância média',
 }
 
-function TenderRow({ t, somenteRelacionadas }: { t: TenderComEncerramento; somenteRelacionadas: boolean }) {
+function TenderRow({ t, somenteRelacionadas, favoritas }: { t: TenderComEncerramento; somenteRelacionadas: boolean; favoritas: ReturnType<typeof useFavoritas> }) {
   const objeto = t.objetoResumido ?? t.objeto
   return (
     <Tr interactive>
@@ -89,13 +91,16 @@ function TenderRow({ t, somenteRelacionadas }: { t: TenderComEncerramento; somen
         <Prazo data={fimDasPropostas(t)} />
       </Td>
       <Td className="w-full max-w-0">
-        <div className="flex min-w-0 flex-col">
-          <Link href={`/tenders/${t.id}`} className="line-clamp-2 break-words text-sm font-medium text-ink hover:text-accent hover:underline" title={objeto}>
-            {objeto}
-          </Link>
-          <span className="truncate text-xs text-muted">
-            {t.orgao ?? 'Órgão n/d'} · {local(t)}
-          </span>
+        <div className="flex min-w-0 items-start gap-2">
+          <div className="flex min-w-0 flex-col">
+            <Link href={`/tenders/${t.id}`} className="line-clamp-2 break-words text-sm font-medium text-ink hover:text-accent hover:underline" title={objeto}>
+              {objeto}
+            </Link>
+            <span className="truncate text-xs text-muted">
+              {t.orgao ?? 'Órgão n/d'} · {local(t)}
+            </span>
+          </div>
+          <BotaoFavorito favorita={favoritas.ehFavorita(t.id)} onToggle={() => favoritas.alternar(t.id)} size={16} className="mt-0.5" />
         </div>
       </Td>
       <Td className="whitespace-nowrap text-ink-2">{MODALIDADE_OPTIONS.find((o) => o.value === t.modalidade)?.label ?? t.modalidade}</Td>
@@ -151,6 +156,7 @@ function siglasValidas(texto: string): string[] {
 
 export default function TendersPage() {
   const user = useRequireSession()
+  const favoritas = useFavoritas(!!user)
   const [data, setData] = useState<ListaDeLicitacoes | null>(null)
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
@@ -556,7 +562,7 @@ export default function TendersPage() {
                           </td>
                         </tr>
                         {g.itens.map((t) => (
-                          <TenderRow key={t.id} t={t} somenteRelacionadas={somenteRelacionadas} />
+                          <TenderRow key={t.id} t={t} somenteRelacionadas={somenteRelacionadas} favoritas={favoritas} />
                         ))}
                       </Fragment>
                     ))
@@ -572,7 +578,7 @@ export default function TendersPage() {
                           </td>
                         </tr>
                         {g.tenders.map((t) => (
-                          <TenderRow key={t.id} t={t} somenteRelacionadas={somenteRelacionadas} />
+                          <TenderRow key={t.id} t={t} somenteRelacionadas={somenteRelacionadas} favoritas={favoritas} />
                         ))}
                       </Fragment>
                     ))
@@ -595,13 +601,13 @@ export default function TendersPage() {
                               </td>
                             </tr>
                             {og.tenders.map((t) => (
-                              <TenderRow key={t.id} t={t} somenteRelacionadas={somenteRelacionadas} />
+                              <TenderRow key={t.id} t={t} somenteRelacionadas={somenteRelacionadas} favoritas={favoritas} />
                             ))}
                           </Fragment>
                         ))}
                       </Fragment>
                     ))
-                  : data?.items.map((t) => <TenderRow key={t.id} t={t} somenteRelacionadas={somenteRelacionadas} />)}
+                  : data?.items.map((t) => <TenderRow key={t.id} t={t} somenteRelacionadas={somenteRelacionadas} favoritas={favoritas} />)}
               </tbody>
             </Table>
           </TableWrap>

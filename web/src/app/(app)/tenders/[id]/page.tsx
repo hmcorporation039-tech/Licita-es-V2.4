@@ -5,6 +5,8 @@ import { dataDaLicitacao, faltamDiasUteis, formatarData } from '@/lib/datas'
 import { use, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { AlertCircle, Calculator, Check, CheckCircle2, ChevronDown, ChevronUp, ExternalLink, Gavel, Loader2, Plus, RotateCcw, Trash2 } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
+import { useFavoritas } from '@/hooks/useFavoritas'
+import BotaoFavorito from '@/components/BotaoFavorito'
 import { avisarMudancaDeUso, useUsoDoPlano, type MedidaDeAnalises } from '@/hooks/useUsoDoPlano'
 import MedidorDeAnalises, { textoDoRestante } from '@/components/MedidorDeAnalises'
 import { api, ApiRequestError } from '@/lib/api'
@@ -226,6 +228,7 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
   const { id } = use(params)
   const user = useRequireSession()
   const { medida } = useUsoDoPlano(!!user)
+  const { ehFavorita, alternar } = useFavoritas(!!user)
   const { avisar, dialogo } = useDialogo()
 
   const [tender, setTender] = useState<TenderComEncerramento | null>(null)
@@ -556,6 +559,12 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
         }
         actions={
           <>
+            <BotaoFavorito
+              favorita={ehFavorita(id)}
+              onToggle={() => alternar(id)}
+              comTexto
+              className="rounded-lg border border-line bg-surface px-3 py-2"
+            />
             <CompartilharLicitacao
               licitacao={{
                 id: tender.id,
