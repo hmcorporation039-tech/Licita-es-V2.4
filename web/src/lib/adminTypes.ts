@@ -6,6 +6,7 @@ export interface Limites {
   analisesIaMes: number | null
   perguntasAoEditalMes: number | null
   mensagensDeSuporteMes?: number | null
+  analisesDeConcorrenteMes?: number | null
 }
 
 export interface RecursoDoPlano {

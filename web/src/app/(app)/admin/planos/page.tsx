@@ -13,6 +13,7 @@ const CAMPOS: { chave: keyof Limites; rotulo: string }[] = [
   { chave: 'analisesIaMes', rotulo: 'Análises de IA / mês' },
   { chave: 'perguntasAoEditalMes', rotulo: 'Perguntas ao edital / mês' },
   { chave: 'mensagensDeSuporteMes', rotulo: 'Mensagens ao atendimento / mês' },
+  { chave: 'analisesDeConcorrenteMes', rotulo: 'Análises de concorrente / mês' },
 ]
 
 export default function AdminPlanosPage() {
