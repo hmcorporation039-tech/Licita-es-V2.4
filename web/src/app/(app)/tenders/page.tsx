@@ -43,6 +43,7 @@ import {
 import SeloObraCompleta from '@/components/SeloObraCompleta'
 import InteressePetronect from '@/components/InteressePetronect'
 import { ROTULOS_DE_FONTE } from '@/lib/fontes'
+import { buscarSugestaoDeTermo, type SugestaoDeTermo } from '@/lib/sugestaoDeTermo'
 import { ESTADOS } from '@/lib/estados'
 import { dataDaLicitacao } from '@/lib/datas'
 
@@ -161,6 +162,7 @@ export default function TendersPage() {
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
   const [tentativa, setTentativa] = useState(0)
+  const [sugestao, setSugestao] = useState<SugestaoDeTermo | null>(null)
 
   const [orgao, setOrgao] = useState('')
   const [numero, setNumero] = useState('')
@@ -261,6 +263,23 @@ export default function TendersPage() {
     }, 300)
     return () => clearTimeout(timeout)
   }, [user, orgao, numero, modalidades, municipio, uf, publicacaoInicio, publicacaoFim, q, somenteRelacionadas, agruparPor, ordem, page, tentativa])
+
+  // "Você quis dizer esquadrias?" quando a busca por texto não achou nada. Só
+  // quando há um termo digitado e é o feed completo (no "só relacionadas" o
+  // vazio é falta de item monitorado, não erro de digitação). É só sugestão.
+  useEffect(() => {
+    if (!data || data.items.length > 0 || somenteRelacionadas || !q.trim()) {
+      setSugestao(null)
+      return
+    }
+    let vivo = true
+    buscarSugestaoDeTermo(q.split(/\s+/)).then((s) => {
+      if (vivo) setSugestao(s)
+    })
+    return () => {
+      vivo = false
+    }
+  }, [data, q, somenteRelacionadas])
 
   const grupos = (() => {
     if (agruparPor !== 'estado' || !data) return null
@@ -526,6 +545,24 @@ export default function TendersPage() {
         ) : (
           <EmptyState
             title="Nenhuma licitação encontrada com esses filtros."
+            description={
+              sugestao ? (
+                <>
+                  Você quis dizer{' '}
+                  <button
+                    type="button"
+                    className="font-medium text-accent underline underline-offset-2"
+                    onClick={() => {
+                      setPage(1)
+                      setQ(sugestao.sugerido)
+                    }}
+                  >
+                    {sugestao.sugerido}
+                  </button>
+                  ?
+                </>
+              ) : undefined
+            }
             action={
               <Button size="sm" icon={X} onClick={clearFilters}>
                 Limpar filtros
