@@ -8,7 +8,10 @@
 import { Worker, Job } from 'bullmq'
 import { redisConnection } from '../queues'
 import { prepararConversaDoEdital, runEditalAnalysis } from '../services/editalAnalysisService'
-import { AnaliseJobPayload } from '../types'
+import { executarAnaliseDeConcorrente } from '../services/analiseDeConcorrente'
+import { AnaliseDeConcorrenteJobPayload, AnaliseJobPayload } from '../types'
+
+type JobDaAnalise = AnaliseJobPayload | AnaliseDeConcorrenteJobPayload
 
 export function concorrenciaDaAnalise(env: NodeJS.ProcessEnv = process.env): number {
   const n = Number(env.ANALISE_CONCURRENCY)
@@ -16,14 +19,20 @@ export function concorrenciaDaAnalise(env: NodeJS.ProcessEnv = process.env): num
 }
 
 export function startAnaliseWorker() {
-  const worker = new Worker<AnaliseJobPayload>(
+  const worker = new Worker<JobDaAnalise>(
     'analise',
-    async (job: Job<AnaliseJobPayload>) => {
-      if (job.name === 'preparar-conversa') {
-        await prepararConversaDoEdital(job.data.tenderId)
+    async (job: Job<JobDaAnalise>) => {
+      if (job.name === 'analisar-concorrente') {
+        const d = job.data as AnaliseDeConcorrenteJobPayload
+        await executarAnaliseDeConcorrente(d.companyId, d.analiseId, { companyId: d.companyId, userId: d.userId })
         return
       }
-      await runEditalAnalysis(job.data.tenderId, { companyId: job.data.companyId, userId: job.data.userId })
+      const d = job.data as AnaliseJobPayload
+      if (job.name === 'preparar-conversa') {
+        await prepararConversaDoEdital(d.tenderId)
+        return
+      }
+      await runEditalAnalysis(d.tenderId, { companyId: d.companyId, userId: d.userId })
     },
     {
       connection: redisConnection,
