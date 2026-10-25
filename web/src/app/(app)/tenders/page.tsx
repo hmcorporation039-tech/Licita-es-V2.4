@@ -165,7 +165,7 @@ export default function TendersPage() {
   const [publicacaoFim, setPublicacaoFim] = useState('')
   const [q, setQ] = useState('')
   const [somenteRelacionadas, setSomenteRelacionadas] = useState(true)
-  const [agruparPor, setAgruparPor] = useState<'nao' | 'estado' | 'modalidade'>('nao')
+  const [agruparPor, setAgruparPor] = useState<'nao' | 'estado' | 'modalidade' | 'orgao'>('nao')
   const agrupar = agruparPor !== 'nao'
   const [ordem, setOrdem] = useState<Ordem>('prazo')
   const [versaoDosFiltros, setVersaoDosFiltros] = useState(0)
@@ -196,7 +196,7 @@ export default function TendersPage() {
     if (modalidadesIniciais.length > 0) setModalidades(modalidadesIniciais)
     if (daUrl('ordem') === 'recentes') setOrdem('recentes')
     const agruparUrl = daUrl('agruparPor')
-    if (agruparUrl === 'estado' || agruparUrl === 'modalidade') setAgruparPor(agruparUrl)
+    if (agruparUrl === 'estado' || agruparUrl === 'modalidade' || agruparUrl === 'orgao') setAgruparPor(agruparUrl)
     if (params.get('relacionadas') === '0') setSomenteRelacionadas(false)
     if (Number.isInteger(paginaInicial) && paginaInicial > 1) setPage(paginaInicial)
     if (qInicial || ufValida || municipioInicial || orgaoInicial || numeroInicial || publicacaoInicioInicial || publicacaoFimInicial) setAdvancedOpen(true)
@@ -275,6 +275,19 @@ export default function TendersPage() {
   })()
 
   const gruposPorModalidade = agruparPor === 'modalidade' && data ? agruparPorModalidade(data.items, (t) => t.modalidade) : null
+
+  const gruposPorOrgao = (() => {
+    if (agruparPor !== 'orgao' || !data) return null
+    const porOrgao = new Map<string, Tender[]>()
+    for (const t of data.items) {
+      const chave = t.orgao ?? 'Órgão não informado'
+      if (!porOrgao.has(chave)) porOrgao.set(chave, [])
+      porOrgao.get(chave)!.push(t)
+    }
+    return Array.from(porOrgao.entries())
+      .map(([orgao, tenders]) => ({ orgao, tenders }))
+      .sort((a, b) => b.tenders.length - a.tenders.length || a.orgao.localeCompare(b.orgao, 'pt-BR'))
+  })()
 
   function clearFilters() {
     setPage(1)
@@ -449,12 +462,13 @@ export default function TendersPage() {
                 value={agruparPor}
                 onChange={(e) => {
                   setPage(1)
-                  setAgruparPor(e.target.value as 'nao' | 'estado' | 'modalidade')
+                  setAgruparPor(e.target.value as 'nao' | 'estado' | 'modalidade' | 'orgao')
                 }}
                 className="w-48"
               >
                 <option value="nao">Não agrupar</option>
                 <option value="estado">Estado e Órgão</option>
+                <option value="orgao">Órgão</option>
                 <option value="modalidade">Modalidade</option>
               </Select>
             </label>
@@ -542,6 +556,22 @@ export default function TendersPage() {
                           </td>
                         </tr>
                         {g.itens.map((t) => (
+                          <TenderRow key={t.id} t={t} somenteRelacionadas={somenteRelacionadas} />
+                        ))}
+                      </Fragment>
+                    ))
+                  : gruposPorOrgao
+                  ? gruposPorOrgao.map((g) => (
+                      <Fragment key={`org-${g.orgao}`}>
+                        <tr className="border-b border-line bg-sunken">
+                          <td colSpan={colunas} className="px-4 py-2 text-sm font-semibold text-ink">
+                            {g.orgao}{' '}
+                            <span className="font-normal text-muted">
+                              · <span className="font-mono">{g.tenders.length}</span> {g.tenders.length === 1 ? 'licitação' : 'licitações'}
+                            </span>
+                          </td>
+                        </tr>
+                        {g.tenders.map((t) => (
                           <TenderRow key={t.id} t={t} somenteRelacionadas={somenteRelacionadas} />
                         ))}
                       </Fragment>
