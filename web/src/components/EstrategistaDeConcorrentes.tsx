@@ -15,7 +15,8 @@ import {
   type StatusDaAnalise,
   type StatusDaVerificacao,
 } from '@/lib/concorrentes'
-import { Button, buttonClasses, Carregando, EmptyState, ErrorState, Field, Input, Notice, Panel, StatusTag, cx, type Tom } from '@/components/ui'
+import { Button, Carregando, EmptyState, ErrorState, Field, Input, Notice, Panel, StatusTag, type Tom } from '@/components/ui'
+import MinutaDeRecurso from '@/components/MinutaDeRecurso'
 
 const STATUS_ANALISE: Record<StatusDaAnalise, { tom: Tom; rotulo: string }> = {
   PENDING: { tom: 'neutral', rotulo: 'Aguardando' },
@@ -149,6 +150,9 @@ function CartaoDaAnalise({
             )}
           </div>
           <Achados achados={resultado.achados} />
+          {resultado.achados.some((a) => a.situacao === 'nao_atende' || a.situacao === 'nao_comprovado') && (
+            <MinutaDeRecurso analiseId={analise.id} nomeConcorrente={analise.nomeConcorrente} />
+          )}
         </div>
       )}
     </Panel>

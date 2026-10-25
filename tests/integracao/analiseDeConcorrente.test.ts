@@ -164,4 +164,45 @@ rodar('Estrategista de Habilitação (base)', () => {
     const r = await fetch(`${base}/api/concorrentes/${criada.id}/analisar`, { method: 'POST', headers: auth(tokenA) })
     expect(r.status).toBe(400)
   })
+
+  async function analiseConcluidaComAchado(): Promise<string> {
+    const criada = (await (await fetch(`${base}/api/concorrentes`, { method: 'POST', headers: auth(tokenA), body: JSON.stringify({ tenderId, nomeConcorrente: 'Delta Obras Ltda' }) })).json()) as Analise
+    await fetch(`${base}/api/concorrentes/${criada.id}/arquivos`, { method: 'POST', headers: { Authorization: `Bearer ${tokenA}`, 'Content-Type': 'application/pdf' }, body: PDF })
+    const { executarAnaliseDeConcorrente } = await import('../../src/services/analiseDeConcorrente')
+    await executarAnaliseDeConcorrente(companyA, criada.id, { companyId: companyA, userId: userA }, {
+      analista: async () => ({
+        resultado: { resumo: 'r', recomendacao: 'rec', achados: [{ exigencia: 'Regularidade com o FGTS', categoria: 'fiscal', situacao: 'nao_atende', explicacao: 'CRF vencido.', trecho: '', documento: 'crf.pdf', gravidade: 'alta' }] },
+        uso: { provider: 'gemini', model: 'mock', inputTokens: 100, outputTokens: 10 },
+      }),
+    })
+    return criada.id
+  }
+
+  it('gera a prévia do recurso a partir dos achados', async () => {
+    const id = await analiseConcluidaComAchado()
+    const r = await fetch(`${base}/api/concorrentes/${id}/recurso/previa`, { method: 'POST', headers: auth(tokenA) })
+    expect(r.status).toBe(200)
+    const previa = (await r.json()) as { documento: { tipo: string; blocos: Array<{ tipo: string; texto?: string; local?: string }> } }
+    expect(previa.documento.tipo).toBe('recurso')
+    const texto = previa.documento.blocos.map((b) => b.texto ?? b.local ?? '').join('\n')
+    expect(texto).toContain('Delta Obras Ltda')
+    expect(texto).toContain('Regularidade com o FGTS')
+    expect(texto).toContain('INABILITAR')
+  })
+
+  it('renderiza o recurso em PDF', async () => {
+    const id = await analiseConcluidaComAchado()
+    const previa = (await (await fetch(`${base}/api/concorrentes/${id}/recurso/previa`, { method: 'POST', headers: auth(tokenA) })).json()) as { documento: unknown }
+    const r = await fetch(`${base}/api/concorrentes/${id}/recurso/arquivo`, { method: 'POST', headers: auth(tokenA), body: JSON.stringify({ formato: 'pdf', documento: previa.documento }) })
+    expect(r.status).toBe(200)
+    expect(r.headers.get('content-type')).toBe('application/pdf')
+    const buf = Buffer.from(await r.arrayBuffer())
+    expect(buf.subarray(0, 4).toString('latin1')).toBe('%PDF')
+  })
+
+  it('recusa recurso de análise ainda não concluída (409)', async () => {
+    const criada = (await (await fetch(`${base}/api/concorrentes`, { method: 'POST', headers: auth(tokenA), body: JSON.stringify({ tenderId }) })).json()) as Analise
+    const r = await fetch(`${base}/api/concorrentes/${criada.id}/recurso/previa`, { method: 'POST', headers: auth(tokenA) })
+    expect(r.status).toBe(409)
+  })
 })

@@ -5,7 +5,7 @@ import { asyncHandler, ApiError } from '../asyncHandler'
 import { estudoCalculoLimiter, estudoPdfLimiter } from '../rateLimit'
 import { registrarAuditoria } from '../../services/auditService'
 import { dataDaSessao } from '../../lib/dataDaSessao'
-import { documentoSchema, type DocumentoDaLicitacao } from '../../lib/documentosDaLicitacao/modelo'
+import { documentoSchema, type Certame, type DocumentoDaLicitacao } from '../../lib/documentosDaLicitacao/modelo'
 import { dadosDoCertame, dadosDoProponente } from '../../lib/documentosDaLicitacao/proponente'
 import { propostaComercial, recalcularProposta } from '../../lib/documentosDaLicitacao/proposta'
 import { declaracoes, IDS_DE_DECLARACAO, MODELOS_DE_DECLARACAO } from '../../lib/documentosDaLicitacao/declaracoes'
@@ -27,7 +27,7 @@ const CAMPOS_DA_EMPRESA = {
   dadosBancarios: true, endereco: true, enderecoNumero: true, enderecoComplemento: true, enderecoBairro: true, enderecoCidade: true, enderecoUf: true, cep: true,
 } as const
 
-async function carregarTimbrado(companyId: string): Promise<Timbrado> {
+export async function carregarTimbrado(companyId: string): Promise<Timbrado> {
   const [empresa, logo] = await Promise.all([
     prisma.company.findUniqueOrThrow({ where: { id: companyId }, select: CAMPOS_DA_EMPRESA }),
     prisma.companyLogo.findUnique({ where: { companyId } }),
@@ -36,6 +36,12 @@ async function carregarTimbrado(companyId: string): Promise<Timbrado> {
     proponente: dadosDoProponente(empresa),
     logo: logo && (logo.mimeType === 'image/png' || logo.mimeType === 'image/jpeg') ? { conteudo: Buffer.from(logo.conteudo), mimeType: logo.mimeType } : null,
   }
+}
+
+// Só o certame (tipo nomeável), para quem gera documento fora deste módulo
+// (ex.: o recurso do Estrategista). Evita exportar o retorno largo de carregarCertame.
+export async function carregarCertameParaDocumento(tenderId: string): Promise<Certame> {
+  return (await carregarCertame(tenderId)).certame
 }
 
 async function carregarCertame(tenderId: string) {

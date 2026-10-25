@@ -54,7 +54,7 @@ export interface LogoDaEmpresa {
   updatedAt: string
 }
 
-export type TipoDeDocumentoDaLicitacao = 'proposta' | 'declaracoes' | 'impugnacao' | 'esclarecimento'
+export type TipoDeDocumentoDaLicitacao = 'proposta' | 'declaracoes' | 'impugnacao' | 'esclarecimento' | 'recurso'
 
 export type BlocoDoDocumento =
   | { tipo: 'titulo'; texto: string }
