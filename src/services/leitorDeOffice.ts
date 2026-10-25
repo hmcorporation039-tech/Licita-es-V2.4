@@ -82,6 +82,44 @@ export function extrairTextoDeXlsx(entradas: Record<string, Uint8Array>): string
   return blocos.join('\n\n').slice(0, MAX_CARACTERES_POR_ARQUIVO)
 }
 
+function indiceDaColunaDaRef(ref: string): number {
+  const letras = /^([A-Z]+)/.exec(ref)?.[1]
+  if (!letras) return -1
+  let n = 0
+  for (const ch of letras) n = n * 26 + (ch.charCodeAt(0) - 64)
+  return n - 1
+}
+
+// Lê a 1ª aba do .xlsx como grade de células (texto), preservando a posição da
+// coluna pelo atributo r="A1" das células — diferente de extrairTextoDeXlsx,
+// que junta cada linha num texto só e descarta célula vazia. Usado para
+// importar planilha estruturada (base de preços), em que a coluna importa.
+export function extrairGradeDeXlsx(entradas: Record<string, Uint8Array>): string[][] {
+  const compartilhadas = stringsCompartilhadas(entradas['xl/sharedStrings.xml'] ? strFromU8(entradas['xl/sharedStrings.xml']) : undefined)
+  const nome = Object.keys(entradas)
+    .filter((n) => /^xl\/worksheets\/sheet\d+\.xml$/.test(n))
+    .sort((a, b) => (Number(a.match(/(\d+)/)?.[1]) || 0) - (Number(b.match(/(\d+)/)?.[1]) || 0))[0]
+  if (!nome) return []
+  const xml = strFromU8(entradas[nome])
+  const linhas = xml.match(/<row(?:\s[^>]*)?>[\s\S]*?<\/row>/g) ?? []
+  const grade: string[][] = []
+  for (const linha of linhas) {
+    const celulas = linha.match(/<c(?:\s[^>]*)?(?:\/>|>[\s\S]*?<\/c>)/g) ?? []
+    const porColuna: string[] = []
+    let proxima = 0
+    for (const c of celulas) {
+      const ref = /\sr="([A-Z]+\d+)"/.exec(c)?.[1]
+      const col = ref ? indiceDaColunaDaRef(ref) : proxima
+      if (col < 0) continue
+      porColuna[col] = valorDaCelula(c, compartilhadas)
+      proxima = col + 1
+    }
+    const largura = porColuna.length
+    grade.push(Array.from({ length: largura }, (_, i) => porColuna[i] ?? ''))
+  }
+  return grade
+}
+
 export function extrairTextoDeDocx(entradas: Record<string, Uint8Array>): string {
   const doc = entradas['word/document.xml']
   if (!doc) return ''

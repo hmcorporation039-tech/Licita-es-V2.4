@@ -90,6 +90,7 @@ export const ACOES = [
   'INTERESSE_DE_FONTE',
   'LICITACAO_FAVORITADA',
   'LICITACAO_DESFAVORITADA',
+  'BASE_PRECO_IMPORTADA',
 ] as const
 export type AcaoAuditoria = (typeof ACOES)[number]
 

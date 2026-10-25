@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { zipSync, strToU8 } from 'fflate'
+import { zipSync, strToU8, unzipSync } from 'fflate'
 import { gerarPlanilhaXlsx } from '../src/lib/planilhaXlsx'
-import { extrairTextoDeOffice, extrairTextoDeDocx } from '../src/services/leitorDeOffice'
+import { extrairTextoDeOffice, extrairTextoDeDocx, extrairGradeDeXlsx } from '../src/services/leitorDeOffice'
 
 function docxDeTeste(corpo: string): Buffer {
   const document = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${corpo}</w:body></w:document>`
@@ -65,5 +65,25 @@ describe('leitorDeOffice', () => {
   it('extrairTextoDeDocx sem parágrafos cai no texto solto das tags <w:t>', () => {
     const texto = extrairTextoDeDocx({ 'word/document.xml': strToU8('<w:document><w:t>só um pedaço</w:t></w:document>') })
     expect(texto).toBe('só um pedaço')
+  })
+
+  it('extrairGradeDeXlsx preserva a posição da coluna mesmo com célula vazia no meio', () => {
+    const xlsx = gerarPlanilhaXlsx({
+      nomeDaAba: 'Grade',
+      colunas: [
+        { titulo: 'Descrição', largura: 20 },
+        { titulo: 'Unidade', largura: 10 },
+        { titulo: 'Custo', largura: 10, tipo: 'moeda' },
+      ],
+      linhas: [
+        ['Cimento CP-II', 'sc', 32.9],
+        ['Areia média', '', 120], // unidade vazia no meio não pode deslocar o custo
+      ],
+    })
+    const grade = extrairGradeDeXlsx(unzipSync(new Uint8Array(Buffer.from(xlsx))))
+    expect(grade[0]).toEqual(['Descrição', 'Unidade', 'Custo'])
+    expect(grade[1]).toEqual(['Cimento CP-II', 'sc', '32.9'])
+    expect(grade[2][0]).toBe('Areia média')
+    expect(grade[2][2]).toBe('120') // custo continua na coluna C, não escorrega para a B
   })
 })

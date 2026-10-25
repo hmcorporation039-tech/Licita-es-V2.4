@@ -21,6 +21,7 @@ import { belaRouter } from './routes/bela'
 import { matchesRouter } from './routes/matches'
 import { companyDocumentsRouter } from './routes/companyDocuments'
 import { meusPortaisRouter } from './routes/meusPortais'
+import { baseDePrecosRouter } from './routes/baseDePrecos'
 import { interesseRouter } from './routes/interesse'
 import { dashboardRouter } from './routes/dashboard'
 import { participationPlansRouter } from './routes/participationPlans'
@@ -126,6 +127,7 @@ app.use('/api/tenders', requireAuth, tendersRouter)
 app.use('/api/matches', requireAuth, matchesRouter)
 app.use('/api/company-documents', requireAuth, companyDocumentsRouter)
 app.use('/api/meus-portais', requireAuth, meusPortaisRouter)
+app.use('/api/base-de-precos', requireAuth, baseDePrecosRouter)
 app.use('/api/interesse', requireAuth, interesseRouter)
 app.use('/api/dashboard', requireAuth, dashboardRouter)
 app.use('/api/participation-plans', requireAuth, participationPlansRouter)
