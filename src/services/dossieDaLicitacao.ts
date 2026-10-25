@@ -84,6 +84,7 @@ export async function carregarDossie(companyId: string, tenderId: string): Promi
         ['Pagamento', texto(a.pagamento)],
         ['Esclarecimentos até', texto(a.prazoEsclarecimento)],
         ['Impugnação até', texto(a.prazoImpugnacao)],
+        ['Validade da proposta', texto(a.validadeProposta)],
         ['Garantia da proposta', texto(a.garantiaProposta)],
         ['Garantia contratual', texto(a.garantiaContratual)],
         ['Patrimônio líquido mínimo', texto(a.patrimonioLiquidoMinimo)],

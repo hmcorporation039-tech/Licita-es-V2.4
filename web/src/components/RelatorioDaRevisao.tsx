@@ -17,6 +17,7 @@ const ROTULO_CAMPO: Record<string, string> = {
   adesaoAta: 'Adesão à ata',
   prazoImpugnacao: 'Prazo de impugnação',
   prazoEsclarecimento: 'Prazo de esclarecimento',
+  validadeProposta: 'Validade da proposta',
   garantiaProposta: 'Garantia de proposta',
   garantiaContratual: 'Garantia contratual',
   patrimonioLiquidoMinimo: 'Patrimônio líquido mínimo',

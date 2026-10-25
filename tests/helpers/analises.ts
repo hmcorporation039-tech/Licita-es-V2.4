@@ -17,6 +17,7 @@ export function analiseBase(extra: Partial<EditalAnalysisResult> = {}): EditalAn
     adesaoAta: 'Não se aplica',
     prazoImpugnacao: 'até 3 dias úteis antes da abertura',
     prazoEsclarecimento: 'até 3 dias úteis antes da abertura',
+    validadeProposta: '60 dias',
     garantiaProposta: 'não exigida',
     garantiaContratual: 'não exigida',
     patrimonioLiquidoMinimo: 'não exigido',
