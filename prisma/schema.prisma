@@ -77,6 +77,7 @@ model User {
   checklists         TenderChecklist[]
   companyDocuments   CompanyDocument[]
   participationPlans TenderParticipationPlan[]
+  favoritos          TenderFavorito[]
   authTokens         AuthToken[]
   costStudies        CostStudy[]
   perguntasAoEdital  EditalPergunta[]
@@ -150,6 +151,7 @@ model Company {
   pregoes              PregaoAcompanhamento[]
   checklists           TenderChecklist[]
   participationPlans   TenderParticipationPlan[]
+  favoritos            TenderFavorito[]
   requirementProgress  RequirementProgress[]
   tenderMatches        TenderMatch[]
   costStudies          CostStudy[]
@@ -298,6 +300,7 @@ model Tender {
   checklists          TenderChecklist[]
   analysis            TenderAnalysis?
   participationPlans  TenderParticipationPlan[]
+  favoritos           TenderFavorito[]
   pregoes             PregaoAcompanhamento[]
   requirementProgress RequirementProgress[]
   costStudies         CostStudy[]
@@ -562,6 +565,31 @@ enum ParticipationStatusEnum {
   VOU_PARTICIPAR
   NAO_VOU_PARTICIPAR
   PARTICIPEI
+}
+
+// ============================================================
+// FAVORITAR LICITAÇÃO — marcador leve "salvar para ver depois", sem o peso
+// de um plano de participação (que carrega estudo, proposta, marcos). É um
+// por (empresa, licitação), compartilhado entre os membros da empresa como
+// tudo mais (ver Company); userId é só quem salvou. A tela "Minhas salvas"
+// lista estes. Distinto de "Escolhidas" (TenderParticipationPlan), que é a
+// decisão de participar.
+// ============================================================
+
+model TenderFavorito {
+  id        String   @id @default(uuid())
+  companyId String   @map("company_id")
+  userId    String   @map("user_id")
+  tenderId  String   @map("tender_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tender  Tender  @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, tenderId])
+  @@index([companyId])
+  @@map("tender_favoritos")
 }
 
 // ============================================================

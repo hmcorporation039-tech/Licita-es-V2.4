@@ -88,6 +88,8 @@ export const ACOES = [
   'PREGAO_ROBO_ATIVADO',
   'PREGAO_ROBO_DESATIVADO',
   'INTERESSE_DE_FONTE',
+  'LICITACAO_FAVORITADA',
+  'LICITACAO_DESFAVORITADA',
 ] as const
 export type AcaoAuditoria = (typeof ACOES)[number]
 
