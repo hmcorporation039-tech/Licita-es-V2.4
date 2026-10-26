@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "Bela na disputa",
+  "version": "0.1.0",
+  "description": "Lê o melhor lance da sessão de pregão que você já tem aberta e manda para a Bela sugerir o próximo. Só leitura: não envia lance e não guarda senha.",
+  "permissions": ["storage"],
+  "host_permissions": [
+    "*://*.compras.gov.br/*",
+    "*://*.comprasnet.gov.br/*",
+    "https://*.licitabela.com.br/*",
+    "https://licita-es-v2-4.vercel.app/*",
+    "http://localhost/*",
+    "https://api-production-4375e.up.railway.app/*"
+  ],
+  "background": { "service_worker": "fundo.mjs", "type": "module" },
+  "action": { "default_popup": "popup.html", "default_title": "Bela na disputa" },
+  "content_scripts": [
+    {
+      "matches": ["*://*.compras.gov.br/*", "*://*.comprasnet.gov.br/*"],
+      "js": ["carregador-disputa.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://*.licitabela.com.br/*", "https://licita-es-v2-4.vercel.app/*", "http://localhost/*"],
+      "js": ["carregador-app.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["conteudo-disputa.mjs", "conteudo-app.mjs", "config.mjs", "lib/valor.mjs"],
+      "matches": [
+        "*://*.compras.gov.br/*",
+        "*://*.comprasnet.gov.br/*",
+        "https://*.licitabela.com.br/*",
+        "https://licita-es-v2-4.vercel.app/*",
+        "http://localhost/*"
+      ]
+    }
+  ]
+}
