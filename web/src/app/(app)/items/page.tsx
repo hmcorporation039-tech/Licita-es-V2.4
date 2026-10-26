@@ -7,6 +7,7 @@ import { api, ApiRequestError } from '@/lib/api'
 import { MODELOS_DE_ITEM, type ModeloDeItem } from '@/lib/modelosDeItem'
 import { MonitoredItem, RespostaDaBuscaDoItem, SituacaoDaBusca, UasgResult } from '@/lib/types'
 import { BUSCANDO, ESPERA_MAXIMA_DA_BUSCA_MS, INTERVALO_DA_CONSULTA_DA_BUSCA_MS, camposAlterados, dadosAtuaisDoItem, mensagemDaBusca, situacaoDaResposta } from '@/lib/buscaDoItem'
+import { buscarSugestaoDeTermo, type SugestaoDeTermo } from '@/lib/sugestaoDeTermo'
 import { MODALIDADE_OPTIONS } from '@/lib/modalidades'
 import { dinheiroBrParaEdicao, faixaDeValorBr, lerDinheiroBr } from '@/lib/dinheiroBr'
 import UasgPicker from '@/components/UasgPicker'
@@ -297,6 +298,8 @@ export default function ItemsPage() {
   const [erroCarregar, setErroCarregar] = useState<string | null>(null)
   const [rematchMsg, setRematchMsg] = useState<Record<string, string>>({})
   const buscasAcompanhadas = useRef<Map<string, number>>(new Map())
+  const [sugestoes, setSugestoes] = useState<Record<string, SugestaoDeTermo>>({})
+  const sugestoesPedidas = useRef<Set<string>>(new Set())
 
   const [name, setName] = useState('')
   const [keywords, setKeywords] = useState('')
@@ -395,6 +398,48 @@ export default function ItemsPage() {
 
   function registrarBusca(itemId: string, resposta: RespostaDaBuscaDoItem) {
     setRematchMsg((m) => ({ ...m, [itemId]: mensagemDaBusca(situacaoDaResposta(resposta)) }))
+  }
+
+  // Quando um item termina a busca sem achar nada, pergunta à API a palavra real
+  // mais parecida ("Você quis dizer esquadrias?"). A chave inclui as keywords, então
+  // trocar a palavra do item refaz a pergunta sozinha. É só sugestão — não muda nada.
+  useEffect(() => {
+    for (const item of items) {
+      const s = item.situacaoDaBusca
+      if (!s || s.estado !== 'concluida' || (s.encontrados ?? 0) > 0) continue
+      const chave = `${item.id}:${item.keywords.join('|')}`
+      if (sugestoesPedidas.current.has(chave)) continue
+      sugestoesPedidas.current.add(chave)
+      buscarSugestaoDeTermo(item.keywords).then((sugestao) => {
+        if (sugestao) setSugestoes((m) => ({ ...m, [item.id]: sugestao }))
+      })
+    }
+  }, [items])
+
+  function esquecerSugestao(itemId: string) {
+    setSugestoes((m) => {
+      const { [itemId]: _, ...resto } = m
+      return resto
+    })
+    sugestoesPedidas.current = new Set([...sugestoesPedidas.current].filter((c) => !c.startsWith(`${itemId}:`)))
+  }
+
+  // Troca no item a palavra digitada errada pela sugerida e refaz a busca. A
+  // pessoa pediu explicitamente ao clicar — não é troca automática.
+  async function aplicarSugestao(item: MonitoredItem, sugestao: SugestaoDeTermo) {
+    const semAcento = (texto: string) => texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
+    let trocou = false
+    const keywords = item.keywords.map((k) => (semAcento(k) === sugestao.original ? ((trocou = true), sugestao.sugerido) : k))
+    if (!trocou) keywords.push(sugestao.sugerido)
+    esquecerSugestao(item.id)
+    setRematchMsg((m) => ({ ...m, [item.id]: BUSCANDO }))
+    try {
+      const salvo = await api.patch<MonitoredItem & Partial<RespostaDaBuscaDoItem>>(`/api/monitored-items/${item.id}`, { keywords })
+      if (salvo.busca) registrarBusca(item.id, { ...salvo, busca: salvo.busca })
+      await loadItems()
+    } catch (err) {
+      setRematchMsg((m) => ({ ...m, [item.id]: err instanceof ApiRequestError ? err.message : 'Erro ao aplicar a sugestão' }))
+    }
   }
 
   useEffect(() => {
@@ -772,6 +817,19 @@ export default function ItemsPage() {
                     <p role="status" className="text-xs text-muted lg:text-right">
                       {rematchMsg[item.id] ?? (item.situacaoDaBusca?.estado === 'em-andamento' ? BUSCANDO : null)}
                     </p>
+                    {sugestoes[item.id] && (
+                      <p className="text-xs text-muted lg:text-right">
+                        Você quis dizer{' '}
+                        <button
+                          type="button"
+                          className="font-medium text-accent underline underline-offset-2"
+                          onClick={() => aplicarSugestao(item, sugestoes[item.id])}
+                        >
+                          {sugestoes[item.id].sugerido}
+                        </button>
+                        ?
+                      </p>
+                    )}
                   </div>
                 </li>
               )

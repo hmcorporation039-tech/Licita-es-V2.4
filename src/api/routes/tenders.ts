@@ -24,6 +24,7 @@ import { chaveDaExigencia, ExigenciaVerificada, resumoDaVerificacao } from '../.
 import { analiseParaResposta } from '../../lib/analiseParaResposta'
 import { whereLicitacaoAberta, whereLicitacaoComPrazoConfirmado } from '../../lib/licitacaoAberta'
 import { idsQueCitamOTexto, whereDoMunicipio, whereDoNumeroDoEdital, whereDoOrgao } from '../../services/buscaDeLicitacoes'
+import { sugerirTermoParecido } from '../../services/sugestaoDeTermo'
 import { fatiasDaPagina } from '../../lib/paginacaoEmGrupos'
 import { TENDER_PUBLICO, semRawJson } from '../../lib/tenderPublico'
 import { MAX_ANALISES_POR_HORA, pedidosDeAnaliseNaUltimaHora } from '../../services/quotaService'
@@ -238,6 +239,24 @@ tendersRouter.get(
       select: { tenderId: true },
     })
     res.json({ ids: favoritos.map((f) => f.tenderId) })
+  })
+)
+
+// Sugestão de termo ("Você quis dizer esquadrias?") quando a busca não acha
+// nada. Precisa vir ANTES de GET '/:id', senão o Express casa "sugestao-de-termo"
+// como um id. Só sugere, não muda a busca de ninguém.
+tendersRouter.get(
+  '/sugestao-de-termo',
+  asyncHandler(async (req, res) => {
+    const termos = String(req.query.termos ?? '')
+      .split(/[,\n]/)
+      .map((t) => t.trim())
+      .filter(Boolean)
+    if (termos.length === 0) {
+      res.json({ sugestao: null })
+      return
+    }
+    res.json({ sugestao: await sugerirTermoParecido(termos) })
   })
 )
 
