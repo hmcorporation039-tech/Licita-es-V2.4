@@ -21,6 +21,7 @@ import { belaRouter } from './routes/bela'
 import { matchesRouter } from './routes/matches'
 import { companyDocumentsRouter } from './routes/companyDocuments'
 import { meusPortaisRouter } from './routes/meusPortais'
+import { escritorioRouter } from './routes/escritorio'
 import { baseDePrecosRouter } from './routes/baseDePrecos'
 import { concorrentesRouter } from './routes/concorrentes'
 import { interesseRouter } from './routes/interesse'
@@ -114,6 +115,8 @@ app.use('/api/admin', adminRouter)
 app.use('/api/admin', adminGestaoRouter)
 app.use('/api/admin', adminChamadosRouter)
 app.use('/api/admin', adminCobrancaRouter)
+// Escritório da Bela — visão admin global; o próprio router exige requireAuth + requireAdmin.
+app.use('/api/escritorio', escritorioRouter)
 app.use('/api/cobranca', cobrancaPublicaRouter)
 
 // Todo o resto da plataforma exige sessão válida — a identidade do
