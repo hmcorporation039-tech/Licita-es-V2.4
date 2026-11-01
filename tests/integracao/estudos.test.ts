@@ -55,7 +55,7 @@ rodar('Estudo de custos', () => {
     return { userId: u.id as string, companyId: u.companyId as string, token }
   }
 
-  const dadosBase = (itens: Record<string, { custoUnit: number | null; precoVendaUnit: number | null }>) => ({
+  const dadosBase = (itens: Record<string, { custoUnit: number | null; precoVendaUnit: number | null; fonteDoCusto?: string | null }>) => ({
     versao: 1,
     itens,
     mercado: {},
