@@ -163,6 +163,7 @@ Uma conta nova apareceu no administrador com acesso de 30 dias. O cadastro usava
 - **Meus Portais.** "Autorizado" vira "Autorização registrada" (é o aceite do termo). "Ainda não testado" nunca mudava porque o teste de conexão não existe; como todos os portais da lista pedem CAPTCHA, a coluna passa a dizer "Você entra na disputa". O robô que entra sozinho continua só no desenho (`docs/COMPRASGOVBR_DISPUTA.md`): o login gov.br é sempre da pessoa.
 - **Radar.** Ajuda curta em cada aba e subtítulo que diz que são contratos (antes do edital), não licitações abertas.
 - **Base de preços.** Bloco "Como funciona"; a importação atualiza o preço que já existe (mesma descrição e unidade) em vez de duplicar, e só troca a data quando o custo muda.
+- **Teste grátis: 14 dias** (decisão confirmada em 01/11; o #103 de 20/10 já está no ar com 14 no cadastro, nos Termos e no admin).
 - Teste de integração `aderencia` passa a olhar só a licitação dele (num banco com sobras de outras rodadas pegava outra licitação de "notebook").
 
 ### Pendente (próxima sessão)
