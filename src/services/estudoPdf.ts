@@ -195,6 +195,14 @@ export function gerarPdfDoEstudo(e: EntradaDoPdf): Promise<Buffer> {
     const r = e.resultado
     titulo('Estudo de custos: resultado')
     const corLucro = r.lucro >= 0 ? COR.bom : COR.ruim
+    if (r.contrato) {
+      const c = r.contrato
+      par('Tipo de contrato', `serviço contínuo: ${c.vigenciaMeses} meses de vigência, ${c.mesesFaturados} faturados (valores dos itens por mês)`)
+      par('Por mês', `receita ${brl(c.receitaMensal)} - custo ${brl(c.custoMensal)} - impostos ${brl(c.impostosMensais)} = lucro ${brl(c.lucroMensal)}`, c.lucroMensal >= 0 ? COR.texto : COR.ruim)
+      if (c.custosUnicos > 0) {
+        par('Custos únicos e deslocamento', `${brl(c.custosUnicos)}; ${c.mesesParaRecuperar === null ? 'não se pagam' : `se pagam em ${c.mesesParaRecuperar} mês(es)`}`)
+      }
+    }
     par('Receita (seus preços de venda)', brl(r.receita))
     par('Custo dos itens', brl(r.custoItens))
     par('Deslocamento', brl(r.custoDeslocamento))
@@ -210,6 +218,32 @@ export function gerarPdfDoEstudo(e: EntradaDoPdf): Promise<Buffer> {
     }
     if (r.receita > 0) par(r.lucro >= 0 ? 'Lucro estimado' : 'Resultado com seus preços', `${brl(r.lucro)}   (margem ${pct(r.margemPct)})`, corLucro)
     par(`Preço mínimo (margem de ${pct(e.dados.margemDesejadaPct)})`, r.receitaMinima === null ? '—' : brl(r.receitaMinima))
+
+    if (r.custoItens > 0) {
+      const o = r.origemDosCustos
+      par(
+        'Origem do custo dos itens',
+        `cotação/base ${brl(o.firme)}; mercado ${brl(o.referencia)}; estimativa ${brl(o.estimativa)}; sem origem ${brl(o.semOrigem)}` +
+          (o.pctSemCotacao !== null ? ` (${pct(o.pctSemCotacao)} sem cotação nem base)` : ''),
+        o.pctSemCotacao !== null && o.pctSemCotacao >= 50 ? COR.alerta : COR.texto
+      )
+    }
+    const comPrejuizo = e.itens.filter((_, i) => r.itens[i]?.prejuizo)
+    if (comPrejuizo.length > 0) {
+      par('Itens com prejuízo', comPrejuizo.map((it) => `item ${it.numero ?? '?'}`).join(', '), COR.ruim)
+    }
+    if (r.negociacao) {
+      const n = r.negociacao
+      par(
+        'Negociação',
+        `sobre ${n.origemDaReferencia === 'seus_precos' ? 'os seus preços' : 'o estimado do órgão'} (${brl(n.receitaReferencia)}): custo de equilíbrio ${brl(n.custoDeEquilibrio)}` +
+          (n.descontoMaximoSemPrejuizo !== null ? `; desconto máximo sem prejuízo ${pct(n.descontoMaximoSemPrejuizo)}` : '')
+      )
+      par(
+        'Custo máximo por margem',
+        n.tetos.map((t) => `${pct(t.margemPct)}: ${brl(t.custoMaximo)}${t.custoMaximoMensal !== null ? ` (${brl(t.custoMaximoMensal)}/mês)` : ''}`).join('; ')
+      )
+    }
 
     if (r.cenarios.length > 0) {
       doc.moveDown(0.6).font('Helvetica-Bold').fontSize(10).fillColor(COR.texto).text('Cenários de lance', MARGEM, doc.y, { width: largura })
@@ -320,7 +354,8 @@ export function gerarPdfDoEstudo(e: EntradaDoPdf): Promise<Buffer> {
 
     if (e.dados.outrosCustos.length > 0) {
       titulo('Outros custos')
-      for (const o of e.dados.outrosCustos) par(o.descricao || 'Outro custo', brl(o.valor))
+      const continuo = e.dados.contrato?.tipo === 'continuo'
+      for (const o of e.dados.outrosCustos) par(o.descricao || 'Outro custo', `${brl(o.valor)}${continuo ? (o.tipo === 'mensal' ? ' por mês' : ' (uma vez)') : ''}`)
     }
 
     // ---- Prazo ----

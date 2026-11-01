@@ -499,3 +499,186 @@ describe('PDF do estudo', () => {
     expect((pdf.toString('latin1').match(/\/Type \/Page\b/g) ?? []).length).toBeGreaterThan(1)
   })
 })
+
+describe('calcularEstudo: serviço contínuo (mensal × vigência)', () => {
+  const continuo = (extra: Partial<DadosDoEstudo> = {}) =>
+    dados({
+      itens: { a: { custoUnit: 1000, precoVendaUnit: 2000 } },
+      impostosPct: 10,
+      outrosCustos: [
+        { descricao: 'Bases de concreto', valor: 5000, tipo: 'unico' },
+        { descricao: 'Zeladoria', valor: 300, tipo: 'mensal' },
+      ],
+      contrato: { tipo: 'continuo', vigenciaMeses: 12, mesesSemFaturar: 2 },
+      ...extra,
+    })
+
+  it('multiplica os valores mensais pelos meses faturados e soma os custos únicos uma vez', () => {
+    const r = calcularEstudo([item('a', 2)], continuo(), ctx)
+    expect(r.receita).toBe(2 * 2000 * 10)
+    expect(r.custoItens).toBe(2 * 1000 * 10)
+    expect(r.custoOutros).toBe(5000 + 300 * 10)
+    expect(r.impostos).toBe(4000)
+    expect(r.lucro).toBe(8000)
+    expect(r.contrato).toEqual({
+      vigenciaMeses: 12,
+      mesesFaturados: 10,
+      receitaMensal: 4000,
+      custoMensal: 2300,
+      impostosMensais: 400,
+      lucroMensal: 1300,
+      custosUnicos: 5000,
+      custosUnicosPorMes: 500,
+      mesesParaRecuperar: 4,
+    })
+    // O lucro do contrato é o lucro mensal nos meses faturados menos os custos únicos.
+    expect(r.contrato!.lucroMensal * r.contrato!.mesesFaturados - r.contrato!.custosUnicos).toBe(r.lucro)
+  })
+
+  it('preço mínimo unitário é por mês e, vendido nele, dá a margem desejada no contrato', () => {
+    const r = calcularEstudo([item('a', 2)], continuo(), ctx)
+    const minimo = r.itens[0].precoMinimoUnit!
+    const vendido = calcularEstudo([item('a', 2)], continuo({ itens: { a: { custoUnit: 1000, precoVendaUnit: minimo } } }), ctx)
+    expect(vendido.margemPct!).toBeGreaterThanOrEqual(10)
+    expect(vendido.margemPct!).toBeLessThan(10.1)
+    expect(r.receitaMinima).toBeCloseTo(2 * minimo * 10, 0)
+  })
+
+  it('avisa quando os custos únicos não se pagam dentro da vigência', () => {
+    const r = calcularEstudo([item('a', 2)], continuo({ outrosCustos: [{ descricao: 'Obra', valor: 50_000, tipo: 'unico' }] }), ctx)
+    expect(r.contrato!.mesesParaRecuperar).toBe(32) // 50.000 ÷ (4.000 − 2.000 − 400)
+    expect(r.avisos.some((a) => a.includes('levam 32 meses para se pagar'))).toBe(true)
+  })
+
+  it('avisa quando a quantidade do item já está em meses', () => {
+    const r = calcularEstudo([{ ...item('a', 60), unidade: 'Mês' }], continuo(), ctx)
+    expect(r.avisos.some((a) => a.includes('quantidade em meses'))).toBe(true)
+  })
+
+  it('usa o valor da licitação como total do contrato e avisa para conferir', () => {
+    const r = calcularEstudo([item('a', 2, 1500)], continuo(), { distanciaLinhaRetaKm: null, valorEstimadoTotal: 50_000 })
+    expect(r.estimadoPeloOrgao).toBe(50_000)
+    expect(r.avisos.some((a) => a.includes('total do contrato'))).toBe(true)
+  })
+
+  it('na compra única, custo "mensal" conta uma vez e não há resumo mensal', () => {
+    const r = calcularEstudo([item('a', 2)], continuo({ contrato: { tipo: 'unico', vigenciaMeses: 60, mesesSemFaturar: 0 } }), ctx)
+    expect(r.receita).toBe(4000)
+    expect(r.custoOutros).toBe(5300)
+    expect(r.contrato).toBeNull()
+  })
+
+  it('estudo antigo, sem tipo de contrato, calcula como antes', () => {
+    const { contrato: _semContrato, ...antigo } = dados({ itens: { a: { custoUnit: 10, precoVendaUnit: 20 } } })
+    const r = calcularEstudo([item('a', 3)], antigo as DadosDoEstudo, ctx)
+    expect(r.receita).toBe(60)
+    expect(r.contrato).toBeNull()
+  })
+})
+
+describe('calcularEstudo: lucro por item', () => {
+  it('rateia deslocamento e outros custos pelo custo e acha o item que dá prejuízo', () => {
+    const itens = [item('a', 10), { ...item('b', 5), numero: 2 }]
+    const r = calcularEstudo(
+      itens,
+      dados({
+        itens: { a: { custoUnit: 100, precoVendaUnit: 150 }, b: { custoUnit: 200, precoVendaUnit: 210 } },
+        outrosCustos: [{ descricao: 'Frete', valor: 300 }],
+      }),
+      ctx,
+    )
+    // Custo dos itens 1000 + 1000: cada um leva metade do frete (150).
+    expect(r.itens[0]).toMatchObject({ lucro: 1500 - 1000 - 150, prejuizo: false, margemPct: 23.33 })
+    expect(r.itens[1]).toMatchObject({ lucro: 1050 - 1000 - 150, prejuizo: true })
+    expect(r.lucro).toBe(r.itens[0].lucro! + r.itens[1].lucro!)
+    expect(r.avisos.some((a) => a.startsWith('Dá prejuízo com os seus preços: item 2.'))).toBe(true)
+  })
+
+  it('item sem custo ou sem preço fica sem lucro calculado', () => {
+    const r = calcularEstudo([item('a', 1)], dados({ itens: { a: { custoUnit: 10, precoVendaUnit: null } } }), ctx)
+    expect(r.itens[0]).toMatchObject({ lucro: null, margemPct: null, prejuizo: false })
+  })
+})
+
+describe('calcularEstudo: tabela de negociação', () => {
+  const base = dados({ itens: { a: { custoUnit: 600, precoVendaUnit: 1000 } }, impostosPct: 10, margemDesejadaPct: 12 })
+
+  it('custo máximo por margem, custo de equilíbrio e desconto máximo sem prejuízo', () => {
+    const n = calcularEstudo([item('a', 10)], base, ctx).negociacao!
+    expect(n.receitaReferencia).toBe(10_000)
+    expect(n.origemDaReferencia).toBe('seus_precos')
+    expect(n.custoAtual).toBe(6000)
+    expect(n.custoDeEquilibrio).toBe(9000)
+    expect(n.tetos.map((t) => t.margemPct)).toEqual([10, 12, 15, 20, 25, 30])
+    expect(n.tetos.find((t) => t.margemPct === 20)).toEqual({ margemPct: 20, custoMaximo: 7000, folga: 1000, custoMaximoMensal: null })
+    expect(n.tetos.find((t) => t.margemPct === 30)!.folga).toBe(0)
+    expect(n.lances.find((l) => l.descontoPct === 10)).toEqual({ descontoPct: 10, receita: 9000, lucro: 2100, margemPct: 23.33 })
+    // 6000 / 0,9 = 6666,67 → até 33,3% de desconto.
+    expect(n.descontoMaximoSemPrejuizo).toBe(33.3)
+  })
+
+  it('vender no custo máximo de uma margem dá exatamente essa margem', () => {
+    const n = calcularEstudo([item('a', 10)], base, ctx).negociacao!
+    for (const t of n.tetos) {
+      const custoUnit = t.custoMaximo / 10
+      const r = calcularEstudo([item('a', 10)], dados({ ...base, itens: { a: { custoUnit, precoVendaUnit: 1000 } } }), ctx)
+      expect(r.margemPct).toBeCloseTo(t.margemPct, 1)
+    }
+  })
+
+  it('sem preços de venda usa o estimado do órgão; sem nenhum dos dois, não há tabela', () => {
+    const semVenda = dados({ itens: { a: { custoUnit: 600, precoVendaUnit: null } } })
+    expect(calcularEstudo([item('a', 10, 900)], semVenda, ctx).negociacao).toMatchObject({ origemDaReferencia: 'estimado_orgao', receitaReferencia: 9000 })
+    expect(calcularEstudo([item('a', 10)], semVenda, ctx).negociacao).toBeNull()
+  })
+
+  it('no serviço contínuo, dá o teto por mês já descontados os custos únicos', () => {
+    const r = calcularEstudo(
+      [item('a', 1)],
+      dados({
+        itens: { a: { custoUnit: 1000, precoVendaUnit: 2000 } },
+        outrosCustos: [{ descricao: 'Base', valor: 1200, tipo: 'unico' }],
+        contrato: { tipo: 'continuo', vigenciaMeses: 12, mesesSemFaturar: 0 },
+      }),
+      ctx,
+    )
+    const teto = r.negociacao!.tetos.find((t) => t.margemPct === 20)!
+    expect(teto.custoMaximo).toBe(24_000 * 0.8)
+    expect(teto.custoMaximoMensal).toBe((19_200 - 1200) / 12)
+  })
+
+  it('quando já dá prejuízo, o desconto máximo é negativo', () => {
+    const r = calcularEstudo([item('a', 1)], dados({ itens: { a: { custoUnit: 1200, precoVendaUnit: 1000 } } }), ctx)
+    expect(r.negociacao!.descontoMaximoSemPrejuizo).toBeLessThan(0)
+  })
+})
+
+describe('calcularEstudo: origem dos custos', () => {
+  const itens = [item('a', 1), item('b', 1), item('c', 1), item('d', 1)]
+
+  it('separa cotação/base, mercado, estimativa e sem origem', () => {
+    const r = calcularEstudo(
+      itens,
+      dados({
+        itens: {
+          a: { custoUnit: 100, precoVendaUnit: null, fonteDoCusto: 'COTACAO' },
+          b: { custoUnit: 50, precoVendaUnit: null, fonteDoCusto: 'BASE' },
+          c: { custoUnit: 30, precoVendaUnit: null, fonteDoCusto: 'MERCADO' },
+          d: { custoUnit: 20, precoVendaUnit: null, fonteDoCusto: 'ESTIMATIVA' },
+        },
+      }),
+      ctx,
+    )
+    expect(r.origemDosCustos).toEqual({ firme: 150, referencia: 30, estimativa: 20, semOrigem: 0, pctSemCotacao: 10 })
+    expect(r.avisos.some((a) => a.includes('não vem de cotação'))).toBe(false)
+  })
+
+  it('avisa quando metade ou mais do custo é estimativa, mas só se a origem foi marcada em algum item', () => {
+    const marcado = dados({ itens: { a: { custoUnit: 100, precoVendaUnit: null, fonteDoCusto: 'ESTIMATIVA' }, b: { custoUnit: 50, precoVendaUnit: null, fonteDoCusto: 'COTACAO' } } })
+    expect(calcularEstudo(itens, marcado, ctx).avisos.some((a) => a.startsWith('66,7% do custo dos itens não vem de cotação'))).toBe(true)
+    const semMarcar = dados({ itens: { a: { custoUnit: 100, precoVendaUnit: null } } })
+    const r = calcularEstudo(itens, semMarcar, ctx)
+    expect(r.origemDosCustos.pctSemCotacao).toBe(100)
+    expect(r.avisos.some((a) => a.includes('não vem de cotação'))).toBe(false)
+  })
+})

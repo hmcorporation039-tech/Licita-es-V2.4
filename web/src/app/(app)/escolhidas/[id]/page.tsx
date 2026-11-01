@@ -7,7 +7,7 @@ import { ArrowRight, Coins, FileDown, FileSignature, FolderArchive, Gavel, Plus,
 import { useRequireSession } from '@/hooks/useRequireSession'
 import { api, ApiRequestError, baixarArquivo } from '@/lib/api'
 import { useAvisoDeAlteracoesNaoSalvas } from '@/hooks/useAvisoDeAlteracoesNaoSalvas'
-import { DadosDoEstudo, EstudoResposta, PesquisaDePrecosResposta, ResultadoDoEstudo } from '@/lib/estudoTypes'
+import { CONTRATO_PADRAO, DadosDoEstudo, EstudoResposta, FonteDoCusto, PesquisaDePrecosResposta, ROTULO_DA_FONTE, ResultadoDoEstudo } from '@/lib/estudoTypes'
 import { arredondarCasas, lerNumero } from '@/lib/numeroBr'
 import { MINIMO_DE_CASOS, TEXTO_DA_BASE, type PrecosVencedoresResposta } from '@/lib/precosVencedores'
 import { CasosDosVencedores, VencedoresDoItem, type SituacaoDosVencedores } from '@/components/PrecosVencedores'
@@ -226,7 +226,7 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
           const itens = { ...d.itens }
           for (const itemId of aPreencher) {
             const atual = itens[itemId] ?? { custoUnit: null, precoVendaUnit: null }
-            itens[itemId] = { ...atual, custoUnit: r.sugestoes[itemId].custoUnit }
+            itens[itemId] = { ...atual, custoUnit: r.sugestoes[itemId].custoUnit, fonteDoCusto: 'BASE' }
           }
           return { ...d, itens }
         })
@@ -351,6 +351,11 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
   const destino = local ? `${local}${origemDoDestino}` : 'local n/d'
   const dataDaSessao = t.encerramentoAt ?? t.aberturaAt
   const situacao = resultado.prazo.situacao ? SITUACAO_DO_PRAZO[resultado.prazo.situacao] : null
+  const contrato = dados.contrato ?? CONTRATO_PADRAO
+  const continuo = contrato.tipo === 'continuo'
+  const porMes = continuo ? '/mês' : ''
+  const mesesFaturados = resultado.contrato?.mesesFaturados ?? 1
+  const pctBr = (n: number | null) => (n === null ? '—' : `${n.toLocaleString('pt-BR')}%`)
 
   return (
     <>
@@ -390,7 +395,45 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
       {aviso && <Notice tone="info">{aviso}</Notice>}
 
       <Panel
-        title="1. Itens, preços de mercado e seus valores"
+        title="1. Tipo de contrato"
+        description="Compra ou entrega única, ou serviço contínuo pago por mês (aluguel, manutenção, limpeza, vigilância…). No contínuo, o custo e o preço dos itens são por mês."
+      >
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Field label="Tipo">
+            <Select
+              value={contrato.tipo}
+              onChange={(e) => alterar((d) => ({ ...d, contrato: { ...(d.contrato ?? CONTRATO_PADRAO), tipo: e.target.value as 'unico' | 'continuo' } }))}
+            >
+              <option value="unico">Compra ou entrega única</option>
+              <option value="continuo">Serviço contínuo (mensal)</option>
+            </Select>
+          </Field>
+          {continuo && (
+            <>
+              <Field label="Vigência (meses)" hint="Ex.: 5 anos = 60 meses.">
+                <Numero
+                  passo="1"
+                  valor={contrato.vigenciaMeses}
+                  aoMudar={(v) => alterar((d) => ({ ...d, contrato: { ...(d.contrato ?? CONTRATO_PADRAO), vigenciaMeses: Math.min(120, Math.max(1, Math.round(v ?? 1))) } }))}
+                />
+              </Field>
+              <Field label="Meses sem faturar" hint="Mobilização ou implantação antes de começar a receber.">
+                <Numero
+                  passo="1"
+                  valor={contrato.mesesSemFaturar}
+                  aoMudar={(v) => alterar((d) => ({ ...d, contrato: { ...(d.contrato ?? CONTRATO_PADRAO), mesesSemFaturar: Math.min(120, Math.max(0, Math.round(v ?? 0))) } }))}
+                />
+              </Field>
+              <p className="self-end pb-2 text-sm text-ink-2">
+                Faturamento em <Valor forte>{mesesFaturados}</Valor> {mesesFaturados === 1 ? 'mês' : 'meses'}.
+              </p>
+            </>
+          )}
+        </div>
+      </Panel>
+
+      <Panel
+        title="2. Itens, preços de mercado e seus valores"
         description="O preço de mercado é o que órgãos públicos efetivamente pagaram (Compras.gov.br), por código CATMAT/CATSER, sem valores absurdos. O seu custo e o seu preço de venda são seus."
       >
         <div className="flex flex-col gap-4">
@@ -424,7 +467,7 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
             <TextLink href="/base-de-precos">Gerenciar base de preços</TextLink>
           </div>
 
-          <TableWrap minWidth={1400}>
+          <TableWrap minWidth={1520}>
             <Table>
               <THead>
                 <tr>
@@ -433,10 +476,11 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
                   <Th align="right">Estimado un. (órgão)</Th>
                   <Th>Mercado (pago)</Th>
                   <Th>Vencedores (PNCP)</Th>
-                  <Th>Seu custo un.</Th>
-                  <Th>Seu preço un.</Th>
-                  <Th align="right">Custo total</Th>
-                  <Th align="right">Venda total</Th>
+                  <Th>Seu custo un.{porMes}</Th>
+                  <Th>Seu preço un.{porMes}</Th>
+                  <Th align="right">Custo total{continuo ? ` (${mesesFaturados} meses)` : ''}</Th>
+                  <Th align="right">Venda total{continuo ? ` (${mesesFaturados} meses)` : ''}</Th>
+                  <Th align="right">Lucro do item</Th>
                 </tr>
               </THead>
               <tbody>
@@ -497,7 +541,7 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
                             <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
                               <button
                                 type="button"
-                                onClick={() => alterar((d) => ({ ...d, itens: { ...d.itens, [it.id]: { custoUnit: e.custoUnit, precoVendaUnit: m.mediana } } }))}
+                                onClick={() => alterar((d) => ({ ...d, itens: { ...d.itens, [it.id]: { ...e, precoVendaUnit: m.mediana } } }))}
                                 className="font-medium text-accent hover:underline"
                                 aria-label={`Usar ${brl(m.mediana)}${m.unidade ? ` por ${m.unidade}` : ''} como meu preço, ${nomeDoItem}`}
                               >
@@ -534,7 +578,7 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
                           nomeDoItem={nomeDoItem}
                           aberto={casosAberto}
                           onAlternar={() => setCasosAbertos((c) => ({ ...c, [it.id]: !c[it.id] }))}
-                          onUsarMediana={(mediana) => alterar((d) => ({ ...d, itens: { ...d.itens, [it.id]: { custoUnit: e.custoUnit, precoVendaUnit: mediana } } }))}
+                          onUsarMediana={(mediana) => alterar((d) => ({ ...d, itens: { ...d.itens, [it.id]: { ...e, precoVendaUnit: mediana } } }))}
                         />
                       </Td>
                       <Td>
@@ -543,8 +587,23 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
                             moeda
                             aria-label={`Seu custo unitário, ${nomeDoItem}`}
                             valor={e.custoUnit}
-                            aoMudar={(v) => alterar((d) => ({ ...d, itens: { ...d.itens, [it.id]: { custoUnit: v, precoVendaUnit: e.precoVendaUnit } } }))}
+                            aoMudar={(v) => alterar((d) => ({ ...d, itens: { ...d.itens, [it.id]: { ...e, custoUnit: v } } }))}
                           />
+                          <select
+                            aria-label={`De onde vem o custo, ${nomeDoItem}`}
+                            value={e.fonteDoCusto ?? ''}
+                            onChange={(ev) =>
+                              alterar((d) => ({ ...d, itens: { ...d.itens, [it.id]: { ...e, fonteDoCusto: (ev.target.value || null) as FonteDoCusto | null } } }))
+                            }
+                            className={cx('mt-1 w-full rounded border border-line bg-surface px-1.5 py-0.5 text-xs', e.fonteDoCusto ? 'text-ink-2' : 'text-muted')}
+                          >
+                            <option value="">Origem do custo…</option>
+                            {(Object.keys(ROTULO_DA_FONTE) as FonteDoCusto[]).map((f) => (
+                              <option key={f} value={f}>
+                                {ROTULO_DA_FONTE[f]}
+                              </option>
+                            ))}
+                          </select>
                         </div>
                       </Td>
                       <Td>
@@ -555,7 +614,7 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
                             aria-label={`Seu preço unitário, ${nomeDoItem}`}
                             aria-invalid={precoAcimaDoEstimado || undefined}
                             valor={e.precoVendaUnit}
-                            aoMudar={(v) => alterar((d) => ({ ...d, itens: { ...d.itens, [it.id]: { custoUnit: e.custoUnit, precoVendaUnit: v } } }))}
+                            aoMudar={(v) => alterar((d) => ({ ...d, itens: { ...d.itens, [it.id]: { ...e, precoVendaUnit: v } } }))}
                           />
                           {precoAcimaDoEstimado && <span className="text-xs font-medium text-danger">Acima do estimado ({brl(it.valorEstimadoUnit)})</span>}
                           {minimo !== null && (
@@ -565,7 +624,7 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
                               </span>
                               <button
                                 type="button"
-                                onClick={() => alterar((d) => ({ ...d, itens: { ...d.itens, [it.id]: { custoUnit: e.custoUnit, precoVendaUnit: minimo } } }))}
+                                onClick={() => alterar((d) => ({ ...d, itens: { ...d.itens, [it.id]: { ...e, precoVendaUnit: minimo } } }))}
                                 className="font-medium text-accent hover:underline"
                               >
                                 usar
@@ -580,10 +639,20 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
                       <Td numeric className={cx('font-medium', precoAcimaDoEstimado ? 'text-danger' : 'text-ink')}>
                         {e.precoVendaUnit === null ? '—' : brl(l?.venda ?? 0)}
                       </Td>
+                      <Td numeric className={cx(l?.prejuizo ? 'font-semibold text-danger' : 'text-ink-2')}>
+                        {l?.lucro === null || l?.lucro === undefined ? (
+                          '—'
+                        ) : (
+                          <>
+                            {brl(l.lucro)}
+                            <span className="block text-xs font-normal">{l.prejuizo ? 'prejuízo' : `margem ${pctBr(l.margemPct)}`}</span>
+                          </>
+                        )}
+                      </Td>
                     </Tr>
                     {casosAberto && doVencedor && (
                       <Tr>
-                        <Td colSpan={9} className="bg-sunken">
+                        <Td colSpan={10} className="bg-sunken">
                           <CasosDosVencedores item={doVencedor} meses={mesesDosVencedores} />
                         </Td>
                       </Tr>
@@ -604,10 +673,37 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
                     {brl(resultado.receita)}
                     {vendaAcimaDoEstimado && <span className="block text-xs font-medium">acima do estimado ({brl(estimadoDosItens)})</span>}
                   </Td>
+                  <Td />
                 </tr>
               </tfoot>
             </Table>
           </TableWrap>
+          {resultado.custoItens > 0 && (
+            <p className="text-sm text-ink-2">
+              <span className="font-medium text-ink">Origem do custo dos itens:</span>{' '}
+              <ComSeparadores
+                partes={[
+                  <>
+                    cotação ou base <Valor>{brl(resultado.origemDosCustos.firme)}</Valor>
+                  </>,
+                  <>
+                    mercado <Valor>{brl(resultado.origemDosCustos.referencia)}</Valor>
+                  </>,
+                  <>
+                    estimativa <Valor>{brl(resultado.origemDosCustos.estimativa)}</Valor>
+                  </>,
+                  <>
+                    sem origem marcada <Valor>{brl(resultado.origemDosCustos.semOrigem)}</Valor>
+                  </>,
+                ]}
+              />
+              {resultado.origemDosCustos.pctSemCotacao !== null && (
+                <span className={cx('ml-2 font-medium', resultado.origemDosCustos.pctSemCotacao >= 50 ? 'text-warn' : 'text-muted')}>
+                  ({pctBr(resultado.origemDosCustos.pctSemCotacao)} sem cotação nem base)
+                </span>
+              )}
+            </p>
+          )}
           <p className="text-xs text-muted">
             <span className="font-medium text-ink-2">Preços vencedores em licitações parecidas</span> (últimos {mesesDosVencedores} meses, pelo mesmo código CATMAT/CATSER ou pela descrição parecida): {TEXTO_DA_BASE}
           </p>
@@ -615,7 +711,7 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
       </Panel>
 
       <Panel
-        title="2. Deslocamento até o local da entrega"
+        title="3. Deslocamento até o local da entrega"
         description={
           <span className="inline-flex flex-wrap items-center gap-x-1.5">
             Base: <strong className="font-semibold text-ink-2">{estudo.base.municipio ? `${estudo.base.municipio}/${estudo.base.uf}` : 'não cadastrada'}</strong>
@@ -679,7 +775,7 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
         </div>
       </Panel>
 
-      <Panel title="3. Impostos, margem e outros custos">
+      <Panel title="4. Impostos, margem e outros custos">
         <div className="flex flex-col gap-5">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Field label="Impostos sobre a venda (%)">
@@ -691,7 +787,10 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
             </Field>
           </div>
           <fieldset className="flex min-w-0 flex-col gap-2">
-            <legend className="mb-1.5 text-xs font-medium text-muted">Outros custos (frete, instalação, mão de obra, garantia exigida, etc.)</legend>
+            <legend className="mb-1.5 text-xs font-medium text-muted">
+              Outros custos (frete, instalação, mão de obra, garantia exigida, etc.)
+              {continuo && ' — "Uma vez" entra uma vez no contrato (obra, mobilização, equipamento); "Por mês" entra em cada mês faturado.'}
+            </legend>
             {dados.outrosCustos.map((o, i) => (
               <div key={i} className="flex min-w-0 items-center gap-2">
                 <div className="min-w-0 flex-1">
@@ -702,6 +801,20 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
                     placeholder="Descrição"
                   />
                 </div>
+                {continuo && (
+                  <div className="w-28 shrink-0 sm:w-32">
+                    <Select
+                      aria-label={`Frequência do custo ${i + 1}`}
+                      value={o.tipo ?? 'unico'}
+                      onChange={(e) =>
+                        alterar((d) => ({ ...d, outrosCustos: d.outrosCustos.map((x, j) => (j === i ? { ...x, tipo: e.target.value as 'unico' | 'mensal' } : x)) }))
+                      }
+                    >
+                      <option value="unico">Uma vez</option>
+                      <option value="mensal">Por mês</option>
+                    </Select>
+                  </div>
+                )}
                 <div className="w-32 shrink-0 sm:w-40">
                   <Numero
                     moeda
@@ -735,7 +848,7 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
       </Panel>
 
       <Panel
-        title="4. Prazo de entrega ou execução"
+        title="5. Prazo de entrega ou execução"
         description={estudo.prazoDoEdital ? `O edital diz: “${estudo.prazoDoEdital}”. Confira e ajuste abaixo.` : undefined}
       >
         <div className="flex flex-col gap-4">
@@ -833,6 +946,49 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
             />
           </MetricRow>
 
+          {resultado.contrato && (
+            <div className="flex flex-col gap-2 rounded-md border border-line-soft p-3">
+              <p className="text-sm font-medium text-ink">
+                Por mês faturado ({resultado.contrato.mesesFaturados} de {resultado.contrato.vigenciaMeses} meses)
+              </p>
+              <DescriptionList
+                columns={3}
+                items={[
+                  { label: 'Receita por mês', value: brl(resultado.contrato.receitaMensal), mono: true },
+                  { label: 'Custo por mês (itens e custos mensais)', value: brl(resultado.contrato.custoMensal), mono: true },
+                  { label: 'Impostos por mês', value: brl(resultado.contrato.impostosMensais), mono: true },
+                  {
+                    label: 'Lucro por mês (antes dos custos únicos)',
+                    value: <span className={cx('font-semibold', resultado.contrato.lucroMensal < 0 && 'text-danger')}>{brl(resultado.contrato.lucroMensal)}</span>,
+                    mono: true,
+                  },
+                  {
+                    label: 'Custos únicos e deslocamento',
+                    value: (
+                      <>
+                        {brl(resultado.contrato.custosUnicos)}
+                        {resultado.contrato.custosUnicosPorMes !== null && resultado.contrato.custosUnicos > 0 && (
+                          <span className="block text-xs text-muted">≈ {brl(resultado.contrato.custosUnicosPorMes)} por mês faturado</span>
+                        )}
+                      </>
+                    ),
+                    mono: true,
+                  },
+                  {
+                    label: 'Se paga em',
+                    value:
+                      resultado.contrato.custosUnicos === 0
+                        ? 'sem custos únicos'
+                        : resultado.contrato.mesesParaRecuperar === null
+                          ? 'não se paga'
+                          : `${resultado.contrato.mesesParaRecuperar} ${resultado.contrato.mesesParaRecuperar === 1 ? 'mês' : 'meses'}`,
+                  },
+                ]}
+              />
+              <p className="text-xs text-muted">Os totais acima e abaixo valem para o contrato inteiro ({resultado.contrato.mesesFaturados} meses faturados).</p>
+            </div>
+          )}
+
           {prejuizoNoEstimado && (
             <Notice tone="danger" title="Prejuízo no valor estimado pelo órgão">
               No valor estimado pelo órgão ({brl(resultado.estimadoPeloOrgao)}), descontados os custos ({brl(resultado.custosSemImpostos)}) e os impostos sobre esse valor, o resultado seria{' '}
@@ -880,6 +1036,88 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
                 </tbody>
               </Table>
             </TableWrap>
+          )}
+
+          {resultado.negociacao && (
+            <div className="flex flex-col gap-3 border-t border-line-soft pt-4">
+              <div>
+                <h3 className="text-sm font-semibold text-ink">Negociação: até quanto pagar e até quanto baixar o lance</h3>
+                <p className="text-xs text-muted">
+                  Sobre {resultado.negociacao.origemDaReferencia === 'seus_precos' ? 'os seus preços de venda' : 'o valor estimado pelo órgão (sem preços de venda informados)'}:{' '}
+                  <span className="font-mono">{brl(resultado.negociacao.receitaReferencia)}</span>. Seus custos hoje:{' '}
+                  <span className="font-mono">{brl(resultado.negociacao.custoAtual)}</span>; acima de{' '}
+                  <span className="font-mono">{brl(resultado.negociacao.custoDeEquilibrio)}</span> de custo, dá prejuízo.
+                </p>
+              </div>
+              <div className="flex flex-col gap-4">
+                <TableWrap minWidth={420}>
+                  <Table>
+                    <THead>
+                      <tr>
+                        <Th>Para ter margem de…</Th>
+                        <Th align="right">Custo máximo</Th>
+                        {continuo && <Th align="right">Por mês</Th>}
+                        <Th align="right">Folga</Th>
+                      </tr>
+                    </THead>
+                    <tbody>
+                      {resultado.negociacao.tetos.map((teto) => (
+                        <Tr key={teto.margemPct}>
+                          <Td>
+                            {pctBr(teto.margemPct)}
+                            {teto.margemPct === dados.margemDesejadaPct && <span className="ml-1 text-xs text-muted">(a sua)</span>}
+                          </Td>
+                          <Td numeric>{brl(teto.custoMaximo)}</Td>
+                          {continuo && <Td numeric>{brl(teto.custoMaximoMensal)}</Td>}
+                          <Td numeric className={cx('font-medium', teto.folga < 0 ? 'text-danger' : 'text-ink-2')}>
+                            {teto.folga < 0 ? `falta ${brl(-teto.folga)}` : brl(teto.folga)}
+                          </Td>
+                        </Tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                </TableWrap>
+                <TableWrap minWidth={420}>
+                  <Table>
+                    <THead>
+                      <tr>
+                        <Th>Se o lance cair…</Th>
+                        <Th align="right">Valor</Th>
+                        <Th align="right">Resultado</Th>
+                        <Th align="right">Margem</Th>
+                      </tr>
+                    </THead>
+                    <tbody>
+                      {resultado.negociacao.lances.map((l) => (
+                        <Tr key={l.descontoPct}>
+                          <Td>{l.descontoPct === 0 ? 'Sem desconto' : `${l.descontoPct}%`}</Td>
+                          <Td numeric>{brl(l.receita)}</Td>
+                          <Td numeric className={cx('font-medium', l.lucro < 0 && 'text-danger')}>
+                            {brl(l.lucro)}
+                          </Td>
+                          <Td numeric>{pctBr(l.margemPct)}</Td>
+                        </Tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                </TableWrap>
+              </div>
+              {resultado.negociacao.descontoMaximoSemPrejuizo !== null && (
+                <p className="text-sm text-ink-2">
+                  {resultado.negociacao.descontoMaximoSemPrejuizo >= 0 ? (
+                    <>
+                      Dá para baixar até <Valor forte>{pctBr(resultado.negociacao.descontoMaximoSemPrejuizo)}</Valor> sem prejuízo.
+                    </>
+                  ) : (
+                    <span className="font-medium text-danger">Nessa referência já dá prejuízo: reveja os custos antes de negociar o lance.</span>
+                  )}
+                </p>
+              )}
+              <p className="text-xs text-muted">
+                “Custo máximo” é o que você pode gastar no total (itens, deslocamento e outros, sem impostos) para ainda ter a margem.
+                {continuo && ' “Por mês” já desconta os custos únicos: é o teto para negociar o aluguel ou o serviço mensal com o fornecedor.'}
+              </p>
+            </div>
           )}
 
           {resultado.avisos.length > 0 && (

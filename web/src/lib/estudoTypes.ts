@@ -12,9 +12,32 @@ export interface MercadoDoItem {
   unidadeConfere?: boolean | null
 }
 
+export type FonteDoCusto = 'COTACAO' | 'BASE' | 'MERCADO' | 'ESTIMATIVA'
+
+export const ROTULO_DA_FONTE: Record<FonteDoCusto, string> = {
+  COTACAO: 'Cotação de fornecedor',
+  BASE: 'Minha base de preços',
+  MERCADO: 'Preço de mercado',
+  ESTIMATIVA: 'Estimativa',
+}
+
+export interface ContratoDoEstudo {
+  tipo: 'unico' | 'continuo'
+  vigenciaMeses: number
+  mesesSemFaturar: number
+}
+
+export const CONTRATO_PADRAO: ContratoDoEstudo = { tipo: 'unico', vigenciaMeses: 12, mesesSemFaturar: 0 }
+
+export interface ItemDoEstudoDigitado {
+  custoUnit: number | null
+  precoVendaUnit: number | null
+  fonteDoCusto?: FonteDoCusto | null
+}
+
 export interface DadosDoEstudo {
   versao: 1
-  itens: Record<string, { custoUnit: number | null; precoVendaUnit: number | null }>
+  itens: Record<string, ItemDoEstudoDigitado>
   mercado: Record<string, MercadoDoItem>
   deslocamento: {
     kmIdaInformado: number | null
@@ -27,7 +50,8 @@ export interface DadosDoEstudo {
   }
   impostosPct: number
   margemDesejadaPct: number
-  outrosCustos: { descricao: string; valor: number }[]
+  outrosCustos: { descricao: string; valor: number; tipo?: 'unico' | 'mensal' }[]
+  contrato?: ContratoDoEstudo
   prazo: { exigidoDias: number | null; exigidoEmDiasUteis: boolean; preparoDias: number; assinatura: string | null }
 }
 
@@ -56,7 +80,7 @@ export interface ResultadoDoEstudo {
   receitaMinima: number | null
   estimadoPeloOrgao: number | null
   resultadoNoEstimado: number | null
-  itens: { id: string; custo: number; venda: number; precoMinimoUnit: number | null }[]
+  itens: { id: string; custo: number; venda: number; precoMinimoUnit: number | null; lucro: number | null; margemPct: number | null; prejuizo: boolean }[]
   deslocamento: {
     origem: 'estimado' | 'informado' | 'indisponivel'
     kmIda: number | null
@@ -66,6 +90,27 @@ export interface ResultadoDoEstudo {
     custoPorViagem: number
   }
   cenarios: { nome: string; receita: number; lucro: number; margemPct: number | null }[]
+  contrato: {
+    vigenciaMeses: number
+    mesesFaturados: number
+    receitaMensal: number
+    custoMensal: number
+    impostosMensais: number
+    lucroMensal: number
+    custosUnicos: number
+    custosUnicosPorMes: number | null
+    mesesParaRecuperar: number | null
+  } | null
+  negociacao: {
+    receitaReferencia: number
+    origemDaReferencia: 'seus_precos' | 'estimado_orgao'
+    custoAtual: number
+    custoDeEquilibrio: number
+    tetos: { margemPct: number; custoMaximo: number; folga: number; custoMaximoMensal: number | null }[]
+    lances: { descontoPct: number; receita: number; lucro: number; margemPct: number | null }[]
+    descontoMaximoSemPrejuizo: number | null
+  } | null
+  origemDosCustos: { firme: number; referencia: number; estimativa: number; semOrigem: number; pctSemCotacao: number | null }
   prazo: {
     situacao: 'ok' | 'apertado' | 'inviavel' | null
     diasNecessarios: number
