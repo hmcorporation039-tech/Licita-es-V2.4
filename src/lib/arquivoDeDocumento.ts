@@ -32,7 +32,7 @@ export function nomeDeArquivoSeguro(nome: string | undefined | null, tipo: TipoD
 }
 
 export interface ProblemaNosDados {
-  path: (string | number)[]
+  path: PropertyKey[]
   code: string
 }
 

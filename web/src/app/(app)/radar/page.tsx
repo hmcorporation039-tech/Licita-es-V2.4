@@ -180,6 +180,13 @@ const ABAS: Aba<AbaDoRadar>[] = [
 ]
 const IDS_DAS_ABAS = ABAS.map((a) => a.id)
 
+const AJUDA_DA_ABA: Record<AbaDoRadar, string> = {
+  vencendo:
+    'Contrato que vence costuma virar licitação nova. Escolha um órgão e veja o que termina nos próximos meses, para se preparar antes do edital sair. "Do seu ramo" são os contratos que citam as palavras-chave dos seus itens monitorados.',
+  concorrente: 'Informe o CNPJ de um concorrente e veja quanto ele já vendeu ao governo, para quais órgãos e estados, e quais contratos dele vencem nos próximos 90 dias.',
+  perfil: 'A partir dos contratos que a sua empresa já assinou, o Radar sugere palavras-chave, estados e órgãos, e cria um item monitorado pronto com um clique.',
+}
+
 export default function RadarPage() {
   const user = useRequireSession()
   const [aba, setAba] = useAbaNaUrl<AbaDoRadar>(IDS_DAS_ABAS, 'vencendo')
@@ -189,11 +196,12 @@ export default function RadarPage() {
     <>
       <PageHeader
         title="Radar de oportunidades"
-        description="Dados públicos de contratos do PNCP: veja o que está para vencer nos órgãos que você atende e estude seus concorrentes."
+        description="Oportunidades antes do edital: contratos públicos já assinados (PNCP) que vão vencer, o histórico dos concorrentes e o seu próprio. Licitações abertas ficam na lista e em Meus matches."
       />
       <div className="flex flex-col gap-5">
         <Tabs tabs={ABAS} value={aba} onChange={setAba} label="Seções do radar" />
         <div role="tabpanel" aria-labelledby={`aba-${aba}`} className="flex flex-col gap-5">
+          <Notice tone="info">{AJUDA_DA_ABA[aba]}</Notice>
           {aba === 'vencendo' ? <ContratosVencendo /> : aba === 'concorrente' ? <DossieConcorrente /> : <Perfilador />}
         </div>
       </div>

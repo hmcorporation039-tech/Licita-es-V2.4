@@ -153,6 +153,11 @@ describe('N23: filtro de município pelo nome inteiro', () => {
     expect(whereDoMunicipio('  SÃO   Paulo ')).toEqual({ municipioNorm: 'sao paulo' })
     expect(whereDoMunicipio('4316907')).toEqual({ municipioIbge: '4316907' })
   })
+
+  it('Brasília é o DF inteiro, para entrar o que só informa a UF (Sistema S, SESC)', () => {
+    for (const nome of ['Brasília', 'BRASILIA', 'Brasília/DF', 'Brasília - DF', '5300108']) expect(whereDoMunicipio(nome)).toEqual({ uf: 'DF' })
+    expect(whereDoMunicipio('Brasília de Minas')).toEqual({ municipioNorm: 'brasilia de minas' })
+  })
 })
 
 describe('N25: aviso escondido aberto por link direto aponta para a versão do PNCP', () => {

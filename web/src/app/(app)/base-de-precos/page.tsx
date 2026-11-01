@@ -25,6 +25,7 @@ import {
   ErrorState,
   Field,
   Input,
+  Notice,
   PageHeader,
   Panel,
   Select,
@@ -139,7 +140,9 @@ export default function BaseDePrecosPage() {
     setAvisoImport(null)
     try {
       const r = await importarBaseDePrecos(arquivo)
-      setAvisoImport(`${r.importados} preço(s) importado(s)${r.ignorados ? `, ${r.ignorados} linha(s) ignorada(s) (sem descrição ou custo)` : ''}.`)
+      setAvisoImport(
+        `${r.importados} preço(s) novo(s)${r.atualizados ? `, ${r.atualizados} atualizado(s)` : ''}${r.ignorados ? `, ${r.ignorados} linha(s) ignorada(s) (sem descrição ou custo)` : ''}.`,
+      )
       load()
     } catch (err) {
       setAvisoImport(err instanceof ApiRequestError ? err.message : 'Não foi possível importar a planilha.')
@@ -172,6 +175,13 @@ export default function BaseDePrecosPage() {
           </p>
         }
       />
+      <Notice tone="info" title="Como funciona">
+        <ol className="list-decimal space-y-1 pl-5">
+          <li>Cadastre cada custo aqui ou importe uma planilha: exporte o modelo, preencha e importe. Preço com a mesma descrição e unidade é atualizado, não duplicado.</li>
+          <li>Na licitação escolhida, abra o Estudo de custos e toque em “Preencher custos pela minha base”: cada item do edital recebe o preço com a descrição mais parecida.</li>
+          <li>Confira os custos sugeridos e salve. Deles saem a proposta e os cálculos da Bela no pregão (margem e lance mínimo).</li>
+        </ol>
+      </Notice>
 
       <Panel
         title={form.id ? 'Editar preço' : 'Adicionar preço'}

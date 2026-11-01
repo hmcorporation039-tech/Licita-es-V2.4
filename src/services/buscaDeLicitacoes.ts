@@ -57,10 +57,17 @@ export async function idsQueCitamOTexto(
 
 const CODIGO_IBGE = /^\d{7}$/
 
+// O DF tem um município só (Brasília, IBGE 5300108). Buscar por Brasília é buscar
+// pelo DF, e assim entram as fontes que só informam a UF (Sistema S, SESC).
+const BRASILIA = { nome: /^brasilia(?:\W+df)?$/, ibge: '5300108' }
+
 export function whereDoMunicipio(municipio: string): Prisma.TenderWhereInput {
   const texto = municipio.trim()
+  if (texto === BRASILIA.ibge) return { uf: 'DF' }
   if (CODIGO_IBGE.test(texto)) return { municipioIbge: texto }
-  return { municipioNorm: normalize(texto).replace(/\s+/g, ' ') }
+  const nome = normalize(texto).replace(/\s+/g, ' ')
+  if (BRASILIA.nome.test(nome)) return { uf: 'DF' }
+  return { municipioNorm: nome }
 }
 
 export function whereDoOrgao(orgao: string): Prisma.TenderWhereInput {

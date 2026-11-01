@@ -68,7 +68,7 @@ const cadastroSchema = z
     documento: z.string().trim().min(11).max(18),
     empresaNome: z.string().trim().min(2).max(160).optional(),
     telefone: z.string().trim().min(8).max(30).optional(),
-    aceiteTermos: z.literal(true, { errorMap: () => ({ message: 'É preciso aceitar os Termos de Uso e a Política de Privacidade' }) }),
+    aceiteTermos: z.literal(true, { error: 'É preciso aceitar os Termos de Uso e a Política de Privacidade' }),
     // Isca para robôs: campo invisível na tela. Pessoa nunca preenche.
     website: z.string().max(200).optional(),
     // Resposta do captcha (Turnstile), quando ligado.

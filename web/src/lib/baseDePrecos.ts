@@ -39,6 +39,7 @@ export const ROTULO_DA_FONTE: Record<FonteDePreco, string> = {
 
 export interface ResultadoDaImportacao {
   importados: number
+  atualizados: number
   ignorados: number
 }
 

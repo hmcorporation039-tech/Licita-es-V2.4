@@ -58,6 +58,8 @@ rodar('Base de preços', () => {
     custoUnitario: string
     tipo: string
     fonte: string
+    unidade: string | null
+    dataDoPreco: string
     desatualizado: boolean
   }
 
@@ -143,6 +145,27 @@ rodar('Base de preços', () => {
     expect(pedreiro?.fonte).toBe('REFERENCIA')
     expect(pedreiro?.custoUnitario).toBe('28.00')
     expect(lista.find((p) => p.descricao === `Tijolo ${sufixo}`)?.custoUnitario).toBe('1200.50')
+
+    // Importar de novo atualiza o mesmo preço (descrição e unidade, sem caixa) em vez de duplicar.
+    const deNovo = gerarPlanilhaXlsx({
+      nomeDaAba: 'Base de preços',
+      colunas: [{ titulo: 'Descrição', largura: 40 }, { titulo: 'Unidade', largura: 10 }, { titulo: 'Custo unitário', largura: 14, tipo: 'moeda' }],
+      linhas: [
+        [`TIJOLO ${sufixo}`, 'MIL', 1350],
+        [`Tijolo ${sufixo}`, 'un', 1.4],
+        [`Pedreiro ${sufixo}`, 'h', 28],
+      ],
+    })
+    const reimp = (await (await fetch(`${base}/api/base-de-precos/importar`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${tokenB}`, 'Content-Type': 'application/octet-stream' },
+      body: Buffer.from(deNovo),
+    })).json()) as { importados: number; atualizados: number; ignorados: number }
+    expect(reimp).toEqual({ importados: 1, atualizados: 2, ignorados: 0 })
+    const depois = (await (await fetch(`${base}/api/base-de-precos?q=${sufixo}`, { headers: { Authorization: `Bearer ${tokenB}` } })).json()) as PrecoNaTela[]
+    expect(depois.filter((p) => p.descricao.toLowerCase() === `tijolo ${sufixo}`).map((p) => [p.unidade?.toLowerCase(), p.custoUnitario]).sort()).toEqual([['mil', '1350.00'], ['un', '1.40']])
+    const pedreiroDepois = depois.find((p) => p.descricao === `Pedreiro ${sufixo}`)
+    expect(pedreiroDepois?.dataDoPreco).toBe(pedreiro?.dataDoPreco)
   })
 
   it('recusa importar o que não é planilha', async () => {

@@ -80,6 +80,11 @@ const querySchema = z.object({
     .transform((v) => v === 'true'),
   agruparPor: z.enum(['estado', 'modalidade', 'orgao']).default('estado'),
   ordem: z.enum(['prazo', 'recentes']).default('prazo'),
+  // A Bela pede quantas licitações cada portal tem no resultado.
+  contarFontes: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((v) => v === 'true'),
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().positive().max(100).default(20),
 })
@@ -107,6 +112,16 @@ function gruposDaLista(where: Prisma.TenderWhereInput, companyId: string | undef
   ]
 }
 
+const IDS_POR_CONTAGEM = 10_000
+
+async function contagemPorFonte(ids: string[] | null, where: Prisma.TenderWhereInput): Promise<{ fonte: string; total: number }[]> {
+  const filtros = ids === null ? [where] : Array.from({ length: Math.ceil(ids.length / IDS_POR_CONTAGEM) }, (_, i) => ({ id: { in: ids.slice(i * IDS_POR_CONTAGEM, (i + 1) * IDS_POR_CONTAGEM) } }))
+  const grupos = await Promise.all(filtros.map((w) => prisma.tender.groupBy({ by: ['fonte'], where: w, _count: { _all: true } })))
+  const totais = new Map<string, number>()
+  for (const g of grupos.flat()) totais.set(g.fonte, (totais.get(g.fonte) ?? 0) + g._count._all)
+  return [...totais].map(([fonte, total]) => ({ fonte, total })).sort((a, b) => b.total - a.total)
+}
+
 tendersRouter.get(
   '/',
   asyncHandler(async (req, res) => {
@@ -124,6 +139,7 @@ tendersRouter.get(
       agrupar,
       agruparPor,
       ordem,
+      contarFontes,
       page,
       pageSize,
     } = querySchema.parse(req.query)
@@ -158,10 +174,12 @@ tendersRouter.get(
     let total: number
     let totais: { comPrazoConfirmado: number; semDataInformada: number } | undefined
     let buscaLimitada = false
+    let idsDaBusca: string[] | null = null
 
     if (q) {
       const buscas = await Promise.all(grupos.map((g) => idsQueCitamOTexto(q, g, orderBy)))
       const ids = buscas.flatMap((b) => b.ids)
+      idsDaBusca = ids
       buscaLimitada = buscas.some((b) => b.limitada)
       total = ids.length
       const idsDaPagina = ids.slice((page - 1) * pageSize, page * pageSize)
@@ -203,6 +221,8 @@ tendersRouter.get(
       }
     })
 
+    const porFonte = contarFontes ? await contagemPorFonte(idsDaBusca, where) : undefined
+
     res.json({
       items,
       total,
@@ -211,6 +231,7 @@ tendersRouter.get(
       totalPages: Math.max(1, Math.ceil(total / pageSize)),
       ...(totais ? { totais } : {}),
       ...(buscaLimitada ? { buscaLimitada } : {}),
+      ...(porFonte ? { porFonte } : {}),
     })
   })
 )

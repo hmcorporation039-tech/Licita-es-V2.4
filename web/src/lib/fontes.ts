@@ -10,6 +10,28 @@ export const ROTULOS_DE_FONTE: Record<string, string> = {
   FAMEM: 'FAMEM (municípios do Maranhão)',
 }
 
+export function rotuloDaFonte(fonte: string): string {
+  return ROTULOS_DE_FONTE[fonte] ?? fonte.replace(/_/g, ' ')
+}
+
+// Primeiro a de prazo mais próximo de cada portal, depois as demais, sempre na ordem recebida.
+export function variadasPorFonte<T extends { fonte: string }>(lista: T[], quantas: number): T[] {
+  const fontes = new Set<string>()
+  const escolhidas = new Set<T>()
+  for (const t of lista) {
+    if (escolhidas.size >= quantas) break
+    if (!fontes.has(t.fonte)) {
+      fontes.add(t.fonte)
+      escolhidas.add(t)
+    }
+  }
+  for (const t of lista) {
+    if (escolhidas.size >= quantas) break
+    escolhidas.add(t)
+  }
+  return lista.filter((t) => escolhidas.has(t))
+}
+
 export function fontesComLicitacaoAberta(fontesNaApi: number | null | undefined, fontesNaFaixa: number): number | null {
   if (typeof fontesNaApi !== 'number' || !Number.isFinite(fontesNaApi) || fontesNaApi < 1) return null
   return Math.min(Math.floor(fontesNaApi), fontesNaFaixa)

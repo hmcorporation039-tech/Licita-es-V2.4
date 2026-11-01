@@ -12,7 +12,7 @@ import { anoDoProcesso } from '../src/lib/anoDoProcesso'
 import { modalidadesEquivalentes } from '../src/services/queridoDiarioService'
 import { RegistroDeOutraFonte, chaveDaRepeticaoTceCe, ehRepeticaoDaLicitacaoDoPncp, repeticoesDoTceCe } from '../src/services/duplicataEntreFontes'
 import { MARCAS_DAS_FONTES, marcasComLicitacao, marcasDoRegistro } from '../src/lib/marcasDasFontes'
-import { fontesNaFaixa } from '../web/src/lib/fontes'
+import { fontesNaFaixa, rotuloDaFonte, variadasPorFonte } from '../web/src/lib/fontes'
 import { temPalavraSignificativa } from '../src/lib/matching'
 
 const AGORA = new Date('2026-10-18T12:00:00-03:00')
@@ -244,5 +244,30 @@ describe('N15: busca sem palavra significativa', () => {
     expect(temPalavraSignificativa('de')).toBe(false)
     expect(temPalavraSignificativa('de para')).toBe(false)
     expect(temPalavraSignificativa('de cimento')).toBe(true)
+  })
+})
+
+describe('Bela: os 5 resultados variam de portal', () => {
+  const lista = [
+    { id: 1, fonte: 'PNCP' }, { id: 2, fonte: 'PNCP' }, { id: 3, fonte: 'PNCP' }, { id: 4, fonte: 'SISTEMA_S' },
+    { id: 5, fonte: 'PNCP' }, { id: 6, fonte: 'INFRAERO' }, { id: 7, fonte: 'PNCP' },
+  ]
+
+  it('põe a primeira de cada portal e completa com as de prazo mais próximo, na ordem de prazo', () => {
+    expect(variadasPorFonte(lista, 5).map((t) => t.id)).toEqual([1, 2, 3, 4, 6])
+  })
+
+  it('com um portal só, são as primeiras; com menos que o pedido, todas', () => {
+    expect(variadasPorFonte(lista.filter((t) => t.fonte === 'PNCP'), 3).map((t) => t.id)).toEqual([1, 2, 3])
+    expect(variadasPorFonte(lista.slice(0, 2), 5).map((t) => t.id)).toEqual([1, 2])
+  })
+
+  it('mais portais que vagas: fica a primeira dos portais que aparecem antes', () => {
+    expect(variadasPorFonte(lista, 2).map((t) => t.id)).toEqual([1, 4])
+  })
+
+  it('rótulo do portal: o nome conhecido ou a sigla sem sublinhado', () => {
+    expect(rotuloDaFonte('SISTEMA_S')).toBe('Sistema S (SENAI/SESI/SENAC)')
+    expect(rotuloDaFonte('PNCP')).toBe('PNCP')
   })
 })

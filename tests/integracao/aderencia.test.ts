@@ -139,12 +139,12 @@ rodar('Nota de aderência', () => {
   it('o feed devolve a nota ao vivo com o motivo de cada critério', async () => {
     const r = await http('GET', '/api/matches?incluirForaDoPrazo=true', 'a')
     expect(r.status).toBe(200)
-    const mc = r.body.items.find((m: { monitoredItemId: string }) => m.monitoredItemId === itemCodigo)
+    const mc = r.body.items.find((m: { monitoredItemId: string; tenderId: string }) => m.monitoredItemId === itemCodigo && m.tenderId === tenderId)
     expect(mc.aderencia.nota).toBe(86)
     expect(mc.aderencia.faixa).toBe('alta')
     expect(mc.aderencia.criterios.map((c: { id: string }) => c.id)).toEqual(['objeto', 'prazo', 'valor', 'localizacao'])
     expect(mc.aderencia.criterios.every((c: { motivo: string }) => c.motivo.length > 5)).toBe(true)
-    const mp = r.body.items.find((m: { monitoredItemId: string }) => m.monitoredItemId === itemPalavra)
+    const mp = r.body.items.find((m: { monitoredItemId: string; tenderId: string }) => m.monitoredItemId === itemPalavra && m.tenderId === tenderId)
     expect(mp.aderencia.nota).toBe(71)
     expect(mp.aderencia.faixa).toBe('boa')
   })
@@ -154,15 +154,15 @@ rodar('Nota de aderência', () => {
     await prisma.tenderMatch.updateMany({ where: { monitoredItemId: itemCodigo }, data: { createdAt: new Date(Date.now() - 3_600_000) } })
 
     const padrao = await http('GET', '/api/matches?incluirForaDoPrazo=true&pageSize=50', 'a')
-    const posPadrao = padrao.body.items.findIndex((m: { monitoredItemId: string }) => m.monitoredItemId === itemCodigo)
-    const posPalavraPadrao = padrao.body.items.findIndex((m: { monitoredItemId: string }) => m.monitoredItemId === itemPalavra)
+    const posPadrao = padrao.body.items.findIndex((m: { monitoredItemId: string; tenderId: string }) => m.monitoredItemId === itemCodigo && m.tenderId === tenderId)
+    const posPalavraPadrao = padrao.body.items.findIndex((m: { monitoredItemId: string; tenderId: string }) => m.monitoredItemId === itemPalavra && m.tenderId === tenderId)
     expect(posPadrao).toBeGreaterThan(posPalavraPadrao)
 
     const porNota = await http('GET', '/api/matches?incluirForaDoPrazo=true&ordem=nota&pageSize=50', 'a')
     const notas = porNota.body.items.map((m: { aderencia: { nota: number } }) => m.aderencia.nota)
     expect([...notas].sort((x: number, y: number) => y - x)).toEqual(notas)
-    const posCodigo = porNota.body.items.findIndex((m: { monitoredItemId: string }) => m.monitoredItemId === itemCodigo)
-    const posPalavra = porNota.body.items.findIndex((m: { monitoredItemId: string }) => m.monitoredItemId === itemPalavra)
+    const posCodigo = porNota.body.items.findIndex((m: { monitoredItemId: string; tenderId: string }) => m.monitoredItemId === itemCodigo && m.tenderId === tenderId)
+    const posPalavra = porNota.body.items.findIndex((m: { monitoredItemId: string; tenderId: string }) => m.monitoredItemId === itemPalavra && m.tenderId === tenderId)
     expect(posCodigo).toBeLessThan(posPalavra)
 
     // página 1 e 2 de tamanho 1 não repetem nem pulam
