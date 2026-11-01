@@ -27,6 +27,21 @@ cliente, na sessão dele.
 4. A cada novo melhor lance, o popup mostra o valor lido e a **sugestão da Bela**.
    O cliente dá o lance no portal (Etapa 1 não envia nada).
 
+## Capturar a tela da disputa (para ajustar a leitura)
+
+Ninguém da equipe vê a tela do fornecedor durante uma disputa real, então os seletores do
+`config.mjs` ainda são candidatos. Para fixá-los:
+
+1. Com a extensão instalada, abrir a **sala de disputa** de um pregão real no Compras.gov.br
+   (`cnetmobile.estaleiro.serpro.gov.br`), já logado.
+2. No popup, clicar **Capturar a tela da disputa**. A estrutura da página vai para a área de
+   transferência.
+3. Colar num chamado de suporte da Bela.
+
+O que vai: tag, id, classes, papéis e um trecho curto do texto de cada elemento ligado à
+disputa (melhor lance, cronômetro, fase, posição, campo e botão de lance). CPF, CNPJ e e-mail
+saem mascarados, e o valor digitado em campo nenhum é lido (`lib/captura.mjs`).
+
 ## Ajustar os seletores (passo que fazemos juntos, vendo a tela real)
 
 O arquivo `config.mjs` tem `PORTAIS[].seletoresDoMelhorLance` com candidatos

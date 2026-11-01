@@ -7,7 +7,8 @@ export const CHAVE_DO_TOKEN_NO_APP = 'licitacao-platform:token'
 export const PORTAIS = [
   {
     nome: 'Compras.gov.br',
-    hosts: ['compras.gov.br', 'comprasnet.gov.br'],
+    // A sala de disputa do Comprasnet 4.0 fica em cnetmobile.estaleiro.serpro.gov.br.
+    hosts: ['compras.gov.br', 'comprasnet.gov.br', 'estaleiro.serpro.gov.br'],
     seletoresDoMelhorLance: [
       '[id*="melhorLance" i]',
       '[id*="menorLance" i]',

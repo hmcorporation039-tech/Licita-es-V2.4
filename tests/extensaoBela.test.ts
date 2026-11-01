@@ -64,3 +64,59 @@ describe('extrairMelhorLance', () => {
     expect(extrairMelhorLance(raiz, ['::ruim', '.bom'])).toEqual({ valor: 500, seletor: '.bom' })
   })
 })
+
+// @ts-expect-error módulo .mjs puro da extensão, sem tipos
+import { capturarEstrutura, mascarar } from '../extensao-bela/lib/captura.mjs'
+// @ts-expect-error módulo .mjs puro da extensão, sem tipos
+import { portalDoHost } from '../extensao-bela/config.mjs'
+
+type NoFalso = { nodeType: number; textContent: string }
+function el(tagName: string, opcoes: { id?: string; className?: string; attrs?: Record<string, string>; texto?: string; value?: string } = {}) {
+  const attrs = opcoes.attrs ?? {}
+  return {
+    tagName,
+    id: opcoes.id ?? '',
+    className: opcoes.className ?? '',
+    value: opcoes.value,
+    parentElement: null as unknown,
+    childNodes: (opcoes.texto ? [{ nodeType: 3, textContent: opcoes.texto }] : []) as NoFalso[],
+    attributes: Object.entries(attrs).map(([name, value]) => ({ name, value })),
+    getAttribute: (n: string) => attrs[n] ?? null,
+  }
+}
+
+describe('captura da tela da disputa', () => {
+  const sala = el('DIV', { id: 'sala-disputa', className: 'painel' })
+  const elementos = [
+    sala,
+    el('SPAN', { className: 'melhor-lance valor', texto: 'R$ 179.100,00' }),
+    el('SPAN', { id: 'tempo-restante', texto: '00:01:45' }),
+    el('SPAN', { className: 'fornecedor', texto: 'Empresa X, CNPJ 12.345.678/0001-90, contato joao@empresa.com.br' }),
+    el('INPUT', { attrs: { formcontrolname: 'valorLance', type: 'text' }, value: '178.000,00' }),
+    el('BUTTON', { className: 'btn-enviar', texto: 'Enviar lance' }),
+    el('SCRIPT', { texto: 'lance = 1' }),
+    el('P', { texto: 'Rodapé institucional' }),
+  ]
+  for (const e of elementos.slice(1)) e.parentElement = sala
+  const documento = { title: 'Sala de disputa', location: { origin: 'https://cnetmobile.estaleiro.serpro.gov.br', pathname: '/comprasnet-web/disputa' }, querySelectorAll: () => elementos }
+
+  it('guarda os elementos da disputa (lance, tempo, campo, botão) e deixa de fora o resto', () => {
+    const c = capturarEstrutura(documento)
+    expect(c.pagina).toBe('https://cnetmobile.estaleiro.serpro.gov.br/comprasnet-web/disputa')
+    const resumo = c.elementos.map((e: { tag: string; id?: string; classes?: string[]; texto?: string }) => e.id ?? e.classes?.[0] ?? e.tag)
+    expect(resumo).toEqual(['sala-disputa', 'melhor-lance', 'tempo-restante', 'fornecedor', 'input', 'btn-enviar'])
+    expect(c.elementos[1].caminho).toBe('div#sala-disputa > span.melhor-lance')
+  })
+
+  it('mascara CNPJ, CPF e e-mail e nunca lê o valor digitado no campo', () => {
+    const c = capturarEstrutura(documento)
+    expect(c.elementos[3].texto).toBe('Empresa X, CNPJ [cnpj], contato [e-mail]')
+    expect(JSON.stringify(c)).not.toContain('178.000,00')
+    expect(mascarar('CPF 123.456.789-09')).toBe('CPF [cpf]')
+  })
+
+  it('a sala de disputa do Comprasnet 4.0 (estaleiro.serpro.gov.br) é reconhecida como Compras.gov.br', () => {
+    expect(portalDoHost('cnetmobile.estaleiro.serpro.gov.br')?.nome).toBe('Compras.gov.br')
+    expect(portalDoHost('exemplo.com.br')).toBeNull()
+  })
+})

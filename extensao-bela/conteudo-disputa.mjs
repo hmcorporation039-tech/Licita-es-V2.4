@@ -1,4 +1,5 @@
 import { extrairMelhorLance } from './lib/valor.mjs'
+import { capturarEstrutura } from './lib/captura.mjs'
 import { portalDoHost } from './config.mjs'
 
 const portal = portalDoHost(location.hostname)
@@ -33,5 +34,11 @@ async function iniciar() {
   const observador = new MutationObserver(() => conferir())
   observador.observe(document.body, { childList: true, subtree: true, characterData: true })
 }
+
+// A captura atende mesmo com a leitura desligada: serve justamente para achar os seletores.
+chrome.runtime.onMessage.addListener((msg, _remetente, responder) => {
+  if (msg?.tipo !== 'capturar') return
+  responder(capturarEstrutura(document))
+})
 
 iniciar()

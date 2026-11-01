@@ -36,6 +36,21 @@ alternar.addEventListener('click', async () => {
   pintar(await ler())
 })
 
+const capturar = document.getElementById('capturar')
+const captura = document.getElementById('captura')
+
+capturar.addEventListener('click', async () => {
+  try {
+    const [aba] = await chrome.tabs.query({ active: true, currentWindow: true })
+    const estrutura = aba ? await chrome.tabs.sendMessage(aba.id, { tipo: 'capturar' }) : null
+    if (!estrutura) throw new Error('sem resposta')
+    await navigator.clipboard.writeText(JSON.stringify(estrutura))
+    captura.textContent = `Copiado: ${estrutura.total} elementos da tela. Cole no chamado de suporte da Bela.`
+  } catch {
+    captura.textContent = 'Abra a sala de disputa do Compras.gov.br nesta aba e tente de novo.'
+  }
+})
+
 chrome.storage?.onChanged?.addListener(async () => pintar(await ler()))
 
 ler().then(pintar)
