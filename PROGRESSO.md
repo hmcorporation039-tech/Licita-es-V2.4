@@ -166,6 +166,15 @@ Uma conta nova apareceu no administrador com acesso de 30 dias. O cadastro usava
 - **Teste grátis: 14 dias** (decisão confirmada em 01/11; o #103 de 20/10 já está no ar com 14 no cadastro, nos Termos e no admin).
 - Teste de integração `aderencia` passa a olhar só a licitação dele (num banco com sobras de outras rodadas pegava outra licitação de "notebook").
 
+### Correção de 01/11: análise de edital testada com o Gemini
+
+Teste real com o Gemini (`gemini-3.5-flash-lite`) num edital de pregão de CFTV: análise em ~5 s, conversa com o edital com trecho e página conferidos, e o pregão com a Bela. Defeitos achados e corrigidos:
+
+- **Regras da disputa não chegavam ao pregão.** O esquema da análise não tinha campo para modo de disputa, intervalo mínimo e vedação a robôs, e a matriz só cobre habilitação e proposta. Num edital que proíbe robô "sob pena de desclassificação", a Bela dizia não ter achado a proibição e deixava o robô de lance disponível. Novo campo `regrasDaDisputa` (trechos literais), lido por `regrasDoEdital` como os demais textos da análise.
+- **Valor estimado inventado.** Com valores só por item, o modelo somou errado (R$ 366.800 em vez de R$ 293.200). O prompt passa a proibir contas: sem total no edital, "não especificado no edital (só por item)".
+- **Intervalo mínimo por item numa frase só** ("R$ 50,00 para os itens 1 e 2 e de R$ 500,00 para o item 3") virava R$ 50 para tudo. Agora é ambíguo e a Bela pede para conferir.
+- O alerta de cláusula impugnável de sede passa a reconhecer "empresas com sede ou filial no Distrito Federal" e "sediadas no Estado".
+
 ### Pendente (próxima sessão)
 
 | O que | Observação |

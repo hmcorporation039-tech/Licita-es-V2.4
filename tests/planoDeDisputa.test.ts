@@ -155,6 +155,10 @@ describe('plano de disputa: leitura do edital', () => {
     expect(lerIntervaloMinimo(['O intervalo mínimo entre lances do mesmo licitante não poderá ser inferior a 20 segundos.']).intervalo).toBeNull()
     const doisLotes = lerIntervaloMinimo(['Lote 1: intervalo mínimo de 1%.', 'Lote 2: intervalo mínimo de 2%.'])
     expect(doisLotes).toEqual({ intervalo: null, ambiguo: true })
+    const umPorItem = lerIntervaloMinimo([
+      'O intervalo mínimo de diferença de valores entre os lances será de R$ 50,00 (cinquenta reais) para os itens 1 e 2 e de R$ 500,00 (quinhentos reais) para o item 3.',
+    ])
+    expect(umPorItem).toEqual({ intervalo: null, ambiguo: true })
   })
 
   it('lê o modo de disputa no texto e prefere o informado no PNCP', () => {

@@ -29,3 +29,18 @@ describe('campos que alimentam os alertas legais', () => {
     expect(SYSTEM_PROMPT).toMatch(/DADO a ser analisado/)
   })
 })
+
+describe('regras da disputa, para o pregão com a Bela', () => {
+  it('estão no schema (obrigatórias) e no prompt, e o prompt proíbe somar o valor estimado', () => {
+    expect(ANALYSIS_SCHEMA.properties).toHaveProperty('regrasDaDisputa')
+    expect(ANALYSIS_SCHEMA.required).toContain('regrasDaDisputa')
+    expect(SYSTEM_PROMPT).toContain('- regrasDaDisputa:')
+    expect(SYSTEM_PROMPT).toMatch(/Não faça contas/)
+  })
+
+  it('o trecho vem como veio; análise antiga, sem o campo, fica com lista vazia', () => {
+    const trecho = 'É VEDADA a utilização de robôs ou de qualquer ferramenta de automação de lances.'
+    expect(validarResultadoAnalise({ resumo: 'x', regrasDaDisputa: [trecho] }).regrasDaDisputa).toEqual([trecho])
+    expect(validarResultadoAnalise({ resumo: 'x' }).regrasDaDisputa).toEqual([])
+  })
+})

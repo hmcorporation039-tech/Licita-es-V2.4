@@ -240,6 +240,17 @@ const DOCUMENTOS_FORA_DO_ROL: Array<[RegExp, string]> = [
   [/alvara\s+de\s+(?:funcionamento|localizacao)/, 'Alvará de funcionamento'],
 ]
 
+// "possuir escritório no município", "empresas com sede ou filial no Distrito Federal",
+// "licitantes sediadas no Estado": o "com" só vale ligado a quem participa, para não
+// pegar a qualificação do próprio órgão ("o Município, com sede na Rua...").
+const LUGAR_DA_SEDE = '(?:o\\s+|a\\s+)?(?:municipio|cidade|estado|raio|regiao|distrito federal)'
+const ESTABELECIMENTO = '(?:sede|escritorio|filial|estabelecimento|deposito|loja)(?:\\s+ou\\s+(?:sede|escritorio|filial|estabelecimento))?'
+const EXIGENCIAS_DE_SEDE = [
+  new RegExp(`(?:possuir|manter|dispor de|ter)\\s+${ESTABELECIMENTO}\\s+(?:\\w+\\s+){0,3}(?:no|na|em|dentro)\\s+${LUGAR_DA_SEDE}`),
+  new RegExp(`(?:empresas|licitantes|proponentes|interessad[oa]s)\\s+(?:\\w+\\s+){0,2}com\\s+${ESTABELECIMENTO}\\s+(?:no|na|em)\\s+${LUGAR_DA_SEDE}`),
+  new RegExp(`(?:sediad|estabelecid)[ao]s?\\s+(?:no|na|em)\\s+${LUGAR_DA_SEDE}`),
+]
+
 const REGRAS_DE_EXIGENCIA: RegraDeExigencia[] = [
   {
     id: 'indice-contabil',
@@ -302,7 +313,7 @@ const REGRAS_DE_EXIGENCIA: RegraDeExigencia[] = [
     id: 'propriedade-ou-sede',
     avaliar: (t) => {
       const propriedade = /(?:propriedade|posse)\s+(?:previa\s+)?(?:de|do|da|dos|das)\s+(?:\w+\s+){0,2}(?:equipamento|veiculo|maquin|usina|caminh|frota|imove|instalac)/.test(t)
-      const sede = /(?:possuir|manter|dispor de|ter)\s+(?:sede|escritorio|filial|estabelecimento|deposito|loja)\s+(?:\w+\s+){0,3}(?:no|na|em|dentro)\s+(?:o\s+|a\s+)?(?:municipio|cidade|estado|raio|regiao)/.test(t)
+      const sede = EXIGENCIAS_DE_SEDE.some((re) => re.test(t))
       const depoisDoContrato = /(?:apos|depois)\s+(?:a\s+)?(?:assinatura|contratacao|homologacao)|contad[oa]s?\s+da\s+assinatura/.test(t)
       if ((!propriedade && !sede) || depoisDoContrato) return null
       return {
