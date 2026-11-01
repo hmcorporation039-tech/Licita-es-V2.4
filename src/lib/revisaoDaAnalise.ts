@@ -36,6 +36,14 @@ const CAMPOS_DE_TEXTO = [
   'garantiaContratual',
   'patrimonioLiquidoMinimo',
   'visitaTecnica',
+  'vigenciaContrato',
+  'servicoContinuo',
+  'inicioDaExecucao',
+  'formaDeJulgamento',
+  'metodoDoPrecoEstimado',
+  'subcontratacao',
+  'periodicidadeDeManutencao',
+  'locaisDeExecucao',
 ] as const
 
 const CAMPOS_DE_LISTA = ['exigenciasTecnicas', 'documentosExigidos'] as const

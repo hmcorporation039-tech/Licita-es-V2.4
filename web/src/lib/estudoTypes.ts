@@ -142,8 +142,24 @@ export interface EstudoResposta {
   distanciaLinhaRetaKm: number | null
   destino?: { municipio: string | null; uf: string | null; origem: 'edital' | 'objeto' | 'orgao' } | null
   prazoDoEdital: string | null
+  contratacao?: ContratacaoDoEdital | null
   resultado: ResultadoDoEstudo
   salvoEm: string | null
+}
+
+export interface ContratacaoDoEdital {
+  textos: { rotulo: string; valor: string }[]
+  sugestao: {
+    contrato: ContratoDoEstudo | null
+    visitasPorAno: number | null
+    periodicidades: string[]
+    locais: number | null
+    viagens: number | null
+    explicacao: string[]
+  }
+  julgamentoPorGrupo: boolean
+  subcontratacao: 'vedada' | 'parcial' | 'permitida' | null
+  vistoria: 'obrigatoria' | 'facultativa' | null
 }
 
 export interface PesquisaDePrecosResposta {

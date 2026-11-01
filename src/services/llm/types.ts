@@ -53,7 +53,29 @@ export interface EditalAnalysisResult {
   // é daqui que a Bela tira as regras do pregão (lib/bela/regrasDoEdital.ts).
   // Opcional porque as análises feitas antes do campo não o têm.
   regrasDaDisputa?: string[]
+  // Contratação (serviço contínuo, manutenção, locais): alimenta o estudo de custos
+  // (lib/contratacaoDoEdital.ts). Opcionais porque as análises antigas não os têm.
+  vigenciaContrato?: string
+  servicoContinuo?: string
+  inicioDaExecucao?: string
+  formaDeJulgamento?: string
+  metodoDoPrecoEstimado?: string
+  subcontratacao?: string
+  periodicidadeDeManutencao?: string
+  locaisDeExecucao?: string
 }
+
+/** Campos de contratação, na ordem em que aparecem no esquema e na tela. */
+export const CAMPOS_DA_CONTRATACAO = [
+  'vigenciaContrato',
+  'servicoContinuo',
+  'inicioDaExecucao',
+  'formaDeJulgamento',
+  'metodoDoPrecoEstimado',
+  'subcontratacao',
+  'periodicidadeDeManutencao',
+  'locaisDeExecucao',
+] as const
 
 // Schema JSON — usado tanto pelo output_config.format da Claude quanto
 // pelo responseSchema do Gemini (formato compatível entre os dois).
@@ -79,6 +101,14 @@ export const ANALYSIS_SCHEMA = {
     exigenciasTecnicas: { type: 'array', items: { type: 'string' } },
     documentosExigidos: { type: 'array', items: { type: 'string' } },
     regrasDaDisputa: { type: 'array', items: { type: 'string' } },
+    vigenciaContrato: { type: 'string' },
+    servicoContinuo: { type: 'string' },
+    inicioDaExecucao: { type: 'string' },
+    formaDeJulgamento: { type: 'string' },
+    metodoDoPrecoEstimado: { type: 'string' },
+    subcontratacao: { type: 'string' },
+    periodicidadeDeManutencao: { type: 'string' },
+    locaisDeExecucao: { type: 'string' },
     matrizExigencias: {
       type: 'array',
       items: {
@@ -129,6 +159,14 @@ export const ANALYSIS_SCHEMA = {
     'exigenciasTecnicas',
     'documentosExigidos',
     'regrasDaDisputa',
+    'vigenciaContrato',
+    'servicoContinuo',
+    'inicioDaExecucao',
+    'formaDeJulgamento',
+    'metodoDoPrecoEstimado',
+    'subcontratacao',
+    'periodicidadeDeManutencao',
+    'locaisDeExecucao',
     'matrizExigencias',
     'riscos',
   ],
@@ -156,6 +194,14 @@ Extraia (para qualquer campo não encontrado, escreva "não especificado no edit
 - visitaTecnica: o que o edital diz sobre visita técnica ou vistoria: se é obrigatória ou facultativa e se admite declaração do licitante no lugar da visita. Transcreva o trecho. Se não menciona, escreva "não exigida".
 - matrizExigencias: a matriz de exigências do edital, uma linha por exigência que o licitante precisa cumprir ou comprovar (habilitação jurídica, fiscal, econômico-financeira, técnica e da proposta). Cada linha tem: texto (transcrição LITERAL de até 200 caracteres do trecho do edital que contém a obrigação, normalmente com "deverá", "deve", "será exigido" ou "é obrigatório"; copie exatamente, sem parafrasear nem resumir), categoria (juridica, fiscal, economica, tecnica, proposta ou outra), documento (nome do arquivo em que o trecho aparece), pagina (número da página, conforme os marcadores [[PÁGINA n]] que antecedem cada página do texto; se o documento não tiver marcadores, escreva "não identificada"), item (número do item ou cláusula, ex.: "10.3.2"; vazio se não houver) e responsavel (fiscal para documentos de habilitação, calculista para planilhas, preços e custos, redator para declarações e texto da proposta). Liste no máximo 50 exigências, priorizando habilitação e proposta. Nunca invente uma exigência: se não houver o trecho, não liste.
 - regrasDaDisputa: transcrição LITERAL de cada trecho do edital sobre a sessão de lances: o modo de disputa (aberto, aberto e fechado, fechado e aberto), o intervalo mínimo de diferença entre lances (com o valor ou percentual exatamente como escrito) e o que o edital diz sobre robôs ou ferramentas de automação de lances (proibição ou permissão). Um trecho por item da lista, copiado sem parafrasear. Lista vazia se o edital não trata disso.
+- vigenciaContrato: prazo de vigência do contrato ou da ata, exatamente como escrito (ex.: "5 (cinco) anos, prorrogável até 10 anos", "12 meses"). Não converta unidades.
+- servicoContinuo: "Sim" se o objeto é serviço prestado de forma contínua e pago por mês (locação, manutenção, limpeza, vigilância, suporte, etc.), "Não" se é compra ou entrega/obra única; depois um traço e o trecho que justifica.
+- inicioDaExecucao: o prazo para começar a executar ou disponibilizar o serviço depois da assinatura ou da ordem de serviço (mobilização, implantação), transcrito como está. Se houver mais de uma etapa (ex.: ordem de serviço em até 75 dias e disponibilização em 120 dias da ordem), transcreva todas, sem somar.
+- formaDeJulgamento: como as propostas são apresentadas e julgadas: por item, por grupo/lote ou global, transcrito como está (ex.: "propostas por item; julgamento pelo menor preço por grupo").
+- metodoDoPrecoEstimado: como o órgão chegou ao valor estimado (painel de preços, contratações similares, pesquisa com fornecedores, mediana, média, menor preço, SINAPI etc.), resumido em uma frase com os termos do edital, ETP ou TR.
+- subcontratacao: o que o edital diz sobre subcontratação (vedada, permitida em parte, com limite percentual), com o trecho literal. Se não menciona, escreva "não mencionada".
+- periodicidadeDeManutencao: a frequência de visitas, manutenções, inspeções ou serviços periódicos no local (ex.: "zeladoria quadrimestral e manutenção preventiva anual"), com os termos do edital. Se não houver, escreva "não se aplica".
+- locaisDeExecucao: quantos locais, sítios, unidades ou endereços distintos recebem o serviço ou a entrega, como escrito ou contado na lista do edital (ex.: "22 sítios (itens 1 a 22)", "3 unidades: sede, anexo e almoxarifado"). Se for um só local, escreva "1 local".
 - exigenciasTecnicas: lista de exigências de qualificação técnica (atestados, registros em conselho de classe, etc.)
 - documentosExigidos: documentos de habilitação exigidos NESTE edital além do básico padrão presente em praticamente toda licitação da Lei 14.133/2021. NÃO liste nenhum destes, mesmo que o edital os cite: contrato social, cartão CNPJ, certidões negativas federais/estaduais/municipais, CNDT, certidão de regularidade do FGTS, RG/CPF ou procuração de sócios/representantes, certidão negativa de falência, e as declarações-modelo que acompanham como anexo quase todo edital — não emprego de menor, inexistência de fato impeditivo à habilitação (idoneidade), cumprimento dos requisitos de habilitação, elaboração independente de proposta, inexistência de parentesco/nepotismo com agente público, enquadramento como ME/EPP. Liste só o que é ESPECÍFICO deste edital: garantia de proposta, atestado de capacidade técnica com critério ou quantitativo definido, registro em conselho de classe, comprovação de vínculo com responsável técnico, ART/RRT, vistoria obrigatória, índices contábeis com valor mínimo fixado pelo edital, planilha de custos em formato próprio, compatibilidade com convenção coletiva específica, etc.
 - riscos: pontos de atenção reais encontrados no texto, no estilo de auditoria de concorrência — exemplos do que procurar: exigência de atestado técnico com critérios muito restritivos, planilha de custos com prazo de preenchimento apertado, exigência de visita técnica obrigatória com prazo curto, cláusulas de habilitação que podem restringir a competitividade indevidamente, valores ou prazos incomuns, exigências de qualificação econômico-financeira desproporcionais ao objeto. Marque severidade "alta" só para riscos que podem de fato inabilitar ou prejudicar uma proposta.
@@ -281,6 +327,14 @@ export function validarResultadoAnalise(bruto: unknown): EditalAnalysisResult {
     exigenciasTecnicas: listaTexto(o.exigenciasTecnicas),
     documentosExigidos: listaTexto(o.documentosExigidos),
     regrasDaDisputa: listaTexto(o.regrasDaDisputa),
+    vigenciaContrato: texto(o.vigenciaContrato),
+    servicoContinuo: texto(o.servicoContinuo),
+    inicioDaExecucao: texto(o.inicioDaExecucao),
+    formaDeJulgamento: texto(o.formaDeJulgamento),
+    metodoDoPrecoEstimado: texto(o.metodoDoPrecoEstimado),
+    subcontratacao: texto(o.subcontratacao),
+    periodicidadeDeManutencao: texto(o.periodicidadeDeManutencao),
+    locaisDeExecucao: texto(o.locaisDeExecucao),
     matrizExigencias,
     riscos,
   }

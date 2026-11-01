@@ -187,6 +187,13 @@ A partir da análise de um caso real de locação de torres (PRF/MS, 5 anos de v
 
 Estudos gravados antes continuam abrindo como compra única. O PDF do dossiê traz as mesmas informações. O pregão com a Bela não mudou: no contínuo, os limites do valor global são do contrato inteiro.
 
+### 01/11: a análise do edital preenche o estudo de custos
+
+- **Campos novos na análise** (transcritos, sem contas da IA): vigência, serviço contínuo, início da execução (mobilização), forma de julgamento, como o preço foi estimado, subcontratação, periodicidade de manutenção e locais de execução. Aparecem na aba Análise, no dossiê e no estudo. Análises antigas não têm os campos e seguem como antes; os editais novos já vêm com eles.
+- **Estudo preenchido pelo edital** (`lib/contratacaoDoEdital.ts`): na primeira abertura, serviço contínuo, vigência, meses sem faturar (dias de mobilização ÷ 30) e viagens de manutenção (visitas por ano × meses faturados × locais; "quadrimestral e anual" = até 4 por ano). Num estudo já salvo, o botão "Usar o que o edital diz" aplica a sugestão.
+- **Avisos do edital no estudo**: propostas por item com julgamento por grupo, subcontratação vedada ou parcial, vistoria obrigatória.
+- Ainda não testado com a IA de verdade (sem chave nesta sessão): conferir os campos novos na próxima análise real.
+
 ### Pendente (próxima sessão)
 
 | O que | Observação |

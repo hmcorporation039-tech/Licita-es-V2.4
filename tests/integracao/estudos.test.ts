@@ -188,6 +188,39 @@ rodar('Estudo de custos', () => {
     expect((await http('POST', `/api/estudos/${tenderId}/calcular`, { dados: { ...dados, contrato: { tipo: 'anual', vigenciaMeses: 12, mesesSemFaturar: 0 } } }, tokenA)).status).toBe(400)
   })
 
+  it('primeira abertura usa o que a análise leu do edital: contínuo, vigência, mobilização e viagens de manutenção', async () => {
+    const t = await prisma.tender.create({
+      data: {
+        fonte: 'FIEG', fonteId: `estudo-continuo-${sufixo}`, modalidade: 'PREGAO_ELETRONICO', situacao: 'ABERTA',
+        objeto: `Locação de torres ${sufixo}`, objetoNorm: `locacao de torres ${sufixo}`, municipio: 'Anápolis', uf: 'GO', encerramentoAt: futuro, rawJson: {},
+        items: { create: [{ numeroItem: 1, descricao: 'Locação de espaço em torre', quantidade: 3, valorUnitario: 3000, unidadeMedida: 'UN' }] },
+        analysis: {
+          create: {
+            status: 'DONE',
+            resultado: {
+              vigenciaContrato: '5 (cinco) anos',
+              servicoContinuo: 'Sim — locação mensal de espaço em torres',
+              inicioDaExecucao: 'em até 60 (sessenta) dias da assinatura',
+              formaDeJulgamento: 'propostas por item; julgamento pelo menor preço por grupo',
+              subcontratacao: 'É vedada a subcontratação.',
+              periodicidadeDeManutencao: 'zeladoria quadrimestral e preventiva anual',
+              locaisDeExecucao: '3 sítios',
+            },
+          },
+        },
+      },
+    })
+    expect((await marcar('VOU_PARTICIPAR', tokenA, t.id)).status).toBe(200)
+    const r = await http('GET', `/api/estudos/${t.id}`, undefined, tokenA)
+    expect(r.status).toBe(200)
+    expect(r.body.dados.contrato).toEqual({ tipo: 'continuo', vigenciaMeses: 60, mesesSemFaturar: 2 })
+    // 4 visitas/ano × 58 meses = 19,3 → 20 por sítio × 3 sítios.
+    expect(r.body.dados.deslocamento.viagens).toBe(60)
+    expect(r.body.contratacao.julgamentoPorGrupo).toBe(true)
+    expect(r.body.contratacao.subcontratacao).toBe('vedada')
+    expect(r.body.resultado.contrato.mesesFaturados).toBe(58)
+  })
+
   it('recusa dados inválidos (valor negativo, imposto acima de 100%, texto no lugar de número)', async () => {
     const ruim = (alt: Record<string, unknown>) => ({ ...dadosBase({}), ...alt })
     for (const dados of [ruim({ impostosPct: 120 }), ruim({ itens: { x: { custoUnit: -1, precoVendaUnit: 1 } } }), ruim({ margemDesejadaPct: 'dez' }), ruim({ versao: 2 })]) {

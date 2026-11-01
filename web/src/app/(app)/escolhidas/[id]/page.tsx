@@ -355,6 +355,15 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
   const continuo = contrato.tipo === 'continuo'
   const porMes = continuo ? '/mês' : ''
   const mesesFaturados = resultado.contrato?.mesesFaturados ?? 1
+  const doEdital = estudo.contratacao ?? null
+  const sugestaoDoEdital = doEdital?.sugestao ?? null
+  const podeAplicarSugestao =
+    !!sugestaoDoEdital &&
+    ((sugestaoDoEdital.contrato !== null &&
+      (sugestaoDoEdital.contrato.tipo !== contrato.tipo ||
+        sugestaoDoEdital.contrato.vigenciaMeses !== contrato.vigenciaMeses ||
+        sugestaoDoEdital.contrato.mesesSemFaturar !== contrato.mesesSemFaturar)) ||
+      (sugestaoDoEdital.viagens !== null && sugestaoDoEdital.viagens !== dados.deslocamento.viagens))
   const pctBr = (n: number | null) => (n === null ? '—' : `${n.toLocaleString('pt-BR')}%`)
 
   return (
@@ -430,6 +439,50 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
             </>
           )}
         </div>
+        {doEdital && (
+          <div className="mt-4 flex flex-col gap-3 border-t border-line-soft pt-4">
+            <p className="text-sm font-semibold text-ink">O que o edital diz (lido pela análise)</p>
+            <DescriptionList columns={2} items={doEdital.textos.map((t) => ({ label: t.rotulo, value: t.valor }))} />
+            {sugestaoDoEdital && sugestaoDoEdital.explicacao.length > 0 && (
+              <ul className="flex list-disc flex-col gap-0.5 pl-5 text-sm text-ink-2">
+                {sugestaoDoEdital.explicacao.map((e) => (
+                  <li key={e}>{e}</li>
+                ))}
+              </ul>
+            )}
+            {podeAplicarSugestao && (
+              <div>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() =>
+                    alterar((d) => ({
+                      ...d,
+                      contrato: sugestaoDoEdital?.contrato ? { ...sugestaoDoEdital.contrato } : d.contrato,
+                      deslocamento: sugestaoDoEdital?.viagens ? { ...d.deslocamento, viagens: sugestaoDoEdital.viagens } : d.deslocamento,
+                    }))
+                  }
+                >
+                  Usar o que o edital diz
+                  {sugestaoDoEdital?.viagens ? ` (${sugestaoDoEdital.viagens} viagens)` : ''}
+                </Button>
+              </div>
+            )}
+            {doEdital.julgamentoPorGrupo && (
+              <Notice tone="warn">
+                Propostas por item e julgamento por grupo: o total do grupo decide, mas cada item precisa estar dentro do estimado do órgão. Confira os itens marcados “Acima do estimado” na tabela.
+              </Notice>
+            )}
+            {(doEdital.subcontratacao === 'vedada' || doEdital.subcontratacao === 'parcial') && (
+              <Notice tone="warn">
+                {doEdital.subcontratacao === 'vedada' ? 'Subcontratação vedada' : 'Subcontratação só em parte'}: se o seu custo depende de terceiros (aluguel de estrutura, serviço de outra empresa), confira se isso é permitido antes de ofertar.
+              </Notice>
+            )}
+            {doEdital.vistoria === 'obrigatoria' && (
+              <Notice tone="info">Vistoria obrigatória: inclua o custo da visita aos locais nos outros custos e não perca o prazo de agendamento.</Notice>
+            )}
+          </div>
+        )}
       </Panel>
 
       <Panel
