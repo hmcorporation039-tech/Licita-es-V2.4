@@ -12,6 +12,9 @@ import { asyncHandler, ApiError } from '../asyncHandler'
 import { estudoCalculoLimiter, estudoPdfLimiter, estudoPrecosLimiter } from '../rateLimit'
 import {
   DadosDoEstudo,
+  CONTRATO_PADRAO,
+  FONTES_DO_CUSTO,
+  FonteDoCusto,
   ItemDaLicitacao,
   calcularEstudo,
   dadosIniciais,
@@ -38,7 +41,11 @@ const dadosSchema = z.object({
   itens: z
     .record(
       z.string().max(80),
-      z.object({ custoUnit: dinheiro.nullable(), precoVendaUnit: dinheiro.nullable().transform((v) => (v === null ? null : Math.round(v * 100) / 100)) })
+      z.object({
+        custoUnit: dinheiro.nullable(),
+        precoVendaUnit: dinheiro.nullable().transform((v) => (v === null ? null : Math.round(v * 100) / 100)),
+        fonteDoCusto: z.enum(FONTES_DO_CUSTO as [FonteDoCusto, ...FonteDoCusto[]]).nullable().optional(),
+      })
     )
     .refine((o) => Object.keys(o).length <= 500),
   mercado: z
@@ -68,7 +75,15 @@ const dadosSchema = z.object({
   }),
   impostosPct: pctSchema,
   margemDesejadaPct: pctSchema,
-  outrosCustos: z.array(z.object({ descricao: z.string().trim().max(200), valor: dinheiro })).max(40),
+  outrosCustos: z.array(z.object({ descricao: z.string().trim().max(200), valor: dinheiro, tipo: z.enum(['unico', 'mensal']).default('unico') })).max(40),
+  // Estudos gravados antes do serviço contínuo não têm o campo: viram compra única.
+  contrato: z
+    .object({
+      tipo: z.enum(['unico', 'continuo']),
+      vigenciaMeses: z.number().int().min(1).max(120),
+      mesesSemFaturar: z.number().int().min(0).max(120),
+    })
+    .default({ ...CONTRATO_PADRAO }),
   prazo: z.object({
     exigidoDias: z.number().int().min(0).max(3650).nullable(),
     exigidoEmDiasUteis: z.boolean(),

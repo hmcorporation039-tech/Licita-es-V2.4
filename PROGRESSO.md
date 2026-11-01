@@ -175,6 +175,18 @@ Teste real com o Gemini (`gemini-3.5-flash-lite`) num edital de pregão de CFTV:
 - **Intervalo mínimo por item numa frase só** ("R$ 50,00 para os itens 1 e 2 e de R$ 500,00 para o item 3") virava R$ 50 para tudo. Agora é ambíguo e a Bela pede para conferir.
 - O alerta de cláusula impugnável de sede passa a reconhecer "empresas com sede ou filial no Distrito Federal" e "sediadas no Estado".
 
+### 01/11: estudo de custos para serviço contínuo e negociação
+
+A partir da análise de um caso real de locação de torres (PRF/MS, 5 anos de vigência), o estudo de custos ganhou:
+
+1. **Tipo de contrato.** Compra única (como antes) ou serviço contínuo: custo e preço dos itens por mês, vigência em meses e meses sem faturar (mobilização). Resumo mensal: receita, custo, impostos, lucro por mês e em quantos meses os custos únicos se pagam.
+2. **Outros custos "uma vez" ou "por mês".** Obra, bases, mobilização entram uma vez; zeladoria, energia, aluguel entram em cada mês faturado.
+3. **Negociação.** Custo máximo para cada margem (10% a 30% e a desejada), com o teto por mês no contínuo; lucro se o lance cair de 5% a 30%; desconto máximo sem prejuízo. Referência: seus preços ou, sem eles, o estimado do órgão.
+4. **Lucro por item.** Com a parte do deslocamento e dos outros custos rateada pelo custo; o item que dá prejuízo aparece em vermelho e num aviso, mesmo com o total no lucro.
+5. **Origem do custo.** Cotação, base de preços (marcada sozinha ao preencher pela base), mercado ou estimativa; mostra quanto do custo não tem cotação e avisa acima de 50%.
+
+Estudos gravados antes continuam abrindo como compra única. O PDF do dossiê traz as mesmas informações. O pregão com a Bela não mudou: no contínuo, os limites do valor global são do contrato inteiro.
+
 ### Pendente (próxima sessão)
 
 | O que | Observação |

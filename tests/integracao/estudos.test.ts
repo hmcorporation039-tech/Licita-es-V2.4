@@ -55,7 +55,7 @@ rodar('Estudo de custos', () => {
     return { userId: u.id as string, companyId: u.companyId as string, token }
   }
 
-  const dadosBase = (itens: Record<string, { custoUnit: number | null; precoVendaUnit: number | null }>) => ({
+  const dadosBase = (itens: Record<string, { custoUnit: number | null; precoVendaUnit: number | null; fonteDoCusto?: string | null }>) => ({
     versao: 1,
     itens,
     mercado: {},
@@ -163,6 +163,29 @@ rodar('Estudo de custos', () => {
     const releitura = await http('GET', `/api/estudos/${tenderId}`, undefined, tokenA)
     expect(releitura.body.dados.itens[itemCatmat]).toEqual({ custoUnit: 3000, precoVendaUnit: 3800 })
     expect(releitura.body.dados.prazo.exigidoDias).toBe(30) // o que o usuário gravou vale mais que o texto do edital
+  })
+
+  it('serviço contínuo: valores dos itens por mês, custos únicos e mensais, e grava o tipo de contrato', async () => {
+    const dados = {
+      ...dadosBase({ [itemCatmat]: { custoUnit: 100, precoVendaUnit: 160, fonteDoCusto: 'COTACAO' }, [itemSemCodigo]: { custoUnit: 10, precoVendaUnit: 15 } }),
+      deslocamento: { kmIdaInformado: 0, viagens: 0, valorPorKm: 0, pedagioPorViagem: 0, hospedagemPorViagem: 0 },
+      outrosCustos: [{ descricao: 'Bases', valor: 2000, tipo: 'unico' }, { descricao: 'Zeladoria', valor: 100, tipo: 'mensal' }],
+      contrato: { tipo: 'continuo', vigenciaMeses: 12, mesesSemFaturar: 2 },
+    }
+    const calc = await http('POST', `/api/estudos/${tenderId}/calcular`, { dados }, tokenA)
+    expect(calc.status).toBe(200)
+    const r = calc.body.resultado
+    // Por mês: receita 10×160 + 20×15 = 1900; custo 10×100 + 20×10 + 100 = 1300; impostos 190.
+    expect(r.contrato).toMatchObject({ mesesFaturados: 10, receitaMensal: 1900, custoMensal: 1300, impostosMensais: 190, lucroMensal: 410, custosUnicos: 2000, mesesParaRecuperar: 5 })
+    expect(r.receita).toBe(19_000)
+    expect(r.lucro).toBe(410 * 10 - 2000)
+    expect(r.origemDosCustos.firme).toBe(10_000)
+    expect(r.negociacao.origemDaReferencia).toBe('seus_precos')
+
+    // Estudo gravado sem o tipo de contrato (formato antigo) continua abrindo como compra única.
+    const antigo = await http('POST', `/api/estudos/${tenderId}/calcular`, { dados: dadosBase({}) }, tokenA)
+    expect(antigo.body.resultado.contrato).toBeNull()
+    expect((await http('POST', `/api/estudos/${tenderId}/calcular`, { dados: { ...dados, contrato: { tipo: 'anual', vigenciaMeses: 12, mesesSemFaturar: 0 } } }, tokenA)).status).toBe(400)
   })
 
   it('recusa dados inválidos (valor negativo, imposto acima de 100%, texto no lugar de número)', async () => {
