@@ -22,7 +22,7 @@ function PainelDaBela({ fala, destaques }: { fala: ReactNode; destaques?: Destaq
       <Anel classe="pb-anel-b" />
       <figure className="pb-bela">
         <Image
-          src="/bela/bela-640.webp"
+          src="/bela/v2/bela-640.webp"
           alt=""
           width={640}
           height={605}
