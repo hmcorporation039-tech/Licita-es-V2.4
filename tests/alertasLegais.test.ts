@@ -171,6 +171,9 @@ describe('cláusulas que podem ser impugnadas, lidas das exigências do edital',
     expect(idsDe('comprovação de propriedade dos equipamentos relacionados no anexo')).toEqual(['propriedade-ou-sede'])
     expect(idsDe('A licitante deverá possuir escritório no município de Anápolis')).toEqual(['propriedade-ou-sede'])
     expect(idsDe('A contratada deverá manter escritório no município no prazo de 30 dias contados da assinatura do contrato')).toEqual([])
+    expect(idsDe('Somente poderão participar empresas com sede ou filial no Distrito Federal.')).toEqual(['propriedade-ou-sede'])
+    expect(idsDe('Só serão aceitas licitantes sediadas no Estado de Goiás.')).toEqual(['propriedade-ou-sede'])
+    expect(idsDe('O Município de Anápolis, com sede na Rua 15, nº 100, torna público o pregão.')).toEqual([])
   })
 
   it('documentos fora do rol da lei', () => {

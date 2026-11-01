@@ -49,6 +49,10 @@ export interface EditalAnalysisResult {
   documentosExigidos: string[]
   matrizExigencias: ExigenciaDoEdital[]
   riscos: EditalAnalysisRisco[]
+  // Trechos literais sobre a sessão de lances (modo de disputa, intervalo mínimo, robôs):
+  // é daqui que a Bela tira as regras do pregão (lib/bela/regrasDoEdital.ts).
+  // Opcional porque as análises feitas antes do campo não o têm.
+  regrasDaDisputa?: string[]
 }
 
 // Schema JSON — usado tanto pelo output_config.format da Claude quanto
@@ -74,6 +78,7 @@ export const ANALYSIS_SCHEMA = {
     visitaTecnica: { type: 'string' },
     exigenciasTecnicas: { type: 'array', items: { type: 'string' } },
     documentosExigidos: { type: 'array', items: { type: 'string' } },
+    regrasDaDisputa: { type: 'array', items: { type: 'string' } },
     matrizExigencias: {
       type: 'array',
       items: {
@@ -123,6 +128,7 @@ export const ANALYSIS_SCHEMA = {
     'visitaTecnica',
     'exigenciasTecnicas',
     'documentosExigidos',
+    'regrasDaDisputa',
     'matrizExigencias',
     'riscos',
   ],
@@ -134,7 +140,8 @@ Leia o edital fornecido e produza uma análise minuciosa e objetiva para uma emp
 
 Extraia (para qualquer campo não encontrado, escreva "não especificado no edital"):
 - resumo: 2-3 frases sobre o objeto da licitação
-- valorEstimado, prazoEntrega, criterioJulgamento: extraia do texto
+- valorEstimado: o valor total estimado exatamente como está escrito no edital. Não faça contas: se o edital só traz valores por item ou lote, escreva "não especificado no edital (só por item)"
+- prazoEntrega, criterioJulgamento: extraia do texto
 - dataSessao: data/hora da sessão pública ou do fim do recebimento de propostas (ex: "10/10/2026 09:00")
 - registroPrecos: se é Sistema de Registro de Preços (SRP). Responda "Sim" ou "Não" e, se houver, detalhe
 - local: local/endereço/localidade de entrega ou execução do objeto
@@ -148,6 +155,7 @@ Extraia (para qualquer campo não encontrado, escreva "não especificado no edit
 - patrimonioLiquidoMinimo: exigência de capital mínimo ou de patrimônio líquido mínimo na habilitação econômico-financeira, com o percentual ou valor exatamente como escrito (ex: "10% do valor estimado" ou "R$ 500.000,00"). Se não exige, escreva "não exigido".
 - visitaTecnica: o que o edital diz sobre visita técnica ou vistoria: se é obrigatória ou facultativa e se admite declaração do licitante no lugar da visita. Transcreva o trecho. Se não menciona, escreva "não exigida".
 - matrizExigencias: a matriz de exigências do edital, uma linha por exigência que o licitante precisa cumprir ou comprovar (habilitação jurídica, fiscal, econômico-financeira, técnica e da proposta). Cada linha tem: texto (transcrição LITERAL de até 200 caracteres do trecho do edital que contém a obrigação, normalmente com "deverá", "deve", "será exigido" ou "é obrigatório"; copie exatamente, sem parafrasear nem resumir), categoria (juridica, fiscal, economica, tecnica, proposta ou outra), documento (nome do arquivo em que o trecho aparece), pagina (número da página, conforme os marcadores [[PÁGINA n]] que antecedem cada página do texto; se o documento não tiver marcadores, escreva "não identificada"), item (número do item ou cláusula, ex.: "10.3.2"; vazio se não houver) e responsavel (fiscal para documentos de habilitação, calculista para planilhas, preços e custos, redator para declarações e texto da proposta). Liste no máximo 50 exigências, priorizando habilitação e proposta. Nunca invente uma exigência: se não houver o trecho, não liste.
+- regrasDaDisputa: transcrição LITERAL de cada trecho do edital sobre a sessão de lances: o modo de disputa (aberto, aberto e fechado, fechado e aberto), o intervalo mínimo de diferença entre lances (com o valor ou percentual exatamente como escrito) e o que o edital diz sobre robôs ou ferramentas de automação de lances (proibição ou permissão). Um trecho por item da lista, copiado sem parafrasear. Lista vazia se o edital não trata disso.
 - exigenciasTecnicas: lista de exigências de qualificação técnica (atestados, registros em conselho de classe, etc.)
 - documentosExigidos: documentos de habilitação exigidos NESTE edital além do básico padrão presente em praticamente toda licitação da Lei 14.133/2021. NÃO liste nenhum destes, mesmo que o edital os cite: contrato social, cartão CNPJ, certidões negativas federais/estaduais/municipais, CNDT, certidão de regularidade do FGTS, RG/CPF ou procuração de sócios/representantes, certidão negativa de falência, e as declarações-modelo que acompanham como anexo quase todo edital — não emprego de menor, inexistência de fato impeditivo à habilitação (idoneidade), cumprimento dos requisitos de habilitação, elaboração independente de proposta, inexistência de parentesco/nepotismo com agente público, enquadramento como ME/EPP. Liste só o que é ESPECÍFICO deste edital: garantia de proposta, atestado de capacidade técnica com critério ou quantitativo definido, registro em conselho de classe, comprovação de vínculo com responsável técnico, ART/RRT, vistoria obrigatória, índices contábeis com valor mínimo fixado pelo edital, planilha de custos em formato próprio, compatibilidade com convenção coletiva específica, etc.
 - riscos: pontos de atenção reais encontrados no texto, no estilo de auditoria de concorrência — exemplos do que procurar: exigência de atestado técnico com critérios muito restritivos, planilha de custos com prazo de preenchimento apertado, exigência de visita técnica obrigatória com prazo curto, cláusulas de habilitação que podem restringir a competitividade indevidamente, valores ou prazos incomuns, exigências de qualificação econômico-financeira desproporcionais ao objeto. Marque severidade "alta" só para riscos que podem de fato inabilitar ou prejudicar uma proposta.
@@ -272,6 +280,7 @@ export function validarResultadoAnalise(bruto: unknown): EditalAnalysisResult {
     visitaTecnica: texto(o.visitaTecnica),
     exigenciasTecnicas: listaTexto(o.exigenciasTecnicas),
     documentosExigidos: listaTexto(o.documentosExigidos),
+    regrasDaDisputa: listaTexto(o.regrasDaDisputa),
     matrizExigencias,
     riscos,
   }

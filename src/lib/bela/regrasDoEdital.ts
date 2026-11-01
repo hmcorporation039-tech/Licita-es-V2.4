@@ -83,6 +83,8 @@ const INTERVALO = /(?:intervalo minimo|diferenca minima|decremento minimo|reduto
 
 const numeroBr = (s: string) => Number(s.replace(/\./g, '').replace(',', '.'))
 
+const VALOR_DO_INTERVALO = /(\d{1,2}(?:,\d{1,4})?) ?%|r\$ ?(\d{1,3}(?:\.\d{3})*,\d{2})/g
+
 export function lerIntervaloMinimo(textos: string[]): { intervalo: IntervaloMinimo | null; ambiguo: boolean } {
   const achados: IntervaloMinimo[] = []
   for (const f of frases(textos)) {
@@ -94,6 +96,12 @@ export function lerIntervaloMinimo(textos: string[]): { intervalo: IntervaloMini
     if (!Number.isFinite(intervalo.valor) || intervalo.valor <= 0) continue
     if (intervalo.tipo === 'PERCENTUAL' && intervalo.valor > 20) continue
     achados.push(intervalo)
+    // "R$ 50,00 para os itens 1 e 2 e de R$ 500,00 para o item 3": a mesma frase pode
+    // trazer um intervalo por item ou lote. Os demais valores entram na conta de ambíguo.
+    const resto = f.normal.slice(m.index + m[0].length, m.index + m[0].length + 200)
+    for (const v of resto.matchAll(VALOR_DO_INTERVALO)) {
+      achados.push(v[1] ? { tipo: 'PERCENTUAL', valor: numeroBr(v[1]), trecho: f.original } : { tipo: 'REAIS', valor: numeroBr(v[2]), trecho: f.original })
+    }
   }
   const distintos = new Set(achados.map((a) => `${a.tipo}:${a.valor}`))
   if (distintos.size === 1) return { intervalo: achados[0], ambiguo: false }
