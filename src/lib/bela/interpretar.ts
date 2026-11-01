@@ -459,6 +459,20 @@ function acharMunicipio(t: string, original: string): MunicipioFalado | null {
     if (municipioAceito(nome.chave, encontrado[1], nome.ufs, nome.ufColada, nome.resto)) return municipioFalado(nome, inicio, encontrado.index, original)
     procura.lastIndex = nome.fim
   }
+  return capitalNoFimDaFrase(t, original)
+}
+
+// "cftv Brasília": a capital no fim da frase, sem preposição, também é o lugar. Fica de
+// fora a capital que é palavra comum ("uniforme natal"), que continua pedindo "em".
+function capitalNoFimDaFrase(t: string, original: string): MunicipioFalado | null {
+  for (const [chave, , uf] of CAPITAIS) {
+    if (CAPITAIS_QUE_SAO_PALAVRAS.has(chave)) continue
+    const achado = new RegExp(`(?:^|\\s)(${chave})(?:\\s*[,/-]?\\s*${uf.toLowerCase()})?\\s*$`).exec(t)
+    if (!achado) continue
+    const inicio = achado.index + achado[0].indexOf(chave)
+    const nome = nomeDeMunicipioEm(t, inicio, original)
+    if (nome?.chave === chave && nome.ufs.includes(uf)) return municipioFalado(nome, inicio, inicio, original)
+  }
   return null
 }
 

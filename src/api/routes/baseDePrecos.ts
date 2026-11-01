@@ -105,7 +105,7 @@ baseDePrecosRouter.post(
     if (conteudo.length === 0) throw new ApiError(400, 'Nenhuma planilha foi enviada')
     try {
       const resultado = await importarPlanilha(req.companyId!, req.userId!, conteudo)
-      await registrarAuditoria(req, { action: 'BASE_PRECO_IMPORTADA', entityType: 'empresa', entityId: req.companyId!, metadata: { importados: resultado.importados, ignorados: resultado.ignorados } })
+      await registrarAuditoria(req, { action: 'BASE_PRECO_IMPORTADA', entityType: 'empresa', entityId: req.companyId!, metadata: { importados: resultado.importados, atualizados: resultado.atualizados, ignorados: resultado.ignorados } })
       res.json(resultado)
     } catch (err) {
       if (err instanceof ImportacaoInvalida) throw new ApiError(422, err.message)

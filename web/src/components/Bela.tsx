@@ -8,21 +8,31 @@ import { api, ApiRequestError } from '@/lib/api'
 import type { FiltrosDaBela, Paginated, PedidoDaBela, Tender } from '@/lib/types'
 import { MODALIDADE_OPTIONS } from '@/lib/modalidades'
 import { dataDaLicitacao } from '@/lib/datas'
+import { rotuloDaFonte, variadasPorFonte } from '@/lib/fontes'
 import { useEscuta, useFalaDaBela } from '@/hooks/useBela'
 import { Button, Checkbox, cx, FormError, Input, LinkButton, Notice, Prazo, StatusTag } from '@/components/ui'
 
 const LIMITE_DO_PEDIDO = 500
 const RESULTADOS_NA_BELA = 5
+// Busca mais que os 5 mostrados para variar o portal: sem isso os 5 de prazo mais
+// próximo tendem a ser todos do PNCP, que tem a maior parte das licitações.
+const CANDIDATAS_DA_BELA = 30
 const EXEMPLO = 'licitação de estrutura metálica no DF'
 
 type EstadoDaBela =
   | { fase: 'ocioso' }
   | { fase: 'pensando'; pedido: string }
   | { fase: 'desconhecida'; pedido: string; resumo: string }
-  | { fase: 'resultado'; pedido: string; filtros: FiltrosDaBela; total: number; itens: Tender[] }
+  | { fase: 'resultado'; pedido: string; filtros: FiltrosDaBela; total: number; itens: Tender[]; porFonte: ContagemPorFonte[] }
   | { fase: 'erro'; pedido: string; mensagem: string }
 
 type TenderComEncerramento = Tender & { encerramentoAt?: string | null }
+
+type ContagemPorFonte = { fonte: string; total: number }
+
+function emQuantosPortais(porFonte: ContagemPorFonte[]): string | null {
+  return porFonte.length > 1 ? `em ${porFonte.length} portais` : null
+}
 
 const FONTES_COM_ABERTURA_NO_INICIO_DAS_PROPOSTAS = new Set(['PNCP', 'COMPRASNET'])
 
@@ -75,14 +85,15 @@ function localDoFiltro(filtros: FiltrosDaBela): string | null {
   return null
 }
 
-function fraseDoResultado(filtros: FiltrosDaBela, total: number, primeira: Tender | undefined): string {
+function fraseDoResultado(filtros: FiltrosDaBela, total: number, porFonte: ContagemPorFonte[], primeira: Tender | undefined): string {
   const modalidade = rotuloDasModalidades(filtros)
   const assunto = [filtros.q ? `de ${filtros.q}` : null, modalidade ? `por ${modalidade.toLowerCase()}` : null, localDoFiltro(filtros)]
     .filter(Boolean)
     .join(' ')
   if (total === 0) return `Não encontrei licitações ${assunto}. Tente outras palavras.`.replace(/\s+\./, '.')
   const quantidade = total === 1 ? 'uma licitação' : `${total.toLocaleString('pt-BR')} licitações`
-  const inicio = `Encontrei ${quantidade}${assunto ? ` ${assunto}` : ''}.`
+  const portais = emQuantosPortais(porFonte)
+  const inicio = `Encontrei ${quantidade}${assunto ? ` ${assunto}` : ''}${portais ? `, ${portais}` : ''}.`
   return primeira?.orgao ? `${inicio} A primeira é do órgão ${primeira.orgao}.` : inicio
 }
 
@@ -105,7 +116,7 @@ function FiltrosAplicados({ filtros }: { filtros: FiltrosDaBela }) {
 }
 
 function ResultadosDaBusca({ estado, onAbrir }: { estado: Extract<EstadoDaBela, { fase: 'resultado' }>; onAbrir: () => void }) {
-  const { filtros, total, itens } = estado
+  const { filtros, total, itens, porFonte } = estado
   return (
     <div className="flex flex-col gap-3">
       <FiltrosAplicados filtros={filtros} />
@@ -115,7 +126,8 @@ function ResultadosDaBusca({ estado, onAbrir }: { estado: Extract<EstadoDaBela, 
         ) : (
           <>
             <span className="font-mono font-semibold">{total.toLocaleString('pt-BR')}</span> {total === 1 ? 'licitação encontrada' : 'licitações encontradas'}
-            {total > itens.length && <span className="text-muted"> · mostrando as {itens.length} de prazo mais próximo</span>}
+            {porFonte.length > 1 && <span> {emQuantosPortais(porFonte)}</span>}
+            {total > itens.length && <span className="text-muted"> · mostrando {itens.length}, de portais diferentes quando há</span>}
           </>
         )}
       </p>
@@ -130,7 +142,8 @@ function ResultadosDaBusca({ estado, onAbrir }: { estado: Extract<EstadoDaBela, 
                     {objeto}
                   </span>
                   <span className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-                    <span className="min-w-0 truncate text-xs text-muted">
+                    <StatusTag mono>{rotuloDaFonte(t.fonte)}</StatusTag>
+                    <span className="min-w-0 flex-1 truncate text-xs text-muted">
                       {t.orgao ?? 'Órgão n/d'}
                       {t.uf ? ` · ${t.municipio ? `${t.municipio}/` : ''}${t.uf}` : ''}
                     </span>
@@ -234,12 +247,15 @@ export default function Bela({ aberta, onFechar }: { aberta: boolean; onFechar: 
       }
       const qs = parametrosDosFiltros(interpretado.filtros)
       qs.set('page', '1')
-      qs.set('pageSize', String(RESULTADOS_NA_BELA))
+      qs.set('pageSize', String(CANDIDATAS_DA_BELA))
       qs.set('ordem', 'prazo')
-      const lista = await api.get<Paginated<Tender>>(`/api/tenders?${qs.toString()}`)
+      qs.set('contarFontes', 'true')
+      const lista = await api.get<Paginated<Tender> & { porFonte?: ContagemPorFonte[] }>(`/api/tenders?${qs.toString()}`)
       if (numero !== ultimaBusca.current) return
-      setEstado({ fase: 'resultado', pedido, filtros: interpretado.filtros, total: lista.total, itens: lista.items })
-      fala.dizer(fraseDoResultado(interpretado.filtros, lista.total, lista.items[0]))
+      const itens = variadasPorFonte(lista.items, RESULTADOS_NA_BELA)
+      const porFonte = lista.porFonte ?? []
+      setEstado({ fase: 'resultado', pedido, filtros: interpretado.filtros, total: lista.total, itens, porFonte })
+      fala.dizer(fraseDoResultado(interpretado.filtros, lista.total, porFonte, itens[0]))
     } catch (e) {
       if (numero !== ultimaBusca.current) return
       setEstado({ fase: 'erro', pedido, mensagem: e instanceof ApiRequestError ? e.message : 'Não foi possível buscar agora. Verifique a conexão e tente de novo.' })

@@ -240,6 +240,22 @@ describe('Bela: pedido de busca falado', () => {
   })
 })
 
+describe('Bela: capital no fim do pedido, sem preposição', () => {
+  it('"cftv Brasília" é cftv em Brasília/DF, com ou sem a UF colada', () => {
+    for (const pedido of ['cftv Brasília', 'cftv brasilia df', 'cftv Brasília/DF']) {
+      expect(interpretarPedido(pedido)).toMatchObject({ acao: 'buscar', filtros: { q: 'cftv', municipio: 'Brasília', uf: 'DF' } })
+    }
+    expect(interpretarPedido('material de limpeza Belo Horizonte')).toMatchObject({ filtros: { q: 'material de limpeza', municipio: 'Belo Horizonte', uf: 'MG' } })
+    expect(interpretarPedido('Brasília')).toMatchObject({ filtros: { municipio: 'Brasília', uf: 'DF' } })
+  })
+
+  it('capital que é palavra comum ou nome no meio do objeto continua sendo texto', () => {
+    expect(interpretarPedido('uniforme natal')).toMatchObject({ filtros: { q: 'uniforme natal' } })
+    expect(interpretarPedido('reforma da escola Rio Branco')).toMatchObject({ filtros: { q: 'reforma da escola rio branco' } })
+    expect(interpretarPedido('cftv em Natal')).toMatchObject({ filtros: { q: 'cftv', municipio: 'Natal', uf: 'RN' } })
+  })
+})
+
 describe('Bela: valor falado no pregão', () => {
   it.each([
     ['o lance está em 180 mil', 180_000],

@@ -157,6 +157,14 @@ O pedido do trecho do arquivo anual (Range em um ZIP de ~257 MB) esperava no má
 
 Uma conta nova apareceu no administrador com acesso de 30 dias. O cadastro usava `TRIAL_DIAS` do ambiente quando definido (1 a 90), e o `.env.example` dizia "Padrão 14" enquanto o código usava 7. O prazo passa a ser fixo no código (`TRIAL_DIAS = 7` em `src/services/contaService.ts`) e a variável deixa de existir. Na lista de usuários do administrador, a situação mostra "Em teste"/"Teste encerrado" e a coluna "Acesso até" mostra quantos dias faltam; o botão "+30 dias" (que, na verdade, define hoje + 30) virou "7 dias" e "30 dias", com a explicação no título. Contas criadas antes com prazo maior não mudam sozinhas: ajustar pelo botão "7 dias".
 
+### Correção de 01/11: pendências do vídeo de validação (Bela, Meus Portais, Radar, Base de preços)
+
+- **Bela "só no PNCP".** Ela já buscava em todas as fontes; três coisas davam a impressão contrária. (1) "cftv Brasília", sem "em", virava busca do texto "cftv brasília" e não achava nada: a capital no fim da frase passa a valer como o lugar (menos as que são palavra comum, como Natal e Vitória). (2) Brasília filtrava `municipioNorm = 'brasilia'`, e o Sistema S/SESC só gravam a UF: Brasília (ou o IBGE 5300108) passa a ser o DF inteiro, na lista e na Bela. (3) Os 5 resultados eram os de prazo mais próximo, quase sempre do PNCP, e sem o nome do portal: agora cada um mostra o portal, a Bela diz "em N portais" (`/api/tenders?contarFontes=true` devolve `porFonte`) e os 5 primeiros variam de portal.
+- **Meus Portais.** "Autorizado" vira "Autorização registrada" (é o aceite do termo). "Ainda não testado" nunca mudava porque o teste de conexão não existe; como todos os portais da lista pedem CAPTCHA, a coluna passa a dizer "Você entra na disputa". O robô que entra sozinho continua só no desenho (`docs/COMPRASGOVBR_DISPUTA.md`): o login gov.br é sempre da pessoa.
+- **Radar.** Ajuda curta em cada aba e subtítulo que diz que são contratos (antes do edital), não licitações abertas.
+- **Base de preços.** Bloco "Como funciona"; a importação atualiza o preço que já existe (mesma descrição e unidade) em vez de duplicar, e só troca a data quando o custo muda.
+- Teste de integração `aderencia` passa a olhar só a licitação dele (num banco com sobras de outras rodadas pegava outra licitação de "notebook").
+
 ### Pendente (próxima sessão)
 
 | O que | Observação |

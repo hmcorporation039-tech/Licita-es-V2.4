@@ -42,7 +42,7 @@ import {
 } from '@/components/ui'
 import SeloObraCompleta from '@/components/SeloObraCompleta'
 import InteressePetronect from '@/components/InteressePetronect'
-import { ROTULOS_DE_FONTE } from '@/lib/fontes'
+import { rotuloDaFonte } from '@/lib/fontes'
 import { buscarSugestaoDeTermo, type SugestaoDeTermo } from '@/lib/sugestaoDeTermo'
 import { ESTADOS } from '@/lib/estados'
 import { dataDaLicitacao } from '@/lib/datas'
@@ -60,10 +60,6 @@ function fimDasPropostas(t: TenderComEncerramento): string | null {
 function formatValor(v: string | null) {
   if (!v) return '—'
   return Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-}
-
-function rotuloDaFonte(fonte: string) {
-  return ROTULOS_DE_FONTE[fonte] ?? fonte.replace(/_/g, ' ')
 }
 
 function local(t: Tender) {

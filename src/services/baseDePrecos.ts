@@ -185,7 +185,13 @@ export async function exportarPlanilha(companyId: string): Promise<Uint8Array> {
 
 export interface ResultadoDaImportacao {
   importados: number
+  atualizados: number
   ignorados: number
+}
+
+// O mesmo preço na base e na planilha: mesma descrição e mesma unidade, sem acento nem caixa.
+function chaveDoPreco(descricaoNorm: string, unidade: string | null): string {
+  return `${descricaoNorm}|${normalizarDescricao(unidade ?? '')}`
 }
 
 function parseValorBr(bruto: string): number | null {
@@ -222,6 +228,8 @@ function acharColuna(cabecalho: string[], ...termos: string[]): number {
 // Lê a planilha (o mesmo formato que exportamos; cabeçalho na 1ª linha) e grava
 // os preços. Tolera colunas em ordem diferente — casa pelo nome do cabeçalho.
 // Linha sem descrição ou sem custo válido é ignorada, não derruba a importação.
+// Preço que já está na base (mesma descrição e unidade) é atualizado, não duplicado;
+// a data do preço só muda quando o custo muda.
 export async function importarPlanilha(companyId: string, userId: string, buffer: Buffer): Promise<ResultadoDaImportacao> {
   if (!extrairTextoDeOffice(buffer)) throw new ImportacaoInvalida('Envie uma planilha .xlsx (foi o que o sistema exporta).')
   let grade: string[][]
@@ -230,7 +238,7 @@ export async function importarPlanilha(companyId: string, userId: string, buffer
   } catch {
     throw new ImportacaoInvalida('Não consegui ler a planilha. Exporte o modelo, preencha e envie de volta.')
   }
-  if (grade.length < 2) return { importados: 0, ignorados: 0 }
+  if (grade.length < 2) return { importados: 0, atualizados: 0, ignorados: 0 }
 
   const cabecalho = grade[0]
   const colDescricao = acharColuna(cabecalho, 'descricao', 'item')
@@ -268,8 +276,33 @@ export async function importarPlanilha(companyId: string, userId: string, buffer
     })
   }
 
-  if (registros.length > 0) await prisma.precoBase.createMany({ data: registros })
-  return { importados: registros.length, ignorados }
+  // Na planilha, a última linha de um mesmo preço é a que vale.
+  const daPlanilha = new Map(registros.map((r) => [chaveDoPreco(r.descricaoNorm, r.unidade ?? null), r]))
+  const existentes = await prisma.precoBase.findMany({
+    where: { companyId, descricaoNorm: { in: [...new Set(registros.map((r) => r.descricaoNorm))] } },
+    select: { id: true, descricaoNorm: true, unidade: true, custoUnitario: true },
+  })
+  const naBase = new Map(existentes.map((e) => [chaveDoPreco(e.descricaoNorm, e.unidade), e]))
+
+  const novos: Prisma.PrecoBaseCreateManyInput[] = []
+  const atualizacoes: Prisma.PrismaPromise<unknown>[] = []
+  for (const [chave, r] of daPlanilha) {
+    const atual = naBase.get(chave)
+    if (!atual) {
+      novos.push(r)
+      continue
+    }
+    const custoMudou = !atual.custoUnitario.equals(r.custoUnitario as Prisma.Decimal)
+    atualizacoes.push(
+      prisma.precoBase.update({
+        where: { id: atual.id },
+        data: { descricao: r.descricao, tipo: r.tipo, custoUnitario: r.custoUnitario, fonte: r.fonte, observacao: r.observacao, userId, ...(custoMudou ? { dataDoPreco: agora } : {}) },
+      }),
+    )
+  }
+
+  await prisma.$transaction([...(novos.length > 0 ? [prisma.precoBase.createMany({ data: novos })] : []), ...atualizacoes])
+  return { importados: novos.length, atualizados: atualizacoes.length, ignorados }
 }
 
 export class ImportacaoInvalida extends Error {}

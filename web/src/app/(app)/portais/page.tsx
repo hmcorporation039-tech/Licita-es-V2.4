@@ -49,9 +49,12 @@ const TERMO =
   'Autorizo a Licita Bela a guardar, de forma criptografada, o acesso deste portal e a usá-lo em meu nome para acompanhar e disputar licitações. Entendo que posso excluir este acesso quando quiser.'
 const TERMO_VERSAO = 'v1'
 
-function statusDoTeste(c: Credencial): { rotulo: string; tom: Tom } {
+// Os portais com CAPTCHA no login não podem ser testados pelo servidor: quem entra é a
+// pessoa, na hora da disputa. "Ainda não testado" dava a entender que um teste viria.
+function statusDoTeste(c: Credencial, portal: Portal | undefined): { rotulo: string; tom: Tom; titulo?: string } {
   if (c.ultimoTesteOk === true) return { rotulo: 'Conexão ok', tom: 'neutral' }
   if (c.ultimoTesteOk === false) return { rotulo: 'Falhou no teste', tom: 'danger' }
+  if (portal?.loginComCaptcha) return { rotulo: 'Você entra na disputa', tom: 'neutral', titulo: `O ${portal.nome} pede CAPTCHA no login, então quem entra é você, na hora da disputa. A Bela acompanha e sugere o lance.` }
   return { rotulo: 'Ainda não testado', tom: 'warn' }
 }
 
@@ -141,7 +144,7 @@ export default function PortaisPage() {
       {erro && <Notice tone="danger">{erro}</Notice>}
 
       <Notice tone="info">
-        Para disputar, sua empresa precisa ter cadastro próprio em cada portal. Aqui você só registra o acesso para a Bela acompanhar. Onde o portal pede CAPTCHA ou não permite robô, a Bela sugere o lance e você confirma.
+        Para disputar, sua empresa precisa ter cadastro próprio em cada portal. Aqui você só registra o acesso para a Bela acompanhar. Os portais desta lista pedem CAPTCHA no login, então quem entra é você, na hora da disputa: a Bela acompanha, sugere o lance e você confirma.
       </Notice>
 
       <Panel title="Adicionar acesso" description="O acesso fica criptografado; a senha nunca aparece de volta na tela.">
@@ -198,14 +201,17 @@ export default function PortaisPage() {
               </THead>
               <tbody>
                 {credenciais.map((c) => {
-                  const st = statusDoTeste(c)
+                  const dadosDoPortal = portais.find((p) => p.id === c.portal)
+                  const st = statusDoTeste(c, dadosDoPortal)
                   return (
                     <Tr key={c.id}>
-                      <Td>{portais.find((p) => p.id === c.portal)?.nome ?? c.portal}</Td>
+                      <Td>{dadosDoPortal?.nome ?? c.portal}</Td>
                       <Td className="font-mono">{c.login}</Td>
-                      <Td>{c.temConsentimento ? <StatusTag tone="neutral">Autorizado</StatusTag> : <StatusTag tone="warn">Pendente</StatusTag>}</Td>
+                      <Td>{c.temConsentimento ? <StatusTag tone="neutral">Autorização registrada</StatusTag> : <StatusTag tone="warn">Pendente</StatusTag>}</Td>
                       <Td>
-                        <StatusTag tone={st.tom}>{st.rotulo}</StatusTag>
+                        <span title={st.titulo}>
+                          <StatusTag tone={st.tom}>{st.rotulo}</StatusTag>
+                        </span>
                       </Td>
                       <Td>
                         <Button size="sm" variant="ghost" icon={Trash2} onClick={() => void excluir(c)} aria-label={`Excluir acesso ao ${c.portal}`} />
