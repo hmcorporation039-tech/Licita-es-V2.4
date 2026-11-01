@@ -80,7 +80,20 @@ const createSchema = z.object({
   origemUf: z.string().length(2).nullable().optional(),
 })
 
-const updateSchema = createSchema.partial().extend({ active: z.boolean().optional() })
+// No zod 4, .partial() sobre um campo com .default([]) preenche o padrão mesmo sem o
+// campo no corpo: editar só uma lista zeraria as outras. Na edição, as listas vêm sem padrão.
+const { keywords, palavrasDeExclusao, catmatCodes, catserCodes, ufs, modalidades, orgaos, uasgCodes } = createSchema.shape
+const updateSchema = createSchema.partial().extend({
+  keywords: keywords.unwrap().optional(),
+  palavrasDeExclusao: palavrasDeExclusao.unwrap().optional(),
+  catmatCodes: catmatCodes.unwrap().optional(),
+  catserCodes: catserCodes.unwrap().optional(),
+  ufs: ufs.unwrap().optional(),
+  modalidades: modalidades.unwrap().optional(),
+  orgaos: orgaos.unwrap().optional(),
+  uasgCodes: uasgCodes.unwrap().optional(),
+  active: z.boolean().optional(),
+})
 
 const CAMPOS_QUE_MUDAM_O_MATCH = ['keywords', 'palavrasDeExclusao', 'catmatCodes', 'catserCodes', 'ufs', 'valorMin', 'valorMax', 'modalidades', 'orgaos', 'uasgCodes', 'raioKm', 'origemMunicipio', 'origemUf'] as const
 
