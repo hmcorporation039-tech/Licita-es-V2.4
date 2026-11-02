@@ -89,6 +89,14 @@ export async function carregarDossie(companyId: string, tenderId: string): Promi
         ['Garantia contratual', texto(a.garantiaContratual)],
         ['Patrimônio líquido mínimo', texto(a.patrimonioLiquidoMinimo)],
         ['Visita técnica', texto(a.visitaTecnica)],
+        ['Vigência do contrato', texto(a.vigenciaContrato)],
+        ['Serviço contínuo', texto(a.servicoContinuo)],
+        ['Início da execução', texto(a.inicioDaExecucao)],
+        ['Forma de julgamento', texto(a.formaDeJulgamento)],
+        ['Como o preço foi estimado', texto(a.metodoDoPrecoEstimado)],
+        ['Subcontratação', texto(a.subcontratacao)],
+        ['Manutenção / visitas periódicas', texto(a.periodicidadeDeManutencao)],
+        ['Locais de execução', texto(a.locaisDeExecucao)],
       ] as [string, string][])
         .filter(([, v]) => v !== '')
         .map(([rotulo, valor]) => ({ rotulo, valor }))

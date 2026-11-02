@@ -44,7 +44,7 @@ const TITULO = 'Licita Bela: licitações abertas para o que você vende'
 const DESCRICAO =
   'Busca diária no PNCP, no Sistema S e nos diários oficiais. Aviso do que encerra primeiro, alerta de cláusulas ilegais no edital e proposta no papel timbrado da sua empresa. Teste grátis, sem cartão.'
 const ENDERECO_PADRAO = 'https://www.licitabela.com.br'
-const IMAGEM_DE_COMPARTILHAMENTO = { url: '/bela/bela-compartilhar.jpg', width: 1200, height: 670, alt: 'Bela, a assistente da Licita Bela' }
+const IMAGEM_DE_COMPARTILHAMENTO = { url: '/bela/v2/bela-compartilhar.jpg', width: 1200, height: 670, alt: 'Bela, a assistente da Licita Bela' }
 
 function enderecoDoSite(): URL {
   try {
@@ -785,7 +785,7 @@ function ChamadaFinal({ trialDias, estatisticas, whatsapp }: { trialDias: number
           </Link>
         </div>
         <div aria-hidden className="az-final-bela">
-          <Image src="/bela/bela-640.webp" alt="" width={640} height={605} sizes="360px" className="az-final-foto" />
+          <Image src="/bela/v2/bela-640.webp" alt="" width={640} height={605} sizes="360px" className="az-final-foto" />
           <p className="az-balao az-final-balao">
             <span className="az-balao-autora">Bela</span>
             “Me diga o que você vende. O resto eu procuro.”

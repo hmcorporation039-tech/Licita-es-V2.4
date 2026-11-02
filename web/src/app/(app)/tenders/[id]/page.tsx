@@ -829,6 +829,26 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
                     ]}
                   />
 
+                  {(() => {
+                    const r = analysis.resultado
+                    const contratacao = [
+                      { label: 'Vigência do contrato', value: r.vigenciaContrato },
+                      { label: 'Serviço contínuo', value: r.servicoContinuo },
+                      { label: 'Início da execução', value: r.inicioDaExecucao },
+                      { label: 'Forma de julgamento', value: r.formaDeJulgamento },
+                      { label: 'Como o preço foi estimado', value: r.metodoDoPrecoEstimado },
+                      { label: 'Subcontratação', value: r.subcontratacao },
+                      { label: 'Manutenção / visitas periódicas', value: r.periodicidadeDeManutencao },
+                      { label: 'Locais de execução', value: r.locaisDeExecucao },
+                    ].filter((c): c is { label: string; value: string } => !!c.value && c.value.trim() !== '')
+                    return contratacao.length > 0 ? (
+                      <section className="flex flex-col gap-2">
+                        <h3 className="text-sm font-semibold text-ink">Contratação</h3>
+                        <DescriptionList columns={2} items={contratacao} />
+                      </section>
+                    ) : null
+                  })()}
+
                   {analysis.resultado.exigenciasTecnicas.length > 0 && (
                     <section className="flex flex-col gap-2">
                       <h3 className="text-sm font-semibold text-ink">Exigências técnicas</h3>

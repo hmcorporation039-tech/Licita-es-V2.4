@@ -30,6 +30,7 @@ import { gerarPdfDoEstudo } from '../../services/estudoPdf'
 import { carregarDossie } from '../../services/dossieDaLicitacao'
 import { montarPacoteDeHabilitacao } from '../../lib/pacoteDeHabilitacao'
 import { sugerirCustosParaItens } from '../../services/baseDePrecos'
+import { contratacaoDoEdital, type AnaliseDaContratacao } from '../../lib/contratacaoDoEdital'
 
 export const estudosRouter = Router()
 
@@ -179,6 +180,8 @@ export async function carregar(companyId: string, tenderId: string) {
     destino: destino ? { municipio: destino.municipio, uf: destino.uf, origem: destino.origem } : null,
     prazoDoEdital: resultadoIa?.prazoEntrega ?? null,
     localDoEdital: resultadoIa?.local ?? null,
+    // Só de análise concluída: um rascunho com erro não deve preencher o estudo.
+    contratacao: tender.analysis?.status === 'DONE' ? contratacaoDoEdital(resultadoIa as Partial<AnaliseDaContratacao> | null) : null,
   }
 }
 
@@ -197,6 +200,10 @@ export async function dadosSalvos(companyId: string, tenderId: string, ctx: Cont
     dados.prazo.exigidoDias = prazo.dias
     dados.prazo.exigidoEmDiasUteis = prazo.uteis
   }
+  // ... e o tipo de contrato e as viagens de manutenção, quando o edital deixa claro.
+  const sugestao = ctx.contratacao?.sugestao
+  if (sugestao?.contrato) dados.contrato = { ...sugestao.contrato }
+  if (sugestao?.viagens) dados.deslocamento.viagens = sugestao.viagens
   return { dados, salvoEm: null }
 }
 
@@ -222,6 +229,7 @@ function montarResposta(ctx: Contexto, dados: DadosDoEstudo, salvoEm: Date | nul
     distanciaLinhaRetaKm: ctx.distanciaLinhaRetaKm,
     destino: ctx.destino,
     prazoDoEdital: ctx.prazoDoEdital,
+    contratacao: ctx.contratacao,
     resultado: calcularEstudo(itens, dados, { distanciaLinhaRetaKm: ctx.distanciaLinhaRetaKm, valorEstimadoTotal: num(tender.valorEstimado) }),
     salvoEm,
   }

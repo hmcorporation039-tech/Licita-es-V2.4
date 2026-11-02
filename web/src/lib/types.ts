@@ -334,6 +334,14 @@ export interface AnalysisResultado {
   prazoImpugnacao: string
   prazoEsclarecimento: string
   validadeProposta: string
+  vigenciaContrato?: string
+  servicoContinuo?: string
+  inicioDaExecucao?: string
+  formaDeJulgamento?: string
+  metodoDoPrecoEstimado?: string
+  subcontratacao?: string
+  periodicidadeDeManutencao?: string
+  locaisDeExecucao?: string
   exigenciasTecnicas: string[]
   documentosExigidos: string[]
   riscos: AnalysisRisco[]

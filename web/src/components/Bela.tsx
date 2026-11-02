@@ -169,7 +169,7 @@ export function AvatarDaBela({ tamanho = 32, className }: { tamanho?: number; cl
   return (
     <span aria-hidden className={cx('relative inline-block shrink-0 overflow-hidden rounded-full bg-nav-2', className)} style={{ width: tamanho, height: tamanho }}>
       <Image
-        src="/bela/bela-640.webp"
+        src="/bela/v2/bela-640.webp"
         alt=""
         width={640}
         height={605}

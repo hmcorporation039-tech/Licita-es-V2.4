@@ -18,18 +18,18 @@ interface Quadro {
 type NavegadorComConexao = Navigator & { connection?: { saveData?: boolean } }
 
 const TELA_LARGA = '(min-width: 768px)'
-const POSTER_QUADRADO = '/bela/bela-loop-poster.webp'
-const POSTER_VERTICAL = '/bela/bela-vertical-poster.webp'
+const POSTER_QUADRADO = '/bela/v2/bela-loop-poster.webp'
+const POSTER_VERTICAL = '/bela/v2/bela-vertical-poster.webp'
 const MARGEM_DE_ANTECIPACAO = '300px'
 
 const QUADROS: Record<Variante, Record<Formato, Quadro>> = {
   heroi: {
-    largo: { poster: POSTER_QUADRADO, largura: 900, altura: 900, video: '/bela/bela-loop-900', sizes: '(min-width: 1024px) 580px, 460px' },
-    estreito: { poster: POSTER_VERTICAL, largura: 720, altura: 900, video: '/bela/bela-vertical-540', sizes: '72vw' },
+    largo: { poster: POSTER_QUADRADO, largura: 900, altura: 900, video: '/bela/v2/bela-loop-900', sizes: '(min-width: 1024px) 580px, 460px' },
+    estreito: { poster: POSTER_VERTICAL, largura: 720, altura: 900, video: '/bela/v2/bela-vertical-540', sizes: '72vw' },
   },
   secao: {
-    largo: { poster: POSTER_VERTICAL, largura: 720, altura: 900, video: '/bela/bela-vertical-720', sizes: '(min-width: 1024px) 520px, 80vw' },
-    estreito: { poster: POSTER_VERTICAL, largura: 720, altura: 900, video: '/bela/bela-vertical-540', sizes: '92vw' },
+    largo: { poster: POSTER_VERTICAL, largura: 720, altura: 900, video: '/bela/v2/bela-vertical-720', sizes: '(min-width: 1024px) 520px, 80vw' },
+    estreito: { poster: POSTER_VERTICAL, largura: 720, altura: 900, video: '/bela/v2/bela-vertical-540', sizes: '92vw' },
   },
 }
 
