@@ -14,7 +14,7 @@
 // ============================================================
 
 import { ChecklistItem } from './checklistTemplate'
-import { Dia, diaEmBrasilia, toDia } from './diasUteis'
+import { Dia, diaEmBrasilia, diasUteisEntre, toDia } from './diasUteis'
 import { normalize } from './geoService'
 
 export type StatusHabilitacao = 'verde' | 'amarelo' | 'vermelho' | 'cinza'
@@ -40,12 +40,31 @@ export interface RequisitoAvaliado {
   citadoNoEdital: string[]
 }
 
+export type VereditoDaHabilitacao = 'habilitado' | 'habilitado_se_renovar' | 'nao_habilitado'
+
+// O parecer é a conclusão em português do semáforo: "você está habilitado, falta X,
+// o documento Z vence antes da sessão". É apoio à decisão: quem decide é a comissão.
+export interface ParecerDeHabilitacao {
+  veredito: VereditoDaHabilitacao
+  titulo: string
+  faltam: { label: string; motivo: string }[]
+  renovar: { label: string; vence: Dia }[]
+  // Peças feitas a cada proposta que o edital cita (declaração de vistoria, planilha...).
+  preparar: string[]
+  // Itens que o cofre não consegue confirmar (cinza, sem contar as peças acima).
+  conferir: number
+  diasUteisAteSessao: number | null
+  sessaoPassou: boolean
+  observacoes: string[]
+}
+
 export interface ResultadoHabilitacao {
   referencia: { dataSessao: Dia | null; usouHoje: boolean }
   resumo: Record<StatusHabilitacao, number>
   // Nenhum vermelho = nada impede a habilitação pelo que o cofre sabe.
   semPendenciaBloqueante: boolean
   requisitos: RequisitoAvaliado[]
+  parecer: ParecerDeHabilitacao
 }
 
 // Documentos exigidos em praticamente toda licitação da Lei 14.133/2021.
@@ -148,6 +167,91 @@ function avaliarComDocumento(doc: DocumentoDoCofre, hoje: Dia, ref: Dia, temSess
   }
 }
 
+// Palavras que não identificam um documento ("certidão de ...", "declaração de ...").
+const PALAVRAS_VAZIAS = new Set([
+  'de', 'da', 'do', 'das', 'dos', 'e', 'a', 'o', 'as', 'os', 'em', 'no', 'na', 'nos', 'nas', 'para', 'por', 'com', 'ou', 'ao', 'aos', 'um', 'uma',
+  'certidao', 'certidoes', 'declaracao', 'declaracoes', 'comprovante', 'comprovacao', 'documento', 'documentos', 'copia', 'original', 'empresa',
+  'licitante', 'valido', 'valida', 'vigente', 'atualizado', 'atualizada', 'emitido', 'emitida', 'pela', 'pelo', 'sua', 'seu',
+])
+
+function palavras(texto: string): Set<string> {
+  return new Set(
+    normalize(texto)
+      .split(/[^a-z0-9]+/)
+      .filter((p) => p.length >= 3 && !PALAVRAS_VAZIAS.has(p))
+  )
+}
+
+// Um documento avulso do cofre corresponde a uma exigência específica do edital quando
+// divide com ela pelo menos 2 palavras que identificam o documento, e essas palavras
+// são a maior parte do nome dele ("Alvará de funcionamento" × "alvará de localização
+// e funcionamento"). Na dúvida, não casa: o item fica para conferir.
+export function documentoCorrespondeAoTexto(nomeDoDocumento: string, texto: string): boolean {
+  const doDoc = palavras(nomeDoDocumento)
+  if (doDoc.size === 0) return false
+  const doTexto = palavras(texto)
+  let comuns = 0
+  for (const p of doDoc) if (doTexto.has(p)) comuns++
+  return comuns >= 2 && comuns >= Math.ceil(doDoc.size * 0.6)
+}
+
+function listaEmPortugues(itens: string[]): string {
+  if (itens.length <= 1) return itens.join('')
+  return `${itens.slice(0, -1).join(', ')} e ${itens[itens.length - 1]}`
+}
+
+function nomesCurtos(itens: string[], limite = 3): string {
+  if (itens.length <= limite) return listaEmPortugues(itens)
+  return `${itens.slice(0, limite).join(', ')} e mais ${itens.length - limite}`
+}
+
+export function montarParecer(r: Omit<ResultadoHabilitacao, 'parecer'>, opcoes: { analisado: boolean; agora: Date }): ParecerDeHabilitacao {
+  const hoje = diaEmBrasilia(opcoes.agora)
+  const sessao = r.referencia.dataSessao
+  const sessaoPassou = sessao !== null && sessao < hoje
+  const diasUteisAteSessao = sessao !== null && !sessaoPassou ? diasUteisEntre(hoje, sessao) : null
+
+  const faltam = r.requisitos.filter((x) => x.status === 'vermelho').map((x) => ({ label: x.label, motivo: x.motivo }))
+  const renovar = r.requisitos
+    .filter((x) => x.status === 'amarelo' && x.documento?.dataValidade)
+    .map((x) => ({ label: x.label, vence: x.documento!.dataValidade as Dia }))
+    .sort((a, b) => (a.vence < b.vence ? -1 : 1))
+  const ehPecaDaProposta = (x: RequisitoAvaliado) => FEITO_A_CADA_PROPOSTA.has(x.id) && !x.documento
+  const preparar = r.requisitos.filter((x) => ehPecaDaProposta(x) && x.origem === 'edital').map((x) => x.label)
+  const conferir = r.requisitos.filter((x) => x.status === 'cinza' && !ehPecaDaProposta(x)).length
+
+  let veredito: VereditoDaHabilitacao
+  let titulo: string
+  if (faltam.length > 0) {
+    veredito = 'nao_habilitado'
+    titulo = `Ainda não está habilitado: ${faltam.length === 1 ? 'falta' : 'faltam'} ${nomesCurtos(faltam.map((f) => f.label))}.`
+  } else if (renovar.length > 0) {
+    veredito = 'habilitado_se_renovar'
+    const nomes = renovar.map((x) => `${x.label} (vence em ${dataBr(x.vence)})`)
+    titulo = `Habilitado, desde que renove a tempo: ${nomesCurtos(nomes, 2)}${renovar.length === 1 ? ' vence' : ' vencem'} antes da sessão.`
+  } else {
+    veredito = 'habilitado'
+    titulo = 'Habilitado pelo que o cofre mostra: os documentos conferidos valem na data da sessão.'
+  }
+
+  const observacoes: string[] = []
+  if (sessaoPassou) observacoes.push(`A sessão já aconteceu (${dataBr(sessao!)}).`)
+  else if (diasUteisAteSessao !== null) {
+    const prazo = `${diasUteisAteSessao} ${diasUteisAteSessao === 1 ? 'dia útil' : 'dias úteis'}`
+    observacoes.push(
+      diasUteisAteSessao <= 3 && (faltam.length > 0 || renovar.length > 0)
+        ? `Faltam só ${prazo} até a sessão (${dataBr(sessao!)}): certidões costumam sair na hora, mas balanço, atestados e registros demoram.`
+        : `Faltam ${prazo} até a sessão (${dataBr(sessao!)}).`
+    )
+  } else if (r.referencia.usouHoje) observacoes.push('A licitação não informa a data da sessão: a validade foi conferida contra hoje.')
+  if (!opcoes.analisado)
+    observacoes.push('O edital ainda não foi analisado: só foram conferidos os documentos exigidos em quase toda licitação. Rode a análise para incluir os específicos deste edital.')
+  if (preparar.length > 0) observacoes.push(`Prepare para esta proposta, no modelo do edital: ${nomesCurtos(preparar, 4)}.`)
+  if (conferir > 0) observacoes.push(`${conferir} ${conferir === 1 ? 'item' : 'itens'} para conferir no edital: o cofre não consegue confirmar.`)
+
+  return { veredito, titulo, faltam, renovar, preparar, conferir, diasUteisAteSessao, sessaoPassou, observacoes }
+}
+
 export interface EntradaDeHabilitacao {
   checklist: ChecklistItem[]
   documentos: DocumentoDoCofre[]
@@ -221,27 +325,46 @@ export function avaliarHabilitacao(e: EntradaDeHabilitacao): ResultadoHabilitaca
     }
   }
 
+  // Exigências específicas: procura no cofre um documento avulso (sem tipo do checklist)
+  // com o mesmo nome, como "Alvará de funcionamento" ou "Licença ambiental".
+  const tiposDoChecklist = new Set(e.checklist.map((i) => i.id))
+  const avulsos = e.documentos.filter((d) => !d.tipo || !tiposDoChecklist.has(d.tipo))
   for (const texto of extras.slice(0, 30)) {
-    requisitos.push({
+    const base = {
       id: `extra:${normalize(texto).slice(0, 40)}`,
       label: texto,
       section: 'Específico deste edital',
-      origem: 'extra',
+      origem: 'extra' as const,
+      citadoNoEdital: [texto],
+    }
+    const doc = melhorDocumento(avulsos.filter((d) => documentoCorrespondeAoTexto(d.nome, texto)))
+    if (doc) {
+      const av = avaliarComDocumento(doc, hoje, ref, dataSessao !== null)
+      requisitos.push({
+        ...base,
+        ...av,
+        motivo: `Pelo nome, é o “${doc.nome}” do cofre. ${av.motivo}`,
+        documento: { id: doc.id, nome: doc.nome, dataValidade: doc.dataValidade ? toDia(doc.dataValidade) : null },
+      })
+      continue
+    }
+    requisitos.push({
+      ...base,
       status: 'cinza',
-      motivo: 'Exigência específica do edital: o cofre não controla este tipo. Confira manualmente.',
+      motivo: 'Exigência específica do edital, sem documento com esse nome no cofre. Confira no edital e, se tiver, cadastre-o no cofre com esse nome.',
       acao: null,
       documento: null,
-      citadoNoEdital: [texto],
     })
   }
 
   const resumo: Record<StatusHabilitacao, number> = { verde: 0, amarelo: 0, vermelho: 0, cinza: 0 }
   for (const r of requisitos) resumo[r.status]++
 
-  return {
+  const resultado = {
     referencia: { dataSessao, usouHoje: dataSessao === null },
     resumo,
     semPendenciaBloqueante: resumo.vermelho === 0,
     requisitos,
   }
+  return { ...resultado, parecer: montarParecer(resultado, { analisado, agora }) }
 }

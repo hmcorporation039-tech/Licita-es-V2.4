@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useState, type ReactNode } from 'react'
-import { Circle, CornerDownRight, Paperclip, TriangleAlert } from 'lucide-react'
+import { Circle, CircleCheck, CircleX, CornerDownRight, Paperclip, TriangleAlert } from 'lucide-react'
 import { abrirArquivo, api, ApiRequestError } from '@/lib/api'
-import type { PainelDoFiscal as Painel, RequisitoDeHabilitacao, StatusHabilitacao } from '@/lib/adminTypes'
+import type { PainelDoFiscal as Painel, ParecerDeHabilitacao, RequisitoDeHabilitacao, StatusHabilitacao } from '@/lib/adminTypes'
 import { diasUteis } from '@/lib/datas'
 import { Carregando, ErrorState, Notice, Panel, StatusTag, TextLink, cx, toneText, type Tom } from '@/components/ui'
 import AnexarDocumentoPendente from '@/components/AnexarDocumentoPendente'
@@ -45,6 +45,66 @@ function Filtro({ ativo, onClick, children }: { ativo: boolean; onClick: () => v
   )
 }
 
+const VEREDITO: Record<ParecerDeHabilitacao['veredito'], { tom: Tom; Icone: typeof CircleCheck; rotulo: string }> = {
+  habilitado: { tom: 'ok', Icone: CircleCheck, rotulo: 'Habilitado' },
+  habilitado_se_renovar: { tom: 'warn', Icone: TriangleAlert, rotulo: 'Habilitado se renovar' },
+  nao_habilitado: { tom: 'danger', Icone: CircleX, rotulo: 'Ainda não habilitado' },
+}
+
+function Parecer({ p }: { p: ParecerDeHabilitacao }) {
+  const v = VEREDITO[p.veredito]
+  return (
+    <section aria-labelledby="parecer-titulo" className="rounded border border-line bg-surface px-4 py-3.5">
+      <div className="flex items-start gap-2.5">
+        <v.Icone size={20} className={cx('mt-0.5 shrink-0', toneText(v.tom))} aria-hidden />
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
+          <div className="flex flex-col gap-0.5">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted">Parecer de habilitação · {v.rotulo}</p>
+            <h2 id="parecer-titulo" className="text-base font-semibold text-ink">
+              {p.titulo}
+            </h2>
+          </div>
+          {p.faltam.length > 0 && (
+            <div className="text-sm">
+              <p className={cx('font-medium', toneText('danger'))}>Falta ou está vencido</p>
+              <ul className="ml-4 list-disc text-ink-2">
+                {p.faltam.map((f) => (
+                  <li key={f.label}>
+                    {f.label} <span className="text-muted">· {f.motivo}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {p.renovar.length > 0 && (
+            <div className="text-sm">
+              <p className={cx('font-medium', toneText('warn'))}>Vence antes da sessão</p>
+              <ul className="ml-4 list-disc text-ink-2">
+                {p.renovar.map((r) => (
+                  <li key={r.label}>
+                    {r.label}{' '}
+                    <span className="text-muted">
+                      · vence em <span className="font-mono">{dia(r.vence)}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {p.observacoes.length > 0 && (
+            <ul className="flex flex-col gap-0.5 text-sm text-ink-2">
+              {p.observacoes.map((o) => (
+                <li key={o}>{o}</li>
+              ))}
+            </ul>
+          )}
+          <p className="text-xs text-muted">Apoio à decisão pelo que está cadastrado no cofre. Quem decide a habilitação é a comissão, na sessão.</p>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 export default function PainelDoFiscal({ tenderId }: { tenderId: string }) {
   const [dados, setDados] = useState<Painel | null>(null)
   const [erro, setErro] = useState<string | null>(null)
@@ -69,6 +129,7 @@ export default function PainelDoFiscal({ tenderId }: { tenderId: string }) {
 
   return (
     <div className="flex flex-col gap-4">
+      {h.parecer && <Parecer p={h.parecer} />}
       <Panel
         title="Habilitação: o que o edital pede × o seu cofre"
         description={
@@ -97,11 +158,13 @@ export default function PainelDoFiscal({ tenderId }: { tenderId: string }) {
           ))}
         </div>
 
-        <p className={cx('text-sm font-medium', h.semPendenciaBloqueante ? 'text-ink-2' : toneText('danger'))}>
-          {h.semPendenciaBloqueante
-            ? 'Nenhum documento pendente pelo que o cofre sabe. Ainda confira os itens em cinza.'
-            : `${h.resumo.vermelho} documento(s) pendente(s): resolva antes da sessão.`}
-        </p>
+        {!h.parecer && (
+          <p className={cx('text-sm font-medium', h.semPendenciaBloqueante ? 'text-ink-2' : toneText('danger'))}>
+            {h.semPendenciaBloqueante
+              ? 'Nenhum documento pendente pelo que o cofre sabe. Ainda confira os itens em cinza.'
+              : `${h.resumo.vermelho} documento(s) pendente(s): resolva antes da sessão.`}
+          </p>
+        )}
       </Panel>
 
       {alertas.disponivel ? (

@@ -194,6 +194,14 @@ Estudos gravados antes continuam abrindo como compra única. O PDF do dossiê tr
 - **Avisos do edital no estudo**: propostas por item com julgamento por grupo, subcontratação vedada ou parcial, vistoria obrigatória.
 - Ainda não testado com a IA de verdade (sem chave nesta sessão): conferir os campos novos na próxima análise real.
 
+### 04/11: parecer de habilitação
+
+A aba Habilitação da licitação já cruzava o que o edital pede com o cofre, na data da sessão; faltava a conclusão. Agora o topo da aba (e o PDF do estudo de custos) traz o parecer em uma frase: "Ainda não está habilitado: faltam X e Y", "Habilitado, desde que renove a tempo: Z vence em dd/mm, antes da sessão" ou "Habilitado pelo que o cofre mostra". Abaixo, a lista do que falta e do que vence, os dias úteis até a sessão (com aviso quando faltam 3 ou menos e há pendência), as peças da proposta que o edital cita (declaração de vistoria, planilha) e quantos itens o cofre não consegue confirmar. Regra em `montarParecer` (`src/lib/habilitacao.ts`).
+
+As exigências específicas do edital (que não são de nenhum tipo do checklist) passam a ser procuradas entre os documentos avulsos do cofre pelo nome: "Alvará de funcionamento" no cofre atende a "alvará de localização e funcionamento" no edital, e a validade é conferida. Só casa com pelo menos 2 palavras que identificam o documento e que sejam a maior parte do nome dele; na dúvida o item fica para conferir.
+
+- Ainda depende da qualidade de `documentosExigidos` na análise real (ver o ajuste de prompt abaixo, ainda não conferido com um edital de verdade).
+
 ### Pendente (próxima sessão)
 
 | O que | Observação |
@@ -209,7 +217,7 @@ Estudos gravados antes continuam abrindo como compra única. O PDF do dossiê tr
 
 | Fase | Escopo | Status |
 |---|---|---|
-| F2 | **Parecer de habilitação**: cruzar `documentosExigidos` extraído do edital com o cofre de documentos da empresa — "você está habilitado, falta X, e o documento Z vence antes da sessão". A matéria-prima já está toda no banco | ⬜ |
+| F2 | **Parecer de habilitação**: cruzar `documentosExigidos` extraído do edital com o cofre de documentos da empresa — "você está habilitado, falta X, e o documento Z vence antes da sessão" (ver 04/11) | 🟡 |
 | F2 | Análise automática em lote via Batch API (metade do custo por token) | ⬜ |
 | F3 | Resultado, atas e contratos do PNCP; histórico de preço por objeto; perfil de concorrente | ⬜ |
 | F3 | Funil de participação com taxa de conversão por item monitorado | ⬜ |

@@ -144,6 +144,12 @@ rodar('Painel do Fiscal', () => {
       expect(req(r, 'cartao-cnpj').status).toBe('vermelho') // padrão da lei e ausente do cofre
       expect(r.body.habilitacao.semPendenciaBloqueante).toBe(false)
       expect(r.body.habilitacao.resumo.verde).toBeGreaterThanOrEqual(2)
+
+      const p = r.body.habilitacao.parecer
+      expect(p.veredito).toBe('nao_habilitado')
+      expect(p.titulo).toMatch(/^Ainda não está habilitado: faltam /)
+      expect(p.faltam.map((f: { label: string }) => f.label)).toContain('Certidão Negativa de Débitos Trabalhistas (CNDT)')
+      expect(p.renovar.map((x: { label: string }) => x.label)).toEqual(['Certidão de Regularidade do FGTS (CRF)'])
     })
 
     it('usa a análise do edital: o que ela cita vira exigido; o que não casa vira item extra', async () => {
