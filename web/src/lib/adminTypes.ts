@@ -226,6 +226,18 @@ export interface AlertaLegal {
   trecho: string
 }
 
+export interface ParecerDeHabilitacao {
+  veredito: 'habilitado' | 'habilitado_se_renovar' | 'nao_habilitado'
+  titulo: string
+  faltam: { label: string; motivo: string }[]
+  renovar: { label: string; vence: string }[]
+  preparar: string[]
+  conferir: number
+  diasUteisAteSessao: number | null
+  sessaoPassou: boolean
+  observacoes: string[]
+}
+
 export interface PainelDoFiscal {
   analise: { status: string | null; feita: boolean }
   habilitacao: {
@@ -233,6 +245,8 @@ export interface PainelDoFiscal {
     resumo: Record<StatusHabilitacao, number>
     semPendenciaBloqueante: boolean
     requisitos: RequisitoDeHabilitacao[]
+    // Ausente só numa API anterior ao parecer (deploy da web antes da API).
+    parecer?: ParecerDeHabilitacao
   }
   alertas: { disponivel: boolean; itens: AlertaLegal[]; aviso: string }
   prazos: { dataSessao: string; limiteImpugnacao: string; limitePassou: boolean; sessaoPassou: boolean; diasUteisAteLimite: number } | null

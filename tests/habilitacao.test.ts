@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildChecklistTemplate } from '../src/lib/checklistTemplate'
-import { avaliarHabilitacao, DocumentoDoCofre, tiposCitadosNoTexto } from '../src/lib/habilitacao'
+import { avaliarHabilitacao, documentoCorrespondeAoTexto, DocumentoDoCofre, tiposCitadosNoTexto } from '../src/lib/habilitacao'
 
 const AGORA = new Date('2026-10-05T15:00:00Z')
 const SESSAO = new Date('2026-10-20T13:00:00Z') // 20/10/2026
@@ -140,5 +140,134 @@ describe('tiposCitadosNoTexto', () => {
     expect(tiposCitadosNoTexto('Certidão de falência e recuperação judicial')).toContain('cnd-falencia')
     expect(tiposCitadosNoTexto('ART ou RRT do responsável técnico')).toEqual(expect.arrayContaining(['art-rrt', 'vinculo-responsavel-tecnico']))
     expect(tiposCitadosNoTexto('Nada que case')).toEqual([])
+  })
+})
+
+const PADRAO = [
+  'contrato-social',
+  'rg-cpf-socios',
+  'cartao-cnpj',
+  'cnd-federal',
+  'crf-fgts',
+  'cndt',
+  'regularidade-estadual',
+  'regularidade-municipal',
+  'cnd-falencia',
+  'balanco-patrimonial',
+]
+const avulso = (nome: string, validade: string | null, id = nome): DocumentoDoCofre => ({
+  id,
+  nome,
+  tipo: null,
+  dataValidade: validade ? dia(validade) : null,
+})
+
+describe('exigência específica × documento avulso do cofre', () => {
+  it('casa pelo nome e avalia a validade', () => {
+    const r = avaliar([avulso('Alvará de funcionamento', '2027-01-31')], {
+      ia: ['Alvará de localização e funcionamento expedido pela prefeitura'],
+    })
+    const extra = r.requisitos.find((x) => x.origem === 'extra')!
+    expect(extra.status).toBe('verde')
+    expect(extra.documento?.nome).toBe('Alvará de funcionamento')
+    expect(extra.motivo).toMatch(/Pelo nome, é o “Alvará de funcionamento” do cofre/)
+  })
+
+  it('avulso vencendo antes da sessão: amarelo', () => {
+    const r = avaliar([avulso('Licença ambiental de operação', '2026-10-15')], {
+      ia: ['Licença de operação ambiental válida'],
+    })
+    expect(r.requisitos.find((x) => x.origem === 'extra')!.status).toBe('amarelo')
+  })
+
+  it('uma palavra só em comum não basta (fica para conferir)', () => {
+    expect(documentoCorrespondeAoTexto('Certificado ANATEL', 'Homologação ANATEL dos equipamentos')).toBe(false)
+    expect(documentoCorrespondeAoTexto('Certidão municipal', 'Certidão de regularidade estadual')).toBe(false)
+    const r = avaliar([avulso('Certificado ANATEL', '2027-01-01')], {
+      ia: ['Homologação ANATEL dos equipamentos'],
+    })
+    expect(r.requisitos.find((x) => x.origem === 'extra')!.status).toBe('cinza')
+  })
+
+  it('documento com tipo do checklist não é usado para exigência específica', () => {
+    const r = avaliar(
+      [
+        {
+          id: 'x',
+          nome: 'Alvará de funcionamento',
+          tipo: 'cartao-cnpj',
+          dataValidade: null,
+        },
+      ],
+      { ia: ['Alvará de funcionamento'] }
+    )
+    expect(r.requisitos.find((x) => x.origem === 'extra')!.status).toBe('cinza')
+  })
+})
+
+describe('parecer', () => {
+  it('não habilitado: diz o que falta', () => {
+    const docs = PADRAO.filter((t) => t !== 'crf-fgts' && t !== 'balanco-patrimonial').map((t) => doc(t, '2027-01-01'))
+    const p = avaliar(docs, { ia: [] }).parecer
+    expect(p.veredito).toBe('nao_habilitado')
+    expect(p.titulo).toBe('Ainda não está habilitado: faltam Certidão de Regularidade do FGTS (CRF) e Balanço patrimonial e demonstrações contábeis.')
+    expect(p.faltam).toHaveLength(2)
+  })
+
+  it('muitos faltando: nomeia 3 e conta o resto', () => {
+    const p = avaliar([], { ia: [] }).parecer
+    expect(p.titulo).toMatch(/^Ainda não está habilitado: faltam .+ e mais 7\.$/)
+  })
+
+  it('habilitado se renovar: diz o que vence antes da sessão e quando', () => {
+    const docs = PADRAO.map((t) => doc(t, t === 'cndt' ? '2026-10-12' : '2027-01-01'))
+    const p = avaliar(docs, { ia: [] }).parecer
+    expect(p.veredito).toBe('habilitado_se_renovar')
+    expect(p.titulo).toBe('Habilitado, desde que renove a tempo: Certidão Negativa de Débitos Trabalhistas (CNDT) (vence em 12/10/2026) vence antes da sessão.')
+    expect(p.renovar).toEqual([
+      {
+        label: 'Certidão Negativa de Débitos Trabalhistas (CNDT)',
+        vence: '2026-10-12',
+      },
+    ])
+  })
+
+  it('habilitado: tudo cobre a sessão; conta dias úteis e itens a conferir', () => {
+    const p = avaliar(
+      PADRAO.map((t) => doc(t, '2027-01-01')),
+      { ia: ['Declaração de visita técnica', 'Comprovação de frota própria'] }
+    ).parecer
+    expect(p.veredito).toBe('habilitado')
+    expect(p.diasUteisAteSessao).toBe(10) // 06/10 a 20/10, sem o feriado de 12/10
+    expect(p.preparar).toEqual(['Declaração de vistoria técnica'])
+    expect(p.conferir).toBeGreaterThan(0)
+    expect(p.observacoes.join(' ')).toMatch(/Faltam 10 dias úteis até a sessão \(20\/10\/2026\)/)
+    expect(p.observacoes.join(' ')).toMatch(/Prepare para esta proposta.+Declaração de vistoria técnica/)
+  })
+
+  it('sem análise do edital: avisa que só os documentos-padrão foram conferidos', () => {
+    const p = avaliar(
+      PADRAO.map((t) => doc(t, '2027-01-01')),
+      { ia: null }
+    ).parecer
+    expect(p.observacoes.join(' ')).toMatch(/ainda não foi analisado/)
+  })
+
+  it('sessão perto e pendência: alerta do prazo curto', () => {
+    const p = avaliar([], {
+      ia: [],
+      sessao: new Date('2026-10-07T13:00:00Z'),
+    }).parecer
+    expect(p.diasUteisAteSessao).toBe(2)
+    expect(p.observacoes[0]).toMatch(/Faltam só 2 dias úteis/)
+  })
+
+  it('sessão que já passou', () => {
+    const p = avaliar([], {
+      ia: [],
+      sessao: new Date('2026-10-01T13:00:00Z'),
+    }).parecer
+    expect(p.sessaoPassou).toBe(true)
+    expect(p.diasUteisAteSessao).toBeNull()
   })
 })

@@ -132,6 +132,15 @@ export function gerarPdfDoEstudo(e: EntradaDoPdf): Promise<Buffer> {
         COR.suave,
         8.5
       )
+      const parecer = h.parecer
+      if (parecer) {
+        const cor = parecer.veredito === 'habilitado' ? COR.bom : parecer.veredito === 'habilitado_se_renovar' ? COR.alerta : COR.ruim
+        garantir(40)
+        doc.moveDown(0.3).font('Helvetica-Bold').fontSize(10.5).fillColor(cor).text('Parecer: ' + seguro(parecer.titulo), MARGEM, doc.y, { width: largura })
+        doc.moveDown(0.2)
+        for (const o of parecer.observacoes) paragrafo('- ' + seguro(o), COR.texto, 8.5)
+        paragrafo('Apoio à decisão pelo que está cadastrado no cofre. Quem decide a habilitação é a comissão, na sessão.', COR.suave, 7.5)
+      }
       const resumo = h.resumo
       paragrafo(`Em ordem: ${resumo.verde}  |  Vencem antes da sessão: ${resumo.amarelo}  |  Faltam ou vencidos: ${resumo.vermelho}  |  A conferir: ${resumo.cinza}`, resumo.vermelho > 0 ? COR.ruim : COR.texto, 9)
       const bloco = (nome: string, status: 'verde' | 'amarelo' | 'vermelho' | 'cinza', cor: string, limiteDeLinhas = 60) => {
