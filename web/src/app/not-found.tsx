@@ -1,5 +1,8 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { LinkButton } from '@/components/ui'
+
+export const metadata: Metadata = { title: 'Página não encontrada' }
 
 export default function NaoEncontrada() {
   return (
@@ -15,13 +18,13 @@ export default function NaoEncontrada() {
       <main className="mx-auto flex w-full max-w-[560px] flex-1 flex-col gap-4 px-4 py-16 sm:py-24">
         <p className="font-mono text-sm text-muted">Erro 404</p>
         <h1 className="text-2xl font-semibold tracking-[-0.01em] text-ink">Página não encontrada</h1>
-        <p className="text-base text-ink-2">O endereço pode ter mudado ou a licitação pode ter sido removida da base. Volte ao painel ou à lista de licitações.</p>
+        <p className="text-base text-ink-2">O endereço pode ter mudado ou a licitação pode ter sido removida da base. Volte ao início ou, se já tem conta, ao seu painel.</p>
         <div className="flex flex-wrap gap-2 pt-2">
-          <LinkButton href="/dashboard" variant="primary">
-            Ir para o painel
+          <LinkButton href="/" variant="primary">
+            Voltar ao início
           </LinkButton>
-          <LinkButton href="/tenders" variant="secondary">
-            Ver licitações
+          <LinkButton href="/dashboard" variant="secondary">
+            Ir para o painel
           </LinkButton>
         </div>
       </main>

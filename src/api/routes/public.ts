@@ -18,6 +18,7 @@ import { idsQueCitamOTexto } from '../../services/buscaDeLicitacoes'
 import { Prisma } from '@prisma/client'
 import { marcasComLicitacao } from '../../lib/marcasDasFontes'
 import { alcanceDasLicitacoes } from '../../services/alcanceDasLicitacoes'
+import { citaPessoaOuProcesso, limparObjetoDaVitrine, orgaoDaVitrine } from '../../lib/vitrinePublica'
 
 export const publicRouter = Router()
 
@@ -123,20 +124,25 @@ publicRouter.get(
     }
     const { ids } = await idsQueCitamOTexto(q, { AND: [whereLicitacaoComPrazoConfirmado(), ...(uf ? [{ uf }] : [])] }, ORDEM_DA_VITRINE)
     const total = ids.length
-    const idsDasAmostras = ids.slice(0, AMOSTRAS_DA_VITRINE)
+    // Busca algumas a mais: as que citam pessoa ou processo judicial não entram (ver lib/vitrinePublica.ts).
+    const candidatos = ids.slice(0, AMOSTRAS_DA_VITRINE * 5)
     const encontradas = await prisma.tender.findMany({
-      where: { id: { in: idsDasAmostras } },
+      where: { id: { in: candidatos } },
       select: { id: true, objeto: true, objetoResumido: true, orgao: true, uf: true, municipio: true, encerramentoAt: true, aberturaAt: true, fonte: true },
     })
     const porId = new Map(encontradas.map((t) => [t.id, t]))
-    const amostras = idsDasAmostras.map((id) => porId.get(id)).filter((t): t is (typeof encontradas)[number] => t !== undefined)
+    const amostras = candidatos
+      .map((id) => porId.get(id))
+      .filter((t): t is (typeof encontradas)[number] => t !== undefined)
+      .filter((t) => !citaPessoaOuProcesso(`${t.objeto} ${t.objetoResumido ?? ''}`))
+      .slice(0, AMOSTRAS_DA_VITRINE)
     const valor = {
       total,
       amostras: amostras.map((t) => {
-        const objeto = (t.objetoResumido ?? t.objeto).replace(/\s+/g, ' ').trim()
+        const objeto = limparObjetoDaVitrine(t.objetoResumido ?? t.objeto)
         return {
           objeto: objeto.length > 140 ? `${objeto.slice(0, 137)}...` : objeto,
-          orgao: t.orgao,
+          orgao: orgaoDaVitrine(t.orgao),
           local: [t.municipio, t.uf].filter(Boolean).join('/'),
           prazo: dataDaSessao(t),
           fonte: t.fonte,

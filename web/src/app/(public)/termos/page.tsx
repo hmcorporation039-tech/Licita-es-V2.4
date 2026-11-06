@@ -1,6 +1,6 @@
 import { PublicProse } from '@/components/PublicShell'
 
-export const metadata = { title: 'Termos de Uso — Licita Bela' }
+export const metadata = { title: 'Termos de Uso' }
 
 export default function TermosPage() {
   return (

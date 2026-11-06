@@ -1,6 +1,6 @@
 import { PublicProse } from '@/components/PublicShell'
 
-export const metadata = { title: 'Política de Privacidade — Licita Bela' }
+export const metadata = { title: 'Política de Privacidade' }
 
 export default function PrivacidadePage() {
   return (
