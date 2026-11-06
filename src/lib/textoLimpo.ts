@@ -4,7 +4,7 @@
 // Visto em produção (06/11/2026): "<p>Alfabeto silábico</p>" na descrição do item,
 // caractere de controle (\x13) no título e entidade HTML sem o "&"
 // ("PRESTACcedil;Atilde;O"). Tira tags, decodifica entidades (com ou sem "&") e
-// remove caracteres de controle. Mesma regra em web/src/lib/textoLimpo.ts.
+// remove caracteres de controle. Na gravação (tenderService) e na migração 65.
 // ============================================================
 
 const NOMEADAS: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', ordm: 'º', ordf: 'ª', deg: '°', ndash: '–', mdash: '—', hellip: '…' }

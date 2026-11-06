@@ -1003,7 +1003,12 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
                               (m.done ? (
                                 <span className="font-mono text-xs text-muted">{formatData(dataDoMarco(m, tender.fonte))}</span>
                               ) : (
-                                <Prazo data={dataDoMarco(m, tender.fonte)} className="items-end text-right" />
+                                <Prazo
+                                  data={dataDoMarco(m, tender.fonte)}
+                                  // Marco que é INÍCIO de algo (propostas) não "encerra": já começou.
+                                  rotuloDoPassado={/^In[ií]cio\b/.test(m.label) ? 'Já começou' : undefined}
+                                  className="items-end text-right"
+                                />
                               ))}
                             {m.custom && (
                               <Button
