@@ -2,6 +2,7 @@
 // services/tenderService.ts — Persiste licitações no banco
 // ============================================================
 
+import { textoLimpo } from '../lib/textoLimpo'
 import { DESLOCAMENTO_DE_BRASILIA_MS } from '../lib/dataDeBrasilia'
 import { Prisma, PrismaClient } from '@prisma/client'
 import { NormalizedTender, NormalizedTenderItem } from '../types'
@@ -34,9 +35,9 @@ function itemParaBanco(item: NormalizedTenderItem, tenderId: string) {
   return {
     tenderId,
     numeroItem: item.numeroItem,
-    descricao: item.descricao,
-    descricaoNorm: normalize(item.descricao),
-    descricaoDetalhada: item.descricaoDetalhada,
+    descricao: textoLimpo(item.descricao),
+    descricaoNorm: normalize(textoLimpo(item.descricao)),
+    descricaoDetalhada: item.descricaoDetalhada === undefined ? undefined : textoLimpo(item.descricaoDetalhada),
     criterioJulgamento: item.criterioJulgamento,
     catmatCode: item.catmatCode,
     catserCode: item.catserCode,
@@ -110,13 +111,31 @@ export function comDatasPlausiveis(tender: NormalizedTender, agora: Date = new D
   }
 }
 
+// Texto dos portais sem tag HTML, entidade quebrada ou caractere de controle (ver lib/textoLimpo.ts).
+export function comTextosLimpos(tender: NormalizedTender): NormalizedTender {
+  const limpo = (v: string | undefined) => (v === undefined ? v : textoLimpo(v))
+  return {
+    ...tender,
+    objeto: textoLimpo(tender.objeto),
+    objetoResumido: limpo(tender.objetoResumido),
+    orgao: limpo(tender.orgao),
+    unidade: limpo(tender.unidade),
+    items: tender.items?.map((item) => ({ ...item, descricao: textoLimpo(item.descricao), descricaoDetalhada: limpo(item.descricaoDetalhada) })),
+  }
+}
+
+// A limpeza do texto não é "alteração da licitação": não avisa ninguém.
+function ehSoLimpezaDeTexto(antes: unknown, depois: unknown): boolean {
+  return typeof antes === 'string' && typeof depois === 'string' && antes !== depois && textoLimpo(antes) === depois
+}
+
 function ehSoDescarteDeDataImplausivel(campo: string, antes: unknown, depois: unknown): boolean {
   if (!(CAMPOS_DE_DATA as readonly string[]).includes(campo) || depois !== undefined || !(antes instanceof Date)) return false
   return dataPlausivel(antes) === undefined
 }
 
 export async function saveTender(recebido: NormalizedTender): Promise<SaveResult> {
-  const tender = comDatasPlausiveis(recebido)
+  const tender = comTextosLimpos(comDatasPlausiveis(recebido))
   const existing = await prisma.tender.findUnique({
     where: { fonteId: tender.fonteId },
     select: {
@@ -153,7 +172,7 @@ export async function saveTender(recebido: NormalizedTender): Promise<SaveResult
     const changedFields = camposAlterados(snapshotDeTender(existing), snapshotDeTender(tender)).filter((campo) => {
       const antes = existing[campo as keyof typeof existing]
       const depois = tender[campo as keyof NormalizedTender]
-      return !ehSoCorrecaoDeFuso(antes, depois) && !ehSoDescarteDeDataImplausivel(campo, antes, depois)
+      return !ehSoCorrecaoDeFuso(antes, depois) && !ehSoDescarteDeDataImplausivel(campo, antes, depois) && !ehSoLimpezaDeTexto(antes, depois)
     })
 
     // Na recoleta só propagamos a situação quando for um estado morto novo
