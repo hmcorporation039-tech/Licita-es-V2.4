@@ -119,6 +119,8 @@ npm run test:e2e
 
 Usa o admin criado no passo 5 (configure `CYPRESS_ADMIN_EMAIL`/`CYPRESS_ADMIN_PASSWORD` se usar credenciais diferentes das do `cypress.config.ts`) pra criar usuários de teste via `/api/admin/users`.
 
+Rode com `NODE_ENV=development` (em `test` a API não abre a porta) e sem fila: com `REDIS_URL` apontando para um Redis sem workers, a nova busca do item fica "em andamento" e os testes não veem o resultado. Por exemplo, `REDIS_URL=redis://127.0.0.1:6398 QUEUE_ENQUEUE_TIMEOUT_MS=300 npm run test:e2e` com nada na porta 6398 faz a busca na hora.
+
 ---
 
 ## Scripts úteis
