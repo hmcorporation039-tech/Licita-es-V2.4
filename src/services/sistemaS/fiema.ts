@@ -1,3 +1,4 @@
+import { THAWTE_TLS_RSA_CA_G1 } from '../sescRegional/certificados'
 import * as cheerio from 'cheerio'
 import { NormalizedTender } from '../../types'
 import { ContextoDeParse, SITUACAO_FECHADA, limparTexto, truncar, urlAbsoluta } from '../sescRegional/tipos'
@@ -162,5 +163,7 @@ export const FONTE_DO_MA: FonteHtmlDoSistemaS = {
     urls: () => LISTAS_DA_FIEMA.map((l) => `${ORIGEM_DA_FIEMA}${l.caminho}`),
     parse: parseFiema,
     proximasPaginas: proximasPaginasDaFiema,
+    // O servidor da FIEMA não envia o certificado intermediário (cadeia incompleta).
+    certificadosConfiaveis: [THAWTE_TLS_RSA_CA_G1],
   },
 }
