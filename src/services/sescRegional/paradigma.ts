@@ -65,13 +65,15 @@ interface RespostaParadigma {
 // não são oportunidade de participação.
 const SITUACAO_FORA = /suspens|homologa|negocia|habilita|aceitabilidade/i
 
-// "/Date(ms)/" -> Date local. O servidor manda o relógio local COMO SE fosse UTC
-// (ex.: 12:00 local = ...T12:00:00Z), então recompomos pelos campos UTC.
+// "/Date(ms)/" -> instante. O ms já é o instante real (UTC), como o JSON do ASP.NET
+// costuma mandar: conferido em 06/11/2026 nos Murais da FIEMG, FIRJAN e SESC BA, em
+// que processos cadastrados minutos antes vinham com ms de minutos antes (em UTC), e
+// as sessões caem em 09:00/10:00/10:30 de Brasília. Antes somávamos 3 h, o que
+// jogava as sessões 3 h para a frente.
 export function dataParadigma(valor?: string | null): Date | undefined {
   const ms = Number(valor?.match(/-?\d+/)?.[0])
   if (!Number.isFinite(ms)) return undefined
-  const u = new Date(ms)
-  const d = new Date(Date.UTC(u.getUTCFullYear(), u.getUTCMonth(), u.getUTCDate(), u.getUTCHours() + 3, u.getUTCMinutes()))
+  const d = new Date(ms)
   return Number.isNaN(d.getTime()) ? undefined : d
 }
 

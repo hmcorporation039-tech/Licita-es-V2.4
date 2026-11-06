@@ -43,6 +43,7 @@ export function limparObjetoDaVitrine(objeto: string): string {
 
 // O PNCP grava muitos órgãos sem acento e em caixa alta ("MUNICIPIO DE RIO VERDE").
 // Para a vitrine, só o começo mais comum ganha o acento.
-export function orgaoDaVitrine(orgao: string): string {
+export function orgaoDaVitrine(orgao: string | null): string | null {
+  if (!orgao) return orgao
   return orgao.replace(/\s+/g, ' ').trim().replace(/^Municipio\b/, 'Município').replace(/^MUNICIPIO\b/, 'MUNICÍPIO')
 }

@@ -1,7 +1,7 @@
 import { ModalidadeEnum } from '../../types'
-import { EmpresaDoParadigma, ProcessoParadigma, criarUnidadeParadigma, semControle } from '../sescRegional/paradigma'
+import { EmpresaDoParadigma, ProcessoParadigma, criarUnidadeParadigma, dataParadigma, semControle } from '../sescRegional/paradigma'
 import { SescUnidade } from '../sescRegional/tipos'
-import { entidadesDoNome, horarioDeBrasilia, modalidadeDoSistemaS, orgaoDasEntidades } from './comum'
+import { entidadesDoNome, modalidadeDoSistemaS, orgaoDasEntidades } from './comum'
 
 export const PREFIXO_DO_PARADIGMA_DA_INDUSTRIA = 'IND-PDG'
 
@@ -27,18 +27,9 @@ export const FEDERACOES_NO_PARADIGMA: FederacaoNoParadigma[] = [
 
 const CNPJ_NO_NOME = /^\s*(\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2})\s*-\s*/
 
+// Mesmo formato do SESC: o ms já é o instante real (ver dataParadigma).
 export function dataDoParadigmaEmBrasilia(valor?: string | null): Date | undefined {
-  const ms = Number(valor?.match(/-?\d+/)?.[0])
-  if (!Number.isFinite(ms)) return undefined
-  const relogio = new Date(ms)
-  if (Number.isNaN(relogio.getTime())) return undefined
-  return horarioDeBrasilia(
-    relogio.getUTCFullYear(),
-    relogio.getUTCMonth() + 1,
-    relogio.getUTCDate(),
-    relogio.getUTCHours(),
-    relogio.getUTCMinutes()
-  )
+  return dataParadigma(valor)
 }
 
 export function empresaDaIndustria(nome: string, federacao: Pick<FederacaoNoParadigma, 'uf' | 'sigla'>): EmpresaDoParadigma | null {

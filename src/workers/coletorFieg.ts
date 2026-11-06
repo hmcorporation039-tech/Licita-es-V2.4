@@ -7,7 +7,7 @@
 import { Worker } from 'bullmq'
 import { redisConnection } from '../queues'
 import { fiegClient } from '../lib/httpClient'
-import { parseFiegListagem, extrairTotalPaginas } from '../services/fiegParser'
+import { ehPaginaDaListagemFieg, htmlDaFieg, parseFiegListagem, extrairTotalPaginas } from '../services/fiegParser'
 import { saveWorkerLog } from '../services/tenderService'
 import { salvarLote } from './coletorHtmlShared'
 
@@ -25,15 +25,20 @@ export function startColetorFiegWorker() {
       let totalDupes = 0
       let totalUpdated = 0
       let hadErrors = false
+      let pagina = 1
 
       try {
-        let pagina = 1
         let totalPaginas = 1
         while (pagina <= totalPaginas && pagina <= MAX_PAGINAS) {
+          // A página vem em ISO-8859-1: decodificada como UTF-8, "Cotação nº" virava "Cota��o n�".
           const response = await fiegClient.get('/licitacao/site/Cotacao.do', {
             params: { acao: 'listarCotacao', page: pagina },
+            responseType: 'arraybuffer',
           })
-          const html: string = response.data
+          const html = htmlDaFieg(Buffer.from(response.data), String(response.headers['content-type'] ?? ''))
+          if (!ehPaginaDaListagemFieg(html)) {
+            throw new Error(`A FIEG devolveu uma página sem a listagem (página ${pagina}): bloqueio anti-robô ou mudança no site`)
+          }
           totalPaginas = extrairTotalPaginas(html)
 
           const tenders = parseFiegListagem(html)
@@ -53,7 +58,7 @@ export function startColetorFiegWorker() {
 
       await saveWorkerLog({
         worker: 'coletor-fieg',
-        status: hadErrors ? 'PARTIAL' : 'SUCCESS',
+        status: hadErrors ? (pagina > 1 ? 'PARTIAL' : 'FAILED') : 'SUCCESS',
         fonte: 'FIEG',
         totalFetched,
         totalNew,
