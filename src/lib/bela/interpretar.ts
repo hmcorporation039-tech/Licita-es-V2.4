@@ -19,6 +19,9 @@ export interface FiltrosDaBusca {
   modalidade?: ModalidadeFalada
   modalidades?: ModalidadeFalada[]
   situacao?: 'ABERTA'
+  // Faixa do valor estimado, em reais ("acima de 50 mil", "até R$ 200 mil", "entre 10 e 50 mil").
+  valorMin?: number
+  valorMax?: number
 }
 
 export type PedidoDaBela =
@@ -72,6 +75,9 @@ const PALAVRAS_DE_COMANDO = new Set([
   'licitacao', 'licitacoes', 'edital', 'editais', 'oportunidade', 'oportunidades', 'pra', 'para', 'sobre', 'com', 'que', 'esteja', 'estejam',
   'aberta', 'abertas', 'aberto', 'abertos', 'em', 'no', 'na', 'nos', 'nas', 'e', 'ai', 'ja', 'so', 'somente', 'apenas', 'se', 'tiver', 'tiverem',
   'houver', 'existem', 'ha', 'todas', 'todos', 'qualquer', 'aparecer', 'aparece',
+  // Perguntas: "quais licitações de câmeras...", "quantas tem de...", "onde tem..."
+  'quais', 'qual', 'quantas', 'quantos', 'quanto', 'quanta', 'onde', 'como', 'tens', 'temos', 'tenho', 'consegue', 'pode', 'poderia',
+  'voce', 'vc', 'mim', 'nossa', 'nosso', 'minha', 'meu', 'hoje', 'agora', 'atualmente', 'disponiveis', 'disponivel',
 ])
 const LIGACOES_NAS_PONTAS = new Set(['de', 'da', 'do', 'das', 'dos', 'para', 'pra', 'com', 'em', 'no', 'na', 'e', 'a', 'o'])
 const PALAVRAS_DE_COMPRA = new Set(['compra', 'compras', 'aquisicao', 'aquisicoes', 'fornecimento', 'fornecimentos', 'contratacao', 'contratacoes'])
@@ -520,6 +526,56 @@ function rotuloDoLugar(ufs: string[], regioes: string[]): string {
   return partes.join(' e ')
 }
 
+// "acima de 50 mil reais", "até R$ 200 mil", "entre 10 e 50 mil", "a partir de 1,5 milhão".
+// Só vale como valor quando tem cara de dinheiro (R$, reais, mil/milhão ou número
+// de 4+ dígitos): "até 30 dias" ou "mais de 2 lotes" continuam no texto.
+const VALOR = String.raw`(?:r\$\s*)?\d[\d.,]*(?:\s*(?:milhoes|milhao|mil|bilhoes|bilhao))?(?:\s*(?:de\s+)?reais)?`
+const FAIXA_ENTRE = new RegExp(String.raw`\b(?:entre|de)\s+(${VALOR})\s+(?:e|a|ate)\s+(${VALOR})`)
+const VALOR_MINIMO = new RegExp(String.raw`\b(?:acima\s+de|mais\s+de|maior(?:es)?\s+(?:que|de)|superior(?:es)?\s+a|a\s+partir\s+de|no\s+minimo|pelo\s+menos|valor\s+minimo\s+de)\s+(${VALOR})`)
+const VALOR_MAXIMO = new RegExp(String.raw`\b(?:abaixo\s+de|menos\s+de|menor(?:es)?\s+(?:que|de)|inferior(?:es)?\s+a|ate|no\s+maximo|valor\s+maximo\s+de)\s+(${VALOR})`)
+
+function pareceDinheiro(trecho: string): boolean {
+  return /r\$|reais|\bmil\b|milh|bilh/.test(trecho) || /\d{4,}|\d{1,3}\.\d{3}/.test(trecho)
+}
+
+function valorDoTrecho(trecho: string, complementoDaUnidade = ''): number | null {
+  // "entre 10 e 50 mil": o "mil" do fim vale para os dois.
+  const comUnidade = /\b(mil|milh|bilh)/.test(trecho) || !complementoDaUnidade ? trecho : `${trecho} ${complementoDaUnidade}`
+  return lerValorFalado(comUnidade)
+}
+
+function lerFaixaDeValor(t: string): { valorMin?: number; valorMax?: number; trechos: RegExp[] } {
+  const entre = t.match(FAIXA_ENTRE)
+  if (entre && pareceDinheiro(entre[0])) {
+    const unidade = entre[2].match(/\b(mil|milhao|milhoes|bilhao|bilhoes)\b/)?.[1] ?? ''
+    const a = valorDoTrecho(entre[1], unidade)
+    const b = valorDoTrecho(entre[2])
+    if (a !== null && b !== null) return { valorMin: Math.min(a, b), valorMax: Math.max(a, b), trechos: [new RegExp(escaparParaRegex(entre[0]))] }
+  }
+  const faixa: { valorMin?: number; valorMax?: number; trechos: RegExp[] } = { trechos: [] }
+  const minimo = t.match(VALOR_MINIMO)
+  if (minimo && pareceDinheiro(minimo[1])) {
+    const v = lerValorFalado(minimo[1])
+    if (v !== null) {
+      faixa.valorMin = v
+      faixa.trechos.push(new RegExp(escaparParaRegex(minimo[0])))
+    }
+  }
+  const maximo = t.match(VALOR_MAXIMO)
+  if (maximo && pareceDinheiro(maximo[1])) {
+    const v = lerValorFalado(maximo[1])
+    if (v !== null) {
+      faixa.valorMax = v
+      faixa.trechos.push(new RegExp(escaparParaRegex(maximo[0])))
+    }
+  }
+  return faixa
+}
+
+function reaisPorExtenso(v: number): string {
+  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
+}
+
 function palavrasDoObjeto(original: string, removidos: RegExp[]): string {
   let t = normalizar(original)
   const mapa: string[] = []
@@ -608,10 +664,15 @@ export function interpretarPedido(texto: string, contexto: 'busca' | 'pregao' = 
     removidos.push(abertas)
   }
 
+  const faixa = lerFaixaDeValor(t)
+  if (faixa.valorMin !== undefined) filtros.valorMin = faixa.valorMin
+  if (faixa.valorMax !== undefined) filtros.valorMax = faixa.valorMax
+  removidos.push(...faixa.trechos)
+
   const objeto = palavrasDoObjeto(original, removidos)
   if (objeto) filtros.q = objeto
 
-  if (!filtros.q && !filtros.uf && !filtros.ufs && !filtros.modalidade && !filtros.modalidades) {
+  if (!filtros.q && !filtros.uf && !filtros.ufs && !filtros.modalidade && !filtros.modalidades && filtros.valorMin === undefined && filtros.valorMax === undefined) {
     return { acao: 'desconhecida', resumo: 'Não entendi o que buscar. Diga, por exemplo: "licitação de estrutura metálica no DF".' }
   }
 
@@ -620,6 +681,13 @@ export function interpretarPedido(texto: string, contexto: 'busca' | 'pregao' = 
     partes.length ? `em ${partes.join(', ')}` : '',
     filtros.municipio ? `em ${filtros.municipio}${filtros.uf ? `/${filtros.uf}` : ''}` : filtros.rotuloDoLocal ? filtros.rotuloDoLocal : filtros.uf ? `na UF ${filtros.uf}` : '',
     filtros.situacao ? 'abertas' : '',
+    filtros.valorMin !== undefined && filtros.valorMax !== undefined
+      ? `entre ${reaisPorExtenso(filtros.valorMin)} e ${reaisPorExtenso(filtros.valorMax)}`
+      : filtros.valorMin !== undefined
+        ? `acima de ${reaisPorExtenso(filtros.valorMin)}`
+        : filtros.valorMax !== undefined
+          ? `até ${reaisPorExtenso(filtros.valorMax)}`
+          : '',
   ]
     .filter(Boolean)
     .join(' ')

@@ -151,6 +151,12 @@ function siglasValidas(texto: string): string[] {
   return [...new Set(texto.toUpperCase().split(/[\s,;]+/).filter((sigla) => SIGLAS_DAS_UFS.has(sigla)))]
 }
 
+// Valor em reais vindo da URL ou do campo: só número não negativo; senão, vazio.
+function valorDaUrl(texto: string): string {
+  const n = Number(texto)
+  return texto !== '' && Number.isFinite(n) && n >= 0 ? String(n) : ''
+}
+
 export default function TendersPage() {
   const user = useRequireSession()
   const favoritas = useFavoritas(!!user)
@@ -167,6 +173,8 @@ export default function TendersPage() {
   const [uf, setUf] = useState('')
   const [publicacaoInicio, setPublicacaoInicio] = useState('')
   const [publicacaoFim, setPublicacaoFim] = useState('')
+  const [valorMin, setValorMin] = useState('')
+  const [valorMax, setValorMax] = useState('')
   const [q, setQ] = useState('')
   const [somenteRelacionadas, setSomenteRelacionadas] = useState(true)
   const [agruparPor, setAgruparPor] = useState<'nao' | 'estado' | 'modalidade' | 'orgao'>('nao')
@@ -187,6 +195,8 @@ export default function TendersPage() {
     const numeroInicial = daUrl('numero')
     const publicacaoInicioInicial = daUrl('publicacaoInicio')
     const publicacaoFimInicial = daUrl('publicacaoFim')
+    const valorMinInicial = valorDaUrl(daUrl('valorMin'))
+    const valorMaxInicial = valorDaUrl(daUrl('valorMax'))
     const modalidadesIniciais = lerModalidadesDaUrl(params.get('modalidade'))
     const paginaInicial = Number(daUrl('page'))
     const ufValida = ufsIniciais.length > 0
@@ -197,13 +207,16 @@ export default function TendersPage() {
     if (numeroInicial) setNumero(numeroInicial)
     if (publicacaoInicioInicial) setPublicacaoInicio(publicacaoInicioInicial)
     if (publicacaoFimInicial) setPublicacaoFim(publicacaoFimInicial)
+    if (valorMinInicial) setValorMin(valorMinInicial)
+    if (valorMaxInicial) setValorMax(valorMaxInicial)
     if (modalidadesIniciais.length > 0) setModalidades(modalidadesIniciais)
     if (daUrl('ordem') === 'recentes') setOrdem('recentes')
     const agruparUrl = daUrl('agruparPor')
     if (agruparUrl === 'estado' || agruparUrl === 'modalidade' || agruparUrl === 'orgao') setAgruparPor(agruparUrl)
     if (params.get('relacionadas') === '0') setSomenteRelacionadas(false)
     if (Number.isInteger(paginaInicial) && paginaInicial > 1) setPage(paginaInicial)
-    if (qInicial || ufValida || municipioInicial || orgaoInicial || numeroInicial || publicacaoInicioInicial || publicacaoFimInicial) setAdvancedOpen(true)
+    if (qInicial || ufValida || municipioInicial || orgaoInicial || numeroInicial || publicacaoInicioInicial || publicacaoFimInicial || valorMinInicial || valorMaxInicial)
+      setAdvancedOpen(true)
     setHidratado(true)
   }, [])
 
@@ -220,6 +233,8 @@ export default function TendersPage() {
     if (modalidade) params.set('modalidade', modalidade)
     if (publicacaoInicio) params.set('publicacaoInicio', publicacaoInicio)
     if (publicacaoFim) params.set('publicacaoFim', publicacaoFim)
+    if (valorMin) params.set('valorMin', valorMin)
+    if (valorMax) params.set('valorMax', valorMax)
     if (ordem === 'recentes') params.set('ordem', 'recentes')
     if (agrupar) params.set('agruparPor', agruparPor)
     if (!somenteRelacionadas) params.set('relacionadas', '0')
@@ -228,7 +243,7 @@ export default function TendersPage() {
     if (nova !== window.location.search.replace(/^\?/, '')) {
       window.history.replaceState(null, '', nova ? `?${nova}` : window.location.pathname)
     }
-  }, [hidratado, q, uf, municipio, orgao, numero, modalidades, publicacaoInicio, publicacaoFim, ordem, agruparPor, somenteRelacionadas, page])
+  }, [hidratado, q, uf, municipio, orgao, numero, modalidades, publicacaoInicio, publicacaoFim, valorMin, valorMax, ordem, agruparPor, somenteRelacionadas, page])
 
   useEffect(() => {
     if (!user) return
@@ -245,6 +260,8 @@ export default function TendersPage() {
       if (ufs.length) qs.set('uf', ufs.join(','))
       if (publicacaoInicio) qs.set('publicacaoInicio', publicacaoInicio)
       if (publicacaoFim) qs.set('publicacaoFim', publicacaoFim)
+      if (valorDaUrl(valorMin)) qs.set('valorMin', valorDaUrl(valorMin))
+      if (valorDaUrl(valorMax)) qs.set('valorMax', valorDaUrl(valorMax))
       if (q) qs.set('q', q)
       if (somenteRelacionadas) qs.set('somenteRelacionadas', 'true')
       if (agrupar) {
@@ -258,7 +275,7 @@ export default function TendersPage() {
         .finally(() => setLoading(false))
     }, 300)
     return () => clearTimeout(timeout)
-  }, [user, orgao, numero, modalidades, municipio, uf, publicacaoInicio, publicacaoFim, q, somenteRelacionadas, agruparPor, ordem, page, tentativa])
+  }, [user, orgao, numero, modalidades, municipio, uf, publicacaoInicio, publicacaoFim, valorMin, valorMax, q, somenteRelacionadas, agruparPor, ordem, page, tentativa])
 
   // "Você quis dizer esquadrias?" quando a busca por texto não achou nada. Só
   // quando há um termo digitado e é o feed completo (no "só relacionadas" o
@@ -319,7 +336,10 @@ export default function TendersPage() {
     setUf('')
     setPublicacaoInicio('')
     setPublicacaoFim('')
+    setValorMin('')
+    setValorMax('')
     setQ('')
+    setOrdem('prazo')
     setVersaoDosFiltros((v) => v + 1)
   }
 
@@ -455,7 +475,33 @@ export default function TendersPage() {
                 }}
               />
             </Field>
-            <Field label="Buscar no objeto" className="sm:col-span-2 lg:col-span-4">
+            <Field label="Valor estimado — mínimo (R$)" hint="Só licitações com valor informado">
+              <Input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                step={1000}
+                value={valorMin}
+                onChange={(e) => {
+                  setPage(1)
+                  setValorMin(e.target.value)
+                }}
+              />
+            </Field>
+            <Field label="Valor estimado — máximo (R$)">
+              <Input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                step={1000}
+                value={valorMax}
+                onChange={(e) => {
+                  setPage(1)
+                  setValorMax(e.target.value)
+                }}
+              />
+            </Field>
+            <Field label="Buscar no objeto" className="sm:col-span-2 lg:col-span-2">
               <Input
                 value={q}
                 onChange={(e) => {

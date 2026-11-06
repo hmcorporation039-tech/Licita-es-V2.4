@@ -68,6 +68,8 @@ function parametrosDosFiltros(filtros: FiltrosDaBela): URLSearchParams {
   const modalidades = modalidadesDoFiltro(filtros)
   if (modalidades.length) qs.set('modalidade', modalidades.join(','))
   if (filtros.situacao) qs.set('situacao', filtros.situacao)
+  if (filtros.valorMin !== undefined) qs.set('valorMin', String(filtros.valorMin))
+  if (filtros.valorMax !== undefined) qs.set('valorMax', String(filtros.valorMax))
   return qs
 }
 
@@ -75,6 +77,16 @@ function linkDaLista(filtros: FiltrosDaBela): string {
   const qs = parametrosDosFiltros(filtros)
   qs.set('relacionadas', '0')
   return `/tenders?${qs.toString()}`
+}
+
+const reais = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
+
+function faixaDoFiltro(filtros: FiltrosDaBela): string | null {
+  const { valorMin, valorMax } = filtros
+  if (valorMin !== undefined && valorMax !== undefined) return `entre ${reais(valorMin)} e ${reais(valorMax)}`
+  if (valorMin !== undefined) return `acima de ${reais(valorMin)}`
+  if (valorMax !== undefined) return `até ${reais(valorMax)}`
+  return null
 }
 
 function localDoFiltro(filtros: FiltrosDaBela): string | null {
@@ -87,7 +99,7 @@ function localDoFiltro(filtros: FiltrosDaBela): string | null {
 
 function fraseDoResultado(filtros: FiltrosDaBela, total: number, porFonte: ContagemPorFonte[], primeira: Tender | undefined): string {
   const modalidade = rotuloDasModalidades(filtros)
-  const assunto = [filtros.q ? `de ${filtros.q}` : null, modalidade ? `por ${modalidade.toLowerCase()}` : null, localDoFiltro(filtros)]
+  const assunto = [filtros.q ? `de ${filtros.q}` : null, modalidade ? `por ${modalidade.toLowerCase()}` : null, localDoFiltro(filtros), faixaDoFiltro(filtros)]
     .filter(Boolean)
     .join(' ')
   if (total === 0) return `Não encontrei licitações ${assunto}. Tente outras palavras.`.replace(/\s+\./, '.')
@@ -103,6 +115,7 @@ function FiltrosAplicados({ filtros }: { filtros: FiltrosDaBela }) {
     filtros.municipio ? `${filtros.municipio}${filtros.uf ? `/${filtros.uf}` : ''}` : filtros.rotuloDoLocal ? `Local: ${filtros.rotuloDoLocal.replace(/^(no|em) /, '')}` : filtros.uf ? `UF ${filtros.uf}` : null,
     rotuloDasModalidades(filtros),
     filtros.situacao === 'ABERTA' ? 'Abertas' : null,
+    faixaDoFiltro(filtros) ? `Valor ${faixaDoFiltro(filtros)}` : null,
   ].filter((c): c is string => Boolean(c))
   return (
     <ul aria-label="Filtros entendidos" className="flex flex-wrap gap-1.5">

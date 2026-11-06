@@ -192,6 +192,20 @@ rodar('Nota de aderência', () => {
     expect(t.match.score).toBeCloseTo(0.86, 5)
   })
 
+  it('a lista filtra pela faixa de valor estimado (valorMin / valorMax)', async () => {
+    const ids = async (faixa: string) => {
+      const r = await http('GET', `/api/tenders?orgao=${encodeURIComponent(orgao)}&${faixa}`, 'a')
+      expect(r.status).toBe(200)
+      return r.body.items.map((x: { id: string }) => x.id)
+    }
+    expect(await ids('valorMin=40000')).toContain(tenderId)
+    expect(await ids('valorMin=60000')).not.toContain(tenderId)
+    expect(await ids('valorMax=50000')).toContain(tenderId)
+    expect(await ids('valorMin=10000&valorMax=49999')).not.toContain(tenderId)
+    const invalido = await http('GET', '/api/tenders?valorMin=-1', 'a')
+    expect(invalido.status).toBe(400)
+  })
+
   it('match antigo (antes da nota) continua legível: score 1 vira "por código"', async () => {
     const antigo = await prisma.tender.create({
       data: { fonte: 'PNCP', fonteId: `antigo-${sufixo}`, modalidade: 'OUTROS', objeto: 'x', rawJson: {}, publicadoAt: new Date(), encerramentoAt: emDias(10) },
