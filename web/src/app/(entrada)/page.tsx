@@ -37,26 +37,19 @@ import { atraso, MolduraDeCelular, PreviaAnalisar, PreviaDisputar, PreviaEncontr
 import Revelar from '@/components/entrada/Revelar'
 import VitrineDeBusca from '@/components/entrada/VitrineDeBusca'
 import { carregarDadosDaEntrada, type EstatisticasPublicas, type ListaChegando, type PlanosResposta } from '@/lib/dadosPublicos'
+import { enderecoDoSite } from '@/lib/enderecoDoSite'
 
 export const revalidate = 600
 
 const TITULO = 'Licita Bela: licitações abertas para o que você vende'
 const DESCRICAO =
   'Busca diária no PNCP, no Sistema S e nos diários oficiais. Aviso do que encerra primeiro, alerta de cláusulas ilegais no edital e proposta no papel timbrado da sua empresa. Teste grátis, sem cartão.'
-const ENDERECO_PADRAO = 'https://www.licitabela.com.br'
 const IMAGEM_DE_COMPARTILHAMENTO = { url: '/bela/v2/bela-compartilhar.jpg', width: 1200, height: 670, alt: 'Bela, a assistente da Licita Bela' }
 
-function enderecoDoSite(): URL {
-  try {
-    return new URL(process.env.NEXT_PUBLIC_SITE_URL || ENDERECO_PADRAO)
-  } catch {
-    return new URL(ENDERECO_PADRAO)
-  }
-}
 
 export const metadata: Metadata = {
   metadataBase: enderecoDoSite(),
-  title: TITULO,
+  title: { absolute: TITULO },
   description: DESCRICAO,
   alternates: { canonical: '/' },
   openGraph: {

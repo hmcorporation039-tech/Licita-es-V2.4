@@ -62,6 +62,9 @@ const querySchema = z.object({
   publicacaoInicio: z.coerce.date().optional(),
   publicacaoFim: z.coerce.date().optional(),
   q: z.string().trim().min(1).max(200).optional(),
+  // Faixa do valor estimado, em reais. Licitação sem valor informado fica de fora quando há faixa.
+  valorMin: z.coerce.number().nonnegative().max(1e13).optional(),
+  valorMax: z.coerce.number().nonnegative().max(1e13).optional(),
   // Quando true, restringe o feed às licitações que deram match com algum
   // item monitorado do usuário logado (em vez do feed público completo) —
   // o cruzamento em si é feito pelo matcher (casamento literal de palavra-
@@ -135,6 +138,8 @@ tendersRouter.get(
       publicacaoInicio,
       publicacaoFim,
       q,
+      valorMin,
+      valorMax,
       somenteRelacionadas,
       agrupar,
       agruparPor,
@@ -158,6 +163,14 @@ tendersRouter.get(
         publicadoAt: {
           ...(publicacaoInicio ? { gte: publicacaoInicio } : {}),
           ...(publicacaoFim ? { lte: publicacaoFim } : {}),
+        },
+      })
+    }
+    if (valorMin !== undefined || valorMax !== undefined) {
+      condicoes.push({
+        valorEstimado: {
+          ...(valorMin !== undefined ? { gte: valorMin } : {}),
+          ...(valorMax !== undefined ? { lte: valorMax } : {}),
         },
       })
     }

@@ -3,6 +3,7 @@
 // Docs: https://pncp.gov.br/api/consulta/swagger-ui/index.html
 // ============================================================
 
+import { linkDoEditalPncp } from '../lib/linkDoEdital'
 import {
   NormalizedTender,
   NormalizedTenderItem,
@@ -91,7 +92,7 @@ export function parsePNCPTender(raw: Record<string, any>): NormalizedTender {
     aberturaAt: dataDeBrasilia(raw.dataAberturaProposta),
     encerramentoAt: dataDeBrasilia(raw.dataEncerramentoProposta),
     publicadoAt: dataDeBrasilia(raw.dataPublicacaoPncp),
-    linkEdital: raw.linkSistemaOrigem ?? raw.linkEdital,
+    linkEdital: linkDoEditalPncp(raw.linkSistemaOrigem, raw.linkEdital, raw.numeroControlePNCP),
     plataformaDeOrigem: normalizarPlataformaDeOrigem(raw.usuarioNome),
     numeroControle: raw.numeroControlePNCP,
     rawJson: rawJsonEssencial(raw),

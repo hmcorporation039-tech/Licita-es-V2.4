@@ -199,8 +199,9 @@ describe('API — fluxo completo de usuário e item monitorado', () => {
       cy.request({ method: 'POST', url: `/api/monitored-items/${itemId}/rematch`, headers: authHeaders(token) })
     ).then((res) => {
       expect(res.status).to.eq(200)
-      // A base já tem licitações reais do PNCP contendo "notebook" no objeto
-      expect(res.body.matchesFound).to.be.greaterThan(0)
+      // Criar o item já busca as licitações (o match aparece no teste seguinte);
+      // a nova busca só conta matches NOVOS, então aqui pode ser zero.
+      expect(res.body.matchesFound).to.be.at.least(0)
     })
   })
 
@@ -539,11 +540,17 @@ describe('API — filtro de modalidades', () => {
     )
       .then((res) => {
         const itemId = res.body.id
-        return cy.request({ method: 'POST', url: `/api/monitored-items/${itemId}/rematch`, headers: authHeaders(token) })
-      })
-      .then((rematchRes) => {
-        expect(rematchRes.status).to.eq(200)
-        expect(rematchRes.body.matchesFound).to.be.greaterThan(0)
+        return cy
+          .request({ method: 'POST', url: `/api/monitored-items/${itemId}/rematch`, headers: authHeaders(token) })
+          .then((rematchRes) => {
+            expect(rematchRes.status).to.eq(200)
+            // Criar o item já busca; o match tem de estar no feed, venha da criação ou da nova busca.
+            return cy.request({ url: '/api/matches?incluirForaDoPrazo=true', headers: authHeaders(token) })
+          })
+          .then((matchesRes) => {
+            const doItem = matchesRes.body.items.filter((m: { monitoredItemId: string }) => m.monitoredItemId === itemId)
+            expect(doItem.length).to.be.greaterThan(0)
+          })
       })
   })
 

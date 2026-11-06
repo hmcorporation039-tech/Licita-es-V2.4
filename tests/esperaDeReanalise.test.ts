@@ -6,7 +6,7 @@ const haMs = (ms: number) => new Date(agora.getTime() - ms)
 
 describe('falhouHaPouco', () => {
   it('bloqueia nova análise logo depois de uma falha', () => {
-    expect(falhouHaPouco({ status: 'FAILED', errorMsg: 'x', updatedAt: haMs(5 * 60_000) }, false, agora)).toBe(true)
+    expect(falhouHaPouco({ status: 'FAILED', errorMsg: 'x', updatedAt: haMs(2 * 60_000) }, false, agora)).toBe(true)
   })
 
   it('libera depois da espera de falha', () => {

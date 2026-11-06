@@ -15,7 +15,8 @@ const lerSesc = (nome: string) => readFileSync(join(__dirname, 'fixtures/sesc', 
 const AGORA = new Date('2026-10-15T15:00:00Z')
 const unidade = (uf: string) => UNIDADES_DA_INDUSTRIA_NO_PARADIGMA.find((u) => u.uf === uf)!
 const parse = (uf: string) => unidade(uf).parse(lerSistemaS(`paradigma-${uf.toLowerCase()}.json`), { url: unidade(uf).urls(AGORA)[0], agora: AGORA })
-const dataLocal = (ano: number, mes: number, dia: number, hora: number, minuto = 0) => `/Date(${Date.UTC(ano, mes - 1, dia, hora, minuto)})/`
+// O ms do Paradigma é o instante real: hora de Brasília + 3 = UTC.
+const dataLocal = (ano: number, mes: number, dia: number, hora: number, minuto = 0) => `/Date(${Date.UTC(ano, mes - 1, dia, hora + 3, minuto)})/`
 
 describe('Paradigma — saída do SESC não muda com a generalização', () => {
   it('as cinco unidades do SESC produzem exatamente o mesmo resultado de antes', () => {
@@ -67,7 +68,7 @@ describe('Paradigma — federações da indústria', () => {
     const r = parse('MG')
     const comDisputa = r.find((t) => t.fonteId === 'IND-PDG-MG-15641')!
     expect(comDisputa.modalidade).toBe('OUTROS')
-    expect(comDisputa.encerramentoAt?.toISOString()).toBe('2026-10-23T21:00:00.000Z')
+    expect(comDisputa.encerramentoAt?.toISOString()).toBe('2026-10-23T18:00:00.000Z')
     expect(r.find((t) => t.fonteId === 'IND-PDG-MG-16063')!.modalidade).toBe('DISPENSA_SEM_DISPUTA')
     expect(r.find((t) => t.fonteId === 'IND-PDG-MG-16060')!.unidade).toBe('IEL/NRMG - SEDE')
   })

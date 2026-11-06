@@ -120,7 +120,7 @@ export default function MapaDeOportunidades() {
               <span className="text-muted"> · {oportunidades(totais?.get(ufDoRotulo) ?? 0)}</span>
             </>
           ) : (
-            <span className="text-muted">Passe o mouse sobre um estado</span>
+            <span className="text-muted">Passe o mouse ou toque num estado</span>
           )}
         </p>
         <svg viewBox={mapa.viewBox} className="w-full max-w-[300px] self-center" role="group" aria-label="Mapa do Brasil com as oportunidades abertas por estado" onMouseLeave={() => setUfEmFoco(null)}>

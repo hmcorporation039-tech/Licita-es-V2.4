@@ -241,12 +241,31 @@ rodar('Análise em dupla e matriz de exigências', () => {
           obterDocumentos: docs,
           analista: async () => { throw new Error('boom') },
           revisor: async () => { revisorChamado = true; return revisorBom() },
+          esperaEntreTentativasMs: 0,
         })
       ).rejects.toThrow('boom')
       expect(revisorChamado).toBe(false)
       const a = await prisma.tenderAnalysis.findUnique({ where: { tenderId: id } })
       expect(a.status).toBe('FAILED')
       expect(a.errorMsg).not.toMatch(/boom/) // detalhe técnico não vai para o usuário
+    })
+
+    it('erro passageiro do analista: tenta de novo sozinho e conclui', async () => {
+      const id = await novaLicitacao('analistaInstavel')
+      let chamadas = 0
+      await servico.runEditalAnalysis(id, { companyId: ids.empresaa, userId: ids.a }, {
+        obterDocumentos: docs,
+        analista: async (...args: Parameters<typeof analista>) => {
+          chamadas++
+          if (chamadas === 1) throw new Error('overloaded')
+          return analista(...args)
+        },
+        revisor: null,
+        esperaEntreTentativasMs: 0,
+      })
+      expect(chamadas).toBe(2)
+      const a = await prisma.tenderAnalysis.findUnique({ where: { tenderId: id } })
+      expect(a.status).toBe('DONE')
     })
 
     it('sem nenhuma chave de IA configurada: falha com mensagem clara, sem chamar modelo', async () => {

@@ -7,6 +7,7 @@
 // lógica vale aqui), por isso não está no PNCP.
 // ============================================================
 
+import { decodificarHtml } from './sescRegional/tipos'
 import * as cheerio from 'cheerio'
 import { NormalizedTender } from '../types'
 import { parseDataBr } from '../lib/scrapingHelpers'
@@ -46,6 +47,25 @@ export function extrairTotalPaginas(html: string): number {
   const total = Number(m[1])
   const pageSize = Math.max(1, Number(m[3]) - Number(m[2]) + 1)
   return Math.max(1, Math.ceil(total / pageSize))
+}
+
+// A FIEG serve ISO-8859-1, nem sempre declarado. Se o conteúdo não for UTF-8
+// válido, é Latin-1; se for, vale o que a página declara.
+export function htmlDaFieg(buffer: Buffer, contentType?: string): string {
+  try {
+    new TextDecoder('utf-8', { fatal: true }).decode(buffer)
+  } catch {
+    return new TextDecoder('iso-8859-1').decode(buffer)
+  }
+  return decodificarHtml(buffer, contentType)
+}
+
+// A página da listagem sempre traz o banner "N itens encontrados" ou a lista.
+// Sem os dois, veio outra coisa (página de bloqueio, erro, mudança no site):
+// não é "nenhuma licitação", é falha de coleta.
+export function ehPaginaDaListagemFieg(html: string): boolean {
+  const $ = cheerio.load(html)
+  return $('.pagebanner').length > 0 || $('ul.licitacoesLista').length > 0
 }
 
 export function parseFiegListagem(html: string): NormalizedTender[] {

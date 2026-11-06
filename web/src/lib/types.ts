@@ -380,6 +380,8 @@ export interface FiltrosDaBela {
   modalidade?: ModalidadeFalada
   modalidades?: ModalidadeFalada[]
   situacao?: 'ABERTA'
+  valorMin?: number
+  valorMax?: number
 }
 
 export type ContextoDaBela = 'busca' | 'pregao'

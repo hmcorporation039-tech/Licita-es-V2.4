@@ -1,6 +1,7 @@
 import type { AnalysisStatus } from '@prisma/client'
 
-export const ESPERA_APOS_FALHA_MS = 60 * 60 * 1000
+// Falha de análise costuma ser passageira (o serviço já tenta duas vezes): 5 min basta.
+export const ESPERA_APOS_FALHA_MS = 5 * 60 * 1000
 export const ESPERA_APOS_SEM_DOCUMENTOS_MS = 6 * 60 * 60 * 1000
 
 export interface AnaliseAnterior {

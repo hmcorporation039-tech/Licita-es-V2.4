@@ -22,9 +22,9 @@ const AGORA = horaDeBrasilia(2026, 8, 30, 12, 0)
 const ctx = (url: string) => ({ url, agora: AGORA })
 
 describe('dataParadigma', () => {
-  it('lê o /Date(ms)/ como hora de Brasília, em qualquer fuso do servidor (o Paradigma manda o relógio local como UTC)', () => {
-    // 1791547200000 = 2026-10-09T12:00:00Z -> 09/10/2026 12:00 local
-    expect(dataParadigma('/Date(1791547200000)/')).toEqual(new Date('2026-10-09T12:00:00-03:00'))
+  it('lê o /Date(ms)/ como o instante real (UTC), em qualquer fuso do servidor', () => {
+    // 1791547200000 = 2026-10-09T12:00:00Z = 09/10/2026 09:00 em Brasília
+    expect(dataParadigma('/Date(1791547200000)/')).toEqual(new Date('2026-10-09T09:00:00-03:00'))
   })
 
   it('devolve undefined para valor ausente ou inválido', () => {
@@ -64,8 +64,8 @@ describe('Paradigma — DN', () => {
 
   it('converte as datas de início e prazo final', () => {
     const t = r.find((x) => x.numeroControle === '0100/26-PG')!
-    expect(t.publicadoAt).toEqual(new Date('2026-09-30T13:00:00-03:00'))
-    expect(t.aberturaAt).toEqual(new Date('2026-10-09T12:00:00-03:00'))
+    expect(t.publicadoAt).toEqual(new Date('2026-09-30T10:00:00-03:00'))
+    expect(t.aberturaAt).toEqual(new Date('2026-10-09T09:00:00-03:00'))
     expect(t.encerramentoAt).toEqual(t.aberturaAt)
   })
 })

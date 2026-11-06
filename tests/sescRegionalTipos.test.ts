@@ -113,3 +113,10 @@ describe('decodificarHtml', () => {
     expect(decodificarHtml(Buffer.from('Licitação', 'utf8'))).toBe('Licitação')
   })
 })
+
+describe('limparTexto', () => {
+  it('troca o <br /> literal que alguns portais mandam no título por espaço', () => {
+    expect(limparTexto('Aquisição de mobiliário<br />para a unidade  Centro')).toBe('Aquisição de mobiliário para a unidade Centro')
+    expect(limparTexto('Linha 1<BR>Linha 2')).toBe('Linha 1 Linha 2')
+  })
+})

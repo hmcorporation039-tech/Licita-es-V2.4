@@ -399,3 +399,27 @@ describe('Bela: copiloto do lance', () => {
     expect(Math.round(((3380 - 2620.65) / 3380) * 1000) / 10).toBe(22.5)
   })
 })
+
+describe('Bela: perguntas e faixa de valor (verificação de 06/11 em produção)', () => {
+  const filtros = (texto: string) => {
+    const p = interpretarPedido(texto)
+    return p.acao === 'buscar' ? p.filtros : null
+  }
+
+  it('palavras de pergunta não entram no texto da busca', () => {
+    expect(filtros('quais licitações de câmeras abertas em GO?')).toEqual({ uf: 'GO', situacao: 'ABERTA', q: 'câmeras' })
+    expect(filtros('quantas licitações de merenda escolar tem na bahia')).toMatchObject({ uf: 'BA', q: 'merenda escolar' })
+  })
+
+  it('"acima de", "até" e "entre" viram faixa de valor, fora do texto', () => {
+    expect(filtros('pregão de material de limpeza em SP acima de 50 mil reais')).toMatchObject({ uf: 'SP', modalidade: 'PREGAO_ELETRONICO', valorMin: 50000, q: 'material de limpeza' })
+    expect(filtros('tem alguma de notebook acima de R$ 100 mil?')).toMatchObject({ valorMin: 100000, q: 'notebook' })
+    expect(filtros('uniformes até R$ 80.000')).toMatchObject({ valorMax: 80000, q: 'uniformes' })
+    expect(filtros('obras entre 1 e 5 milhões no DF')).toMatchObject({ uf: 'DF', valorMin: 1_000_000, valorMax: 5_000_000, q: 'obras' })
+  })
+
+  it('número que não é dinheiro continua no texto', () => {
+    expect(filtros('serviço com prazo de até 30 dias')).toEqual({ q: 'serviço com prazo de até 30 dias' })
+    expect(filtros('compra de 2 caminhões até 500 mil')).toMatchObject({ valorMax: 500000, q: '2 caminhões' })
+  })
+})

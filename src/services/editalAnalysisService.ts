@@ -82,6 +82,8 @@ export interface DependenciasDaAnalise {
   analista?: EditalAnalyzer
   // null = análise sem revisão; ausente = decidir pela configuração.
   revisor?: EditalReviewer | null
+  // Testes: espera antes da segunda tentativa (padrão 3 s).
+  esperaEntreTentativasMs?: number
 }
 
 // Lista os documentos de uma licitação, já do mais relevante para o menos —
@@ -272,10 +274,10 @@ export async function runEditalAnalysis(
     // revisão começar: o usuário lê a prévia enquanto a Claude, mais lenta, confere o edital.
     let analistaJaRegistrado = false
     try {
-      pipeline = await executarPipeline({
+      const rodarPipeline = () => executarPipeline({
         objeto: tender.objeto,
         documentos,
-        analista,
+        analista: analista!,
         revisor: revisor ?? null,
         aoConcluirAnalista: async (previa) => {
           await registrarUsoDeIa({
@@ -301,6 +303,21 @@ export async function runEditalAnalysis(
           })
         },
       })
+      try {
+        pipeline = await rodarPipeline()
+      } catch (primeiroErro) {
+        // Erro passageiro do modelo (sobrecarga, rede, resposta cortada) é comum e some
+        // numa segunda tentativa: tenta mais uma vez antes de dizer ao usuário que falhou.
+        // Recusa do modelo e falha depois da prévia já gravada não se repetem.
+        const causa = primeiroErro instanceof ErroComUso ? primeiroErro.causa : primeiroErro
+        if (causa instanceof AnalysisRefusedError || analistaJaRegistrado) throw primeiroErro
+        if (primeiroErro instanceof ErroComUso) {
+          await registrarUsoDeIa({ tenderId, quem, uso: primeiroErro.uso, durationMs: Date.now() - inicioIa, status: 'ERRO', etapa: 'analise' })
+        }
+        console.warn(`[Análise de edital] Primeira tentativa falhou em ${tenderId}, tentando de novo:`, causa instanceof Error ? causa.message : causa)
+        await new Promise((r) => setTimeout(r, deps.esperaEntreTentativasMs ?? 3000))
+        pipeline = await rodarPipeline()
+      }
     } catch (rawErr) {
       // Falha do ANALISTA depois da chamada ao modelo: os tokens já foram gastos e entram na medição.
       let err = rawErr

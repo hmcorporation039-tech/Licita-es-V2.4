@@ -29,7 +29,7 @@ const nunito = localFont({
 })
 
 export const metadata: Metadata = {
-  title: 'Licita Bela',
+  title: { default: 'Licita Bela', template: '%s · Licita Bela' },
   description: 'Licitações abertas para o seu negócio, com prazo, edital e habilitação no mesmo lugar.',
   applicationName: 'Licita Bela',
   appleWebApp: { capable: true, title: 'Licita Bela', statusBarStyle: 'default' },

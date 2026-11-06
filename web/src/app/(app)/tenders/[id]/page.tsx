@@ -22,7 +22,7 @@ import {
 } from '@/lib/types'
 import { MODALIDADE_OPTIONS } from '@/lib/modalidades'
 import { SITUACAO_OPTIONS } from '@/lib/situacoes'
-import { safeHttpUrl } from '@/lib/safeUrl'
+import { paginaDoEditalNoPncp, safeHttpUrl } from '@/lib/safeUrl'
 import type { PrazosDaSessao } from '@/lib/adminTypes'
 import PainelDoFiscal from '@/components/PainelDoFiscal'
 import EstrategistaDeConcorrentes from '@/components/EstrategistaDeConcorrentes'
@@ -489,7 +489,7 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
   const situacaoLabel = versaoDoPncp(tender) ? 'Também no PNCP' : (SITUACAO_OPTIONS.find((o) => o.value === tender.situacao)?.label ?? tender.situacao)
   const local = tender.municipio ? `${tender.municipio}/${tender.uf ?? ''}` : tender.uf
   const cnpj = cnpjDoProcesso(tender.numeroControle)
-  const linkEdital = safeHttpUrl(tender.linkEdital)
+  const linkEdital = safeHttpUrl(tender.linkEdital) ?? (tender.fonte === 'PNCP' ? paginaDoEditalNoPncp(tender.numeroControle) : null)
   const escolhida = plan?.status === 'VOU_PARTICIPAR'
   const analiseBloqueada = medida?.esgotado === true
   const comResultado = mostraResultado(tender)
@@ -1003,7 +1003,12 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
                               (m.done ? (
                                 <span className="font-mono text-xs text-muted">{formatData(dataDoMarco(m, tender.fonte))}</span>
                               ) : (
-                                <Prazo data={dataDoMarco(m, tender.fonte)} className="items-end text-right" />
+                                <Prazo
+                                  data={dataDoMarco(m, tender.fonte)}
+                                  // Marco que é INÍCIO de algo (propostas) não "encerra": já começou.
+                                  rotuloDoPassado={/^In[ií]cio\b/.test(m.label) ? 'Já começou' : undefined}
+                                  className="items-end text-right"
+                                />
                               ))}
                             {m.custom && (
                               <Button
