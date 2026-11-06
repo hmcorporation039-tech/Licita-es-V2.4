@@ -73,8 +73,12 @@ export function decodificarHtml(buffer: Buffer, contentType?: string): string {
   }
 }
 
+// Alguns portais mandam a quebra de linha como texto ("<br />" literal no título).
 export function limparTexto(texto: string | null | undefined): string {
-  return (texto ?? '').replace(/\s+/g, ' ').trim()
+  return (texto ?? '')
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 export function truncar(texto: string, max = 500): string {
