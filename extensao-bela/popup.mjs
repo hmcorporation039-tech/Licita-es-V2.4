@@ -110,6 +110,9 @@ botaoDaProposta.addEventListener('click', async () => {
     if (feito.naoEncontrados.length) partes.push(`Não achei na tela: ${feito.naoEncontrados.join(', ')}.`)
     if (feito.semCampo.length) partes.push(`Sem campo de preço: ${feito.semCampo.join(', ')}.`)
     if (r.proposta.semPreco?.length) partes.push(`${r.proposta.semPreco.length} item(ns) sem preço no estudo.`)
+    if (r.proposta.acimaDoEstimado?.length) {
+      partes.push(`ATENÇÃO: item(ns) ${r.proposta.acimaDoEstimado.map((a) => a.numero ?? '?').join(', ')} acima do estimado pelo órgão (pode desclassificar).`)
+    }
     partes.push('Confira tudo e envie no portal.')
     statusDaProposta.textContent = partes.join(' ')
   } catch {

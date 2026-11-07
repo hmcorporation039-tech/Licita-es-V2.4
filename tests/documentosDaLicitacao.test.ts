@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { strFromU8, unzipSync } from 'fflate'
 import { dadosDoCertame, dadosDoProponente, type EmpresaParaDocumento } from '../src/lib/documentosDaLicitacao/proponente'
-import { propostaComercial } from '../src/lib/documentosDaLicitacao/proposta'
+import { propostaComercial, recalcularProposta } from '../src/lib/documentosDaLicitacao/proposta'
 import { declaracoes, IDS_DE_DECLARACAO } from '../src/lib/documentosDaLicitacao/declaracoes'
 import { documentoSchema } from '../src/lib/documentosDaLicitacao/modelo'
 import { readequarPrecos } from '../src/lib/documentosDaLicitacao/readequacao'
@@ -354,5 +354,44 @@ describe('impugnação e pedido de esclarecimento', () => {
     const r = pedidoDeEsclarecimento(dadosDoProponente(empresa), certame, [], [], prazo, quando)
     expect(r.pendencias).toContain('pergunta do pedido de esclarecimento')
     expect(texto(r.documento)).toContain('[preencher: escreva aqui a sua pergunta]')
+  })
+})
+
+describe('propostaComercial: marca e modelo', () => {
+  const p = dadosDoProponente(empresa)
+  const opcoes = { validadeDias: 60, prazoDeEntrega: '', condicoesDePagamento: '' }
+
+  it('sem marca informada e sem readequação, a tabela fica como antes', () => {
+    const r = propostaComercial(p, certame, [{ numero: 1, descricao: 'Cabo 6 mm²', unidade: 'm', quantidade: 2, precoUnitario: 10, marcaModelo: null }], opcoes, quando)
+    const tabela = r.documento.blocos.find((b) => b.tipo === 'tabela')
+    expect(tabela && tabela.tipo === 'tabela' && tabela.colunas).not.toContain('Marca/modelo')
+    expect(r.pendencias.some((x) => x.startsWith('marca e modelo'))).toBe(false)
+  })
+
+  it('com marca, ganha a coluna; item de produto sem marca vira pendência; serviço fica com traço', () => {
+    const r = propostaComercial(
+      p,
+      certame,
+      [
+        { numero: 1, descricao: 'Cabo 6 mm²', unidade: 'm', quantidade: 2, precoUnitario: 10, marcaModelo: 'Sil / Flexsil 750V' },
+        { numero: 2, descricao: 'Disjuntor 20 A', unidade: 'un', quantidade: 1, precoUnitario: 30, marcaModelo: null },
+        { numero: 3, descricao: 'Instalação', unidade: 'sv', quantidade: 1, precoUnitario: 100 },
+      ],
+      opcoes,
+      quando,
+    )
+    const tabela = r.documento.blocos.find((b) => b.tipo === 'tabela')
+    if (!tabela || tabela.tipo !== 'tabela') throw new Error('sem tabela')
+    expect(tabela.colunas).toEqual(['Item', 'Descrição', 'Marca/modelo', 'Unid.', 'Qtd.', 'Valor unitário (R$)', 'Valor total (R$)'])
+    expect(tabela.linhas.map((l) => l[2])).toEqual(['Sil / Flexsil 750V', '[preencher: marca/modelo]', '—'])
+    expect(tabela.linhas[0][6]).toBe('20,00')
+    expect(tabela.rodape).toHaveLength(7)
+    expect(r.pendencias).toContain('marca e modelo de 1 item(ns) (preencha no estudo de custos, se o objeto for produto)')
+    expect(recalcularProposta(r.documento, { normalizarUnitarios: false }).total).toBe(150)
+  })
+
+  it('na readequada, a coluna aparece mesmo sem nenhuma marca', () => {
+    const r = propostaComercial(p, certame, [{ numero: 1, descricao: 'Cabo', unidade: 'm', quantidade: 1, precoUnitario: 9, marcaModelo: null }], { ...opcoes, lanceFinal: 9 }, quando)
+    expect(JSON.stringify(r.documento)).toContain('Marca/modelo')
   })
 })

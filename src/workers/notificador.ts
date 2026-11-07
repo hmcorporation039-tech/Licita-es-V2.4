@@ -13,7 +13,7 @@ import { prisma } from '../services/tenderService'
 import { ROTULO_CAMPO_ALTERADO, sendTenderChangedEmail } from '../services/emailService'
 import { NotificadorAlteracaoPayload, NotificadorCelularPayload, NotificadorJobPayload, NotificadorMatchPayload, NotificadorRotinaPayload } from '../types'
 import { enviarResumosDiarios } from '../services/resumoDiario'
-import { enviarLembretesDePrazo } from '../services/lembreteDePrazo'
+import { avisarLimitesNoCelular, enviarLembretesDePrazo } from '../services/lembreteDePrazo'
 import { estaAberta } from '../lib/licitacaoAberta'
 import { SELECT_DO_DESTINATARIO, acessoDoDestinatarioComEmpresa, avisarFimDoAcessoUmaVez } from '../services/avisoDeAcessoEncerrado'
 import { linksDeDescadastro } from '../lib/descadastro'
@@ -78,6 +78,8 @@ async function processarRotina(payload: NotificadorRotinaPayload): Promise<void>
     if (falhas > 0) throw new Error(`${falhas} resumo(s) diário(s) não enviado(s)`)
     return
   }
+  const limites = await avisarLimitesNoCelular()
+  if (limites.usuarios > 0 || limites.falhas > 0) console.log(`[Notificador Worker] Limite de esclarecimento: ${limites.usuarios} aviso(s) no celular, ${limites.falhas} falha(s).`)
   const { empresas, enviados, falhas, noCelular } = await enviarLembretesDePrazo()
   console.log(`[Notificador Worker] Lembrete de prazo: ${enviados} enviado(s), ${noCelular} no celular, ${falhas} falha(s), ${empresas} empresa(s) com prazo perto do fim.`)
   if (falhas > 0) throw new Error(`${falhas} lembrete(s) de prazo não enviado(s)`)

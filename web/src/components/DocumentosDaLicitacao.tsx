@@ -161,6 +161,21 @@ export default function DocumentosDaLicitacao({
               )}
             </p>
           )}
+          {(modelos.impugnacao.duvidas?.length ?? 0) > 0 && (
+            <div className="border-b border-line-soft px-4 py-2.5 text-sm text-ink-2">
+              <p>
+                A Bela achou {modelos.impugnacao.duvidas!.length === 1 ? '1 dúvida' : `${modelos.impugnacao.duvidas!.length} dúvidas`} na lista de itens. Elas já entram como perguntas no pedido de esclarecimento:
+              </p>
+              <ul className="mt-1 list-disc pl-5">
+                {modelos.impugnacao.duvidas!.map((d, i) => (
+                  <li key={i}>
+                    {d.numero !== null && <strong className="font-semibold text-ink">Item {d.numero}: </strong>}
+                    {d.motivo}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           {!modelos.impugnacao.analiseFeita ? (
             <p className="px-4 py-3 text-sm text-ink-2">A impugnação usa as cláusulas encontradas na análise do edital. Faça a análise na aba Análise para habilitá-la. O pedido de esclarecimento você pode gerar e escrever suas perguntas.</p>
           ) : modelos.impugnacao.alertas.length === 0 ? (

@@ -7,6 +7,9 @@ import { enviarNoCelular, temAparelhoNoCelular } from './notificacaoNoCelular'
 import { mensagemDoLembreteDePrazo } from '../lib/notificacaoNoCelular'
 import { linksDeDescadastro } from '../lib/descadastro'
 import { MARCOS_DO_LEMBRETE_EM_HORAS, marcoDoLembrete, momentoDoFimDoPrazo, type MarcoDoLembrete } from '../lib/prazoDoAviso'
+import { avisoDoLimite, mensagemDoLimite, type LicitacaoComLimite, type MarcoDoLimite } from '../lib/limiteDeEsclarecimento'
+import { dataDaSessao } from '../lib/dataDaSessao'
+import { lerDataTexto } from '../lib/diasUteis'
 
 const HORA_MS = 60 * 60 * 1000
 const MAIOR_MARCO_MS = Math.max(...MARCOS_DO_LEMBRETE_EM_HORAS) * HORA_MS
@@ -167,4 +170,84 @@ export async function enviarLembretesDePrazo(agora: Date = new Date()): Promise<
     }
   }
   return rodada
+}
+
+// ------------------------------------------------------------
+// Limite para pedir esclarecimento ou impugnar (3 dias úteis antes da sessão):
+// aviso no celular na véspera e no último dia, para quem marcou "Vou participar".
+// ------------------------------------------------------------
+
+const JANELA_DA_SESSAO_MS = 15 * 24 * HORA_MS
+
+export function idDoAvisoDoLimite(userId: string, tenderId: string, limite: string, marco: MarcoDoLimite): string {
+  return `celular-limite-esclarecimento:${userId}:${tenderId}:${limite}:${marco}`
+}
+
+async function limitesDaEmpresa(companyId: string, agora: Date): Promise<LicitacaoComLimite[]> {
+  const planos = await prisma.tenderParticipationPlan.findMany({
+    where: {
+      companyId,
+      status: 'VOU_PARTICIPAR',
+      tender: { situacao: 'ABERTA', duplicataDe: null, motivoOculta: null },
+    },
+    select: {
+      tender: {
+        select: {
+          id: true, objeto: true, objetoResumido: true, fonte: true, aberturaAt: true, encerramentoAt: true,
+          analysis: { select: { status: true, resultado: true } },
+        },
+      },
+    },
+  })
+  return planos.flatMap(({ tender }) => {
+    const daAnalise = tender.analysis?.status === 'DONE' ? (tender.analysis.resultado as { dataSessao?: string } | null)?.dataSessao : undefined
+    const sessao = dataDaSessao(tender) ?? lerDataTexto(daAnalise)
+    if (!sessao) return []
+    const falta = sessao.getTime() - agora.getTime()
+    if (falta <= 0 || falta > JANELA_DA_SESSAO_MS) return []
+    const aviso = avisoDoLimite(sessao, agora)
+    return aviso ? [{ tenderId: tender.id, objeto: tender.objetoResumido ?? tender.objeto, aviso }] : []
+  })
+}
+
+export async function avisarLimitesNoCelular(agora: Date = new Date()): Promise<{ usuarios: number; falhas: number }> {
+  const empresas = await prisma.tenderParticipationPlan.findMany({
+    where: { status: 'VOU_PARTICIPAR', tender: { situacao: 'ABERTA' } },
+    distinct: ['companyId'],
+    select: { companyId: true },
+  })
+  let usuarios = 0
+  let falhas = 0
+  for (const { companyId } of empresas) {
+    try {
+      const limites = await limitesDaEmpresa(companyId, agora)
+      if (limites.length === 0) continue
+      const pessoas = await prisma.user.findMany({ where: { companyId, celularLembreteDePrazo: true }, select: { ...SELECT_DO_DESTINATARIO } })
+      for (const pessoa of pessoas) {
+        if (acessoDoDestinatarioComEmpresa(pessoa, agora.getTime()).situacao !== 'ativo') continue
+        if (!(await temAparelhoNoCelular(pessoa.id))) continue
+        const reservados: LicitacaoComLimite[] = []
+        const ids: string[] = []
+        for (const l of limites) {
+          const id = idDoAvisoDoLimite(pessoa.id, l.tenderId, l.aviso.limite, l.aviso.marco)
+          const metadata = { celularLimiteDeEsclarecimento: l.aviso.marco, limite: l.aviso.limite, tenderId: l.tenderId }
+          if (await reservarNotificacao({ id, userId: pessoa.id, type: 'PUSH', title: 'Limite de esclarecimento', body: l.objeto, metadata }, agora)) {
+            reservados.push(l)
+            ids.push(id)
+          }
+        }
+        if (reservados.length === 0) continue
+        if ((await enviarNoCelular(pessoa.id, mensagemDoLimite(reservados), { urgente: true, agora })).entregues === 0) {
+          await desfazerReservas(ids)
+          continue
+        }
+        await confirmarEnvio(ids, agora)
+        usuarios++
+      }
+    } catch (err) {
+      falhas++
+      console.error(`[Limite de esclarecimento] Falha na empresa ${companyId}:`, err instanceof Error ? err.message : err)
+    }
+  }
+  return { usuarios, falhas }
 }

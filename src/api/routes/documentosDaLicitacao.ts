@@ -19,6 +19,7 @@ import { alertasDaAnalise, type AlertaLegal } from '../../lib/alertasLegais'
 import { calcularPrazosDaSessao, lerDataTexto } from '../../lib/diasUteis'
 import { impugnacao, pedidoDeEsclarecimento } from '../../lib/documentosDaLicitacao/impugnacao'
 import { readequarPrecos, type LancesFinais } from '../../lib/documentosDaLicitacao/readequacao'
+import { duvidasDosItens, type DuvidaDoItem } from '../../lib/duvidasDosItens'
 
 export const documentosDaLicitacaoRouter = Router({ mergeParams: true })
 
@@ -97,6 +98,19 @@ async function identificacaoNoPncp(tender: { fonte: string; numeroControle: stri
 
 const MAX_ALERTAS_NO_DOCUMENTO = 20
 
+// Dúvidas achadas na lista de itens (unidade que não diz se é metro ou rolo…).
+async function duvidasDaLicitacao(tenderId: string): Promise<DuvidaDoItem[]> {
+  const itens = await prisma.tenderItem.findMany({
+    where: { tenderId },
+    orderBy: { numeroItem: 'asc' },
+    select: { numeroItem: true, descricao: true, unidadeMedida: true, valorUnitario: true },
+    take: 500,
+  })
+  return duvidasDosItens(
+    itens.map((it) => ({ numero: it.numeroItem, descricao: it.descricao, unidade: it.unidadeMedida, valorUnitario: it.valorUnitario !== null ? Number(it.valorUnitario) : null })),
+  )
+}
+
 function alertasEscolhidos(todos: AlertaLegal[], chaves: string[]): AlertaLegal[] {
   const escolhidos = todos.filter((a) => chaves.includes(a.chave))
   if (escolhidos.length !== new Set(chaves).size) throw new ApiError(400, 'Algum alerta escolhido não existe mais nesta licitação. Recarregue a página.')
@@ -140,11 +154,12 @@ documentosDaLicitacaoRouter.get(
       where: { companyId_tenderId: { companyId: req.companyId!, tenderId: req.params.id } },
       select: { status: true },
     })
-    const { alertas, prazo } = await carregarCertame(req.params.id)
+    const [{ alertas, prazo }, duvidas] = await Promise.all([carregarCertame(req.params.id), duvidasDaLicitacao(req.params.id)])
     res.json({
       impugnacao: {
         analiseFeita: alertas.disponivel,
         prazo,
+        duvidas: duvidas.map((d) => ({ numero: d.numero, motivo: d.motivo })),
         alertas: alertas.itens.map((a) => ({ chave: a.chave, titulo: a.titulo, gravidade: a.gravidade, local: a.local ?? null })),
       },
       proposta: plano?.status === 'VOU_PARTICIPAR'
@@ -163,6 +178,7 @@ const previaSchema = z.discriminatedUnion('tipo', [
     tipo: z.literal('esclarecimento'),
     alertas: z.array(z.string().min(1).max(200)).max(MAX_ALERTAS_NO_DOCUMENTO).default([]),
     perguntas: z.array(z.string().max(1000)).max(10).default([]),
+    duvidasDosItens: z.boolean().default(true),
   }),
 ])
 
@@ -178,7 +194,13 @@ documentosDaLicitacaoRouter.post(
       const r =
         pedido.tipo === 'impugnacao'
           ? impugnacao(timbrado.proponente, certame, escolhidos, prazo)
-          : pedidoDeEsclarecimento(timbrado.proponente, certame, escolhidos, pedido.perguntas, prazo)
+          : pedidoDeEsclarecimento(
+              timbrado.proponente,
+              certame,
+              escolhidos,
+              [...(pedido.duvidasDosItens ? (await duvidasDaLicitacao(req.params.id)).map((d) => d.pergunta) : []), ...pedido.perguntas],
+              prazo,
+            )
       res.json({ ...r, temLogo: timbrado.logo !== null })
       return
     }
@@ -203,6 +225,7 @@ documentosDaLicitacaoRouter.post(
       unidade: it.unidade,
       quantidade: it.quantidade,
       precoUnitario: readequacao ? (readequacao.precos[it.id] ?? null) : (dados.itens[it.id]?.precoVendaUnit ?? null),
+      ...(it.tipoCatalogo === 'SERVICO' ? {} : { marcaModelo: dados.itens[it.id]?.marcaModelo ?? null }),
     }))
     const prazoDoEstudo = dados.prazo.exigidoDias ? `${dados.prazo.exigidoDias} dias${dados.prazo.exigidoEmDiasUteis ? ' úteis' : ''}` : ''
     const r = propostaComercial(timbrado.proponente, certame, itens, {

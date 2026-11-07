@@ -13,11 +13,16 @@ export interface ItemDaProposta {
   quantidade: number
   precoUnitario: number
   total: number
+  marcaModelo: string | null
+  /** Valor unitário estimado pelo órgão, quando o edital informa. */
+  estimadoUnitario: number | null
 }
 
 export interface PropostaDoEstudo {
   itens: ItemDaProposta[]
   semPreco: { numero: number | null; descricao: string }[]
+  /** Itens com preço acima do estimado pelo órgão: proposta assim costuma ser desclassificada. */
+  acimaDoEstimado: { numero: number | null; descricao: string; precoUnitario: number; estimadoUnitario: number }[]
   total: number
   continuo: boolean
 }
@@ -42,11 +47,19 @@ export function montarProposta(itens: ItemDaLicitacao[], dados: DadosDoEstudo): 
       quantidade: it.quantidade,
       precoUnitario: unitario,
       total: centavos(unitario * it.quantidade),
+      marcaModelo: dados.itens[it.id]?.marcaModelo?.trim() || null,
+      estimadoUnitario: it.valorEstimadoUnit !== null && it.valorEstimadoUnit > 0 ? it.valorEstimadoUnit : null,
     })
   }
+  const acimaDoEstimado = proposta.flatMap((i) =>
+    i.estimadoUnitario !== null && i.precoUnitario > centavos(i.estimadoUnitario)
+      ? [{ numero: i.numero, descricao: i.descricao, precoUnitario: i.precoUnitario, estimadoUnitario: i.estimadoUnitario }]
+      : [],
+  )
   return {
     itens: proposta,
     semPreco,
+    acimaDoEstimado,
     total: centavos(proposta.reduce((s, i) => s + i.total, 0)),
     continuo: dados.contrato?.tipo === 'continuo',
   }
@@ -55,6 +68,9 @@ export function montarProposta(itens: ItemDaLicitacao[], dados: DadosDoEstudo): 
 // Texto para colar numa planilha ou no portal: uma linha por item, separado por tabulação.
 export function propostaEmTexto(p: PropostaDoEstudo): string {
   const br = (v: number) => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-  const linhas = p.itens.map((i) => [i.numero ?? '', i.descricao.replace(/\s+/g, ' ').slice(0, 200), i.unidade ?? '', i.quantidade, br(i.precoUnitario), br(i.total)].join('\t'))
-  return ['Item\tDescrição\tUnidade\tQuantidade\tPreço unitário\tTotal', ...linhas].join('\n')
+  const comMarca = p.itens.some((i) => i.marcaModelo)
+  const linhas = p.itens.map((i) =>
+    [i.numero ?? '', i.descricao.replace(/\s+/g, ' ').slice(0, 200), ...(comMarca ? [i.marcaModelo ?? ''] : []), i.unidade ?? '', i.quantidade, br(i.precoUnitario), br(i.total)].join('\t'),
+  )
+  return [['Item', 'Descrição', ...(comMarca ? ['Marca/modelo'] : []), 'Unidade', 'Quantidade', 'Preço unitário', 'Total'].join('\t'), ...linhas].join('\n')
 }

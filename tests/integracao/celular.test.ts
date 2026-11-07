@@ -251,6 +251,26 @@ rodar('Notificações no celular', () => {
     })
   })
 
+  describe('limite de esclarecimento', () => {
+    it('avisa no último dia útil para pedir esclarecimento, uma vez só', async () => {
+      const { avisarLimitesNoCelular } = await import('../../src/services/lembreteDePrazo')
+      const rui = await conta('rui')
+      await http('POST', '/api/celular/aparelhos', { endpoint: endpoint('rui'), keys: chaves }, rui.token)
+      // Sessão 18/11/2026 15h de Brasília: o limite (3 dias úteis antes) é 13/11.
+      const t = await licitacao('limite', { encerramentoAt: new Date('2026-11-18T18:00:00Z') })
+      await prisma.tenderParticipationPlan.create({ data: { companyId: rui.companyId, userId: rui.id, tenderId: t.id, status: 'VOU_PARTICIPAR', state: {} } })
+      const doRui = () => enviados().filter((e) => e.endpoint === endpoint('rui'))
+
+      await avisarLimitesNoCelular(new Date('2026-11-11T13:00:00Z'))
+      expect(doRui()).toHaveLength(0)
+      await avisarLimitesNoCelular(new Date('2026-11-13T12:00:00Z'))
+      expect(doRui()).toHaveLength(1)
+      expect(doRui()[0]).toMatchObject({ titulo: 'Hoje é o último dia para pedir esclarecimento', url: `/tenders/${t.id}/documentos` })
+      await avisarLimitesNoCelular(new Date('2026-11-13T15:00:00Z'))
+      expect(doRui()).toHaveLength(1)
+    })
+  })
+
   describe('licitação alterada', () => {
     it('avisa no celular e não repete a mesma alteração', async () => {
       const { processarAlteracao } = await import('../../src/workers/notificador')

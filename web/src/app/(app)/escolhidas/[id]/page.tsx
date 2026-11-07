@@ -271,12 +271,17 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
   async function copiarProposta() {
     if (sujo && !(await salvar())) return
     try {
-      const p = await api.get<{ itens: unknown[]; semPreco: unknown[]; texto: string }>(`/api/estudos/${id}/proposta`)
+      const p = await api.get<{ itens: unknown[]; semPreco: unknown[]; acimaDoEstimado?: { numero: number | null }[]; texto: string }>(`/api/estudos/${id}/proposta`)
       if (p.itens.length === 0) {
         setAviso('Defina o preço de venda dos itens para copiar a proposta.')
         return
       }
       await navigator.clipboard.writeText(p.texto)
+      const acima = p.acimaDoEstimado ?? []
+      if (acima.length > 0) {
+        const quais = acima.map((a) => (a.numero !== null ? a.numero : '?')).join(', ')
+        setErro(`Atenção: ${acima.length === 1 ? 'o item' : 'os itens'} ${quais} ${acima.length === 1 ? 'está' : 'estão'} com preço acima do estimado pelo órgão. Preço acima do estimado costuma desclassificar: reveja antes de enviar a proposta.`)
+      }
       setAviso(
         `Proposta copiada: ${p.itens.length} ${p.itens.length === 1 ? 'item' : 'itens'} com preço${p.semPreco.length ? `, ${p.semPreco.length} sem preço ficaram de fora` : ''}. Cole numa planilha ou use a extensão da Bela na tela de proposta do portal.`
       )
@@ -688,6 +693,17 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
                             aoMudar={(v) => alterar((d) => ({ ...d, itens: { ...d.itens, [it.id]: { ...e, precoVendaUnit: v } } }))}
                           />
                           {precoAcimaDoEstimado && <span className="text-xs font-medium text-danger">Acima do estimado ({brl(it.valorEstimadoUnit)})</span>}
+                          {it.tipoCatalogo !== 'SERVICO' && (
+                            <input
+                              type="text"
+                              maxLength={120}
+                              aria-label={`Marca e modelo, ${nomeDoItem}`}
+                              placeholder="Marca / modelo"
+                              value={e.marcaModelo ?? ''}
+                              onChange={(ev) => alterar((d) => ({ ...d, itens: { ...d.itens, [it.id]: { ...e, marcaModelo: ev.target.value || null } } }))}
+                              className="w-full rounded border border-line bg-surface px-1.5 py-0.5 text-xs text-ink-2 placeholder:text-muted"
+                            />
+                          )}
                           {minimo !== null && (
                             <span className={cx('flex flex-wrap items-center gap-x-1.5 text-xs', minimoAcimaDoEstimado ? 'text-danger' : 'text-muted')}>
                               <span>

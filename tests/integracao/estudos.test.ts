@@ -349,6 +349,17 @@ rodar('Estudo de custos', () => {
     expect((await http('POST', `/api/tenders/${tenderId}/documentos/previa`, { tipo: 'impugnacao', alertas: ['alerta-inventado'] }, tokenA)).status).not.toBe(200)
     expect((await http('POST', `/api/tenders/${tenderId}/documentos/previa`, { tipo: 'impugnacao', alertas: [] }, tokenA)).status).toBe(400)
     expect(await prisma.auditLog.count({ where: { companyId: companyA, action: 'DOCUMENTO_GERADO' } })).toBe(2)
+
+    // Cabo cadastrado como "Unidade": a Bela já sugere a pergunta no pedido de esclarecimento.
+    await prisma.tenderItem.create({ data: { tenderId, numeroItem: 99, descricao: 'Cabo Elétrico Flexível seção nominal: 6', unidadeMedida: 'Unidade', quantidade: 90, valorUnitario: 93.04 } })
+    const comDuvida = await http('GET', `/api/tenders/${tenderId}/documentos/modelos`, undefined, tokenA)
+    expect(comDuvida.body.impugnacao.duvidas).toEqual([{ numero: 99, motivo: 'Cabo/fio com unidade "Unidade", sem dizer se é metro ou rolo.' }])
+    const pedido = await http('POST', `/api/tenders/${tenderId}/documentos/previa`, { tipo: 'esclarecimento', alertas: [] }, tokenA)
+    expect(JSON.stringify(pedido.body.documento)).toContain('Item 99 (Cabo Elétrico Flexível)')
+    expect(pedido.body.pendencias).not.toContain('pergunta do pedido de esclarecimento')
+    const semDuvidas = await http('POST', `/api/tenders/${tenderId}/documentos/previa`, { tipo: 'esclarecimento', alertas: [], duvidasDosItens: false }, tokenA)
+    expect(JSON.stringify(semDuvidas.body.documento)).not.toContain('Item 99')
+    await prisma.tenderItem.deleteMany({ where: { tenderId, numeroItem: 99 } })
   })
 
   it('pregão com a Bela: limites batem com o estudo, lances sugeridos respeitam o máximo e ficam só na empresa', async () => {
@@ -455,13 +466,16 @@ rodar('Estudo de custos', () => {
     expect(readequada.status).toBe(200)
     expect(readequada.body.total).toBe(4590)
     const tabela = readequada.body.documento.blocos.find((b: { tipo: string }) => b.tipo === 'tabela')
-    expect(tabela.linhas[0][4]).toBe('45,90')
+    // A readequada ganha a coluna "Marca/modelo": procura o unitário pelo nome da coluna.
+    expect(tabela.colunas).toContain('Marca/modelo')
+    expect(tabela.linhas[0][tabela.colunas.indexOf('Valor unitário (R$)')]).toBe('45,90')
     expect(JSON.stringify(readequada.body.documento)).toContain('valor final de R$ 4.590,00')
 
     const comValorFinal = await http('PUT', `/api/tenders/${unico.id}/pregao/resultado`, { resultado: 'GANHOU', valorFinal: 4590 }, tokenA)
     expect(comValorFinal.status).toBe(200)
     const deNovo = await http('POST', `/api/tenders/${unico.id}/documentos/previa`, { tipo: 'proposta', readequada: true }, tokenA)
-    expect(deNovo.body.documento.blocos.find((b: { tipo: string }) => b.tipo === 'tabela').linhas[0][4]).toBe('45,90')
+    const tabelaDeNovo = deNovo.body.documento.blocos.find((b: { tipo: string }) => b.tipo === 'tabela')
+    expect(tabelaDeNovo.linhas[0][tabelaDeNovo.colunas.indexOf('Valor unitário (R$)')]).toBe('45,90')
   })
   it('plano de disputa: valor final mínimo igual ao do estudo, checklist do edital e auditoria sem o valor', async () => {
     const comEdital = await prisma.tender.create({

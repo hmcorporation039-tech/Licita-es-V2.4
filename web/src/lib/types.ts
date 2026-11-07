@@ -77,7 +77,7 @@ export interface AlertaParaImpugnar {
 }
 
 export interface ModelosDeDocumento {
-  impugnacao: { analiseFeita: boolean; prazo: { limite: string; passou: boolean } | null; alertas: AlertaParaImpugnar[] }
+  impugnacao: { analiseFeita: boolean; prazo: { limite: string; passou: boolean } | null; alertas: AlertaParaImpugnar[]; duvidas?: { numero: number | null; motivo: string }[] }
   proposta: { disponivel: boolean; motivo?: string }
   declaracoes: Array<{ id: string; titulo: string; fundamento: string }>
 }
