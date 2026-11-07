@@ -1,5 +1,8 @@
 import { extrairMelhorLance } from './lib/valor.mjs'
 import { capturarEstrutura } from './lib/captura.mjs'
+import { chaveLocal, extrairMensagens } from './lib/chat.mjs'
+import { preencherLance } from './lib/preencher.mjs'
+import { preencherProposta } from './lib/proposta.mjs'
 import { portalDoHost } from './config.mjs'
 
 const portal = portalDoHost(location.hostname)
@@ -18,6 +21,16 @@ function conferir() {
   })
 }
 
+// Chat do pregoeiro: manda só as mensagens que ainda não foram enviadas desta página.
+const mensagensVistas = new Set()
+function conferirChat() {
+  if (!portal?.seletoresDoChat) return
+  const novas = extrairMensagens(document, portal.seletoresDoChat).filter((m) => !mensagensVistas.has(chaveLocal(m)))
+  if (novas.length === 0) return
+  for (const m of novas) mensagensVistas.add(chaveLocal(m))
+  chrome.runtime.sendMessage({ tipo: 'mensagens-chat', mensagens: novas.slice(-50), em: Date.now() })
+}
+
 async function ligado() {
   try {
     const { vigiando } = await chrome.storage.local.get('vigiando')
@@ -31,14 +44,30 @@ async function iniciar() {
   if (!portal) return
   if (!(await ligado())) return
   conferir()
-  const observador = new MutationObserver(() => conferir())
+  conferirChat()
+  let agendado = null
+  const observador = new MutationObserver(() => {
+    conferir()
+    // O chat muda em rajadas: espera a página assentar antes de ler.
+    if (agendado) clearTimeout(agendado)
+    agendado = setTimeout(conferirChat, 800)
+  })
   observador.observe(document.body, { childList: true, subtree: true, characterData: true })
 }
 
 // A captura atende mesmo com a leitura desligada: serve justamente para achar os seletores.
 chrome.runtime.onMessage.addListener((msg, _remetente, responder) => {
-  if (msg?.tipo !== 'capturar') return
-  responder(capturarEstrutura(document))
+  if (msg?.tipo === 'capturar') {
+    responder(capturarEstrutura(document))
+  } else if (msg?.tipo === 'preencher-proposta') {
+    // Só escreve os preços; nunca envia a proposta.
+    if (!portal) return responder({ ok: false, motivo: 'Esta aba não é a tela de um portal conhecido.' })
+    responder(preencherProposta(document, { itens: msg.itens ?? [], seletores: portal.seletoresDaProposta, formato: portal.formatoDoCampoDeLance }, window))
+  } else if (msg?.tipo === 'preencher-lance') {
+    // Só escreve no campo; nunca clica em enviar.
+    if (!portal) return responder({ ok: false, motivo: 'Esta aba não é a sala de disputa de um portal conhecido.' })
+    responder(preencherLance(document, { valor: msg.valor, seletores: portal.seletoresDoCampoDeLance, formato: portal.formatoDoCampoDeLance }, window))
+  }
 })
 
 iniciar()

@@ -1,7 +1,8 @@
 import { CHAVE_DO_TOKEN_NO_APP, ehHostDoApp } from './config.mjs'
 
 function tenderDaUrl() {
-  const m = location.pathname.match(/\/tenders\/([^/]+)\/pregao/)
+  // Pregão, licitação ou estudo de custos: qualquer uma dessas telas diz qual licitação usar.
+  const m = location.pathname.match(/\/(?:tenders|escolhidas)\/([0-9a-f-]{36})(?:\/|$)/i)
   return m ? m[1] : null
 }
 

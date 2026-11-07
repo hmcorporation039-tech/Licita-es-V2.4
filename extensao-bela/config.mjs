@@ -16,6 +16,36 @@ export const PORTAIS = [
       '[class*="menor-lance" i]',
       '[data-melhor-lance]',
     ],
+    // Etapa 2: campo onde a pessoa digita o lance (a extensão só escreve; quem envia é a pessoa).
+    seletoresDoCampoDeLance: [
+      'input[formcontrolname*="lance" i]',
+      'input[formcontrolname*="valor" i]',
+      'input[id*="lance" i]',
+      'input[name*="lance" i]',
+      'input[placeholder*="lance" i]',
+    ],
+    // 'br' = 179.100,00 · 'digitos' = 17910000 (campo com máscara) · 'ponto' = 179100.00
+    formatoDoCampoDeLance: 'br',
+    // Proposta: cada linha de item na tela de cadastro da proposta, o número do item e o campo do preço.
+    seletoresDaProposta: {
+      linha: ['tr[class*="item" i]', '[class*="item-proposta" i]', '[class*="itemProposta" i]', 'tbody tr', '[class*="item" i][class*="card" i]'],
+      numeroDoItem: ['[class*="numero" i]', 'td:first-child', '[class*="item" i] strong'],
+      campoDoPreco: ['input[formcontrolname*="valorUnitario" i]', 'input[formcontrolname*="preco" i]', 'input[formcontrolname*="valor" i]', 'input[name*="valor" i]', 'input[id*="valor" i]'],
+    },
+    // Chat do pregoeiro: candidatos até a captura da sala de disputa real.
+    // `mensagem` acha cada mensagem; `autor`, `hora` e `texto` são procurados dentro dela.
+    seletoresDoChat: {
+      mensagem: [
+        '[class*="chat" i] [class*="mensagem" i]',
+        '[class*="chat" i] [class*="message" i]',
+        '[id*="chat" i] li',
+        '[class*="mensagens" i] li',
+        '[class*="chat" i] li',
+      ],
+      autor: ['[class*="autor" i]', '[class*="remetente" i]', '[class*="author" i]', 'strong', 'b'],
+      hora: ['[class*="hora" i]', '[class*="data" i]', 'time', '[class*="time" i]'],
+      texto: ['[class*="texto" i]', '[class*="conteudo" i]', '[class*="text" i]', 'p'],
+    },
   },
 ]
 

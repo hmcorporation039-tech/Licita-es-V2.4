@@ -115,8 +115,149 @@ describe('captura da tela da disputa', () => {
     expect(mascarar('CPF 123.456.789-09')).toBe('CPF [cpf]')
   })
 
+  it('também guarda o chat do pregoeiro (para o monitor do chat), mascarando CNPJ', () => {
+    const chat = el('DIV', { className: 'chat-pregoeiro' })
+    const msg = el('P', { className: 'texto', texto: 'Pregoeiro: convoco a empresa 12.345.678/0001-90 a enviar anexo em 2 horas' })
+    msg.parentElement = chat
+    const outro = el('P', { texto: 'Rodapé institucional' })
+    const doc = { title: 'Sala', location: { origin: 'https://cnetmobile.estaleiro.serpro.gov.br', pathname: '/x' }, querySelectorAll: () => [chat, msg, outro] }
+    const c = capturarEstrutura(doc)
+    expect(c.elementos.map((e: { classes?: string[] }) => e.classes?.[0])).toEqual(['chat-pregoeiro', 'texto'])
+    expect(c.elementos[1].texto).toBe('Pregoeiro: convoco a empresa [cnpj] a enviar anexo em 2 horas')
+  })
+
   it('a sala de disputa do Comprasnet 4.0 (estaleiro.serpro.gov.br) é reconhecida como Compras.gov.br', () => {
     expect(portalDoHost('cnetmobile.estaleiro.serpro.gov.br')?.nome).toBe('Compras.gov.br')
     expect(portalDoHost('exemplo.com.br')).toBeNull()
+  })
+})
+
+// @ts-expect-error módulo .mjs puro da extensão, sem tipos
+import { chaveLocal, extrairMensagens, lerMensagem } from '../extensao-bela/lib/chat.mjs'
+
+function no(texto: string, filhos: Record<string, string> = {}) {
+  return {
+    textContent: texto,
+    querySelector(s: string) {
+      return s in filhos ? { textContent: filhos[s] } : null
+    },
+  }
+}
+
+describe('leitura do chat do pregoeiro', () => {
+  it('separa autor e hora quando estão em elementos próprios', () => {
+    const el = no('Pregoeiro 10:12 Envie a proposta ajustada', { '.autor': 'Pregoeiro', '.hora': '10:12', '.texto': 'Envie a proposta ajustada' })
+    expect(lerMensagem(el, { autor: ['.autor'], hora: ['.hora'], texto: ['.texto'] })).toEqual({ autor: 'Pregoeiro', texto: 'Envie a proposta ajustada', horaNoPortal: '10:12' })
+  })
+
+  it('tira o autor do começo do texto ("Pregoeiro: ...") quando não há elemento próprio', () => {
+    expect(lerMensagem(no('Pregoeiro: A sessão será suspensa às 12:00'), {})).toEqual({ autor: 'Pregoeiro', texto: 'A sessão será suspensa às 12:00', horaNoPortal: '12:00' })
+  })
+
+  it('usa o primeiro seletor de lista que acha mensagens e ignora seletor inválido', () => {
+    const raiz = {
+      querySelectorAll(s: string) {
+        if (s === '::ruim') throw new Error('inválido')
+        if (s === '.chat li') return [no('Sistema - Item 1 encerrado'), no('   ')]
+        return []
+      },
+    }
+    const ms = extrairMensagens(raiz, { mensagem: ['::ruim', '.vazio', '.chat li'] })
+    expect(ms).toEqual([{ autor: 'Sistema', texto: 'Item 1 encerrado', horaNoPortal: null }])
+    expect(chaveLocal(ms[0])).toBe('Sistema||Item 1 encerrado')
+  })
+})
+
+// @ts-expect-error módulo .mjs puro da extensão, sem tipos
+import { acharCampoDeLance, formatarValor, preencherLance } from '../extensao-bela/lib/preencher.mjs'
+
+class EventoFalso {
+  constructor(public type: string) {}
+}
+
+function campoFalso(atributos: { disabled?: boolean } = {}) {
+  const eventos: string[] = []
+  return {
+    tagName: 'INPUT',
+    disabled: atributos.disabled ?? false,
+    readOnly: false,
+    value: '',
+    style: {} as Record<string, string>,
+    eventos,
+    focus() {},
+    getClientRects: () => [1],
+    dispatchEvent(e: EventoFalso) {
+      eventos.push(e.type)
+      return true
+    },
+  }
+}
+
+describe('robô etapa 2: preencher o lance (nunca envia)', () => {
+  it('formata o valor do jeito que o campo espera', () => {
+    expect(formatarValor(179100, 'br')).toBe('179.100,00')
+    expect(formatarValor(1234.5, 'digitos')).toBe('123450')
+    expect(formatarValor(1234.5, 'ponto')).toBe('1234.50')
+    expect(formatarValor(0)).toBeNull()
+    expect(formatarValor(Number.NaN)).toBeNull()
+  })
+
+  it('escreve no único campo visível e dispara input/change, sem clicar em nada', () => {
+    const campo = campoFalso()
+    const raiz = { querySelectorAll: (s: string) => (s === 'input.lance' ? [campo] : []) }
+    const r = preencherLance(raiz, { valor: 179100, seletores: ['input.x', 'input.lance'], formato: 'br' }, { Event: EventoFalso })
+    expect(r).toEqual({ ok: true, texto: '179.100,00', seletor: 'input.lance' })
+    expect(campo.value).toBe('179.100,00')
+    expect(campo.eventos).toEqual(['input', 'change'])
+    expect(campo.eventos).not.toContain('click')
+    expect(campo.eventos).not.toContain('submit')
+  })
+
+  it('não adivinha quando há vários campos e ignora campo desabilitado', () => {
+    const raiz = { querySelectorAll: () => [campoFalso(), campoFalso()] }
+    expect(preencherLance(raiz, { valor: 10, seletores: ['input'] }, { Event: EventoFalso })).toEqual({ ok: false, motivo: 'Há 2 campos de lance na tela. Abra só o item da disputa e tente de novo.' })
+    const soDesabilitado = { querySelectorAll: () => [campoFalso({ disabled: true })] }
+    expect(acharCampoDeLance(soDesabilitado, ['input'])).toBeNull()
+    expect(preencherLance(soDesabilitado, { valor: 10, seletores: ['input'] }, { Event: EventoFalso }).ok).toBe(false)
+  })
+})
+
+// @ts-expect-error módulo .mjs puro da extensão, sem tipos
+import { numeroDaLinha, preencherProposta } from '../extensao-bela/lib/proposta.mjs'
+
+function linhaFalsa(texto: string, campo: ReturnType<typeof campoFalso> | null) {
+  return {
+    textContent: texto,
+    querySelector: (s: string) => (s === 'input.preco' ? campo : null),
+  }
+}
+
+describe('proposta no portal (nunca envia)', () => {
+  it('lê o número do item da linha', () => {
+    expect(numeroDaLinha(linhaFalsa('Item 3 - Gravador NVR', null), {})).toBe(3)
+    expect(numeroDaLinha(linhaFalsa('12 Câmera IP', null), {})).toBe(12)
+    expect(numeroDaLinha(linhaFalsa('7', null), {})).toBe(7)
+    expect(numeroDaLinha(linhaFalsa('Câmera IP sem número', null), {})).toBeNull()
+    expect(numeroDaLinha(linhaFalsa('2026 unidades', null), {})).toBe(2026)
+  })
+
+  it('escreve o preço de cada item na linha certa e avisa o que não achou', () => {
+    const c1 = campoFalso()
+    const c2 = campoFalso()
+    const linhas = [linhaFalsa('Item 1 Câmera', c1), linhaFalsa('Item 2 NVR', c2), linhaFalsa('Item 9 Outro', campoFalso())]
+    const raiz = { querySelectorAll: (s: string) => (s === 'tr.item' ? linhas : []) }
+    const r = preencherProposta(
+      raiz,
+      { itens: [{ numero: 1, precoUnitario: 850.56 }, { numero: 2, precoUnitario: 2900 }, { numero: 4, precoUnitario: 10 }], seletores: { linha: ['tr.item'], campoDoPreco: ['input.preco'] }, formato: 'br' },
+      { Event: EventoFalso }
+    )
+    expect(r).toEqual({ ok: true, preenchidos: [1, 2], semCampo: [], naoEncontrados: [4], motivo: null })
+    expect(c1.value).toBe('850,56')
+    expect(c2.value).toBe('2.900,00')
+    expect([...c1.eventos, ...c2.eventos]).not.toContain('submit')
+  })
+
+  it('sem lista de itens na tela, não faz nada', () => {
+    expect(preencherProposta({ querySelectorAll: () => [] }, { itens: [{ numero: 1, precoUnitario: 1 }], seletores: { linha: ['tr'] } }).ok).toBe(false)
   })
 })

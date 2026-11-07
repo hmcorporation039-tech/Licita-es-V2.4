@@ -11,6 +11,8 @@
       button { width: 100%; height: 40px; font-size: 14px; border-radius: 8px; border: 0; cursor: pointer; }
       button.on { background: #15803d; color: #fff; }
       button.off { background: #e5e7eb; color: #111; }
+      button:disabled { opacity: .5; cursor: not-allowed; }
+      button.preencher { background: #1d4ed8; color: #fff; }
       .linha { margin-top: 12px; font-size: 13px; }
       .rotulo { color: #6b7280; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
       .valor { font-variant-numeric: tabular-nums; font-size: 18px; font-weight: 600; }
@@ -25,7 +27,13 @@
     <div class="linha"><span class="rotulo">Acesso</span><div id="acesso" class="acesso-falta">—</div></div>
     <div class="linha"><span class="rotulo">Melhor lance lido</span><div id="lance" class="valor">—</div></div>
     <div class="linha"><span class="rotulo">Sugestão da Bela</span><div id="sugestao" class="valor">—</div></div>
-    <div class="aviso" id="status">Só leitura: não envia lance e não guarda senha.</div>
+    <div class="linha"><span class="rotulo">Próximo lance (piso respeitado)</span><div id="proximo" class="valor">—</div><div id="proximo-texto" class="aviso"></div></div>
+    <button id="preencher" class="off" style="margin-top: 8px" disabled>Preencher no portal</button>
+    <div class="aviso" id="preenchido">A Bela escreve o valor no campo de lance e destaca o campo. Você confere e clica em enviar no portal.</div>
+    <div class="linha"><span class="rotulo">Chat do pregoeiro</span><div id="chat">—</div></div>
+    <div class="aviso" id="status">Lê o lance e o chat da sua tela e preenche o lance para você conferir. Nunca envia lance sozinha e não guarda senha.</div>
+    <button id="proposta" class="off" style="margin-top: 12px">Preencher a proposta (preços do estudo)</button>
+    <div class="aviso" id="proposta-status">Na tela de cadastro da proposta do portal: a Bela escreve o preço de cada item. Você confere e envia.</div>
     <button id="capturar" class="off" style="margin-top: 12px">Capturar a tela da disputa</button>
     <div class="aviso" id="captura">Com a sala de disputa aberta, capture a tela e mande para o suporte da Bela. Vai só a estrutura da página, sem senha e com CPF, CNPJ e e-mail escondidos.</div>
     <script type="module" src="popup.mjs"></script>

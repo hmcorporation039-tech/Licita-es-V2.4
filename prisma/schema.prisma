@@ -1071,12 +1071,36 @@ model PregaoAcompanhamento {
   createdAt      DateTime           @default(now()) @map("created_at")
   updatedAt      DateTime           @updatedAt @map("updated_at")
 
-  company Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  tender  Tender        @relation(fields: [tenderId], references: [id], onDelete: Cascade)
-  lances  PregaoLance[]
+  company   Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  tender    Tender           @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  lances    PregaoLance[]
+  mensagens PregaoMensagem[]
 
   @@unique([companyId, tenderId])
   @@map("pregao_acompanhamentos")
+}
+
+// Mensagem do chat do pregoeiro, lida pela extensão da Bela na sala de disputa
+// que o cliente já tem aberta. `chave` evita gravar a mesma mensagem duas vezes
+// (a extensão reenvia o que já viu quando a página recarrega).
+model PregaoMensagem {
+  id               String    @id @default(uuid())
+  acompanhamentoId String    @map("acompanhamento_id")
+  chave            String
+  autor            String?
+  texto            String    @db.Text
+  // CONVOCACAO, DOCUMENTO, NEGOCIACAO, SUSPENSAO, RETOMADA, ENCERRAMENTO, AVISO
+  categoria        String
+  citaAEmpresa     Boolean   @default(false) @map("cita_a_empresa")
+  urgente          Boolean   @default(false)
+  lidaEm           DateTime? @map("lida_em")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  acompanhamento PregaoAcompanhamento @relation(fields: [acompanhamentoId], references: [id], onDelete: Cascade)
+
+  @@unique([acompanhamentoId, chave])
+  @@index([acompanhamentoId, createdAt])
+  @@map("pregao_mensagens")
 }
 
 model PregaoLance {
