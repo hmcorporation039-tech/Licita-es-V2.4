@@ -115,17 +115,6 @@ describe('captura da tela da disputa', () => {
     expect(mascarar('CPF 123.456.789-09')).toBe('CPF [cpf]')
   })
 
-  it('também guarda o chat do pregoeiro (para o monitor do chat), mascarando CNPJ', () => {
-    const chat = el('DIV', { className: 'chat-pregoeiro' })
-    const msg = el('P', { className: 'texto', texto: 'Pregoeiro: convoco a empresa 12.345.678/0001-90 a enviar anexo em 2 horas' })
-    msg.parentElement = chat
-    const outro = el('P', { texto: 'Rodapé institucional' })
-    const doc = { title: 'Sala', location: { origin: 'https://cnetmobile.estaleiro.serpro.gov.br', pathname: '/x' }, querySelectorAll: () => [chat, msg, outro] }
-    const c = capturarEstrutura(doc)
-    expect(c.elementos.map((e: { classes?: string[] }) => e.classes?.[0])).toEqual(['chat-pregoeiro', 'texto'])
-    expect(c.elementos[1].texto).toBe('Pregoeiro: convoco a empresa [cnpj] a enviar anexo em 2 horas')
-  })
-
   it('a sala de disputa do Comprasnet 4.0 (estaleiro.serpro.gov.br) é reconhecida como Compras.gov.br', () => {
     expect(portalDoHost('cnetmobile.estaleiro.serpro.gov.br')?.nome).toBe('Compras.gov.br')
     expect(portalDoHost('exemplo.com.br')).toBeNull()

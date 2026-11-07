@@ -5,8 +5,7 @@
 
 const LIMITE_PADRAO = 600
 const TAM_DO_TEXTO = 80
-// Inclui o chat do pregoeiro (mensagens, convocação, pedido de anexo), para o monitor do chat.
-const TERMOS_DA_DISPUTA = /lance|melhor|menor|valor|r\$|tempo|cron|restante|fase|disputa|item|grupo|lote|enviar|aberto|fechad|prorroga|encerr|posi[cç][aã]o|iminente|fornecedor|proposta|classifica|chat|mensage|pregoeir|convoca|anexo|negocia|aceita|habilita|recurso|diligencia/i
+const TERMOS_DA_DISPUTA = /lance|melhor|menor|valor|r\$|tempo|cron|restante|fase|disputa|item|grupo|lote|enviar|aberto|fechad|prorroga|encerr|posi[cç][aã]o|iminente|fornecedor|proposta|classifica/i
 const INTERATIVOS = new Set(['INPUT', 'BUTTON', 'SELECT', 'TEXTAREA', 'A'])
 const ATRIBUTOS = ['role', 'aria-label', 'name', 'type', 'placeholder', 'title', 'formcontrolname']
 

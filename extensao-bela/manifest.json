@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Bela na disputa",
-  "version": "0.3.0",
+  "version": "0.2.0",
   "description": "Lê o melhor lance da sessão de pregão que você já tem aberta e manda para a Bela sugerir o próximo. Também captura a estrutura da tela da disputa para ajustar a leitura. Não envia lance e não guarda senha.",
   "permissions": [
     "storage"
