@@ -194,6 +194,20 @@ Estudos gravados antes continuam abrindo como compra única. O PDF do dossiê tr
 - **Avisos do edital no estudo**: propostas por item com julgamento por grupo, subcontratação vedada ou parcial, vistoria obrigatória.
 - Ainda não testado com a IA de verdade (sem chave nesta sessão): conferir os campos novos na próxima análise real.
 
+### 07/11: o que a Effecti tem e faltava (menos planos e pagamento)
+
+Comparação com o site público da Effecti (robô de lances, chat do pregoeiro, envio da proposta, busca pelo perfil da empresa). Planos, preço e pagamento ficaram de fora, por decisão do Márcio.
+
+- **"O que a sua empresa vende?"** (Itens monitorados): CNPJ (atividades da Receita pela BrasilAPI) e/ou descrição livre; a IA sugere de 2 a 6 itens; sem IA, as atividades viram itens por regra. Nada é criado sem a pessoa marcar.
+- **Monitor do chat do pregoeiro**: a extensão lê o chat na sala de disputa; a regra (`lib/bela/mensagemDoPregoeiro.ts`) separa convocação, documento, negociação, suspensão, retomada e encerramento e vê se cita a empresa. Urgente vira aviso no celular e no computador. Tela **Minhas sessões** e painel do chat no Pregão. Migração 66. WhatsApp não: precisa de um provedor contratado.
+- **Robô, etapa 2**: a extensão escreve o lance sugerido (piso, limite de lances e vedação do edital respeitados) no campo do portal; quem envia é a pessoa. Cada preenchimento vai para a auditoria.
+- **Proposta no portal**: os preços do estudo de custos preenchidos item por item na tela de proposta (extensão), e "Copiar itens e preços" no estudo.
+- **Guia**: "Do zero ao contrato com a Bela" em 12 passos.
+- Extensão 0.6.0. Testada de ponta a ponta num Chrome com a extensão carregada, contra telas de disputa e de proposta simuladas.
+
+- Os seletores da sala de disputa, do chat, do campo de lance e da tela de proposta ainda são candidatos: fixar com a captura de uma sessão real (roteiro em `docs/TESTE_DO_ROBO.md`).
+- Etapa 3 (lance automático) continua dependendo do parecer jurídico.
+
 ### 04/11: parecer de habilitação
 
 A aba Habilitação da licitação já cruzava o que o edital pede com o cofre, na data da sessão; faltava a conclusão. Agora o topo da aba (e o PDF do estudo de custos) traz o parecer em uma frase: "Ainda não está habilitado: faltam X e Y", "Habilitado, desde que renove a tempo: Z vence em dd/mm, antes da sessão" ou "Habilitado pelo que o cofre mostra". Abaixo, a lista do que falta e do que vence, os dias úteis até a sessão (com aviso quando faltam 3 ou menos e há pendência), as peças da proposta que o edital cita (declaração de vistoria, planilha) e quantos itens o cofre não consegue confirmar. Regra em `montarParecer` (`src/lib/habilitacao.ts`).
