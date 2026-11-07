@@ -12,6 +12,7 @@ import { MODALIDADE_OPTIONS } from '@/lib/modalidades'
 import { dinheiroBrParaEdicao, faixaDeValorBr, lerDinheiroBr } from '@/lib/dinheiroBr'
 import UasgPicker from '@/components/UasgPicker'
 import CatalogPicker from '@/components/CatalogPicker'
+import PerfilDoNegocio from '@/components/PerfilDoNegocio'
 import {
   Button,
   Carregando,
@@ -665,6 +666,8 @@ export default function ItemsPage() {
           </>
         }
       />
+
+      <PerfilDoNegocio ufDaEmpresa={ufDaEmpresa} aoCriar={loadItems} />
 
       <Panel title="Cadastrar item" description="Descreva o que você vende; as licitações que casarem aparecem em Meus matches.">
         <form onSubmit={handleCreate} className="flex flex-col gap-4">

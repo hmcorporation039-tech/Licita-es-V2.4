@@ -16,6 +16,7 @@ import { situacaoDaBusca, solicitarBuscaDoItem, type RespostaDaBusca } from '../
 import { avisoDoLimite } from '../../lib/limiteDeMatches'
 import { interesseDaOrigem, nomeDoItemDoInteresse } from '../../lib/origemDoCadastro'
 import { temPalavraSignificativa } from '../../lib/matching'
+import { CnpjIndisponivel, CnpjNaoEncontrado, sugerirItensDoNegocio } from '../../services/perfilDoNegocio'
 
 export const monitoredItemsRouter = Router()
 
@@ -171,6 +172,36 @@ export async function criarItemDoCadastro(req: Request, userId: string, companyI
   const { busca } = await solicitarBuscaDoItem(item, 'criacao')
   return { id: item.id, name: item.name, busca }
 }
+
+// "O que a sua empresa vende?": sugere itens a partir do CNPJ e/ou de uma descrição.
+// Não cria nada; a pessoa escolhe na tela e cria pelo POST / de sempre.
+const sugestoesSchema = z
+  .object({
+    cnpj: z.string().trim().max(20).optional(),
+    descricao: z.string().trim().max(1500).optional(),
+  })
+  .refine((b) => (b.cnpj && b.cnpj.replace(/\D/g, '').length > 0) || (b.descricao && b.descricao.length >= 3), {
+    message: 'Informe o CNPJ ou descreva o que a empresa vende.',
+  })
+const SUGESTOES_POR_HORA = 20
+
+monitoredItemsRouter.post(
+  '/sugestoes',
+  asyncHandler(async (req, res) => {
+    const body = sugestoesSchema.parse(req.body)
+    const umaHoraAtras = new Date(Date.now() - 60 * 60 * 1000)
+    const pedidos = await prisma.aiUsage.count({ where: { companyId: req.companyId!, etapa: 'perfil', createdAt: { gte: umaHoraAtras } } })
+    if (pedidos >= SUGESTOES_POR_HORA) throw new ApiError(429, 'Muitas sugestões pedidas na última hora. Tente de novo mais tarde.')
+    try {
+      const r = await sugerirItensDoNegocio({ cnpj: body.cnpj || null, descricao: body.descricao || null, quem: { companyId: req.companyId!, userId: req.userId! } })
+      res.json(r)
+    } catch (err) {
+      if (err instanceof CnpjNaoEncontrado) throw new ApiError(404, err.message)
+      if (err instanceof CnpjIndisponivel) throw new ApiError(503, err.message)
+      throw err
+    }
+  })
+)
 
 monitoredItemsRouter.post(
   '/',

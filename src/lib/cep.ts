@@ -19,7 +19,8 @@ export class CepIndisponivelError extends Error {}
 type Buscar = (url: string) => Promise<unknown>
 
 async function buscarJson(url: string): Promise<unknown> {
-  const res = await fetch(url, { signal: AbortSignal.timeout(6000), headers: { Accept: 'application/json' } })
+  // A BrasilAPI recusa (403) pedido sem User-Agent, que é o padrão do fetch do Node.
+  const res = await fetch(url, { signal: AbortSignal.timeout(6000), headers: { Accept: 'application/json', 'User-Agent': 'LicitaBela/1.0 (consulta de CEP)' } })
   if (res.status === 404) return null
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json()
