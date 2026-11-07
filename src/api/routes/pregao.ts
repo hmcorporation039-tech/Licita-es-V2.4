@@ -184,6 +184,27 @@ pregaoRouter.delete(
   })
 )
 
+// ---- Etapa 2 do robô: a extensão escreveu o lance no campo do portal (quem envia é a pessoa) ----
+
+const preenchidoSchema = z.object({ valor: z.number().positive().max(1e13) })
+
+pregaoRouter.post(
+  '/robo/preenchido',
+  estudoCalculoLimiter,
+  asyncHandler(async (req, res) => {
+    const { valor } = preenchidoSchema.parse(req.body)
+    const tender = await prisma.tender.findUnique({ where: { id: req.params.id }, select: { id: true } })
+    if (!tender) throw new ApiError(404, 'Licitação não encontrada')
+    await registrarAuditoria(req, {
+      action: 'PREGAO_LANCE_PREENCHIDO',
+      entityType: 'tender',
+      entityId: req.params.id,
+      metadata: { valor: Math.round(valor * 100) / 100 },
+    })
+    res.status(201).json({ ok: true })
+  })
+)
+
 // ---- Chat do pregoeiro (lido pela extensão na sala de disputa) ----
 
 const mensagensSchema = z.object({

@@ -6,10 +6,15 @@ const lance = document.getElementById('lance')
 const sugestao = document.getElementById('sugestao')
 const status = document.getElementById('status')
 const chat = document.getElementById('chat')
+const proximo = document.getElementById('proximo')
+const proximoTexto = document.getElementById('proximo-texto')
+const preencher = document.getElementById('preencher')
+const preenchido = document.getElementById('preenchido')
+let valorParaPreencher = null
 
 async function ler() {
   try {
-    return await chrome.storage.local.get(['vigiando', 'token', 'tenderId', 'ultimoLance', 'sugestao', 'status', 'chat'])
+    return await chrome.storage.local.get(['vigiando', 'token', 'tenderId', 'ultimoLance', 'sugestao', 'status', 'chat', 'proximoLance'])
   } catch {
     return {}
   }
@@ -28,6 +33,13 @@ function pintar(e) {
   const c = e.chat
   chat.textContent = !c ? 'Nenhuma mensagem lida ainda' : c.urgente ? `${c.urgente.rotulo}: ${c.urgente.texto}` : c.naoLidas > 0 ? `${c.naoLidas} mensagem(ns) nova(s)` : 'Sem mensagens novas'
   chat.className = c?.urgente ? 'acesso-falta' : ''
+  const p = e.proximoLance
+  valorParaPreencher = ligado && typeof p?.valor === 'number' ? p.valor : null
+  proximo.textContent = valorParaPreencher ? reais(valorParaPreencher) : '—'
+  proximoTexto.textContent = p?.texto ?? ''
+  preencher.disabled = valorParaPreencher === null
+  preencher.className = valorParaPreencher === null ? 'off' : 'preencher'
+  preencher.textContent = valorParaPreencher ? `Preencher ${reais(valorParaPreencher)} no portal` : 'Preencher no portal'
 }
 
 alternar.addEventListener('click', async () => {
@@ -52,6 +64,23 @@ capturar.addEventListener('click', async () => {
     captura.textContent = `Copiado: ${estrutura.total} elementos da tela. Cole no chamado de suporte da Bela.`
   } catch {
     captura.textContent = 'Abra a sala de disputa do Compras.gov.br nesta aba e tente de novo.'
+  }
+})
+
+preencher.addEventListener('click', async () => {
+  if (valorParaPreencher === null) return
+  const valor = valorParaPreencher
+  try {
+    const [aba] = await chrome.tabs.query({ active: true, currentWindow: true })
+    const r = aba ? await chrome.tabs.sendMessage(aba.id, { tipo: 'preencher-lance', valor }) : null
+    if (!r?.ok) {
+      preenchido.textContent = r?.motivo ?? 'Abra a sala de disputa nesta aba e tente de novo.'
+      return
+    }
+    preenchido.textContent = `Escrevi ${r.texto} no campo de lance (destacado em laranja). Confira e clique em enviar no portal.`
+    chrome.runtime.sendMessage({ tipo: 'lance-preenchido', valor })
+  } catch {
+    preenchido.textContent = 'Abra a sala de disputa nesta aba e tente de novo.'
   }
 })
 

@@ -167,3 +167,57 @@ describe('leitura do chat do pregoeiro', () => {
     expect(chaveLocal(ms[0])).toBe('Sistema||Item 1 encerrado')
   })
 })
+
+// @ts-expect-error módulo .mjs puro da extensão, sem tipos
+import { acharCampoDeLance, formatarValor, preencherLance } from '../extensao-bela/lib/preencher.mjs'
+
+class EventoFalso {
+  constructor(public type: string) {}
+}
+
+function campoFalso(atributos: { disabled?: boolean } = {}) {
+  const eventos: string[] = []
+  return {
+    tagName: 'INPUT',
+    disabled: atributos.disabled ?? false,
+    readOnly: false,
+    value: '',
+    style: {} as Record<string, string>,
+    eventos,
+    focus() {},
+    getClientRects: () => [1],
+    dispatchEvent(e: EventoFalso) {
+      eventos.push(e.type)
+      return true
+    },
+  }
+}
+
+describe('robô etapa 2: preencher o lance (nunca envia)', () => {
+  it('formata o valor do jeito que o campo espera', () => {
+    expect(formatarValor(179100, 'br')).toBe('179.100,00')
+    expect(formatarValor(1234.5, 'digitos')).toBe('123450')
+    expect(formatarValor(1234.5, 'ponto')).toBe('1234.50')
+    expect(formatarValor(0)).toBeNull()
+    expect(formatarValor(Number.NaN)).toBeNull()
+  })
+
+  it('escreve no único campo visível e dispara input/change, sem clicar em nada', () => {
+    const campo = campoFalso()
+    const raiz = { querySelectorAll: (s: string) => (s === 'input.lance' ? [campo] : []) }
+    const r = preencherLance(raiz, { valor: 179100, seletores: ['input.x', 'input.lance'], formato: 'br' }, { Event: EventoFalso })
+    expect(r).toEqual({ ok: true, texto: '179.100,00', seletor: 'input.lance' })
+    expect(campo.value).toBe('179.100,00')
+    expect(campo.eventos).toEqual(['input', 'change'])
+    expect(campo.eventos).not.toContain('click')
+    expect(campo.eventos).not.toContain('submit')
+  })
+
+  it('não adivinha quando há vários campos e ignora campo desabilitado', () => {
+    const raiz = { querySelectorAll: () => [campoFalso(), campoFalso()] }
+    expect(preencherLance(raiz, { valor: 10, seletores: ['input'] }, { Event: EventoFalso })).toEqual({ ok: false, motivo: 'Há 2 campos de lance na tela. Abra só o item da disputa e tente de novo.' })
+    const soDesabilitado = { querySelectorAll: () => [campoFalso({ disabled: true })] }
+    expect(acharCampoDeLance(soDesabilitado, ['input'])).toBeNull()
+    expect(preencherLance(soDesabilitado, { valor: 10, seletores: ['input'] }, { Event: EventoFalso }).ok).toBe(false)
+  })
+})

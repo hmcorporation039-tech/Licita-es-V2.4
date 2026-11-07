@@ -16,6 +16,16 @@ export const PORTAIS = [
       '[class*="menor-lance" i]',
       '[data-melhor-lance]',
     ],
+    // Etapa 2: campo onde a pessoa digita o lance (a extensão só escreve; quem envia é a pessoa).
+    seletoresDoCampoDeLance: [
+      'input[formcontrolname*="lance" i]',
+      'input[formcontrolname*="valor" i]',
+      'input[id*="lance" i]',
+      'input[name*="lance" i]',
+      'input[placeholder*="lance" i]',
+    ],
+    // 'br' = 179.100,00 · 'digitos' = 17910000 (campo com máscara) · 'ponto' = 179100.00
+    formatoDoCampoDeLance: 'br',
     // Chat do pregoeiro: candidatos até a captura da sala de disputa real.
     // `mensagem` acha cada mensagem; `autor`, `hora` e `texto` são procurados dentro dela.
     seletoresDoChat: {

@@ -2,7 +2,7 @@ import { API_BASE } from './config.mjs'
 
 async function estado() {
   try {
-    return await chrome.storage.local.get(['token', 'tenderId', 'vigiando', 'ultimoLance', 'sugestao', 'status', 'chat'])
+    return await chrome.storage.local.get(['token', 'tenderId', 'vigiando', 'ultimoLance', 'sugestao', 'status', 'chat', 'proximoLance'])
   } catch {
     return {}
   }
@@ -35,10 +35,16 @@ async function registrarMelhorLance(valor) {
     }
     const painel = await resposta.json()
     const avaliacao = painel?.alvos?.[0]?.avaliacao ?? null
+    // Etapa 2: a instrução do robô já respeita o piso, o limite de lances e a vedação do edital.
+    const instrucao = (painel?.robo?.instrucoes ?? []).find((i) => i.alvo === 'global') ?? painel?.robo?.instrucoes?.[0] ?? null
+    const podePreencher = painel?.robo?.disponivel === true && instrucao?.acao === 'dar' && typeof instrucao.valor === 'number'
     await guardar({
       ultimoLance: valor,
       sugestao: avaliacao?.sugestao ?? null,
       status: avaliacao?.mensagem ?? 'Melhor lance registrado.',
+      proximoLance: podePreencher
+        ? { valor: instrucao.valor, texto: instrucao.texto, alvo: instrucao.alvo }
+        : { valor: null, texto: painel?.robo?.disponivel === false ? 'O edital veda robô: dê o lance à mão.' : (instrucao?.texto ?? null) },
     })
   } catch {
     await guardar({ status: 'Sem conexão com a Bela agora.' })
@@ -72,8 +78,25 @@ async function registrarMensagens(mensagens) {
   }
 }
 
+// Registra na Bela (auditoria) que a extensão escreveu um lance no campo do portal.
+async function registrarPreenchimento(valor) {
+  const { token, tenderId } = await estado()
+  if (!token || !tenderId) return
+  try {
+    await fetch(`${API_BASE}/api/tenders/${tenderId}/pregao/robo/preenchido`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+      body: JSON.stringify({ valor }),
+    })
+  } catch {
+    /* auditoria é melhor esforço; o lance não depende dela */
+  }
+}
+
 chrome.runtime.onMessage.addListener((msg) => {
-  if (msg?.tipo === 'mensagens-chat' && Array.isArray(msg.mensagens) && msg.mensagens.length > 0) {
+  if (msg?.tipo === 'lance-preenchido' && typeof msg.valor === 'number') {
+    void registrarPreenchimento(msg.valor)
+  } else if (msg?.tipo === 'mensagens-chat' && Array.isArray(msg.mensagens) && msg.mensagens.length > 0) {
     void registrarMensagens(msg.mensagens)
   } else if (msg?.tipo === 'melhor-lance' && typeof msg.valor === 'number') {
     void registrarMelhorLance(msg.valor)
