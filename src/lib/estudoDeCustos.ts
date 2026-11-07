@@ -69,7 +69,7 @@ export interface OutroCusto {
 
 export interface DadosDoEstudo {
   versao: 1
-  itens: Record<string, { custoUnit: number | null; precoVendaUnit: number | null; fonteDoCusto?: FonteDoCusto | null }>
+  itens: Record<string, { custoUnit: number | null; precoVendaUnit: number | null; fonteDoCusto?: FonteDoCusto | null; marcaModelo?: string | null }>
   mercado: Record<string, MercadoDoItem>
   deslocamento: {
     /** Distância de ida informada à mão; vazio = estimar pela base da empresa. */

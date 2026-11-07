@@ -194,6 +194,16 @@ Estudos gravados antes continuam abrindo como compra única. O PDF do dossiê tr
 - **Avisos do edital no estudo**: propostas por item com julgamento por grupo, subcontratação vedada ou parcial, vistoria obrigatória.
 - Ainda não testado com a IA de verdade (sem chave nesta sessão): conferir os campos novos na próxima análise real.
 
+### 07/11 (2): o que a leitura do edital da Assembleia do ES mostrou
+
+Lendo o PE 025/2026 da ALES (material elétrico) para o primeiro teste real, apareceram quatro buracos:
+
+- **Dúvidas nos itens viram perguntas** (`lib/duvidasDosItens.ts`): cabo, fio, eletroduto, mangueira… cadastrados como "Unidade" sem dizer se é metro ou rolo. A Bela mostra a dúvida em Documentos e já põe a pergunta pronta no pedido de esclarecimento (dá para tirar). Acessórios (terminal, conector, caixa) e unidades com medida ficam de fora.
+- **Aviso no celular do limite de esclarecimento e impugnação** (3 dias úteis antes da sessão, art. 164): na véspera útil e no último dia, das 8h às 18h de Brasília, uma vez só (`lib/limiteDeEsclarecimento.ts`, rotina horária do notificador). Segue a preferência "lembrete de prazo" do celular.
+- **Marca/modelo** no estudo de custos (itens que não são serviço). Entra na proposta comercial e, na readequada, a coluna sempre aparece com pendência para o item sem marca. Também vai no "Copiar itens e preços".
+- **Teto do estimado na proposta para o portal**: a API lista os itens acima do estimado; o "Copiar itens e preços" e a extensão avisam antes de enviar (edital que desclassifica por preço unitário acima do estimado).
+- Extensão 0.6.1 (só o aviso do teto no popup).
+
 ### 07/11: o que a Effecti tem e faltava (menos planos e pagamento)
 
 Comparação com o site público da Effecti (robô de lances, chat do pregoeiro, envio da proposta, busca pelo perfil da empresa). Planos, preço e pagamento ficaram de fora, por decisão do Márcio.

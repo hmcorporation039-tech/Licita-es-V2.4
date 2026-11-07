@@ -8,6 +8,8 @@ export interface ItemDaProposta {
   unidade: string | null
   quantidade: number
   precoUnitario: number | null
+  /** Marca e modelo do produto (o vencedor quase sempre precisa informar). Ausente = não se aplica (serviço). */
+  marcaModelo?: string | null
 }
 
 export interface OpcoesDaProposta {
@@ -36,15 +38,26 @@ export function propostaComercial(
   const semPreco = itens.filter((i) => i.precoUnitario === null || arred(i.precoUnitario) <= 0)
   if (semPreco.length > 0) pendencias.push(`preço de venda de ${semPreco.length} item(ns) no estudo de custos`)
 
+  const readequada = opcoes.lanceFinal !== undefined
+  // Coluna de marca/modelo: quando alguém já informou, ou na proposta readequada
+  // (o pregoeiro pede marca e modelo ao vencedor).
+  const temMarca = (i: ItemDaProposta) => (i.marcaModelo ?? '').trim() !== ''
+  const produtos = itens.filter((i) => i.marcaModelo !== undefined)
+  const comMarca = itens.some(temMarca) || (readequada && produtos.length > 0)
+  const semMarca = comMarca ? produtos.filter((i) => !temMarca(i)).length : 0
+  if (semMarca > 0) pendencias.push(`marca e modelo de ${semMarca} item(ns) (preencha no estudo de custos, se o objeto for produto)`)
+
   let total = 0
   const linhas = itens.map((item, i) => {
     const unitario = item.precoUnitario !== null ? arred(item.precoUnitario) : 0
     const temPreco = unitario > 0
     const subtotal = temPreco ? arred(unitario * item.quantidade) : 0
     total = arred(total + subtotal)
+    const marca = (item.marcaModelo ?? '').trim()
     return [
       String(item.numero ?? i + 1),
       item.descricao,
+      ...(comMarca ? [marca || (item.marcaModelo === undefined ? '—' : marcador('marca/modelo'))] : []),
       item.unidade ?? 'un',
       item.quantidade.toLocaleString('pt-BR'),
       temPreco ? formatarReais(unitario) : marcador('preço'),
@@ -52,7 +65,6 @@ export function propostaComercial(
     ]
   })
 
-  const readequada = opcoes.lanceFinal !== undefined
   const sessao = certame.sessao ? (readequada ? `, cuja sessão pública foi realizada em ${certame.sessao}` : `, cuja sessão pública está marcada para ${certame.sessao}`) : ''
   const blocos: Bloco[] = [
     { tipo: 'titulo', texto: readequada ? 'PROPOSTA COMERCIAL READEQUADA' : 'PROPOSTA COMERCIAL' },
@@ -68,10 +80,10 @@ export function propostaComercial(
     },
     {
       tipo: 'tabela',
-      colunas: ['Item', 'Descrição', 'Unid.', 'Qtd.', 'Valor unitário (R$)', 'Valor total (R$)'],
+      colunas: ['Item', 'Descrição', ...(comMarca ? ['Marca/modelo'] : []), 'Unid.', COLUNA_QUANTIDADE, COLUNA_UNITARIO, COLUNA_TOTAL],
       linhas,
-      rodape: ['', 'VALOR GLOBAL DA PROPOSTA', '', '', '', formatarReais(total)],
-      alinharDireita: [3, 4, 5],
+      rodape: ['', 'VALOR GLOBAL DA PROPOSTA', ...(comMarca ? [''] : []), '', '', '', formatarReais(total)],
+      alinharDireita: comMarca ? [4, 5, 6] : [3, 4, 5],
     },
     { tipo: 'paragrafo', texto: `Valor global da proposta: R$ ${formatarReais(total)} (${reaisPorExtenso(total)}).` },
     { tipo: 'paragrafo', texto: `Validade da proposta: ${opcoes.validadeDias} (${inteiroPorExtenso(opcoes.validadeDias)}) dias, contados da data da sessão pública.` },

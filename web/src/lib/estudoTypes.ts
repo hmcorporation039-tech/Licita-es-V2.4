@@ -33,6 +33,8 @@ export interface ItemDoEstudoDigitado {
   custoUnit: number | null
   precoVendaUnit: number | null
   fonteDoCusto?: FonteDoCusto | null
+  /** Marca e modelo do produto ofertado (vai para a proposta). */
+  marcaModelo?: string | null
 }
 
 export interface DadosDoEstudo {

@@ -47,6 +47,7 @@ const dadosSchema = z.object({
         custoUnit: dinheiro.nullable(),
         precoVendaUnit: dinheiro.nullable().transform((v) => (v === null ? null : Math.round(v * 100) / 100)),
         fonteDoCusto: z.enum(FONTES_DO_CUSTO as [FonteDoCusto, ...FonteDoCusto[]]).nullable().optional(),
+        marcaModelo: z.string().max(120).transform((v) => v.replace(/\s+/g, ' ').trim() || null).nullable().optional(),
       })
     )
     .refine((o) => Object.keys(o).length <= 500),

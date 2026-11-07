@@ -9,7 +9,7 @@ nunca envia lance nem proposta; quem envia é você.
 - Acesso de fornecedor no Compras.gov.br: gov.br prata ou ouro e empresa no SICAF.
 - Uma licitação em que a empresa enviou proposta, com sessão marcada. A sala de disputa só abre para quem participa.
 - Na Bela: a licitação escolhida, com o estudo de custos feito (preços de venda e o valor final mínimo no Pregão).
-- O arquivo `extensao-bela-0.6.0.zip` descompactado.
+- O arquivo `extensao-bela-0.6.1.zip` descompactado.
 
 ## Instalar
 
