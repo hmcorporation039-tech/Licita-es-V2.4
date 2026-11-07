@@ -221,3 +221,43 @@ describe('robô etapa 2: preencher o lance (nunca envia)', () => {
     expect(preencherLance(soDesabilitado, { valor: 10, seletores: ['input'] }, { Event: EventoFalso }).ok).toBe(false)
   })
 })
+
+// @ts-expect-error módulo .mjs puro da extensão, sem tipos
+import { numeroDaLinha, preencherProposta } from '../extensao-bela/lib/proposta.mjs'
+
+function linhaFalsa(texto: string, campo: ReturnType<typeof campoFalso> | null) {
+  return {
+    textContent: texto,
+    querySelector: (s: string) => (s === 'input.preco' ? campo : null),
+  }
+}
+
+describe('proposta no portal (nunca envia)', () => {
+  it('lê o número do item da linha', () => {
+    expect(numeroDaLinha(linhaFalsa('Item 3 - Gravador NVR', null), {})).toBe(3)
+    expect(numeroDaLinha(linhaFalsa('12 Câmera IP', null), {})).toBe(12)
+    expect(numeroDaLinha(linhaFalsa('7', null), {})).toBe(7)
+    expect(numeroDaLinha(linhaFalsa('Câmera IP sem número', null), {})).toBeNull()
+    expect(numeroDaLinha(linhaFalsa('2026 unidades', null), {})).toBe(2026)
+  })
+
+  it('escreve o preço de cada item na linha certa e avisa o que não achou', () => {
+    const c1 = campoFalso()
+    const c2 = campoFalso()
+    const linhas = [linhaFalsa('Item 1 Câmera', c1), linhaFalsa('Item 2 NVR', c2), linhaFalsa('Item 9 Outro', campoFalso())]
+    const raiz = { querySelectorAll: (s: string) => (s === 'tr.item' ? linhas : []) }
+    const r = preencherProposta(
+      raiz,
+      { itens: [{ numero: 1, precoUnitario: 850.56 }, { numero: 2, precoUnitario: 2900 }, { numero: 4, precoUnitario: 10 }], seletores: { linha: ['tr.item'], campoDoPreco: ['input.preco'] }, formato: 'br' },
+      { Event: EventoFalso }
+    )
+    expect(r).toEqual({ ok: true, preenchidos: [1, 2], semCampo: [], naoEncontrados: [4], motivo: null })
+    expect(c1.value).toBe('850,56')
+    expect(c2.value).toBe('2.900,00')
+    expect([...c1.eventos, ...c2.eventos]).not.toContain('submit')
+  })
+
+  it('sem lista de itens na tela, não faz nada', () => {
+    expect(preencherProposta({ querySelectorAll: () => [] }, { itens: [{ numero: 1, precoUnitario: 1 }], seletores: { linha: ['tr'] } }).ok).toBe(false)
+  })
+})

@@ -2,6 +2,7 @@ import { extrairMelhorLance } from './lib/valor.mjs'
 import { capturarEstrutura } from './lib/captura.mjs'
 import { chaveLocal, extrairMensagens } from './lib/chat.mjs'
 import { preencherLance } from './lib/preencher.mjs'
+import { preencherProposta } from './lib/proposta.mjs'
 import { portalDoHost } from './config.mjs'
 
 const portal = portalDoHost(location.hostname)
@@ -58,6 +59,10 @@ async function iniciar() {
 chrome.runtime.onMessage.addListener((msg, _remetente, responder) => {
   if (msg?.tipo === 'capturar') {
     responder(capturarEstrutura(document))
+  } else if (msg?.tipo === 'preencher-proposta') {
+    // Só escreve os preços; nunca envia a proposta.
+    if (!portal) return responder({ ok: false, motivo: 'Esta aba não é a tela de um portal conhecido.' })
+    responder(preencherProposta(document, { itens: msg.itens ?? [], seletores: portal.seletoresDaProposta, formato: portal.formatoDoCampoDeLance }, window))
   } else if (msg?.tipo === 'preencher-lance') {
     // Só escreve no campo; nunca clica em enviar.
     if (!portal) return responder({ ok: false, motivo: 'Esta aba não é a sala de disputa de um portal conhecido.' })

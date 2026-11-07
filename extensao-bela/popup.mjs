@@ -84,6 +84,39 @@ preencher.addEventListener('click', async () => {
   }
 })
 
+const botaoDaProposta = document.getElementById('proposta')
+const statusDaProposta = document.getElementById('proposta-status')
+
+botaoDaProposta.addEventListener('click', async () => {
+  statusDaProposta.textContent = 'Buscando os preços do estudo…'
+  try {
+    const r = await chrome.runtime.sendMessage({ tipo: 'buscar-proposta' })
+    if (!r?.ok) {
+      statusDaProposta.textContent = r?.motivo ?? 'Não foi possível buscar a proposta.'
+      return
+    }
+    const itens = r.proposta.itens ?? []
+    if (itens.length === 0) {
+      statusDaProposta.textContent = 'O estudo de custos ainda não tem preço de venda em nenhum item.'
+      return
+    }
+    const [aba] = await chrome.tabs.query({ active: true, currentWindow: true })
+    const feito = aba ? await chrome.tabs.sendMessage(aba.id, { tipo: 'preencher-proposta', itens }) : null
+    if (!feito?.ok) {
+      statusDaProposta.textContent = feito?.motivo ?? 'Abra a tela de cadastro da proposta do portal nesta aba.'
+      return
+    }
+    const partes = [`Preenchi ${feito.preenchidos.length} de ${itens.length} itens (campos em laranja).`]
+    if (feito.naoEncontrados.length) partes.push(`Não achei na tela: ${feito.naoEncontrados.join(', ')}.`)
+    if (feito.semCampo.length) partes.push(`Sem campo de preço: ${feito.semCampo.join(', ')}.`)
+    if (r.proposta.semPreco?.length) partes.push(`${r.proposta.semPreco.length} item(ns) sem preço no estudo.`)
+    partes.push('Confira tudo e envie no portal.')
+    statusDaProposta.textContent = partes.join(' ')
+  } catch {
+    statusDaProposta.textContent = 'Abra a tela de cadastro da proposta do portal nesta aba e tente de novo.'
+  }
+})
+
 chrome.storage?.onChanged?.addListener(async () => pintar(await ler()))
 
 ler().then(pintar)

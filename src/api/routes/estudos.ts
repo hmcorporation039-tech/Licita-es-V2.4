@@ -4,6 +4,7 @@
 // Cálculo em lib/estudoDeCustos.ts; o resultado nunca é gravado, só o que o usuário digitou.
 // ============================================================
 
+import { montarProposta, propostaEmTexto } from '../../lib/propostaDoEstudo'
 import { Router } from 'express'
 import { z } from 'zod'
 import { prisma, garantirItensPNCP } from '../../services/tenderService'
@@ -241,6 +242,18 @@ estudosRouter.get(
     const ctx = await carregar(req.companyId!, req.params.tenderId)
     const { dados, salvoEm } = await dadosSalvos(req.companyId!, req.params.tenderId, ctx)
     res.json(montarResposta(ctx, dados, salvoEm))
+  })
+)
+
+// A proposta para o portal: os preços unitários de venda do estudo, item por item.
+// A extensão da Bela usa isto para preencher a tela de proposta (sem enviar).
+estudosRouter.get(
+  '/:tenderId/proposta',
+  asyncHandler(async (req, res) => {
+    const ctx = await carregar(req.companyId!, req.params.tenderId)
+    const { dados } = await dadosSalvos(req.companyId!, req.params.tenderId, ctx)
+    const proposta = montarProposta(ctx.itens, dados)
+    res.json({ ...proposta, texto: propostaEmTexto(proposta) })
   })
 )
 

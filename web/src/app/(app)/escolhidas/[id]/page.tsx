@@ -3,7 +3,7 @@
 import { formatarData, formatarDataDaLicitacao, palavraDias } from '@/lib/datas'
 import { Fragment, use, useCallback, useEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowRight, Coins, FileDown, FileSignature, FolderArchive, Gavel, Plus, RefreshCw, Save, Search, Trash2 } from 'lucide-react'
+import { ArrowRight, ClipboardCopy, Coins, FileDown, FileSignature, FolderArchive, Gavel, Plus, RefreshCw, Save, Search, Trash2 } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
 import { api, ApiRequestError, baixarArquivo } from '@/lib/api'
 import { useAvisoDeAlteracoesNaoSalvas } from '@/hooks/useAvisoDeAlteracoesNaoSalvas'
@@ -264,6 +264,24 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
       setErro(e instanceof ApiRequestError ? e.message : 'Erro ao gerar o pacote')
     } finally {
       setGerandoPacote(false)
+    }
+  }
+
+  // Itens e preços do estudo, prontos para colar no portal ou numa planilha.
+  async function copiarProposta() {
+    if (sujo && !(await salvar())) return
+    try {
+      const p = await api.get<{ itens: unknown[]; semPreco: unknown[]; texto: string }>(`/api/estudos/${id}/proposta`)
+      if (p.itens.length === 0) {
+        setAviso('Defina o preço de venda dos itens para copiar a proposta.')
+        return
+      }
+      await navigator.clipboard.writeText(p.texto)
+      setAviso(
+        `Proposta copiada: ${p.itens.length} ${p.itens.length === 1 ? 'item' : 'itens'} com preço${p.semPreco.length ? `, ${p.semPreco.length} sem preço ficaram de fora` : ''}. Cole numa planilha ou use a extensão da Bela na tela de proposta do portal.`
+      )
+    } catch (e) {
+      setErro(e instanceof ApiRequestError ? e.message : 'Não foi possível copiar a proposta. Tente de novo.')
     }
   }
 
@@ -1240,6 +1258,10 @@ export default function EstudoDeCustosPage({ params }: { params: Promise<{ id: s
               title="Proposta comercial com os preços de venda deste estudo"
             >
               Proposta
+            </Button>
+            <Button size="sm" icon={ClipboardCopy} onClick={copiarProposta} disabled={salvando} title="Itens e preços de venda, para colar no portal ou numa planilha">
+              <span className="sm:hidden">Copiar</span>
+              <span className="hidden sm:inline">Copiar itens e preços</span>
             </Button>
             <LinkButton size="sm" icon={Gavel} href={`/tenders/${id}/pregao`} aria-label="Pregão com a Bela: acompanhar os lances ao vivo" title="Copiloto de lances para o dia do pregão">
               <span className="sm:hidden">Pregão</span>

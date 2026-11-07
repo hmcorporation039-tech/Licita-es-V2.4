@@ -26,6 +26,12 @@ export const PORTAIS = [
     ],
     // 'br' = 179.100,00 · 'digitos' = 17910000 (campo com máscara) · 'ponto' = 179100.00
     formatoDoCampoDeLance: 'br',
+    // Proposta: cada linha de item na tela de cadastro da proposta, o número do item e o campo do preço.
+    seletoresDaProposta: {
+      linha: ['tr[class*="item" i]', '[class*="item-proposta" i]', '[class*="itemProposta" i]', 'tbody tr', '[class*="item" i][class*="card" i]'],
+      numeroDoItem: ['[class*="numero" i]', 'td:first-child', '[class*="item" i] strong'],
+      campoDoPreco: ['input[formcontrolname*="valorUnitario" i]', 'input[formcontrolname*="preco" i]', 'input[formcontrolname*="valor" i]', 'input[name*="valor" i]', 'input[id*="valor" i]'],
+    },
     // Chat do pregoeiro: candidatos até a captura da sala de disputa real.
     // `mensagem` acha cada mensagem; `autor`, `hora` e `texto` são procurados dentro dela.
     seletoresDoChat: {

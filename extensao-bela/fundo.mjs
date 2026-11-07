@@ -93,7 +93,24 @@ async function registrarPreenchimento(valor) {
   }
 }
 
-chrome.runtime.onMessage.addListener((msg) => {
+// Proposta do estudo de custos, para a tela de cadastro de proposta do portal.
+async function buscarProposta() {
+  const { token, tenderId } = await estado()
+  if (!token || !tenderId) return { ok: false, motivo: 'Abra a licitação no site da Bela (logado) para a extensão saber qual proposta usar.' }
+  try {
+    const resposta = await fetch(`${API_BASE}/api/estudos/${tenderId}/proposta`, { headers: { authorization: `Bearer ${token}` } })
+    if (!resposta.ok) return { ok: false, motivo: resposta.status === 403 || resposta.status === 404 ? 'Escolha a licitação e faça o estudo de custos antes.' : `A Bela respondeu ${resposta.status}.` }
+    return { ok: true, proposta: await resposta.json() }
+  } catch {
+    return { ok: false, motivo: 'Sem conexão com a Bela agora.' }
+  }
+}
+
+chrome.runtime.onMessage.addListener((msg, _remetente, responder) => {
+  if (msg?.tipo === 'buscar-proposta') {
+    buscarProposta().then(responder)
+    return true
+  }
   if (msg?.tipo === 'lance-preenchido' && typeof msg.valor === 'number') {
     void registrarPreenchimento(msg.valor)
   } else if (msg?.tipo === 'mensagens-chat' && Array.isArray(msg.mensagens) && msg.mensagens.length > 0) {
@@ -101,6 +118,7 @@ chrome.runtime.onMessage.addListener((msg) => {
   } else if (msg?.tipo === 'melhor-lance' && typeof msg.valor === 'number') {
     void registrarMelhorLance(msg.valor)
   } else if (msg?.tipo === 'credenciais') {
-    void guardar({ token: msg.token ?? null, tenderId: msg.tenderId ?? null })
+    // Em outras telas do site (painel, lista) não há licitação na URL: mantém a última aberta.
+    void guardar({ token: msg.token ?? null, ...(msg.tenderId ? { tenderId: msg.tenderId } : {}) })
   }
 })

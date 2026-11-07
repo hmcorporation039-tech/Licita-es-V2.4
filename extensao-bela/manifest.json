@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Bela na disputa",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Lê o melhor lance e o chat do pregoeiro na sessão que você já tem aberta, avisa quando chamam a sua empresa e escreve o lance sugerido no campo do portal para você conferir e enviar. Não envia lance e não guarda senha.",
   "permissions": [
     "storage",
@@ -61,7 +61,8 @@
         "lib/valor.mjs",
         "lib/captura.mjs",
         "lib/chat.mjs",
-        "lib/preencher.mjs"
+        "lib/preencher.mjs",
+        "lib/proposta.mjs"
       ],
       "matches": [
         "*://*.compras.gov.br/*",
