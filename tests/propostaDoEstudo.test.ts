@@ -10,7 +10,7 @@ const itens: ItemDaLicitacao[] = [
 
 describe('proposta do estudo de custos', () => {
   it('usa o preço de venda de cada item e lista o que ficou sem preço', () => {
-    const dados = dadosIniciais(itens)
+    const dados = dadosIniciais()
     dados.itens.a = { custoUnit: 600, precoVendaUnit: 850.555 }
     dados.itens.b = { custoUnit: 2000, precoVendaUnit: 2900 }
     const p = montarProposta(itens, dados)
