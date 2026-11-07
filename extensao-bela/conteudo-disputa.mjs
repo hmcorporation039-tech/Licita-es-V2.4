@@ -1,5 +1,6 @@
 import { extrairMelhorLance } from './lib/valor.mjs'
 import { capturarEstrutura } from './lib/captura.mjs'
+import { chaveLocal, extrairMensagens } from './lib/chat.mjs'
 import { portalDoHost } from './config.mjs'
 
 const portal = portalDoHost(location.hostname)
@@ -18,6 +19,16 @@ function conferir() {
   })
 }
 
+// Chat do pregoeiro: manda só as mensagens que ainda não foram enviadas desta página.
+const mensagensVistas = new Set()
+function conferirChat() {
+  if (!portal?.seletoresDoChat) return
+  const novas = extrairMensagens(document, portal.seletoresDoChat).filter((m) => !mensagensVistas.has(chaveLocal(m)))
+  if (novas.length === 0) return
+  for (const m of novas) mensagensVistas.add(chaveLocal(m))
+  chrome.runtime.sendMessage({ tipo: 'mensagens-chat', mensagens: novas.slice(-50), em: Date.now() })
+}
+
 async function ligado() {
   try {
     const { vigiando } = await chrome.storage.local.get('vigiando')
@@ -31,7 +42,14 @@ async function iniciar() {
   if (!portal) return
   if (!(await ligado())) return
   conferir()
-  const observador = new MutationObserver(() => conferir())
+  conferirChat()
+  let agendado = null
+  const observador = new MutationObserver(() => {
+    conferir()
+    // O chat muda em rajadas: espera a página assentar antes de ler.
+    if (agendado) clearTimeout(agendado)
+    agendado = setTimeout(conferirChat, 800)
+  })
   observador.observe(document.body, { childList: true, subtree: true, characterData: true })
 }
 

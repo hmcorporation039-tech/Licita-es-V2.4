@@ -16,6 +16,20 @@ export const PORTAIS = [
       '[class*="menor-lance" i]',
       '[data-melhor-lance]',
     ],
+    // Chat do pregoeiro: candidatos até a captura da sala de disputa real.
+    // `mensagem` acha cada mensagem; `autor`, `hora` e `texto` são procurados dentro dela.
+    seletoresDoChat: {
+      mensagem: [
+        '[class*="chat" i] [class*="mensagem" i]',
+        '[class*="chat" i] [class*="message" i]',
+        '[id*="chat" i] li',
+        '[class*="mensagens" i] li',
+        '[class*="chat" i] li',
+      ],
+      autor: ['[class*="autor" i]', '[class*="remetente" i]', '[class*="author" i]', 'strong', 'b'],
+      hora: ['[class*="hora" i]', '[class*="data" i]', 'time', '[class*="time" i]'],
+      texto: ['[class*="texto" i]', '[class*="conteudo" i]', '[class*="text" i]', 'p'],
+    },
   },
 ]
 

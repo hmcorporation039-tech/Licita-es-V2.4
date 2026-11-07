@@ -5,10 +5,11 @@ const acesso = document.getElementById('acesso')
 const lance = document.getElementById('lance')
 const sugestao = document.getElementById('sugestao')
 const status = document.getElementById('status')
+const chat = document.getElementById('chat')
 
 async function ler() {
   try {
-    return await chrome.storage.local.get(['vigiando', 'token', 'tenderId', 'ultimoLance', 'sugestao', 'status'])
+    return await chrome.storage.local.get(['vigiando', 'token', 'tenderId', 'ultimoLance', 'sugestao', 'status', 'chat'])
   } catch {
     return {}
   }
@@ -16,7 +17,7 @@ async function ler() {
 
 function pintar(e) {
   const ligado = e.vigiando === true
-  alternar.textContent = ligado ? 'Leitura ativa — desativar' : 'Ativar leitura'
+  alternar.textContent = ligado ? 'Lendo lance e chat — desativar' : 'Ativar leitura (lance e chat)'
   alternar.className = ligado ? 'on' : 'off'
   const temAcesso = Boolean(e.token && e.tenderId)
   acesso.textContent = temAcesso ? 'Pronto (login e pregão abertos)' : 'Abra o pregão logado no site da Bela'
@@ -24,6 +25,9 @@ function pintar(e) {
   lance.textContent = reais(e.ultimoLance)
   sugestao.textContent = e.sugestao ? reais(e.sugestao.valor) : '—'
   if (e.status) status.textContent = e.status
+  const c = e.chat
+  chat.textContent = !c ? 'Nenhuma mensagem lida ainda' : c.urgente ? `${c.urgente.rotulo}: ${c.urgente.texto}` : c.naoLidas > 0 ? `${c.naoLidas} mensagem(ns) nova(s)` : 'Sem mensagens novas'
+  chat.className = c?.urgente ? 'acesso-falta' : ''
 }
 
 alternar.addEventListener('click', async () => {

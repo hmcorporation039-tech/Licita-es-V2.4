@@ -1,10 +1,11 @@
 {
   "manifest_version": 3,
   "name": "Bela na disputa",
-  "version": "0.3.0",
-  "description": "Lê o melhor lance da sessão de pregão que você já tem aberta e manda para a Bela sugerir o próximo. Também captura a estrutura da tela da disputa para ajustar a leitura. Não envia lance e não guarda senha.",
+  "version": "0.4.0",
+  "description": "Lê o melhor lance e o chat do pregoeiro na sessão de pregão que você já tem aberta, manda para a Bela e avisa quando chamam a sua empresa. Não guarda senha.",
   "permissions": [
-    "storage"
+    "storage",
+    "notifications"
   ],
   "host_permissions": [
     "*://*.compras.gov.br/*",
@@ -21,7 +22,11 @@
   },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Bela na disputa"
+    "default_title": "Bela na disputa",
+    "default_icon": {
+      "16": "icone-16.png",
+      "48": "icone-48.png"
+    }
   },
   "content_scripts": [
     {
@@ -54,7 +59,8 @@
         "conteudo-app.mjs",
         "config.mjs",
         "lib/valor.mjs",
-        "lib/captura.mjs"
+        "lib/captura.mjs",
+        "lib/chat.mjs"
       ],
       "matches": [
         "*://*.compras.gov.br/*",
@@ -65,5 +71,10 @@
         "http://localhost/*"
       ]
     }
-  ]
+  ],
+  "icons": {
+    "16": "icone-16.png",
+    "48": "icone-48.png",
+    "128": "icone-128.png"
+  }
 }

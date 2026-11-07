@@ -12,6 +12,7 @@ import { regrasDoEdital } from '../../lib/bela/regrasDoEdital'
 import { checklistDaDisputa, desatualizado, escolhaDe, lerPlanoSalvo, passoDosLances, regrasEfetivas, valorFinalMinimo } from '../../lib/bela/planoDeDisputa'
 import { registrarAuditoria } from '../../services/auditService'
 import { carregar, dadosSalvos } from './estudos'
+import { MAX_MENSAGENS_POR_ENVIO, marcarComoLidas, mensagensDoPregao, registrarMensagens } from '../../services/mensagensDoPregao'
 
 export const pregaoRouter = Router({ mergeParams: true })
 
@@ -180,6 +181,50 @@ pregaoRouter.delete(
     const apagados = acompanhamento ? await prisma.pregaoLance.deleteMany({ where: { id: req.params.lanceId, acompanhamentoId: acompanhamento.id } }) : { count: 0 }
     if (apagados.count === 0) throw new ApiError(404, 'Lance não encontrado')
     res.json(publico(await montarPainel(req.companyId!, req.params.id)))
+  })
+)
+
+// ---- Chat do pregoeiro (lido pela extensão na sala de disputa) ----
+
+const mensagensSchema = z.object({
+  mensagens: z
+    .array(
+      z.object({
+        texto: z.string().trim().min(1).max(4000),
+        autor: z.string().trim().max(200).nullable().optional(),
+        horaNoPortal: z.string().trim().max(40).nullable().optional(),
+      })
+    )
+    .min(1)
+    .max(MAX_MENSAGENS_POR_ENVIO),
+})
+
+pregaoRouter.post(
+  '/mensagens',
+  estudoCalculoLimiter,
+  asyncHandler(async (req, res) => {
+    const { mensagens } = mensagensSchema.parse(req.body)
+    const tender = await prisma.tender.findUnique({ where: { id: req.params.id }, select: { id: true } })
+    if (!tender) throw new ApiError(404, 'Licitação não encontrada')
+    const r = await registrarMensagens({ companyId: req.companyId!, userId: req.userId!, tenderId: req.params.id, mensagens })
+    res.status(201).json({ ...r, ...(await mensagensDoPregao(req.companyId!, req.params.id)) })
+  })
+)
+
+pregaoRouter.get(
+  '/mensagens',
+  estudoCalculoLimiter,
+  asyncHandler(async (req, res) => {
+    res.json(await mensagensDoPregao(req.companyId!, req.params.id))
+  })
+)
+
+pregaoRouter.post(
+  '/mensagens/lidas',
+  estudoCalculoLimiter,
+  asyncHandler(async (req, res) => {
+    const marcadas = await marcarComoLidas(req.companyId!, req.params.id)
+    res.json({ marcadas, ...(await mensagensDoPregao(req.companyId!, req.params.id)) })
   })
 )
 

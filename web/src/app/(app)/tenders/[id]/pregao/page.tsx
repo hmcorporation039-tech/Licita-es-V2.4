@@ -20,6 +20,7 @@ import {
   Undo2,
 } from "lucide-react";
 import { useRequireSession } from "@/hooks/useRequireSession";
+import ChatDoPregoeiro from "@/components/ChatDoPregoeiro";
 import { useEscuta, useFalaDaBela } from "@/hooks/useBela";
 import { api, ApiRequestError } from "@/lib/api";
 import { formatarData } from "@/lib/datas";
@@ -1325,6 +1326,8 @@ export default function PregaoComABelaPage({
       <Notice tone="info">
         A Bela não dá lances: ela calcula e sugere. Você dá o lance no portal.
       </Notice>
+
+      <ChatDoPregoeiro tenderId={id} />
 
       {painelAtual.disputa.vedacaoARobo && (
         <Notice

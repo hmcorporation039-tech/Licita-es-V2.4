@@ -131,3 +131,39 @@ describe('captura da tela da disputa', () => {
     expect(portalDoHost('exemplo.com.br')).toBeNull()
   })
 })
+
+// @ts-expect-error módulo .mjs puro da extensão, sem tipos
+import { chaveLocal, extrairMensagens, lerMensagem } from '../extensao-bela/lib/chat.mjs'
+
+function no(texto: string, filhos: Record<string, string> = {}) {
+  return {
+    textContent: texto,
+    querySelector(s: string) {
+      return s in filhos ? { textContent: filhos[s] } : null
+    },
+  }
+}
+
+describe('leitura do chat do pregoeiro', () => {
+  it('separa autor e hora quando estão em elementos próprios', () => {
+    const el = no('Pregoeiro 10:12 Envie a proposta ajustada', { '.autor': 'Pregoeiro', '.hora': '10:12', '.texto': 'Envie a proposta ajustada' })
+    expect(lerMensagem(el, { autor: ['.autor'], hora: ['.hora'], texto: ['.texto'] })).toEqual({ autor: 'Pregoeiro', texto: 'Envie a proposta ajustada', horaNoPortal: '10:12' })
+  })
+
+  it('tira o autor do começo do texto ("Pregoeiro: ...") quando não há elemento próprio', () => {
+    expect(lerMensagem(no('Pregoeiro: A sessão será suspensa às 12:00'), {})).toEqual({ autor: 'Pregoeiro', texto: 'A sessão será suspensa às 12:00', horaNoPortal: '12:00' })
+  })
+
+  it('usa o primeiro seletor de lista que acha mensagens e ignora seletor inválido', () => {
+    const raiz = {
+      querySelectorAll(s: string) {
+        if (s === '::ruim') throw new Error('inválido')
+        if (s === '.chat li') return [no('Sistema - Item 1 encerrado'), no('   ')]
+        return []
+      },
+    }
+    const ms = extrairMensagens(raiz, { mensagem: ['::ruim', '.vazio', '.chat li'] })
+    expect(ms).toEqual([{ autor: 'Sistema', texto: 'Item 1 encerrado', horaNoPortal: null }])
+    expect(chaveLocal(ms[0])).toBe('Sistema||Item 1 encerrado')
+  })
+})
