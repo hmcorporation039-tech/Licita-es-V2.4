@@ -1,16 +1,21 @@
-# Bela na disputa — extensão (Etapa 1 do robô)
+# Bela na disputa — extensão do navegador
 
-Extensão de navegador que **lê** o melhor lance da sessão de pregão que o cliente
-**já tem aberta e logada** e manda para a Bela sugerir o próximo lance. É a Etapa 1
-do `docs/ROBO_DE_PREGAO.md`.
+Extensão que trabalha **na tela que o cliente já tem aberta e logada** no portal. Faz quatro
+coisas, todas sem enviar nada sozinha:
 
-**O que ela faz:** só leitura. Observa o valor do melhor lance na página e envia
-esse número para a API da Bela (a mesma rota que o site já usa), que devolve a
-sugestão. Mostra tudo no popup.
+1. **Lê o melhor lance** da sala de disputa e manda para a Bela, que sugere o próximo lance
+   sem passar do piso do estudo de custos (Etapa 1 do `docs/ROBO_DE_PREGAO.md`).
+2. **Lê o chat do pregoeiro** e avisa (no computador, no celular e na tela Minhas sessões)
+   quando a empresa é convocada, quando pedem documento ou negociação, ou quando a sessão é
+   suspensa ou retomada.
+3. **Preenche o lance** sugerido no campo do portal (Etapa 2): a pessoa confere e clica em
+   enviar. Com o edital vedando robô, o botão fica desligado.
+4. **Preenche a proposta**: na tela de cadastro da proposta, escreve o preço de cada item
+   tirado do estudo de custos. A pessoa confere e envia.
 
-**O que ela NÃO faz:** não envia lance, não preenche campo no portal, não faz
-login, não resolve CAPTCHA e **não guarda senha nem certificado**. O login é do
-cliente, na sessão dele.
+**O que ela NUNCA faz:** clicar em enviar ou confirmar, fazer login, resolver CAPTCHA,
+guardar senha ou certificado. O login é do cliente, na sessão dele. Todo lance preenchido
+fica na auditoria da Bela.
 
 ## Instalar (modo desenvolvedor)
 
@@ -20,12 +25,16 @@ cliente, na sessão dele.
 
 ## Usar
 
-1. Abrir o site da Bela logado e entrar na página do pregão (`/tenders/<id>/pregao`).
-   A extensão pega dali o acesso (token de sessão) e o id do pregão — nada de senha.
+1. Abrir o site da Bela logado e entrar na licitação (o Pregão, a licitação ou o estudo de
+   custos). A extensão pega dali o acesso (token de sessão) e qual é a licitação — nada de senha.
 2. Abrir a sessão de disputa no portal (Compras.gov.br), já logado.
-3. No popup da extensão, clicar **Ativar leitura**.
-4. A cada novo melhor lance, o popup mostra o valor lido e a **sugestão da Bela**.
-   O cliente dá o lance no portal (Etapa 1 não envia nada).
+3. No popup da extensão, clicar **Ativar leitura (lance e chat)**.
+4. A cada novo melhor lance, o popup mostra o valor lido, a **sugestão da Bela** e o
+   **próximo lance** (piso respeitado). **Preencher no portal** escreve esse valor no campo de
+   lance, destacado em laranja; você confere e envia.
+5. As mensagens do pregoeiro aparecem no popup, no Pregão com a Bela e em Minhas sessões.
+6. Na tela de cadastro da proposta do portal, **Preencher a proposta** escreve os preços do
+   estudo de custos item por item.
 
 ## Capturar a tela da disputa (para ajustar a leitura)
 
@@ -44,9 +53,11 @@ saem mascarados, e o valor digitado em campo nenhum é lido (`lib/captura.mjs`).
 
 ## Ajustar os seletores (passo que fazemos juntos, vendo a tela real)
 
-O arquivo `config.mjs` tem `PORTAIS[].seletoresDoMelhorLance` com candidatos
-genéricos. Numa sessão de disputa real, inspecionar o elemento que mostra o melhor
-lance e colocar o seletor certo no topo da lista. A leitura e o parse já estão prontos e
+O arquivo `config.mjs` tem, por portal, candidatos genéricos para: o melhor lance
+(`seletoresDoMelhorLance`), o chat (`seletoresDoChat`), o campo de lance
+(`seletoresDoCampoDeLance` e `formatoDoCampoDeLance`) e as linhas da proposta
+(`seletoresDaProposta`). Com a captura da tela real, o seletor certo vai para o topo de cada
+lista. A leitura e o parse já estão prontos e
 testada (`lib/valor.mjs`, `tests/extensaoBela.test.ts`).
 
 ## Teste

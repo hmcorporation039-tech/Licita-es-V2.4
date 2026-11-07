@@ -1,6 +1,7 @@
 import { ChevronDown, ExternalLink, TriangleAlert } from 'lucide-react'
 import { PageHeader, TextLink, cx } from '@/components/ui'
 import { MODALIDADES_EDUCATIVO } from '@/lib/modalidadesEducativo'
+import { PASSOS_DA_PARTICIPACAO } from '@/lib/passosDaParticipacao'
 
 const PLATAFORMAS = [
   {
@@ -143,6 +144,34 @@ export default function GuiaPage() {
       />
 
       <div className="flex max-w-prose flex-col gap-10 pb-10 text-base leading-relaxed text-ink-2">
+        <section aria-labelledby="guia-participacao" className="flex flex-col gap-3">
+          <h2 id="guia-participacao" className="text-lg font-semibold text-ink">
+            Do zero ao contrato com a Bela
+          </h2>
+          <p>O caminho de uma participação, na ordem. Onde houver, o link leva à tela da Bela em que o passo é feito.</p>
+          <ol className="flex flex-col divide-y divide-line-soft rounded border border-line bg-surface">
+            {PASSOS_DA_PARTICIPACAO.map((p, i) => (
+              <li key={p.titulo} className="flex gap-3 px-4 py-3.5">
+                <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-accent-soft font-mono text-xs font-semibold text-accent" aria-hidden>
+                  {i + 1}
+                </span>
+                <div className="flex min-w-0 flex-col gap-1">
+                  <p className="font-semibold text-ink">
+                    {p.titulo}
+                    {p.foraDoSistema && <span className="ml-2 rounded-full bg-sunken px-2 py-0.5 text-2xs font-semibold uppercase tracking-wide text-muted">Fora da Bela</span>}
+                  </p>
+                  <p className="text-sm">{p.texto}</p>
+                  {p.ondeNaBela && (
+                    <p className="text-sm">
+                      <TextLink href={p.ondeNaBela.href}>Abrir {p.ondeNaBela.rotulo}</TextLink>
+                    </p>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+
         <section aria-labelledby="guia-modalidades" className="flex flex-col gap-3">
           <h2 id="guia-modalidades" className="text-lg font-semibold text-ink">
             Modalidades de licitação
