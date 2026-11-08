@@ -5,6 +5,13 @@ import path from "path";
 // (senão o fetch é bloqueado). Sem a variável, cai no default de desenvolvimento.
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3333";
 
+// "Portal dentro da Bela": a página conversa por WebSocket com o serviço navegador.
+// Mesma URL configurada na API (NAVEGADOR_URL), em ws(s)://. Sem ela, nada é liberado.
+const navegadorUrl = (process.env.NAVEGADOR_URL ?? "")
+  .trim()
+  .replace(/^http(s?):\/\//i, (_m, s: string) => `ws${s}://`)
+  .replace(/\/+$/, "");
+
 // Content-Security-Policy: o app não usa CDN de script nem estilo externo, só
 // o próprio bundle e chamadas à API. O Next (App Router) injeta scripts INLINE
 // de hidratação sem nonce, então 'unsafe-inline' em script-src é necessário
@@ -28,7 +35,7 @@ const csp = [
   scriptSrc,
   // Captcha Turnstile (cadastro) roda num iframe da Cloudflare.
   "frame-src https://challenges.cloudflare.com",
-  `connect-src 'self' ${apiUrl}`,
+  `connect-src 'self' ${apiUrl}${navegadorUrl ? ` ${navegadorUrl}` : ""}`,
 ].join("; ");
 
 const securityHeaders = [

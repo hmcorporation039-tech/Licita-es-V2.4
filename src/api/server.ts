@@ -17,6 +17,7 @@ import { monitoredItemsRouter } from './routes/monitoredItems'
 import { tendersRouter } from './routes/tenders'
 import { documentosDaLicitacaoRouter } from './routes/documentosDaLicitacao'
 import { pregaoRouter } from './routes/pregao'
+import { portalNaBelaRouter } from './routes/portalNaBela'
 import { sessoesRouter } from './routes/sessoes'
 import { obrasRouter } from './routes/obras'
 import { belaRouter } from './routes/bela'
@@ -124,6 +125,7 @@ app.use('/api/company', requireAuth, companyRouter)
 app.use('/api/monitored-items', requireAuth, monitoredItemsRouter)
 app.use('/api/tenders/:id/documentos', requireAuth, documentosDaLicitacaoRouter)
 app.use('/api/tenders/:id/pregao', requireAuth, pregaoRouter)
+app.use('/api/portal-na-bela', requireAuth, portalNaBelaRouter)
 app.use('/api/sessoes', requireAuth, sessoesRouter)
 app.use('/api/obras', requireAuth, obrasRouter)
 app.use('/api/tenders/:id/conversa', requireAuth, conversaComOEditalRouter)

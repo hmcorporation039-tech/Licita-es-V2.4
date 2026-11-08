@@ -194,6 +194,13 @@ Estudos gravados antes continuam abrindo como compra única. O PDF do dossiê tr
 - **Avisos do edital no estudo**: propostas por item com julgamento por grupo, subcontratação vedada ou parcial, vistoria obrigatória.
 - Ainda não testado com a IA de verdade (sem chave nesta sessão): conferir os campos novos na próxima análise real.
 
+### 08/11 (2): plano gratuito em Obras, prestadores perto da obra e portal dentro da Bela
+
+- **Obras e ganhadores no plano gratuito**: amostra de 5 contratos; contato e mensagem pronta só nos planos pagos.
+- **Prestadores para a minha obra** (o caminho inverso): cidade da obra + serviço + distância. Mostra as empresas da Bela que aceitaram aparecer como prestadoras (migração 68) e, sob demanda e só nos planos pagos, o Google Places ordenado pela nota ajustada pelo número de avaliações (`GOOGLE_PLACES_API_KEY`, até 30 buscas por empresa em 24 h, nada guardado). Botão "Prestadores perto daqui" na licitação escolhida.
+- **Meus Portais**: depois de salvar o acesso, mostra o próximo passo (antes não aparecia nada).
+- **Portal dentro da Bela** (`src/navegador`, `navegador.Dockerfile`, `docs/PORTAL_DENTRO_DA_BELA.md`): o Compras.gov.br abre dentro do Pregão com a Bela num Chromium do servidor transmitido por WebSocket; a pessoa entra com o próprio gov.br (CAPTCHA dela), a Bela lê lance e chat com as mesmas funções da extensão e escreve o lance sugerido quando a pessoa pede. Nunca envia lance, não se disfarça, só navega em *.gov.br, nada guardado. Planos pagos e "Vou participar". Falta: criar o serviço no Railway e colocar `NAVEGADOR_URL` na API e no Vercel.
+
 ### 08/11: Obras e ganhadores (oportunidades entre empresas)
 
 Pedido do Márcio: além de disputar licitações, a empresa pode oferecer serviço a quem acabou de ganhar uma (subcontratação, orçamento, aluguel de equipamento, material).
