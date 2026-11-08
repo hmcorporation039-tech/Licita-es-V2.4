@@ -166,6 +166,8 @@ model Company {
   assinaturas          Assinatura[]
   pagamentos           Pagamento[]
   credenciaisDePortal  PortalCredencial[]
+  perfilDeObras        PerfilDeObras?
+  nichosDeObras        NichoDeObras[]
 
   @@map("companies")
 }
@@ -1304,4 +1306,79 @@ model PortalCredencial {
   @@unique([companyId, portal])
   @@index([companyId])
   @@map("portal_credenciais")
+}
+
+// ============================================================
+// OBRAS E GANHADORES (oportunidades entre empresas)
+// Contratos assinados publicados no PNCP: quem ganhou, o quê, onde e quanto.
+// A empresa cadastra os nichos que atende e a região; a Bela mostra os
+// ganhadores recentes para ela oferecer o serviço (subcontratação, orçamento).
+// ============================================================
+
+model ContratoPublico {
+  // numeroControlePNCP do contrato
+  id             String    @id
+  compraControle String?   @map("compra_controle")
+  orgaoCnpj      String    @map("orgao_cnpj")
+  orgaoNome      String    @map("orgao_nome")
+  uf             String?   @db.Char(2)
+  municipio      String?
+  municipioIbge  String?   @map("municipio_ibge")
+  lat            Float?
+  lng            Float?
+  fornecedorNi   String    @map("fornecedor_ni")
+  fornecedorNome String    @map("fornecedor_nome")
+  objeto         String    @db.Text
+  objetoNorm     String    @map("objeto_norm") @db.Text
+  valorGlobal    Decimal   @map("valor_global") @db.Decimal(18, 2)
+  categoria      String?
+  tipo           String?
+  dataAssinatura DateTime? @map("data_assinatura") @db.Date
+  vigenciaFim    DateTime? @map("vigencia_fim") @db.Date
+  publicadoEm    DateTime? @map("publicado_em")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  @@index([uf, dataAssinatura])
+  @@index([dataAssinatura])
+  @@index([fornecedorNi])
+  @@map("contratos_publicos")
+}
+
+// Quais dias de publicação já foram coletados por inteiro.
+model ColetaDeContratosDia {
+  dia          DateTime @id @db.Date
+  total        Int      @default(0)
+  gravados     Int      @default(0)
+  completa     Boolean  @default(false)
+  atualizadoEm DateTime @updatedAt @map("atualizado_em")
+
+  @@map("coleta_de_contratos_dias")
+}
+
+model PerfilDeObras {
+  companyId   String   @id @map("company_id")
+  // Raio em km a partir da base da empresa; nulo = usar só as UFs.
+  raioKm      Int?     @default(150) @map("raio_km")
+  ufs         String[] @default([])
+  valorMinimo Decimal? @map("valor_minimo") @db.Decimal(18, 2)
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("perfis_de_obras")
+}
+
+model NichoDeObras {
+  id         String   @id @default(uuid())
+  companyId  String   @map("company_id")
+  nome       String
+  // Palavras que, no objeto do contrato, indicam que o ganhador precisa deste serviço.
+  alvos      String[] @default([])
+  exclusoes  String[] @default([])
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@map("nichos_de_obras")
 }

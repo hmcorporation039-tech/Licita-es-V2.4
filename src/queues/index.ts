@@ -118,6 +118,17 @@ export const COLETOR_SCHEDULERS: ColetorScheduler[] = [
     dados: { varredura: 'resultados' },
     disparaNaPartida: false,
   },
+  // Contratos assinados (tela "Obras e ganhadores"): 3x por dia, fora dos horários das outras coletas.
+  {
+    queue: coletorPNCPQueue,
+    schedulerId: 'contratos-pncp',
+    jobName: 'contratos-pncp',
+    pattern: '40 2,12,20 * * *',
+    tz: 'America/Sao_Paulo',
+    fonte: 'PNCP',
+    dados: { varredura: 'contratos' },
+    disparaNaPartida: false,
+  },
   // Uma vez por dia — essas 3 não têm filtro de data, então rodar 2x/dia
   // como PNCP/ComprasNet só dobraria o custo sem trazer nada a mais.
   {

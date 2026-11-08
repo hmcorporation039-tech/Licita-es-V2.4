@@ -23,6 +23,7 @@ import {
   X,
   type LucideIcon,
   MessagesSquare,
+  HardHat,
 } from 'lucide-react'
 import { clearSessionUser, getSessionUser, type SessionUser } from '@/lib/session'
 import { api } from '@/lib/api'
@@ -59,6 +60,7 @@ const GRUPOS: GrupoDeMenu[] = [
       { href: '/sessoes', label: 'Minhas sessões', icon: MessagesSquare },
       { href: '/salvas', label: 'Minhas salvas', icon: Star },
       { href: '/radar', label: 'Radar', icon: Radar },
+      { href: '/obras', label: 'Obras e ganhadores', icon: HardHat },
     ],
   },
   {

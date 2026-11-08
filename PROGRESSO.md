@@ -194,6 +194,21 @@ Estudos gravados antes continuam abrindo como compra única. O PDF do dossiê tr
 - **Avisos do edital no estudo**: propostas por item com julgamento por grupo, subcontratação vedada ou parcial, vistoria obrigatória.
 - Ainda não testado com a IA de verdade (sem chave nesta sessão): conferir os campos novos na próxima análise real.
 
+### 08/11: Obras e ganhadores (oportunidades entre empresas)
+
+Pedido do Márcio: além de disputar licitações, a empresa pode oferecer serviço a quem acabou de ganhar uma (subcontratação, orçamento, aluguel de equipamento, material).
+
+- **Coleta dos contratos assinados** do PNCP (`/api/consulta/v1/contratos`, por dia de publicação) 3x por dia (`contratos-pncp`): só pessoa jurídica, categorias Obras, Serviços de Engenharia, Serviços e Mão de Obra, a partir de R$ 5 mil. 60 dias para trás na primeira vez, até 120 páginas por execução, retenção de 180 dias. O local é a cidade citada no objeto ("…CAMPINAS/SP"); sem ela, a do órgão. Migração 67 (`contratos_publicos`, `coleta_de_contratos_dias`, `perfis_de_obras`, `nichos_de_obras`).
+- **Nichos e região** (tela Obras e ganhadores): 18 nichos prontos (elétrica, hidráulica, pintura, climatização, terraplenagem, pavimentação, locação de equipamentos…) ou nicho próprio com palavras; região por raio a partir da base e/ou estados; valor mínimo opcional.
+- **Regras** (`lib/obrasEGanhadores.ts`): o nicho lista as palavras do objeto do contrato que indicam que o ganhador vai precisar do serviço. Fora: compra de material, terceirização de pessoal (recepção, copa, vigilância), "mão de obra" não conta como obra, iluminação de evento. O "?" no lugar do "ã" que alguns órgãos publicam é consertado na busca.
+- **Contato do ganhador** sob demanda (telefone, e-mail e situação do cadastro da Receita, via BrasilAPI) e **mensagem de apresentação** pronta para copiar.
+- Testado com contratos reais do PNCP (3 mil contratos, 4 dias): 132 oportunidades para uma empresa de Vitória com elétrica, pintura e hidráulica em ES, MG, RJ e SP.
+
+Também no mesmo dia:
+- Aviso "apenas ajuda técnica; a Licita Bela não se responsabiliza pela falta de documentos" na análise (exigências e documentos), no parecer de habilitação e no PDF do estudo.
+- "Adicionar ao checklist" agora mostra que adicionou ("No checklist · ver"), corta texto acima de 500 caracteres (antes falhava calado) e tem "Adicionar todos".
+- Aba "Concorrentes" renomeada para "Agente Doc." (Agente de documentação).
+
 ### 07/11 (2): o que a leitura do edital da Assembleia do ES mostrou
 
 Lendo o PE 025/2026 da ALES (material elétrico) para o primeiro teste real, apareceram quatro buracos:
