@@ -10,7 +10,7 @@ import AssinaturaDaEmpresa from '@/components/AssinaturaDaEmpresa'
 import PainelDoAcesso, { type CobrancaNaConta } from '@/components/PrazoDoAcesso'
 import NotificacoesNoCelular from '@/components/NotificacoesNoCelular'
 import LoginEmDuasEtapas from '@/components/LoginEmDuasEtapas'
-import { Button, Carregando, Checkbox, Field, FormError, Input, Notice, PageHeader, Panel, Textarea, useDialogo } from '@/components/ui'
+import { Button, Carregando, Checkbox, Field, FormError, InputDeSenha, Notice, PageHeader, Panel, Textarea, useDialogo } from '@/components/ui'
 
 export default function ContaPage() {
   const user = useRequireSession()
@@ -69,13 +69,13 @@ export default function ContaPage() {
         <Panel title="Trocar senha">
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <Field label="Senha atual" required>
-              <Input type="password" autoComplete="current-password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
+              <InputDeSenha autoComplete="current-password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
             </Field>
             <Field label="Nova senha" hint="Mínimo de 10 caracteres." required>
-              <Input type="password" autoComplete="new-password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+              <InputDeSenha autoComplete="new-password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
             </Field>
             <Field label="Confirmar nova senha" required>
-              <Input type="password" autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+              <InputDeSenha autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
             </Field>
 
             <FormError>{error}</FormError>
@@ -309,7 +309,7 @@ function SeusDados() {
               </p>
             )}
             <Field label="Sua senha" required>
-              <Input type="password" autoComplete="current-password" value={senha} onChange={(e) => setSenha(e.target.value)} />
+              <InputDeSenha autoComplete="current-password" value={senha} onChange={(e) => setSenha(e.target.value)} />
             </Field>
             {abrirExclusao === 'empresa' && (
               <Field label="Motivo" hint="Opcional.">

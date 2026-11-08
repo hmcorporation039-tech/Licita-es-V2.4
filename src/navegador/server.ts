@@ -8,6 +8,8 @@
 //   API_URL               URL da API da Bela (ex.: https://api-production-xxxx.up.railway.app)
 //   NAVEGADOR_ORIGENS     origens do site que podem conectar (vírgula). Ex.: https://licitabela.com.br
 //   NAVEGADOR_MAX_SESSOES quantas sessões ao mesmo tempo (padrão 3; cada uma usa ~300-500 MB)
+//   NAVEGADOR_SEGREDO     o mesmo valor no serviço da API: libera o botão "Preencher meu login"
+//                         (o navegador busca o acesso de Meus Portais na API com ele)
 //   CHROMIUM_PATH         caminho do Chromium (a imagem do Playwright já traz; normalmente vazio)
 // Só para desenvolvimento: NAVEGADOR_HOSTS_LOCAIS (hosts liberados em http) e NAVEGADOR_CHROMIUM_ARGS.
 // ============================================================
@@ -99,18 +101,19 @@ export function criarServidor(op: OpcoesDoServidor) {
         if (sessao || entrando) return
         entrando = true
         try {
-          const aut = await op.api.autorizar(m.token, m.tenderId)
+          const aut = await op.api.autorizar(m.token, m.tenderId, m.portal)
           const existente = sessoes.get(aut.userId)
-          if (existente && !existente.fechada && existente.tenderId === aut.tenderId) {
+          if (existente && !existente.fechada && existente.tenderId === aut.tenderId && existente.portal === aut.portal) {
             sessao = existente
           } else {
-            if (existente) await existente.encerrar('Você abriu o portal em outra licitação.')
+            if (existente) await existente.encerrar('Você abriu outro portal ou outra licitação.')
             if (sessoes.size >= op.maxSessoes) {
               enviar(ws, { t: 'erro', codigo: 'LOTADO', mensagem: 'Todos os navegadores da Bela estão em uso agora. Tente de novo em alguns minutos ou use a extensão.' })
               ws.close(4003, 'Lotado')
               return
             }
-            const nova = new SessaoDoPortal(aut.userId, aut.tenderId, m.token, op.api, aut.inicio, (s) => {
+            const destino = { portal: aut.portal, nomeDoPortal: aut.nomeDoPortal, inicio: aut.inicio, hostsPermitidos: aut.hostsPermitidos ?? [] }
+            const nova = new SessaoDoPortal(aut.userId, aut.tenderId, m.token, op.api, destino, (s) => {
               if (sessoes.get(s.userId) === s) sessoes.delete(s.userId)
             }, op.limites ?? LIMITES_PADRAO)
             sessoes.set(aut.userId, nova)
@@ -173,7 +176,7 @@ if (require.main === module) {
     process.exit(1)
   }
   const { servidor, fechar } = criarServidor({
-    api: apiDaBela(apiUrl),
+    api: apiDaBela(apiUrl, process.env.NAVEGADOR_SEGREDO?.trim() || undefined),
     origens,
     maxSessoes: Number(process.env.NAVEGADOR_MAX_SESSOES) > 0 ? Number(process.env.NAVEGADOR_MAX_SESSOES) : 3,
     limites: { ...LIMITES_PADRAO, hostsLocais: (process.env.NAVEGADOR_HOSTS_LOCAIS ?? '').split(',').map((h) => h.trim()).filter(Boolean) },

@@ -37,6 +37,15 @@ document.getElementById('eco').addEventListener('input', (e) => { if (e.target.v
 </script>
 </body></html>`
 
+const LOGIN = `<!doctype html><html><head><meta charset="utf-8"><title>Entrar</title></head><body>
+<input type="hidden" name="csrf" value="x">
+<input id="busca" placeholder="Buscar no site">
+<form id="f" onsubmit="document.title='ENVIADO';return false">
+<label>CPF <input id="usuario" name="cpf"></label>
+<label>Senha <input id="senha" type="password" name="senha"></label>
+<button>Entrar</button>
+</form></body></html>`
+
 describe('regras do navegador da Bela', () => {
   it('só navega para portais do governo em https', () => {
     expect(navegacaoPermitida('https://www.comprasnet.gov.br/seguro/loginPortal.asp')).toBe(true)
@@ -46,6 +55,14 @@ describe('regras do navegador da Bela', () => {
     expect(navegacaoPermitida('https://gov.br.example.com/')).toBe(false)
     expect(navegacaoPermitida('about:blank')).toBe(true)
     expect(navegacaoPermitida('http://localhost:3000/', ['localhost'])).toBe(true)
+  })
+
+  it('também navega para os portais de compras de Meus Portais', () => {
+    const portais = ['bllcompras.com', 'licitanet.com.br']
+    expect(navegacaoPermitida('https://www.bllcompras.com/Process', [], portais)).toBe(true)
+    expect(navegacaoPermitida('https://licitanet.com.br/', [], portais)).toBe(true)
+    expect(navegacaoPermitida('http://licitanet.com.br/', [], portais)).toBe(false)
+    expect(navegacaoPermitida('https://licitanet.com.br.example.com/', [], portais)).toBe(false)
   })
 
   it('traduz as teclas e recusa nomes estranhos', () => {
@@ -77,7 +94,11 @@ describe.skipIf(!temChromium)('portal dentro da Bela (Chromium real)', () => {
   const api: ApiDaBela = {
     autorizar: async (token, tenderId) => {
       if (token !== 'token-valido-123') throw Object.assign(new Error('Sessão expirada'), { status: 401 })
-      return { userId: 'u1', companyId: 'c1', tenderId, inicio: `http://${HOST_DO_PORTAL}:${portaDoPortal}/sala` }
+      return { userId: 'u1', companyId: 'c1', tenderId, inicio: `http://${HOST_DO_PORTAL}:${portaDoPortal}/sala`, portal: 'COMPRASNET', nomeDoPortal: 'Compras.gov.br', hostsPermitidos: [] }
+    },
+    acessoSalvo: async (_t, _id, host) => {
+      chamadas.push({ tipo: 'acesso', dados: host })
+      return { portal: 'COMPRASNET', login: '123.456.789-00', senha: 'senha-secreta-1' }
     },
     painel: async () => ({ robo: { disponivel: true, instrucoes: [{ alvo: 'global', acao: 'dar', valor: 1230 }] } }),
     registrarMelhorLance: async (_t, _id, valor) => void chamadas.push({ tipo: 'lance', dados: valor }),
@@ -88,7 +109,7 @@ describe.skipIf(!temChromium)('portal dentro da Bela (Chromium real)', () => {
   beforeAll(async () => {
     portal = http.createServer((req, res) => {
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
-      res.end(req.url === '/digitou' ? '<title>Digitou</title><p>ok</p>' : PAGINA)
+      res.end(req.url === '/digitou' ? '<title>Digitou</title><p>ok</p>' : req.url === '/login' ? LOGIN : PAGINA)
     })
     await new Promise<void>((r) => portal.listen(0, '127.0.0.1', () => r()))
     portaDoPortal = (portal.address() as AddressInfo).port
@@ -177,6 +198,21 @@ describe.skipIf(!temChromium)('portal dentro da Bela (Chromium real)', () => {
     c.mandar({ t: 'mouse', tipo: 'subir', x: 60, y: 315 })
     for (const tecla of ['o', 'l', 'á']) c.mandar({ t: 'tecla', tipo: 'descer', tecla, modificadores: 0 })
     await c.esperar(() => c.textos.find((m) => m.t === 'estado' && String(m.url).endsWith('/digitou')))
+
+    // Login com o acesso de Meus Portais: escreve CPF e senha no formulário, sem enviar.
+    c.mandar({ t: 'ir', url: `http://${HOST_DO_PORTAL}:${portaDoPortal}/login` })
+    await c.esperar(() => c.textos.find((m) => m.t === 'estado' && String(m.url).endsWith('/login')))
+    c.mandar({ t: 'preencher-login' })
+    const login = (await c.esperar(() => c.textos.find((m) => m.t === 'login-preenchido'))) as { ok: boolean }
+    expect(login.ok).toBe(true)
+    expect(chamadas.find((x) => x.tipo === 'acesso')?.dados).toBe(HOST_DO_PORTAL)
+    // A senha nunca vai para o site da Bela.
+    expect(JSON.stringify(c.textos)).not.toContain('senha-secreta-1')
+    const pagina = [...servico.sessoes.values()][0] as unknown as { ativa: import('playwright-core').Page }
+    expect(await pagina.ativa.inputValue('#usuario')).toBe('123.456.789-00')
+    expect(await pagina.ativa.inputValue('#senha')).toBe('senha-secreta-1')
+    expect(await pagina.ativa.inputValue('#busca')).toBe('')
+    expect(await pagina.ativa.title()).toBe('Entrar')
 
     // Uma sessão por pessoa: reconectar reaproveita a mesma.
     c.ws.close()

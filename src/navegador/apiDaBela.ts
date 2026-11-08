@@ -9,6 +9,15 @@ export interface AutorizacaoDaSessao {
   companyId: string
   tenderId: string
   inicio: string
+  portal: string
+  nomeDoPortal: string
+  hostsPermitidos: string[]
+}
+
+export interface AcessoSalvo {
+  portal: string
+  login: string
+  senha: string
 }
 
 export interface PainelResumido {
@@ -26,19 +35,21 @@ export class ErroDaApi extends Error {
 }
 
 export interface ApiDaBela {
-  autorizar(token: string, tenderId: string): Promise<AutorizacaoDaSessao>
+  autorizar(token: string, tenderId: string, portal?: string): Promise<AutorizacaoDaSessao>
+  /** Login e senha de Meus Portais para o portal desta página (só com NAVEGADOR_SEGREDO). */
+  acessoSalvo(token: string, tenderId: string, host: string): Promise<AcessoSalvo>
   painel(token: string, tenderId: string): Promise<PainelResumido>
   registrarMelhorLance(token: string, tenderId: string, valor: number): Promise<void>
   registrarMensagens(token: string, tenderId: string, mensagens: unknown[]): Promise<void>
   registrarPreenchimento(token: string, tenderId: string, valor: number): Promise<void>
 }
 
-export function apiDaBela(base: string): ApiDaBela {
+export function apiDaBela(base: string, segredo?: string): ApiDaBela {
   const raiz = base.replace(/\/+$/, '')
-  async function chamar<T>(token: string, metodo: string, caminho: string, corpo?: unknown): Promise<T> {
+  async function chamar<T>(token: string, metodo: string, caminho: string, corpo?: unknown, extras: Record<string, string> = {}): Promise<T> {
     const r = await fetch(raiz + caminho, {
       method: metodo,
-      headers: { authorization: `Bearer ${token}`, ...(corpo === undefined ? {} : { 'content-type': 'application/json' }) },
+      headers: { authorization: `Bearer ${token}`, ...(corpo === undefined ? {} : { 'content-type': 'application/json' }), ...extras },
       body: corpo === undefined ? undefined : JSON.stringify(corpo),
       signal: AbortSignal.timeout(20_000),
     })
@@ -53,7 +64,11 @@ export function apiDaBela(base: string): ApiDaBela {
     return json as T
   }
   return {
-    autorizar: (token, tenderId) => chamar(token, 'POST', '/api/portal-na-bela/sessao', { tenderId }),
+    autorizar: (token, tenderId, portal) => chamar(token, 'POST', '/api/portal-na-bela/sessao', portal ? { tenderId, portal } : { tenderId }),
+    acessoSalvo: async (token, tenderId, host) => {
+      if (!segredo) throw new ErroDaApi(503, 'O preenchimento do login ainda não foi ativado no navegador da Bela.', 'SEGREDO_DO_NAVEGADOR')
+      return chamar(token, 'POST', '/api/portal-na-bela/acesso-salvo', { tenderId, host }, { 'x-navegador-segredo': segredo })
+    },
     painel: (token, tenderId) => chamar(token, 'GET', `/api/tenders/${tenderId}/pregao`),
     registrarMelhorLance: async (token, tenderId, valor) => {
       await chamar(token, 'POST', `/api/tenders/${tenderId}/pregao/lances`, { alvo: 'global', origem: 'MELHOR_LANCE', valor })

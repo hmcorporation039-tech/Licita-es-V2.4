@@ -20,11 +20,12 @@ rodar('Portal dentro da Bela', () => {
   const sufixo = randomUUID().slice(0, 8)
   const SENHA = 'Senha-forte-123'
   const anterior = process.env.NAVEGADOR_URL
+  const SEGREDO = 'segredo-do-navegador-de-teste-123'
 
-  async function http(metodo: string, caminho: string, corpo?: unknown, token?: string) {
+  async function http(metodo: string, caminho: string, corpo?: unknown, token?: string, extras: Record<string, string> = {}) {
     const res = await fetch(base + caminho, {
       method: metodo,
-      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...extras },
       body: corpo === undefined ? undefined : JSON.stringify(corpo),
     })
     return { status: res.status, body: (await res.json().catch(() => null)) as Record<string, unknown> }
@@ -43,6 +44,8 @@ rodar('Portal dentro da Bela', () => {
     process.env.JWT_SECRET = process.env.JWT_SECRET ?? 'segredo-de-teste'
     process.env.RATE_LIMIT_DISABLED = 'true'
     delete process.env.NAVEGADOR_URL
+    process.env.NAVEGADOR_SEGREDO = SEGREDO
+    process.env.CREDENCIAIS_PORTAL_CHAVE = process.env.CREDENCIAIS_PORTAL_CHAVE ?? Buffer.alloc(32, 7).toString('base64')
     const { app } = await import('../../src/api/server')
     ;({ prisma } = await import('../../src/services/tenderService'))
     const filas = await import('../../src/queues')
@@ -57,7 +60,8 @@ rodar('Portal dentro da Bela', () => {
     const empresas = await prisma.company.findMany({ where: { name: { startsWith: `Portal ${sufixo}` } }, select: { id: true } })
     const ids = empresas.map((e: { id: string }) => e.id)
     await prisma.tenderParticipationPlan.deleteMany({ where: { companyId: { in: ids } } })
-    await prisma.tender.deleteMany({ where: { fonteId: `portal-${sufixo}` } })
+    await prisma.portalCredencial.deleteMany({ where: { companyId: { in: ids } } })
+    await prisma.tender.deleteMany({ where: { fonteId: { startsWith: `portal-${sufixo}` } } })
     await prisma.auditLog.deleteMany({ where: { companyId: { in: ids } } })
     await prisma.user.deleteMany({ where: { companyId: { in: ids } } })
     await prisma.company.deleteMany({ where: { id: { in: ids } } })
@@ -97,5 +101,44 @@ rodar('Portal dentro da Bela', () => {
     expect(await prisma.auditLog.count({ where: { companyId: paga.companyId, action: 'PORTAL_NA_BELA_ABERTO' } })).toBe(1)
 
     expect((await http('POST', '/api/portal-na-bela/sessao', { tenderId: tender.id })).status).toBe(401)
+  })
+
+  it('abre o portal da licitação e entrega o login salvo só ao serviço navegador', async () => {
+    process.env.NAVEGADOR_URL = 'https://navegador.exemplo.app/'
+    const empresa = await conta('bll', 'PROFISSIONAL')
+    const tender = await prisma.tender.create({
+      data: {
+        fonte: 'PNCP', fonteId: `portal-${sufixo}-bll`, modalidade: 'PREGAO_ELETRONICO', situacao: 'ABERTA',
+        objeto: 'Pregão na BLL', objetoNorm: 'pregao na bll', orgao: 'Prefeitura teste', orgaoNorm: 'prefeitura teste', uf: 'ES', publicadoAt: new Date(), rawJson: {},
+        linkEdital: 'https://bllcompras.com/Process/ProcessView?param1=abc', plataformaDeOrigem: 'BLL COMPRAS',
+      },
+    })
+    await prisma.tenderParticipationPlan.create({ data: { companyId: empresa.companyId, userId: empresa.id, tenderId: tender.id, status: 'VOU_PARTICIPAR', state: {} } })
+
+    const config = await http('GET', `/api/portal-na-bela/config?tenderId=${tender.id}`, undefined, empresa.token)
+    expect(config.body.portalSugerido).toBe('BLL')
+    expect((config.body.portais as { id: string; temAcessoSalvo: boolean }[]).find((p) => p.id === 'BLL')?.temAcessoSalvo).toBe(false)
+
+    const sessao = await http('POST', '/api/portal-na-bela/sessao', { tenderId: tender.id }, empresa.token)
+    expect(sessao.body).toMatchObject({ portal: 'BLL', inicio: 'https://bllcompras.com/Process/ProcessView?param1=abc' })
+    expect(sessao.body.hostsPermitidos).toContain('licitanet.com.br')
+    const outro = await http('POST', '/api/portal-na-bela/sessao', { tenderId: tender.id, portal: 'LICITANET' }, empresa.token)
+    expect(outro.body).toMatchObject({ portal: 'LICITANET', inicio: 'https://licitanet.com.br/' })
+    expect((await http('POST', '/api/portal-na-bela/sessao', { tenderId: tender.id, portal: 'NAO_EXISTE' }, empresa.token)).status).toBe(400)
+
+    const pedido = { tenderId: tender.id, host: 'www.bllcompras.com' }
+    // Sem o segredo do serviço navegador, o token do site não basta.
+    expect((await http('POST', '/api/portal-na-bela/acesso-salvo', pedido, empresa.token)).body.code).toBe('SEGREDO_DO_NAVEGADOR')
+    expect((await http('POST', '/api/portal-na-bela/acesso-salvo', pedido, empresa.token, { 'x-navegador-segredo': 'errado' })).status).toBe(403)
+    const comSegredo = { 'x-navegador-segredo': SEGREDO }
+    expect((await http('POST', '/api/portal-na-bela/acesso-salvo', pedido, empresa.token, comSegredo)).body.code).toBe('SEM_ACESSO_SALVO')
+
+    const { salvarCredencial } = await import('../../src/services/meusPortais')
+    await salvarCredencial(empresa.companyId, { portal: 'BLL', login: '12345678000190', senha: 'senha-do-portal', consentimentoTexto: 'ok' })
+    const acesso = await http('POST', '/api/portal-na-bela/acesso-salvo', pedido, empresa.token, comSegredo)
+    expect(acesso.status).toBe(200)
+    expect(acesso.body).toEqual({ portal: 'BLL', login: '12345678000190', senha: 'senha-do-portal' })
+    expect((await http('POST', '/api/portal-na-bela/acesso-salvo', { tenderId: tender.id, host: 'example.com' }, empresa.token, comSegredo)).body.code).toBe('PORTAL_DESCONHECIDO')
+    expect(await prisma.auditLog.count({ where: { companyId: empresa.companyId, action: 'PORTAL_NA_BELA_LOGIN_PREENCHIDO' } })).toBe(1)
   })
 })

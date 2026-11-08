@@ -58,3 +58,15 @@ export async function senhaDaCredencial(companyId: string, id: string, chaves: C
   if (!credencial) throw new ApiError(404, 'Credencial não encontrada.')
   return decifrar(Buffer.from(credencial.senhaCifrada), chaves.todas)
 }
+
+/**
+ * Login e senha salvos para um portal, para o "portal dentro da Bela" escrever na tela de
+ * login quando a pessoa pede. Só sai da API para o serviço navegador (nunca para o site).
+ */
+export async function acessoParaPreencher(companyId: string, portal: string, chaves: Chaves = chavesDoAmbiente()): Promise<{ login: string; senha: string }> {
+  const credencial = await prisma.portalCredencial.findUnique({ where: { companyId_portal: { companyId, portal } } })
+  if (!credencial || credencial.consentimentoEm === null) {
+    throw new ApiError(404, 'Este portal não tem acesso salvo. Cadastre o login e a senha em Meus Portais.', { code: 'SEM_ACESSO_SALVO' })
+  }
+  return { login: credencial.login, senha: decifrar(Buffer.from(credencial.senhaCifrada), chaves.todas) }
+}

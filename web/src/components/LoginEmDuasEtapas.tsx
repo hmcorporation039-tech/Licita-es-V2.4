@@ -5,7 +5,7 @@ import { Copy, KeyRound, RefreshCw, ShieldCheck, Smartphone } from 'lucide-react
 import { api, ApiRequestError } from '@/lib/api'
 import { replaceSessionToken } from '@/lib/session'
 import { imagemDoQrCode, type AplicativoParaLer, type SituacaoDoSegundoFator } from '@/lib/segundoFator'
-import { Button, Checkbox, Field, FormError, Input, Notice, Panel, StatusTag } from '@/components/ui'
+import { Button, Checkbox, Field, FormError, Input, InputDeSenha, Notice, Panel, StatusTag } from '@/components/ui'
 
 type Etapa = 'resumo' | 'senha' | 'qr' | 'codigos' | 'renovar'
 
@@ -163,7 +163,7 @@ export default function LoginEmDuasEtapas({ obrigatorio = false, onAtivado }: { 
           }}
         >
           <Field label="Sua senha" hint="Para confirmar que é você." required>
-            <Input type="password" autoComplete="current-password" value={senha} onChange={(e) => setSenha(e.target.value)} autoFocus />
+            <InputDeSenha autoComplete="current-password" value={senha} onChange={(e) => setSenha(e.target.value)} autoFocus />
           </Field>
           {trocando && <CampoDoCodigo valor={codigoAtual} onChange={setCodigoAtual} rotulo="Código do celular atual" />}
           <FormError>{erro}</FormError>

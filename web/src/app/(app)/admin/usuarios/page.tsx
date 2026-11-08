@@ -3,7 +3,7 @@
 import { formatarData } from '@/lib/datas'
 import { Fragment, useEffect, useState, type ComponentProps } from 'react'
 import { useRouter } from 'next/navigation'
-import { CalendarPlus, Check, Copy, Eye, EyeOff, KeyRound, MailCheck, Power, UserPlus } from 'lucide-react'
+import { CalendarPlus, Check, Copy, KeyRound, MailCheck, Power, UserPlus } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
 import { api, ApiRequestError } from '@/lib/api'
 import { getSessionUser } from '@/lib/session'
@@ -19,6 +19,7 @@ import {
   Field,
   FormError,
   Input,
+  InputDeSenha,
   Notice,
   Panel,
   Select,
@@ -46,21 +47,7 @@ const SENHA_MAX = 72
 type MensagemDeSenha = { id: string; tipo: 'erro' | 'ok'; texto: string; senhaGerada?: string }
 
 function SenhaComAlternancia({ className, ...rest }: Omit<ComponentProps<'input'>, 'type'>) {
-  const [visivel, setVisivel] = useState(false)
-  return (
-    <div className="relative">
-      <Input {...rest} type={visivel ? 'text' : 'password'} autoComplete="new-password" spellCheck={false} className={cx('pr-10 font-mono', className)} />
-      <button
-        type="button"
-        onClick={() => setVisivel((v) => !v)}
-        aria-label={visivel ? 'Ocultar senha' : 'Mostrar senha'}
-        aria-pressed={visivel}
-        className="absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded text-muted hover:text-ink"
-      >
-        {visivel ? <EyeOff size={16} aria-hidden /> : <Eye size={16} aria-hidden />}
-      </button>
-    </div>
-  )
+  return <InputDeSenha {...rest} autoComplete="new-password" className={cx('font-mono', className)} />
 }
 
 function SenhaGerada({ titulo, email, senha }: { titulo: string; email: string; senha: string }) {

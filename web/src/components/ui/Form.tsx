@@ -1,6 +1,7 @@
 'use client'
 
-import { cloneElement, isValidElement, useId, type ComponentProps, type ReactElement, type ReactNode } from 'react'
+import { cloneElement, isValidElement, useId, useState, type ComponentProps, type ReactElement, type ReactNode } from 'react'
+import { Eye, EyeOff } from 'lucide-react'
 import { cx } from './cx'
 
 const CONTROLE =
@@ -8,6 +9,26 @@ const CONTROLE =
 
 export function Input({ className, ...rest }: ComponentProps<'input'>) {
   return <input className={cx(CONTROLE, 'h-10 px-3', className)} {...rest} />
+}
+
+/** Campo de senha com o "olhinho" para conferir o que foi digitado. */
+export function InputDeSenha({ className, ...rest }: Omit<ComponentProps<'input'>, 'type'>) {
+  const [visivel, setVisivel] = useState(false)
+  return (
+    <div className="relative">
+      <Input {...rest} type={visivel ? 'text' : 'password'} spellCheck={false} autoCapitalize="none" autoCorrect="off" className={cx('pr-10', className)} />
+      <button
+        type="button"
+        onClick={() => setVisivel((v) => !v)}
+        aria-label={visivel ? 'Ocultar senha' : 'Mostrar senha'}
+        aria-pressed={visivel}
+        title={visivel ? 'Ocultar senha' : 'Mostrar senha'}
+        className="absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-r-lg text-muted hover:text-ink focus-visible:text-ink focus-visible:outline-none"
+      >
+        {visivel ? <EyeOff size={16} aria-hidden /> : <Eye size={16} aria-hidden />}
+      </button>
+    </div>
+  )
 }
 
 export function Select({ className, ...rest }: ComponentProps<'select'>) {

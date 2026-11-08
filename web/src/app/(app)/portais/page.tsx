@@ -10,7 +10,7 @@ import {
   EmptyState,
   Field,
   FormError,
-  Input,
+  Input, InputDeSenha,
   Notice,
   PageHeader,
   Panel,
@@ -168,7 +168,7 @@ export default function PortaisPage() {
             </Field>
           </div>
           <Field label="Senha do portal">
-            <Input type="password" value={senha} onChange={(e) => setSenha(e.target.value)} autoComplete="new-password" placeholder="••••••••" />
+            <InputDeSenha value={senha} onChange={(e) => setSenha(e.target.value)} autoComplete="new-password" placeholder="••••••••" />
           </Field>
           {portalSelecionado?.loginComCaptcha && (
             <p className="text-sm text-muted">

@@ -1,30 +1,34 @@
 'use client'
 
-// "Portal dentro da Bela": o Compras.gov.br aberto num navegador da Bela e mostrado
-// aqui, dentro do Pregão com a Bela. A pessoa usa o portal normalmente (clica, digita,
-// entra com o gov.br, resolve o CAPTCHA); a Bela lê o melhor lance e o chat e, quando a
-// pessoa pede, escreve o lance sugerido no campo. Quem envia o lance é sempre a pessoa.
+// "Portal dentro da Bela": o portal da licitação (Compras.gov.br, BLL, Licitanet e os
+// outros de Meus Portais) aberto num navegador da Bela e mostrado aqui, dentro do Pregão
+// com a Bela. A pessoa usa o portal normalmente (clica, digita, resolve o CAPTCHA). Quando
+// ela pede, a Bela escreve o login salvo em Meus Portais no formulário e o lance sugerido
+// no campo. Quem clica em "Entrar" e em enviar o lance é sempre a pessoa.
 
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent, type MouseEvent } from 'react'
-import { ArrowLeft, ArrowRight, Home, Lock, Monitor, PencilLine, RotateCw, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Home, KeyRound, Lock, Monitor, PencilLine, RotateCw, X } from 'lucide-react'
 import { api, ApiRequestError } from '@/lib/api'
 import { getSessionToken } from '@/lib/session'
 import type { RoboDoPregao } from '@/lib/types'
-import { Button, Notice, Panel, StatusTag, TextLink } from '@/components/ui'
+import { Button, Field, Notice, Panel, Select, StatusTag, TextLink } from '@/components/ui'
 
 interface Config {
   disponivel: boolean
   url: string | null
   planoGratuito: boolean
+  portais: { id: string; nome: string; temAcessoSalvo: boolean }[]
+  portalSugerido: string | null
 }
 
 type Estado = 'fechado' | 'conectando' | 'aberto'
 
 type Recebida =
-  | { t: 'pronto'; largura: number; altura: number }
+  | { t: 'pronto'; largura: number; altura: number; portal: string; nomeDoPortal: string }
   | { t: 'estado'; url: string; titulo: string; host: string; portal: string | null }
   | { t: 'leitura'; melhorLance: number | null; mensagensNovas: number }
   | { t: 'lance-preenchido'; ok: boolean; texto?: string; motivo?: string }
+  | { t: 'login-preenchido'; ok: boolean; mensagem: string }
   | { t: 'pedido-de-arquivo'; multiplo: boolean }
   | { t: 'download'; nome: string; tipo: string; base64: string }
   | { t: 'dialogo'; tipo: string; mensagem: string; padrao: string }
@@ -75,6 +79,9 @@ export default function PortalNaBela({ tenderId, robo, aoLer }: { tenderId: stri
   const [respostaDoDialogo, setRespostaDoDialogo] = useState('')
   const [preenchimento, setPreenchimento] = useState<{ ok: boolean; texto: string } | null>(null)
   const [focado, setFocado] = useState(false)
+  const [escolhido, setEscolhido] = useState('COMPRASNET')
+  const [nomeAberto, setNomeAberto] = useState<string | null>(null)
+  const [login, setLogin] = useState<{ ok: boolean; mensagem: string } | null>(null)
 
   const ws = useRef<WebSocket | null>(null)
   const tela = useRef<HTMLCanvasElement | null>(null)
@@ -86,10 +93,13 @@ export default function PortalNaBela({ tenderId, robo, aoLer }: { tenderId: stri
 
   useEffect(() => {
     api
-      .get<Config>('/api/portal-na-bela/config')
-      .then(setConfig)
-      .catch(() => setConfig({ disponivel: false, url: null, planoGratuito: false }))
-  }, [])
+      .get<Config>(`/api/portal-na-bela/config?tenderId=${encodeURIComponent(tenderId)}`)
+      .then((c) => {
+        setConfig(c)
+        if (c.portalSugerido) setEscolhido(c.portalSugerido)
+      })
+      .catch(() => setConfig({ disponivel: false, url: null, planoGratuito: false, portais: [], portalSugerido: null }))
+  }, [tenderId])
 
   const mandar = useCallback((m: Record<string, unknown>) => {
     const c = ws.current
@@ -117,6 +127,7 @@ export default function PortalNaBela({ tenderId, robo, aoLer }: { tenderId: stri
       switch (m.t) {
         case 'pronto':
           setTamanho({ largura: m.largura, altura: m.altura })
+          setNomeAberto(m.nomeDoPortal)
           setEstado('aberto')
           setErro(null)
           break
@@ -131,6 +142,9 @@ export default function PortalNaBela({ tenderId, robo, aoLer }: { tenderId: stri
           break
         case 'lance-preenchido':
           setPreenchimento({ ok: m.ok, texto: m.ok ? `Lance ${m.texto} escrito no campo. Confira e clique em enviar no portal.` : (m.motivo ?? 'Não deu para preencher.') })
+          break
+        case 'login-preenchido':
+          setLogin({ ok: m.ok, mensagem: m.mensagem })
           break
         case 'pedido-de-arquivo':
           setPedidoDeArquivo({ multiplo: m.multiplo })
@@ -167,11 +181,12 @@ export default function PortalNaBela({ tenderId, robo, aoLer }: { tenderId: stri
     }
     setErro(null)
     setAviso(null)
+    setLogin(null)
     setEstado('conectando')
     const c = new WebSocket(`${config.url}/sessao`)
     c.binaryType = 'blob'
     ws.current = c
-    c.onopen = () => c.send(JSON.stringify({ t: 'entrar', token, tenderId }))
+    c.onopen = () => c.send(JSON.stringify({ t: 'entrar', token, tenderId, portal: escolhido }))
     c.onmessage = (ev) => {
       if (typeof ev.data === 'string') {
         try {
@@ -188,7 +203,7 @@ export default function PortalNaBela({ tenderId, robo, aoLer }: { tenderId: stri
       setDialogo(null)
     }
     c.onerror = () => setErro('Não consegui conectar ao navegador da Bela. Tente de novo em instantes.')
-  }, [config, tenderId, tratar, desenhar])
+  }, [config, tenderId, escolhido, tratar, desenhar])
 
   // Mantém a conexão viva e fecha ao sair da página (a sessão espera 2 minutos por uma reconexão).
   useEffect(() => {
@@ -272,6 +287,8 @@ export default function PortalNaBela({ tenderId, robo, aoLer }: { tenderId: stri
   const instrucao = robo.instrucoes.find((i) => i.acao === 'dar' && typeof i.valor === 'number')
 
   if (!config) return null
+  const portalEscolhido = config.portais.find((p) => p.id === escolhido)
+  const nomeEscolhido = portalEscolhido?.nome ?? 'o portal'
 
   if (estado === 'fechado') {
     return (
@@ -281,7 +298,7 @@ export default function PortalNaBela({ tenderId, robo, aoLer }: { tenderId: stri
             <Monitor size={16} aria-hidden /> Portal dentro da Bela
           </span>
         }
-        description="Abra o Compras.gov.br aqui mesmo, ao lado do painel da Bela. Você entra com o seu gov.br e usa o portal normalmente; a Bela acompanha o lance e o chat."
+        description="Abra o portal da licitação aqui mesmo, ao lado do painel da Bela. Você usa o portal normalmente e a Bela escreve o seu login salvo e o lance sugerido quando você pede."
       >
         <div className="flex flex-col gap-3">
           {erro && <Notice tone="danger">{erro}</Notice>}
@@ -294,14 +311,31 @@ export default function PortalNaBela({ tenderId, robo, aoLer }: { tenderId: stri
             </Notice>
           ) : (
             <>
+              {config.portais.length > 0 && (
+                <Field label="Portal" hint={config.portalSugerido ? 'Já escolhemos o portal desta licitação. Troque se ela for em outro.' : 'Escolha o portal em que esta licitação acontece.'}>
+                  <Select value={escolhido} onChange={(e) => setEscolhido(e.target.value)} className="max-w-sm">
+                    {config.portais.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.nome}
+                        {p.temAcessoSalvo ? ' (login salvo)' : ''}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              )}
+              {portalEscolhido && !portalEscolhido.temAcessoSalvo && (
+                <Notice tone="info">
+                  Salve o login e a senha do {portalEscolhido.nome} em <TextLink href="/portais">Meus Portais</TextLink> para a Bela preencher o login para você. Sem isso, você digita na tela.
+                </Notice>
+              )}
               <ul className="ml-4 list-disc text-sm text-ink-2">
-                <li>Quem entra no portal é você: digite o CPF, a senha e resolva o CAPTCHA na tela, como no seu computador.</li>
-                <li>A Bela não guarda a sua senha nem a sessão: ao fechar, tudo é apagado.</li>
+                <li>Na tela de login, clique em &quot;Preencher meu login&quot;: a Bela escreve o usuário e a senha de Meus Portais. O CAPTCHA e o clique em Entrar são seus.</li>
+                <li>A senha vai direto para o navegador da Bela, não aparece nesta página e nada fica guardado: ao fechar, a sessão é apagada.</li>
                 <li>A Bela nunca envia lance sozinha. Com um clique, ela escreve o lance sugerido no campo; quem confere e envia é você.</li>
                 <li>Certificado digital em token (A3) não funciona aqui: para ele, use a extensão.</li>
               </ul>
               <Button variant="primary" icon={Monitor} onClick={abrir} className="self-start">
-                Abrir o Compras.gov.br aqui
+                Abrir o {nomeEscolhido} aqui
               </Button>
             </>
           )}
@@ -319,9 +353,12 @@ export default function PortalNaBela({ tenderId, robo, aoLer }: { tenderId: stri
         <Button size="sm" variant="ghost" icon={Home} aria-label="Início do portal" onClick={() => mandar({ t: 'navegar', acao: 'inicio' })} />
         <span className="inline-flex min-w-0 flex-1 items-center gap-1.5 truncate rounded border border-line bg-sunken px-2 py-1 font-mono text-xs text-ink-2" title={pagina?.titulo}>
           <Lock size={12} aria-hidden className="shrink-0" />
-          {estado === 'conectando' ? 'Abrindo o navegador da Bela…' : (pagina?.host ?? '…')}
+          {estado === 'conectando' ? `Abrindo o ${nomeEscolhido}…` : (pagina?.host ?? nomeAberto ?? '…')}
         </span>
         {pagina?.portal && <StatusTag tone="accent">Bela lendo a disputa</StatusTag>}
+        <Button size="sm" variant="secondary" icon={KeyRound} onClick={() => mandar({ t: 'preencher-login' })} title="Escreve o usuário e a senha de Meus Portais na tela de login. Quem clica em Entrar é você.">
+          Preencher meu login
+        </Button>
         {melhorLance !== null && (
           <span className="text-xs text-ink-2">
             Melhor lance: <strong className="font-mono text-ink">{brl(melhorLance)}</strong>
@@ -339,6 +376,7 @@ export default function PortalNaBela({ tenderId, robo, aoLer }: { tenderId: stri
 
       {erro && <Notice tone="danger">{erro}</Notice>}
       {aviso && <Notice tone="info">{aviso}</Notice>}
+      {login && <Notice tone={login.ok ? 'ok' : 'warn'}>{login.mensagem}</Notice>}
       {preenchimento && <Notice tone={preenchimento.ok ? 'ok' : 'warn'}>{preenchimento.texto}</Notice>}
       {pedidoDeArquivo && (
         <Notice tone="warn" title="O portal pediu um arquivo">

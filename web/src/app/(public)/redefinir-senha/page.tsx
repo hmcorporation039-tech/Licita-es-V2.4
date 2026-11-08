@@ -3,7 +3,7 @@
 import { useSearchParams } from 'next/navigation'
 import { Suspense, useState } from 'react'
 import { PublicCard } from '@/components/PublicShell'
-import { Button, Carregando, Field, FormError, Input, LinkButton, TextLink } from '@/components/ui'
+import { Button, Carregando, Field, FormError, InputDeSenha, LinkButton, TextLink } from '@/components/ui'
 import { api, ApiRequestError } from '@/lib/api'
 
 const FALA = 'Escolha uma senha nova e voltamos às suas licitações.'
@@ -76,10 +76,10 @@ function Formulario() {
     <PublicCard title="Nova senha" description="Escolha uma senha com pelo menos 10 caracteres." fala={FALA}>
       <form onSubmit={enviar} className="flex flex-col gap-4">
         <Field label="Nova senha" required>
-          <Input type="password" value={senha} onChange={(e) => setSenha(e.target.value)} maxLength={72} autoComplete="new-password" />
+          <InputDeSenha value={senha} onChange={(e) => setSenha(e.target.value)} maxLength={72} autoComplete="new-password" />
         </Field>
         <Field label="Confirmar nova senha" required>
-          <Input type="password" value={confirmar} onChange={(e) => setConfirmar(e.target.value)} maxLength={72} autoComplete="new-password" />
+          <InputDeSenha value={confirmar} onChange={(e) => setConfirmar(e.target.value)} maxLength={72} autoComplete="new-password" />
         </Field>
         {erro && (
           <FormError>

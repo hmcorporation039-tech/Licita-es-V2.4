@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Download, MessageCircle, Send } from 'lucide-react'
 import { api, ApiRequestError } from '@/lib/api'
 import { linkDoWhatsAppParaContinuar, numeroDoWhatsApp, situacaoDoAcesso } from '@/lib/acessoDaConta'
-import { Button, Field, FormError, Input, Notice, buttonClasses } from '@/components/ui'
+import { Button, Field, FormError, Input, InputDeSenha, Notice, buttonClasses } from '@/components/ui'
 import EscolhaDoPlano, { type EscolhaFeita } from '@/components/EscolhaDoPlano'
 import type { PlanoParaAssinar } from '@/lib/cobranca'
 
@@ -109,7 +109,7 @@ export default function AcessoEncerrado({
             <Input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
           </Field>
           <Field label="Senha" required>
-            <Input type="password" autoComplete="current-password" value={senha} onChange={(e) => setSenha(e.target.value)} />
+            <InputDeSenha autoComplete="current-password" value={senha} onChange={(e) => setSenha(e.target.value)} />
           </Field>
         </div>
       )}
