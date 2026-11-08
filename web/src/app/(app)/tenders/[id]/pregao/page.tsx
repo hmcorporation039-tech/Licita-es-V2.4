@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useRequireSession } from "@/hooks/useRequireSession";
 import ChatDoPregoeiro from "@/components/ChatDoPregoeiro";
+import PortalNaBela from "@/components/PortalNaBela";
 import { useEscuta, useFalaDaBela } from "@/hooks/useBela";
 import { api, ApiRequestError } from "@/lib/api";
 import { formatarData } from "@/lib/datas";
@@ -1326,6 +1327,12 @@ export default function PregaoComABelaPage({
       <Notice tone="info">
         A Bela não dá lances: ela calcula e sugere. Você dá o lance no portal.
       </Notice>
+
+      <PortalNaBela
+        tenderId={id}
+        robo={painelAtual.robo}
+        aoLer={() => setTentativa((n) => n + 1)}
+      />
 
       <ChatDoPregoeiro tenderId={id} />
 

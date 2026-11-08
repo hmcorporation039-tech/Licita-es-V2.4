@@ -161,5 +161,25 @@ rodar('Obras e ganhadores', () => {
     expect(semContato.status).toBe(403)
     expect(semContato.body.code).toBe('OBRAS_SO_NOS_PLANOS')
     expect((await http('GET', `/api/obras/mensagem/${encodeURIComponent(idDoContrato(1))}`, undefined, caio.token)).status).toBe(403)
+
+    // O caminho inverso: quem ganhou uma obra em Vila Velha procura eletricista perto dela.
+    // Ana aceita aparecer como prestadora; Caio não.
+    await http('PUT', '/api/obras/perfil', { raioKm: 100, ufs: ['ES'], nichos: [eletrica], visivelComoPrestador: true, apresentacao: 'Equipe própria, NR-10.' }, ana.token)
+    const busca = (token: string, extra = '') => http('GET', `/api/obras/prestadores?servico=eletrica&cidade=Vila%20Velha&uf=ES&raioKm=100${extra}`, undefined, token)
+    const achados = await busca(bia.token)
+    expect(achados.status).toBe(200)
+    expect(achados.body.obra).toMatchObject({ municipio: 'Vila Velha', uf: 'ES' })
+    const daAna = achados.body.daBela.filter((p: { id: string }) => p.id === ana.companyId)
+    expect(daAna).toHaveLength(1)
+    expect(daAna[0]).toMatchObject({ apresentacao: 'Equipe própria, NR-10.', telefone: '(27) 98888-7777', nichos: ['Instalações elétricas'] })
+    expect(achados.body.daBela.some((p: { id: string }) => p.id === caio.companyId)).toBe(false)
+    // A própria empresa não aparece para si; serviço que ela não faz também não.
+    expect((await busca(ana.token)).body.daBela.some((p: { id: string }) => p.id === ana.companyId)).toBe(false)
+    expect((await http('GET', '/api/obras/prestadores?servico=pintura&cidade=Vila%20Velha&uf=ES', undefined, bia.token)).body.daBela.some((p: { id: string }) => p.id === ana.companyId)).toBe(false)
+    expect((await http('GET', '/api/obras/prestadores?servico=eletrica&cidade=Cidade%20Inventada&uf=ES', undefined, bia.token)).status).toBe(400)
+    // Sem a chave do Google, a busca lá avisa que não está ativada.
+    const google = await http('GET', '/api/obras/prestadores/google?servico=eletrica&cidade=Vila%20Velha&uf=ES', undefined, ana.token)
+    expect(google.status).toBe(503)
+    expect(google.body.code).toBe('GOOGLE_NAO_CONFIGURADO')
   })
 })

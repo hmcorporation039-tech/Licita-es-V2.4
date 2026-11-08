@@ -104,7 +104,7 @@ export function textoParaBusca(objeto: string): string {
 }
 
 // "CAMPINAS" / "sao jose dos campos" -> "Campinas" / "Sao Jose dos Campos"
-function nomeLegivel(nome: string): string {
+export function nomeLegivel(nome: string): string {
   return nome
     .toLocaleLowerCase('pt-BR')
     .replace(/(^|\s)(\p{L})/gu, (_, espaco: string, letra: string) => espaco + letra.toLocaleUpperCase('pt-BR'))

@@ -4,7 +4,7 @@ import CompartilharLicitacao from '@/components/CompartilharLicitacao'
 import { dataDaLicitacao, faltamDiasUteis, formatarData } from '@/lib/datas'
 import { AVISO_DE_APOIO_TECNICO } from '@/lib/avisoDeApoio'
 import { use, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
-import { AlertCircle, Calculator, Check, CheckCircle2, ChevronDown, ChevronUp, ExternalLink, Gavel, Loader2, Plus, RotateCcw, Trash2 } from 'lucide-react'
+import { AlertCircle, Calculator, Check, CheckCircle2, ChevronDown, ChevronUp, ExternalLink, Gavel, HardHat, Loader2, Plus, RotateCcw, Trash2 } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
 import { useFavoritas } from '@/hooks/useFavoritas'
 import BotaoFavorito from '@/components/BotaoFavorito'
@@ -603,6 +603,16 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
                 <LinkButton href={`/tenders/${id}/pregao`} variant="secondary" icon={Gavel}>
                   Pregão com a Bela
                 </LinkButton>
+                {tender.municipio && tender.uf && (
+                  <LinkButton
+                    href={`/obras?aba=prestadores&cidade=${encodeURIComponent(tender.municipio)}&uf=${tender.uf}`}
+                    variant="secondary"
+                    icon={HardHat}
+                    title="Empresas perto do local desta licitação para executar parte do serviço"
+                  >
+                    Prestadores perto daqui
+                  </LinkButton>
+                )}
               </>
             ) : (
               <Button variant="primary" icon={CheckCircle2} loading={escolhendo} onClick={escolherLicitacao}>

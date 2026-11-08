@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { Copy, ExternalLink, HardHat, Lock, MessageSquareText, Phone, Settings2 } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
 import { api, ApiRequestError } from '@/lib/api'
-import { Button, Carregando, Checkbox, EmptyState, ErrorState, Field, Input, Notice, PageHeader, Panel, Select, StatusTag, TextLink, cx } from '@/components/ui'
+import { Button, Carregando, Checkbox, EmptyState, ErrorState, Field, Input, Notice, PageHeader, Panel, Select, StatusTag, Tabs, TextLink, Textarea, cx, useAbaNaUrl } from '@/components/ui'
+import PrestadoresDaObra from '@/components/PrestadoresDaObra'
 
 interface NichoPronto {
   id: string
@@ -26,7 +27,14 @@ interface Perfil {
   regiao: { raioKm: number | null; ufs: string[]; valorMinimo: number | null }
   nichos: Nicho[]
   catalogo: NichoPronto[]
+  prestador: { visivel: boolean; apresentacao: string | null; telefone: string | null; email: string | null }
+  servicos: { id: string; nome: string }[]
+  google: boolean
+  planoGratuito: boolean
 }
+
+type AbaDeObras = 'ganhadores' | 'prestadores'
+const ABAS_DE_OBRAS = ['ganhadores', 'prestadores'] as const
 
 interface Oportunidade {
   id: string
@@ -70,6 +78,8 @@ function Configuracao({ perfil, aoSalvar }: { perfil: Perfil; aoSalvar: () => vo
   const [valorMinimo, setValorMinimo] = useState(perfil.regiao.valorMinimo ? String(perfil.regiao.valorMinimo) : '')
   const [nomeProprio, setNomeProprio] = useState('')
   const [palavrasProprias, setPalavrasProprias] = useState('')
+  const [visivel, setVisivel] = useState(perfil.prestador.visivel)
+  const [apresentacao, setApresentacao] = useState(perfil.prestador.apresentacao ?? '')
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
 
@@ -99,6 +109,8 @@ function Configuracao({ perfil, aoSalvar }: { perfil: Perfil; aoSalvar: () => vo
         ufs,
         valorMinimo: valorMinimo ? Number(valorMinimo.replace(/\./g, '').replace(',', '.')) || null : null,
         nichos,
+        visivelComoPrestador: visivel,
+        apresentacao: apresentacao.trim() || null,
       })
       aoSalvar()
     } catch (e) {
@@ -190,6 +202,33 @@ function Configuracao({ perfil, aoSalvar }: { perfil: Perfil; aoSalvar: () => vo
         <Field label="Valor mínimo do contrato (opcional)" hint="Deixe em branco para ver todos">
           <Input inputMode="decimal" value={valorMinimo} onChange={(e) => setValorMinimo(e.target.value)} placeholder="Ex.: 100.000" className="max-w-xs" />
         </Field>
+
+        <fieldset className="flex flex-col gap-2 rounded border border-line bg-sunken px-3 py-3">
+          <legend className="sr-only">Aparecer como prestador</legend>
+          <Checkbox
+            checked={visivel}
+            onChange={() => setVisivel((v) => !v)}
+            label="Quero aparecer para quem ganhou obra na minha região e procura prestador"
+            hint="Quem procura vê o nome da empresa, a cidade, os nichos acima, a apresentação abaixo e o telefone e o e-mail cadastrados em Empresa e documentos."
+          />
+          {visivel && (
+            <>
+              {!perfil.prestador.telefone && !perfil.prestador.email && (
+                <Notice tone="warn">
+                  A sua empresa não tem telefone nem e-mail cadastrado: cadastre em <TextLink href="/empresa">Empresa e documentos</TextLink> para receber contato.
+                </Notice>
+              )}
+              <Field label="Apresentação (opcional)" hint={`${apresentacao.length}/400`}>
+                <Textarea
+                  value={apresentacao}
+                  onChange={(e) => setApresentacao(e.target.value.slice(0, 400))}
+                  rows={3}
+                  placeholder="Ex.: Equipe própria de eletricistas, NR-10, atendemos todo o Pará. Obras públicas desde 2015."
+                />
+              </Field>
+            </>
+          )}
+        </fieldset>
 
         {erro && <Notice tone="danger">{erro}</Notice>}
         <div className="flex justify-end">
@@ -339,6 +378,7 @@ export default function ObrasPage() {
   const [ordem, setOrdem] = useState<'recentes' | 'perto'>('recentes')
   const [erro, setErro] = useState<string | null>(null)
   const [tentativa, setTentativa] = useState(0)
+  const [aba, setAba] = useAbaNaUrl<AbaDeObras>(ABAS_DE_OBRAS, 'ganhadores')
 
   useEffect(() => {
     if (!user) return
@@ -380,7 +420,7 @@ export default function ObrasPage() {
         title="Obras e ganhadores"
         description="Empresas que acabaram de ganhar licitações perto de você e podem precisar do seu serviço: subcontratação, orçamento, aluguel de equipamento ou material."
         actions={
-          perfil?.configurado && !editando ? (
+          aba === 'ganhadores' && perfil?.configurado && !editando ? (
             <Button variant="secondary" icon={Settings2} onClick={() => setEditando(true)}>
               Nichos e região
             </Button>
@@ -393,6 +433,19 @@ export default function ObrasPage() {
         <Carregando linhas={4} texto="Carregando…" />
       ) : (
         <div className="flex flex-col gap-4">
+          <Tabs
+            tabs={[
+              { id: 'ganhadores', label: 'Ganhadores perto de mim' },
+              { id: 'prestadores', label: 'Prestadores para a minha obra' },
+            ]}
+            value={aba}
+            onChange={setAba}
+            label="Obras e ganhadores"
+          />
+          {aba === 'prestadores' ? (
+            <PrestadoresDaObra servicos={perfil.servicos} googleAtivo={perfil.google} planoGratuito={perfil.planoGratuito} />
+          ) : (
+            <>
           {editando && (
             <Configuracao
               perfil={perfil}
@@ -461,6 +514,8 @@ export default function ObrasPage() {
                 Dados públicos do Portal Nacional de Contratações Públicas (PNCP) e do cadastro da Receita Federal. O local é o citado no contrato ou, sem ele, a
                 cidade do órgão. Aborde as empresas de forma profissional; quem decide subcontratar é o ganhador, dentro do que o contrato permite.
               </p>
+            </>
+          )}
             </>
           )}
         </div>

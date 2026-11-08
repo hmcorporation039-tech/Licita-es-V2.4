@@ -1361,6 +1361,9 @@ model PerfilDeObras {
   raioKm      Int?     @default(150) @map("raio_km")
   ufs         String[] @default([])
   valorMinimo Decimal? @map("valor_minimo") @db.Decimal(18, 2)
+  // A empresa aceita aparecer para quem ganhou uma obra na região dela e procura prestador.
+  visivelComoPrestador Boolean @default(false) @map("visivel_como_prestador")
+  apresentacao         String? @db.VarChar(400)
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
