@@ -5,7 +5,7 @@ import type { ComponentProps } from 'react'
 import { ArrowRight } from 'lucide-react'
 import { rastrear } from '@/lib/rastreamento'
 
-export type OrigemDoCadastro = 'topo' | 'hero' | 'vitrine' | 'ramo' | 'bela' | 'tour' | 'planos' | 'barra' | 'final'
+export type OrigemDoCadastro = 'topo' | 'hero' | 'vitrine' | 'ramo' | 'bela' | 'tour' | 'exclusivos' | 'planos' | 'barra' | 'final'
 
 type PropsDoLink = ComponentProps<typeof Link>
 

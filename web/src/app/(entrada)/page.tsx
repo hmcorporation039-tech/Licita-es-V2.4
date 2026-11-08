@@ -34,6 +34,7 @@ import LinkDeCadastro from '@/components/entrada/LinkDeCadastro'
 import NumeroQueSobe from '@/components/entrada/NumeroQueSobe'
 import OuvirABela from '@/components/entrada/OuvirABela'
 import { atraso, MolduraDeCelular, PreviaAnalisar, PreviaDisputar, PreviaEncontrar, PreviaPreparar } from '@/components/entrada/PreviasDoTour'
+import { PreviaHabilitacao, PreviaObrasEGanhadores, PreviaPortalNaBela } from '@/components/entrada/PreviasExclusivas'
 import Revelar from '@/components/entrada/Revelar'
 import VitrineDeBusca from '@/components/entrada/VitrineDeBusca'
 import { carregarDadosDaEntrada, type EstatisticasPublicas, type ListaChegando, type PlanosResposta } from '@/lib/dadosPublicos'
@@ -122,8 +123,8 @@ const PASSOS: Array<{ nome: string; titulo: string; texto: string; itens: string
   {
     nome: 'Disputar',
     titulo: 'Na hora do pregão, a Bela faz a conta',
-    texto: 'Você informa o melhor lance do portal e a Bela mostra a margem, a faixa de risco e quanto cobrir. Depois da disputa, a proposta readequada ao valor final sai pronta.',
-    itens: ['Margem calculada a cada lance', 'Faixa verde, amarela ou vermelha', 'Proposta readequada ao valor final'],
+    texto: 'O portal abre dentro da Licita Bela, ao lado do painel. A cada lance, a Bela mostra a margem, a faixa de risco e quanto cobrir, e com um clique escreve o lance no campo. Depois da disputa, a proposta readequada ao valor final sai pronta.',
+    itens: ['Margem calculada a cada lance', 'Lance escrito no campo com um clique; quem envia é você', 'Proposta readequada ao valor final'],
     previa: PreviaDisputar,
     tom: 'az-tom-violeta',
   },
@@ -140,6 +141,52 @@ const COMPARATIVO: Array<{ recurso: string; planilha: Celula; comuns: Celula; mo
   { recurso: 'Impugnação e esclarecimento prontos', planilha: 'nao', comuns: 'nao', monitor: 'sim' },
   { recurso: 'Estudo de custos e margem', planilha: 'manual', comuns: 'nao', monitor: 'sim' },
   { recurso: 'Assistente por voz e copiloto de lances', planilha: 'nao', comuns: 'nao', monitor: 'sim' },
+  { recurso: 'Portal de compras aberto dentro do sistema, com login preenchido', planilha: 'nao', comuns: 'nao', monitor: 'sim' },
+  { recurso: 'Habilitação conferida com os seus documentos na data da sessão', planilha: 'manual', comuns: 'nao', monitor: 'sim' },
+  { recurso: 'Quem ganhou obras perto de você, com contato e mensagem pronta', planilha: 'nao', comuns: 'nao', monitor: 'sim' },
+  { recurso: 'Chat do pregoeiro com aviso no celular', planilha: 'nao', comuns: 'parcial', monitor: 'sim' },
+]
+
+// Portais de Meus Portais que abrem dentro da Licita Bela (o mesmo catálogo da API).
+const PORTAIS_NA_BELA = [
+  'Compras.gov.br',
+  'Portal de Compras Públicas',
+  'Licitações-e',
+  'BLL',
+  'BNC',
+  'Licitar Digital',
+  'LicitaNet',
+  'BEC/SP',
+  'Compras BR',
+  'Publinexo',
+]
+
+const EXCLUSIVOS: Array<{ nome: string; titulo: string; texto: string; itens: string[]; previa: () => ReactNode; tom: string; portais?: boolean }> = [
+  {
+    nome: 'Disputar sem trocar de aba',
+    titulo: 'O portal abre dentro da Licita Bela',
+    texto: 'Você disputa no portal oficial, sem sair da Licita Bela, com o painel da Bela ao lado. Ela escreve o seu login salvo e o lance sugerido; o CAPTCHA, o Entrar e o Enviar são seus.',
+    itens: ['Login de Meus Portais preenchido com um clique', 'A senha não aparece na tela e nada fica guardado ao fechar', 'Respeita o edital que proíbe robô: quem envia é sempre você'],
+    previa: PreviaPortalNaBela,
+    tom: 'az-tom-azul',
+    portais: true,
+  },
+  {
+    nome: 'Habilitação sem surpresa',
+    titulo: 'Antes de entrar, saiba o que falta',
+    texto: 'A Licita Bela cruza os documentos que o edital pede com o cofre da sua empresa, na data da sessão. Verde está ok, amarelo vence antes e precisa renovar, vermelho falta.',
+    itens: ['Cada exigência ligada à página e ao item do edital', 'Aviso antes de a certidão vencer', 'Menos risco de inabilitação por documento'],
+    previa: PreviaHabilitacao,
+    tom: 'az-tom-agua',
+  },
+  {
+    nome: 'Obras e ganhadores',
+    titulo: 'Veja quem acabou de ganhar uma obra perto de você',
+    texto: 'Os contratos assinados no PNCP, no seu nicho e na sua região. Ofereça o seu serviço a quem ganhou, com o contato público da empresa e uma mensagem pronta. E encontre os prestadores mais bem avaliados perto da obra.',
+    itens: ['Contratos novos todos os dias, filtrados por nicho e distância', 'Contato do ganhador e mensagem de apresentação', 'Para quem subcontrata, fornece ou presta serviço'],
+    previa: PreviaObrasEGanhadores,
+    tom: 'az-tom-ambar',
+  },
 ]
 
 const CONFIANCA: Array<{ icone: LucideIcon; titulo: string; texto: string }> = [
@@ -161,7 +208,15 @@ const perguntasFrequentes = (trialDias: number | null): Array<{ pergunta: string
   },
   {
     pergunta: 'A Bela dá lance sozinha?',
-    resposta: 'Não. A Bela calcula a margem e sugere quanto cobrir. Quem dá o lance é sempre você, no portal.',
+    resposta: 'Não. A Bela calcula a margem, sugere quanto cobrir e, se você pedir, escreve o valor no campo do portal. Quem envia o lance é sempre você. Assim você também fica dentro da regra dos editais que proíbem robô de lances.',
+  },
+  {
+    pergunta: 'Funciona no portal onde eu disputo?',
+    resposta: `O portal abre dentro da Licita Bela nos planos pagos: ${PORTAIS_NA_BELA.join(', ')}. O resto da Licita Bela (busca, análise, documentos e estudo de custos) vale para licitações de qualquer portal.`,
+  },
+  {
+    pergunta: 'Minha senha do portal fica segura?',
+    resposta: 'Ela fica guardada com criptografia em Meus Portais, só com a sua autorização, e você apaga quando quiser. Na hora de entrar, a senha vai direto para o navegador da Licita Bela: não aparece na tela e nada fica salvo quando você fecha o portal.',
   },
   {
     pergunta: 'Preciso falar com a Bela ou dá para digitar?',
@@ -237,6 +292,9 @@ function Navegacao() {
         </a>
         <a href="#tour" className="az-nav-link">
           Como funciona
+        </a>
+        <a href="#so-na-bela" className="az-nav-link">
+          Só na Bela
         </a>
         <a href="#planos" className="az-nav-link">
           Planos
@@ -528,6 +586,65 @@ function Tour({ trialDias }: { trialDias: number | null }) {
         </ol>
         <div className="az-centro">
           <LinkDeCadastro origem="tour" className="az-pilula az-pilula-verde az-pilula-grande">
+            {trialDias ? `Testar grátis por ${trialDias} dias` : 'Testar grátis'}
+          </LinkDeCadastro>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function SoNaBela({ trialDias }: { trialDias: number | null }) {
+  return (
+    <section id="so-na-bela" aria-labelledby="so-na-bela-titulo" className="az-secao">
+      <div className="az-conteiner">
+        <TituloDeSecao
+          id="so-na-bela-titulo"
+          sobretitulo="Só na Licita Bela"
+          fino="O que você não encontra"
+          forte="em outro lugar"
+          apoio="Três recursos para disputar com segurança, não perder licitação por documento e achar trabalho também fora do pregão. As telas são exemplos ilustrativos, com dados fictícios."
+        />
+        <ol className="az-passos">
+          {EXCLUSIVOS.map((p) => {
+            const Previa = p.previa
+            return (
+              <li key={p.nome} className="az-passo">
+                <Revelar className="az-passo-texto">
+                  <p className="revela az-passo-rotulo">{p.nome}</p>
+                  <h3 className="revela" style={atraso(80)}>
+                    {p.titulo}
+                  </h3>
+                  <p className="revela az-passo-descricao" style={atraso(160)}>
+                    {p.texto}
+                  </p>
+                  <ul className="az-lista-verde">
+                    {p.itens.map((item, j) => (
+                      <li key={item} className="revela" style={atraso(240 + j * 80)}>
+                        <span aria-hidden className="az-visto">
+                          <Check size={14} strokeWidth={3} />
+                        </span>
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                  {p.portais && (
+                    <ul className="revela az-portais-lista" style={atraso(500)} aria-label="Portais que abrem dentro da Licita Bela">
+                      {PORTAIS_NA_BELA.map((nome) => (
+                        <li key={nome}>{nome}</li>
+                      ))}
+                    </ul>
+                  )}
+                </Revelar>
+                <Revelar className={`az-passo-aparelho ${p.tom}`}>
+                  <Previa />
+                </Revelar>
+              </li>
+            )
+          })}
+        </ol>
+        <div className="az-centro">
+          <LinkDeCadastro origem="exclusivos" className="az-pilula az-pilula-verde az-pilula-grande">
             {trialDias ? `Testar grátis por ${trialDias} dias` : 'Testar grátis'}
           </LinkDeCadastro>
         </div>
@@ -830,6 +947,7 @@ export default async function Entrada() {
         <Ramos totaisPorTermo={totaisPorTermo} />
         <ConhecaABela trialDias={trialDias} />
         <Tour trialDias={trialDias} />
+        <SoNaBela trialDias={trialDias} />
         <Comparativo />
         <Confianca trialDias={trialDias} />
         {planos && planos.planos.length > 0 && <Planos dados={planos} />}

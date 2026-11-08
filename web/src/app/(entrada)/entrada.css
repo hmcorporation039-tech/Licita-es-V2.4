@@ -3275,3 +3275,298 @@
     transform: none;
   }
 }
+
+/* ---------- Só na Licita Bela (prévias ilustrativas) ---------- */
+
+.az-portais-lista {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.az-portais-lista li {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid var(--az-linha);
+  color: var(--az-tinta-2);
+  font-size: 12.5px;
+  font-weight: 800;
+}
+
+.az-pnb {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px;
+  min-height: 290px;
+  font-size: 12px;
+}
+
+.az-pnb-portal {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: #ffffff;
+  border-right: 1px solid var(--az-linha);
+}
+
+.az-pnb-barra {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--az-linha);
+  background: #eef3fb;
+  color: var(--az-tinta-2);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.az-pnb-sala {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+}
+
+.az-pnb-sala small {
+  color: var(--az-tinta-2);
+  font-weight: 800;
+}
+
+.az-pnb-linha,
+.az-pnb-campo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--az-papel);
+  font-weight: 700;
+}
+
+.az-pnb-linha b,
+.az-pnb-campo b {
+  font-size: 14px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.az-pnb-campo {
+  border: 2px solid var(--az-azul);
+  background: #ffffff;
+}
+
+.az-pnb-enviar {
+  align-self: flex-start;
+  padding: 7px 14px;
+  border-radius: 8px;
+  background: #0b1f44;
+  color: #ffffff;
+  font-weight: 900;
+}
+
+.az-pnb-painel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 10px;
+  background: var(--az-papel);
+}
+
+.az-pnb-painel strong {
+  color: var(--az-azul);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.az-pnb-margem {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: #e2f8ea;
+  color: #0b6b33;
+}
+
+.az-pnb-margem small {
+  font-size: 10.5px;
+  font-weight: 900;
+}
+
+.az-pnb-margem b {
+  font-size: 24px;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.az-pnb-botao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 7px 8px;
+  border-radius: 999px;
+  background: var(--az-azul);
+  color: #ffffff;
+  font-size: 10.5px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.az-pnb-botao-claro {
+  background: #ffffff;
+  color: var(--az-azul);
+  box-shadow: inset 0 0 0 1.5px var(--az-azul);
+}
+
+.az-pnb-painel p {
+  margin: auto 0 0;
+  color: var(--az-tinta-2);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-align: center;
+}
+
+@container (max-width: 420px) {
+  .az-pnb {
+    grid-template-columns: minmax(0, 1fr) 118px;
+  }
+}
+
+.az-cartao-previa {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(400px, 100%);
+  padding: 18px;
+  border-radius: 24px;
+  background: #ffffff;
+  box-shadow: var(--az-sombra-forte);
+}
+
+.az-cartao-previa ul {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.az-hab-topo {
+  display: flex;
+  flex-direction: column;
+}
+
+.az-hab-topo small {
+  color: var(--az-tinta-2);
+  font-size: 11.5px;
+  font-weight: 800;
+}
+
+.az-hab-topo strong {
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.az-hab-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--az-papel);
+}
+
+.az-hab-ponto {
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+  margin-top: 4px;
+  border-radius: 50%;
+}
+
+.az-hab-ok .az-hab-ponto {
+  background: var(--az-verde);
+}
+
+.az-hab-renovar {
+  background: var(--az-alerta-fundo);
+}
+
+.az-hab-renovar .az-hab-ponto {
+  background: #f0a020;
+}
+
+.az-hab-falta {
+  background: var(--az-perigo-fundo);
+}
+
+.az-hab-falta .az-hab-ponto {
+  background: var(--az-perigo);
+}
+
+.az-hab-nome {
+  display: flex;
+  flex-direction: column;
+  font-size: 13.5px;
+  font-weight: 800;
+}
+
+.az-hab-nome small {
+  color: var(--az-tinta-2);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.az-hab-resumo {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.az-obra {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: var(--az-papel);
+  font-size: 12.5px;
+  color: var(--az-tinta-2);
+  font-weight: 700;
+}
+
+.az-obra strong {
+  color: var(--az-tinta);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.az-obra-valor {
+  align-self: flex-start;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #e2f8ea;
+  color: #0b6b33;
+  font-size: 11.5px;
+  font-weight: 900;
+}
+
+.az-obra-lugar {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--az-azul);
+}
+
+.az-cartao-previa .az-app-nota {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
