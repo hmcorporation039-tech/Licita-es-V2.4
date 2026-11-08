@@ -12,7 +12,7 @@ import WebSocket from 'ws'
 import { chromium } from 'playwright-core'
 import { criarServidor } from '../src/navegador/server'
 import { moduloComoBloco, scriptDoLeitor } from '../src/navegador/leitor'
-import { navegacaoPermitida, teclaParaPlaywright } from '../src/navegador/protocolo'
+import { navegacaoPermitida, statusDeRecusa, teclaParaPlaywright } from '../src/navegador/protocolo'
 import type { ApiDaBela } from '../src/navegador/apiDaBela'
 
 const HOST_DO_PORTAL = 'cnetmobile.estaleiro.serpro.gov.br'
@@ -65,6 +65,13 @@ describe('regras do navegador da Bela', () => {
     expect(navegacaoPermitida('https://licitanet.com.br.example.com/', [], portais)).toBe(false)
   })
 
+  it('reconhece quando o portal recusa o acesso', () => {
+    expect(statusDeRecusa(403)).toBe(true)
+    expect(statusDeRecusa(451)).toBe(true)
+    expect(statusDeRecusa(200)).toBe(false)
+    expect(statusDeRecusa(401)).toBe(false)
+  })
+
   it('traduz as teclas e recusa nomes estranhos', () => {
     expect(teclaParaPlaywright('a')).toBe('a')
     expect(teclaParaPlaywright('ç')).toBe('ç')
@@ -108,6 +115,11 @@ describe.skipIf(!temChromium)('portal dentro da Bela (Chromium real)', () => {
 
   beforeAll(async () => {
     portal = http.createServer((req, res) => {
+      if (req.url === '/bloqueado') {
+        res.writeHead(403, { 'content-type': 'text/html' })
+        res.end('<h1>403 Forbidden</h1>')
+        return
+      }
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
       res.end(req.url === '/digitou' ? '<title>Digitou</title><p>ok</p>' : req.url === '/login' ? LOGIN : PAGINA)
     })
@@ -199,9 +211,13 @@ describe.skipIf(!temChromium)('portal dentro da Bela (Chromium real)', () => {
     for (const tecla of ['o', 'l', 'á']) c.mandar({ t: 'tecla', tipo: 'descer', tecla, modificadores: 0 })
     await c.esperar(() => c.textos.find((m) => m.t === 'estado' && String(m.url).endsWith('/digitou')))
 
+    // Portal que recusa o acesso (403 por país/IP): a tela da Bela é avisada; ao sair, o aviso some.
+    c.mandar({ t: 'ir', url: `http://${HOST_DO_PORTAL}:${portaDoPortal}/bloqueado` })
+    await c.esperar(() => c.textos.find((m) => m.t === 'estado' && String(m.url).endsWith('/bloqueado') && m.recusado === 403))
+
     // Login com o acesso de Meus Portais: escreve CPF e senha no formulário, sem enviar.
     c.mandar({ t: 'ir', url: `http://${HOST_DO_PORTAL}:${portaDoPortal}/login` })
-    await c.esperar(() => c.textos.find((m) => m.t === 'estado' && String(m.url).endsWith('/login')))
+    await c.esperar(() => c.textos.find((m) => m.t === 'estado' && String(m.url).endsWith('/login') && m.recusado === null))
     c.mandar({ t: 'preencher-login' })
     const login = (await c.esperar(() => c.textos.find((m) => m.t === 'login-preenchido'))) as { ok: boolean }
     expect(login.ok).toBe(true)

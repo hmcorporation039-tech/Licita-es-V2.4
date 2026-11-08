@@ -25,7 +25,7 @@ type Estado = 'fechado' | 'conectando' | 'aberto'
 
 type Recebida =
   | { t: 'pronto'; largura: number; altura: number; portal: string; nomeDoPortal: string }
-  | { t: 'estado'; url: string; titulo: string; host: string; portal: string | null }
+  | { t: 'estado'; url: string; titulo: string; host: string; portal: string | null; recusado?: number | null }
   | { t: 'leitura'; melhorLance: number | null; mensagensNovas: number }
   | { t: 'lance-preenchido'; ok: boolean; texto?: string; motivo?: string }
   | { t: 'login-preenchido'; ok: boolean; mensagem: string }
@@ -72,7 +72,7 @@ export default function PortalNaBela({ tenderId, robo, aoLer }: { tenderId: stri
   const [erro, setErro] = useState<string | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
   const [tamanho, setTamanho] = useState({ largura: 1366, altura: 768 })
-  const [pagina, setPagina] = useState<{ host: string; titulo: string; portal: string | null } | null>(null)
+  const [pagina, setPagina] = useState<{ url: string; host: string; titulo: string; portal: string | null; recusado: number | null } | null>(null)
   const [melhorLance, setMelhorLance] = useState<number | null>(null)
   const [pedidoDeArquivo, setPedidoDeArquivo] = useState<{ multiplo: boolean } | null>(null)
   const [dialogo, setDialogo] = useState<{ tipo: string; mensagem: string; padrao: string } | null>(null)
@@ -132,7 +132,7 @@ export default function PortalNaBela({ tenderId, robo, aoLer }: { tenderId: stri
           setErro(null)
           break
         case 'estado':
-          setPagina({ host: m.host, titulo: m.titulo, portal: m.portal })
+          setPagina({ url: m.url, host: m.host, titulo: m.titulo, portal: m.portal, recusado: m.recusado ?? null })
           break
         case 'leitura':
           setMelhorLance(m.melhorLance)
@@ -375,6 +375,19 @@ export default function PortalNaBela({ tenderId, robo, aoLer }: { tenderId: stri
       </div>
 
       {erro && <Notice tone="danger">{erro}</Notice>}
+      {pagina?.recusado && (
+        <Notice tone="warn" title={`O ${nomeAberto ?? 'portal'} não aceitou a conexão do navegador da Bela`}>
+          <p>
+            O site do portal recusou o acesso (erro {pagina.recusado}) antes de mostrar a tela de login. Alguns portais do governo só aceitam
+            conexões vindas do Brasil. Enquanto isso, abra o portal numa aba normal e use a extensão Bela na disputa.
+          </p>
+          {/^https:\/\//i.test(pagina.url) && (
+            <TextLink href={pagina.url} target="_blank" rel="noopener noreferrer">
+              Abrir o portal numa aba normal
+            </TextLink>
+          )}
+        </Notice>
+      )}
       {aviso && <Notice tone="info">{aviso}</Notice>}
       {login && <Notice tone={login.ok ? 'ok' : 'warn'}>{login.mensagem}</Notice>}
       {preenchimento && <Notice tone={preenchimento.ok ? 'ok' : 'warn'}>{preenchimento.texto}</Notice>}

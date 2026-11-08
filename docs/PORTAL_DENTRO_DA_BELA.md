@@ -53,12 +53,29 @@ Certificado digital em **token (A3)** não funciona no navegador remoto. Para es
    - **Memória:** reserve pelo menos 2 GB para 3 sessões.
 2. **Serviço da API** (Railway), em Variables:
    - `NAVEGADOR_URL` = a URL do passo 1.
-   - `NAVEGADOR_SEGREDO` = `${{bela-navegador.NAVEGADOR_SEGREDO}}` (referência ao valor do passo 1; troque `bela-navegador` pelo nome do serviço).
+   - `NAVEGADOR_SEGREDO` = o mesmo valor do passo 1. Copie o valor gerado e cole puro; a referência `${{servico.NAVEGADOR_SEGREDO}}` só funciona se o nome do serviço não tiver pontos.
    - Sem esse segredo, o portal abre normalmente, mas o botão "Preencher meu login" avisa que ainda não foi ativado.
-3. **Vercel** (site): o `web/next.config.ts` já libera, por padrão, o navegador de produção (`https://licita-es-v24-production.up.railway.app`) na política de segurança (CSP). Se o domínio mudar, coloque `NAVEGADOR_URL` em Settings → Environment Variables com a nova URL e faça um redeploy: a variável vale por cima do padrão.
+3. **Vercel** (site): o `web/next.config.ts` já libera, por padrão, os navegadores de produção (`https://licita-es-v24-production.up.railway.app` e `https://bela-navegador.fly.dev`) na política de segurança (CSP). Se o domínio mudar, coloque `NAVEGADOR_URL` em Settings → Environment Variables com a nova URL e faça um redeploy: a variável vale por cima do padrão.
 4. Confira: `GET https://<navegador>/saude` deve responder `{"ok":true,...}`. No site, abra uma licitação escolhida, depois **Pregão com a Bela → escolha o portal → Abrir … aqui**.
 
 Sem `NAVEGADOR_URL`, a tela mostra "ainda não foi ativado", e a extensão continua funcionando normalmente.
+
+## Navegador no Brasil (Fly.io)
+
+O Compras.gov.br responde **403 Forbidden** para conexões vindas de fora do Brasil, antes da tela de login. O Railway só tem servidores nos EUA, Europa e Ásia, então nesse portal a tela mostra o aviso "não aceitou a conexão do navegador da Bela". A solução é rodar **só o navegador** num servidor em São Paulo; a API, o banco e os workers continuam no Railway. O `fly.toml` na raiz já está pronto (região `gru`, 2 GB, máquina sempre ligada, checagem em `/saude`).
+
+1. Crie a conta em fly.io (pede cartão) e instale o `flyctl`. No Windows, no PowerShell:
+   `iwr https://fly.io/install.ps1 -useb | iex`
+2. Na pasta do repositório:
+   - `fly auth login`
+   - `fly apps create bela-navegador` (se o nome estiver ocupado, use outro e troque `app` no `fly.toml` e o endereço no `web/next.config.ts`)
+   - `fly secrets set API_URL=<URL pública da API no Railway> NAVEGADOR_SEGREDO=<o mesmo valor do NAVEGADOR_SEGREDO da API>`
+   - `fly deploy`
+3. Confira `https://bela-navegador.fly.dev/saude` → `{"ok":true,...}`.
+4. Na **API** (Railway), troque `NAVEGADOR_URL` para `https://bela-navegador.fly.dev`. A Vercel já libera esse endereço; não precisa redeploy do site.
+5. Teste o Compras.gov.br pelo site. Funcionando, o serviço do navegador no Railway pode ser desligado.
+
+Custo: máquina `shared-cpu-1x` com 2 GB ligada o mês todo, cerca de US$ 11/mês (preço do Fly.io em 2026; confira no painel).
 
 ## Arquitetura
 
@@ -80,5 +97,5 @@ página Pregão com a Bela ──WebSocket──► serviço navegador (src/nave
 
 ## Riscos conhecidos
 
-- O gov.br pode pedir CAPTCHA com mais frequência ou recusar o acesso vindo de um servidor (datacenter). A pessoa resolve o CAPTCHA na tela. Se o portal recusar, use a extensão.
+- O gov.br pode pedir CAPTCHA com mais frequência ou recusar o acesso vindo de um servidor (datacenter). A pessoa resolve o CAPTCHA na tela. Quando o portal responde 403/429/451 na página principal, a tela mostra um aviso com o link para abrir o portal numa aba normal (use a extensão nesse caso). Acesso vindo de fora do Brasil: veja "Navegador no Brasil (Fly.io)".
 - **Responsabilidade:** a sessão logada da empresa existe no servidor da Bela enquanto o portal está aberto. Por isso as sessões são isoladas, curtas e descartadas ao fechar.

@@ -46,7 +46,7 @@ export type MensagemDaWeb = z.infer<typeof mensagemDaWeb>
 
 export type MensagemDoNavegador =
   | { t: 'pronto'; largura: number; altura: number; portal: string; nomeDoPortal: string }
-  | { t: 'estado'; url: string; titulo: string; host: string; portal: string | null }
+  | { t: 'estado'; url: string; titulo: string; host: string; portal: string | null; recusado: number | null }
   | { t: 'leitura'; melhorLance: number | null; mensagensNovas: number }
   | { t: 'lance-preenchido'; ok: boolean; texto?: string; motivo?: string }
   | { t: 'login-preenchido'; ok: boolean; mensagem: string }
@@ -79,6 +79,14 @@ export function navegacaoPermitida(url: string, hostsLocais: string[] = [], host
   if (u.protocol !== 'https:') return false
   if (host === 'gov.br' || host.endsWith('.gov.br')) return true
   return hostsDosPortais.some((d) => host === d || host.endsWith('.' + d))
+}
+
+/**
+ * Respostas HTTP com que um portal recusa o acesso em si (não é a tela de login): 403 de
+ * bloqueio por país/IP, 429 de excesso de acessos e 451 de bloqueio legal.
+ */
+export function statusDeRecusa(status: number): boolean {
+  return status === 403 || status === 429 || status === 451
 }
 
 /** Tecla vinda do navegador da pessoa -> nome que o Playwright entende. */

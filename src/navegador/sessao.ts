@@ -19,6 +19,7 @@ import {
   LARGURA_PADRAO,
   MAX_ARQUIVO_BYTES,
   navegacaoPermitida,
+  statusDeRecusa,
   teclaParaPlaywright,
   type MensagemDaWeb,
   type MensagemDoNavegador,
@@ -74,6 +75,8 @@ export class SessaoDoPortal {
   private arquivoPendente: FileChooser | null = null
   private dialogoPendente: Dialog | null = null
   private ultimoLance: number | null = null
+  // Status HTTP da última página principal de cada aba, quando o portal recusou o acesso.
+  private readonly recusas = new WeakMap<Page, number>()
   private encerrada = false
   private largura = LARGURA_PADRAO
   private altura = ALTURA_PADRAO
@@ -165,6 +168,12 @@ export class SessaoDoPortal {
       this.paginas = this.paginas.filter((x) => x !== p)
       if (this.ativa === p) void this.ativar(this.paginas[this.paginas.length - 1] ?? null)
     })
+    p.on('response', (r) => {
+      const pedido = r.request()
+      if (!pedido.isNavigationRequest() || r.frame() !== p.mainFrame()) return
+      if (statusDeRecusa(r.status())) this.recusas.set(p, r.status())
+      else this.recusas.delete(p)
+    })
     p.on('framenavigated', (f) => {
       if (f === p.mainFrame() && p === this.ativa) void this.anunciarEstado()
     })
@@ -227,7 +236,7 @@ export class SessaoDoPortal {
       /* about:blank */
     }
     const portal = await p.evaluate(() => (globalThis as unknown as { __bela?: { portal: string | null } }).__bela?.portal ?? null).catch(() => null)
-    this.enviar({ t: 'estado', url: url.slice(0, 500), titulo: (await p.title().catch(() => '')).slice(0, 200), host, portal })
+    this.enviar({ t: 'estado', url: url.slice(0, 500), titulo: (await p.title().catch(() => '')).slice(0, 200), host, portal, recusado: this.recusas.get(p) ?? null })
   }
 
   // ---------- comandos da pessoa ----------
