@@ -22,6 +22,11 @@ import {
   type RegiaoDaEmpresa,
 } from '../../lib/obrasEGanhadores'
 import { termosDoPreFiltro } from '../../lib/matching'
+import { SERVICOS_PROCURADOS, nichoAtende, ordenarLugares, prestadorAtendeAObra, servicoPorId, type LocalDaObra } from '../../lib/prestadoresDaRegiao'
+import { findMunicipioByNomeUf } from '../../lib/geoService'
+import { GoogleIndisponivel, GoogleNaoConfigurado, buscarPrestadoresNoGoogle, googleConfigurado } from '../../services/prestadoresGoogle'
+import { registrarAuditoria } from '../../services/auditService'
+import { nomeLegivel } from '../../services/contratosPublicosColeta'
 import { PLANO_DE_TESTE } from '../../lib/acessoEncerrado'
 import { CnpjIndisponivel, CnpjNaoEncontrado, consultarCnpj, normalizarCnpj } from '../../services/perfilDoNegocio'
 
@@ -68,6 +73,10 @@ obrasRouter.get(
       regiao: { raioKm: regiao.raioKm, ufs: regiao.ufs, valorMinimo },
       nichos: nichos.map((n) => ({ id: n.id, nome: n.nome, alvos: n.alvos, exclusoes: n.exclusoes })),
       catalogo: CATALOGO_DE_NICHOS,
+      prestador: { visivel: perfil?.visivelComoPrestador ?? false, apresentacao: perfil?.apresentacao ?? null, telefone: empresa.telefone, email: empresa.email },
+      servicos: SERVICOS_PROCURADOS.map((sv) => ({ id: sv.id, nome: sv.nome })),
+      google: googleConfigurado(),
+      planoGratuito: noPlanoGratuito(empresa.planCode, req.isAdmin),
     })
   })
 )
@@ -83,6 +92,8 @@ const perfilSchema = z.object({
   ufs: z.array(z.enum(UFS)).max(27).default([]),
   valorMinimo: z.number().finite().min(0).max(1e11).nullable().default(null),
   nichos: z.array(nichoSchema).min(1).max(MAX_NICHOS),
+  visivelComoPrestador: z.boolean().default(false),
+  apresentacao: z.string().trim().max(400).nullable().default(null),
 })
 
 obrasRouter.put(
@@ -99,11 +110,18 @@ obrasRouter.put(
       .filter((n) => n.alvos.length > 0)
     if (nichos.length === 0) throw new ApiError(400, 'Cada nicho precisa de pelo menos uma palavra válida (3 letras ou mais).')
     const companyId = req.companyId!
+    const camposDoPerfil = {
+      raioKm: dados.raioKm,
+      ufs,
+      valorMinimo: dados.valorMinimo,
+      visivelComoPrestador: dados.visivelComoPrestador,
+      apresentacao: dados.apresentacao || null,
+    }
     await prisma.$transaction([
       prisma.perfilDeObras.upsert({
         where: { companyId },
-        create: { companyId, raioKm: dados.raioKm, ufs, valorMinimo: dados.valorMinimo },
-        update: { raioKm: dados.raioKm, ufs, valorMinimo: dados.valorMinimo },
+        create: { companyId, ...camposDoPerfil },
+        update: camposDoPerfil,
       }),
       prisma.nichoDeObras.deleteMany({ where: { companyId } }),
       prisma.nichoDeObras.createMany({ data: nichos.map((n) => ({ companyId, ...n })) }),
@@ -253,5 +271,96 @@ obrasRouter.get(
         meuContato: contato,
       }),
     })
+  })
+)
+
+// ---------- Prestadores perto da obra (o caminho inverso) ----------
+
+const MAX_PRESTADORES = 60
+const BUSCAS_NO_GOOGLE_POR_DIA = Number(process.env.GOOGLE_PLACES_BUSCAS_POR_DIA) > 0 ? Number(process.env.GOOGLE_PLACES_BUSCAS_POR_DIA) : 30
+
+const prestadoresSchema = z.object({
+  servico: z.string().max(40),
+  cidade: z.string().trim().min(2).max(80),
+  uf: z.enum(UFS),
+  raioKm: z.coerce.number().int().min(10).max(300).default(100),
+})
+
+function pedidoDePrestadores(query: unknown) {
+  const q = prestadoresSchema.parse(query)
+  const servico = servicoPorId(q.servico)
+  if (!servico) throw new ApiError(400, 'Escolha um serviço da lista.')
+  const m = findMunicipioByNomeUf(q.cidade, q.uf)
+  if (!m) throw new ApiError(400, `Não achei a cidade "${q.cidade}" em ${q.uf}. Confira o nome.`)
+  const obra: LocalDaObra = { municipio: nomeLegivel(q.cidade.trim()), uf: m.uf, lat: m.lat, lng: m.lng }
+  return { servico, obra, raioKm: q.raioKm }
+}
+
+obrasRouter.get(
+  '/prestadores',
+  radarLimiter,
+  asyncHandler(async (req, res) => {
+    const { servico, obra, raioKm } = pedidoDePrestadores(req.query)
+    const perfis = await prisma.perfilDeObras.findMany({
+      where: { visivelComoPrestador: true, companyId: { not: req.companyId! } },
+      select: {
+        raioKm: true,
+        ufs: true,
+        apresentacao: true,
+        company: {
+          select: { id: true, name: true, baseMunicipio: true, baseUf: true, baseLat: true, baseLng: true, telefone: true, email: true, nichosDeObras: { select: { nome: true } } },
+        },
+      },
+      take: 5000,
+    })
+    const prestadores = perfis
+      .flatMap((p) => {
+        const c = p.company
+        const nichos = c.nichosDeObras.filter((n) => nichoAtende(n, servico)).map((n) => n.nome)
+        if (nichos.length === 0) return []
+        const base = c.baseLat !== null && c.baseLng !== null ? { lat: c.baseLat, lng: c.baseLng } : null
+        const { atende, distanciaKm } = prestadorAtendeAObra({ raioKm: p.raioKm, ufs: p.ufs, base }, obra, raioKm)
+        if (!atende) return []
+        return [
+          {
+            id: c.id,
+            nome: c.name,
+            cidade: c.baseMunicipio ? `${c.baseMunicipio}${c.baseUf ? `/${c.baseUf}` : ''}` : null,
+            distanciaKm,
+            nichos,
+            todosOsNichos: c.nichosDeObras.map((n) => n.nome),
+            apresentacao: p.apresentacao,
+            telefone: c.telefone,
+            email: c.email,
+          },
+        ]
+      })
+      .sort((a, b) => (a.distanciaKm ?? Infinity) - (b.distanciaKm ?? Infinity))
+      .slice(0, MAX_PRESTADORES)
+    res.json({ obra, servico: { id: servico.id, nome: servico.nome }, raioKm, daBela: prestadores, google: googleConfigurado() })
+  })
+)
+
+obrasRouter.get(
+  '/prestadores/google',
+  radarLimiter,
+  asyncHandler(async (req, res) => {
+    const { servico, obra, raioKm } = pedidoDePrestadores(req.query)
+    if (!googleConfigurado()) throw new ApiError(503, 'A busca no Google ainda não foi ativada.', { code: 'GOOGLE_NAO_CONFIGURADO' })
+    await exigirPlanoPago(req.companyId!, req.isAdmin)
+    if (!req.isAdmin) {
+      const desde = new Date(Date.now() - 24 * 60 * 60 * 1000)
+      const usadas = await prisma.auditLog.count({ where: { companyId: req.companyId!, action: 'PRESTADORES_GOOGLE_BUSCA', createdAt: { gte: desde } } })
+      if (usadas >= BUSCAS_NO_GOOGLE_POR_DIA) throw new ApiError(429, `Você já fez ${usadas} buscas no Google nas últimas 24 horas. Tente de novo amanhã.`)
+    }
+    try {
+      const lugares = await buscarPrestadoresNoGoogle({ texto: `${servico.busca} em ${obra.municipio} ${obra.uf}`, centro: obra, raioKm })
+      await registrarAuditoria(req, { action: 'PRESTADORES_GOOGLE_BUSCA', entityType: 'obra', entityId: `${obra.municipio}/${obra.uf}`, metadata: { servico: servico.id, raioKm, achados: lugares.length } })
+      res.json({ lugares: ordenarLugares(lugares, obra, raioKm) })
+    } catch (err) {
+      if (err instanceof GoogleNaoConfigurado) throw new ApiError(503, err.message, { code: 'GOOGLE_NAO_CONFIGURADO' })
+      if (err instanceof GoogleIndisponivel) throw new ApiError(502, `A busca no Google falhou agora. ${err.message} Tente de novo em instantes.`)
+      throw err
+    }
   })
 )

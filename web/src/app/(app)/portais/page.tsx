@@ -19,6 +19,7 @@ import {
   Table,
   TableWrap,
   Td,
+  TextLink,
   Th,
   THead,
   Tr,
@@ -73,6 +74,7 @@ export default function PortaisPage() {
   const [aceite, setAceite] = useState(false)
   const [salvando, setSalvando] = useState(false)
   const [erroDoForm, setErroDoForm] = useState<string | null>(null)
+  const [salvoAgora, setSalvoAgora] = useState<string | null>(null)
 
   const carregar = useCallback(async () => {
     try {
@@ -98,6 +100,7 @@ export default function PortaisPage() {
   async function salvar(e: FormEvent) {
     e.preventDefault()
     setErroDoForm(null)
+    setSalvoAgora(null)
     if (!portal || !login.trim() || !senha) {
       setErroDoForm('Preencha o portal, o login e a senha.')
       return
@@ -118,6 +121,7 @@ export default function PortaisPage() {
       setLogin('')
       setSenha('')
       setAceite(false)
+      setSalvoAgora(portais.find((p) => p.id === portal)?.nome ?? portal)
       await carregar()
     } catch (e) {
       setErroDoForm(e instanceof ApiRequestError ? e.message : 'Não foi possível salvar agora.')
@@ -176,6 +180,13 @@ export default function PortaisPage() {
             <span>{TERMO}</span>
           </label>
           <FormError>{erroDoForm}</FormError>
+          {salvoAgora && (
+            <Notice tone="ok" title={`Acesso ao ${salvoAgora} salvo`}>
+              Ele aparece em Acessos cadastrados, logo abaixo. Na hora da disputa: abra a licitação escolhida, entre em <strong>Pregão com a Bela</strong> e entre no
+              portal com a extensão Bela na disputa ligada. A Bela lê os lances e o chat e preenche o lance sugerido; quem confere e envia é você.{' '}
+              <TextLink href="/sessoes">Ver minhas sessões</TextLink>
+            </Notice>
+          )}
           <Button type="submit" variant="primary" icon={KeyRound} loading={salvando} className="self-start">
             Salvar acesso
           </Button>
