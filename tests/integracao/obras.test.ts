@@ -111,7 +111,7 @@ rodar('Obras e ganhadores', () => {
     expect(await prisma.contratoPublico.count({ where: { id: { startsWith: prefixo } } })).toBe(4)
 
     // Base em Vitória/ES: Vila Velha (perto) entra; Linhares (~130 km) fica fora de 100 km; Campinas/SP fora.
-    const ana = await conta('ana', { baseMunicipio: 'Vitória', baseUf: 'ES', baseLat: -20.3155, baseLng: -40.3128, telefone: '(27) 98888-7777' })
+    const ana = await conta('ana', { baseMunicipio: 'Vitória', baseUf: 'ES', baseLat: -20.3155, baseLng: -40.3128, telefone: '(27) 98888-7777', planCode: 'PROFISSIONAL' })
     const perfil = await http('GET', '/api/obras/perfil', undefined, ana.token)
     expect(perfil.status).toBe(200)
     expect(perfil.body.configurado).toBe(false)
@@ -123,6 +123,7 @@ rodar('Obras e ganhadores', () => {
 
     const ops = await http('GET', '/api/obras/oportunidades', undefined, ana.token)
     expect(ops.status).toBe(200)
+    expect(ops.body.planoGratuito).toBeNull()
     const meus = ops.body.contratos.filter((c: { id: string }) => c.id.startsWith(prefixo))
     expect(meus.map((c: { id: string }) => c.id)).toEqual([idDoContrato(1)])
     expect(meus[0]).toMatchObject({ municipio: 'Vila Velha', uf: 'ES', nichos: ['Instalações elétricas'], fornecedor: { cnpj: '11222333000181' } })
@@ -148,5 +149,17 @@ rodar('Obras e ganhadores', () => {
     expect((await http('GET', '/api/obras/perfil', undefined, bia.token)).body.nichos).toEqual([])
     expect((await http('GET', '/api/obras/oportunidades', undefined, bia.token)).body).toMatchObject({ configurado: false, contratos: [] })
     expect((await http('GET', '/api/obras/perfil')).status).toBe(401)
+
+    // Plano gratuito (teste): amostra da lista; contato e mensagem só nos planos pagos.
+    const caio = await conta('caio', { baseMunicipio: 'Vitória', baseUf: 'ES', baseLat: -20.3155, baseLng: -40.3128 })
+    expect((await http('PUT', '/api/obras/perfil', { raioKm: 100, ufs: ['ES'], nichos: [eletrica] }, caio.token)).status).toBe(200)
+    const gratis = await http('GET', '/api/obras/oportunidades', undefined, caio.token)
+    expect(gratis.status).toBe(200)
+    expect(gratis.body.contratos.length).toBeLessThanOrEqual(5)
+    expect(gratis.body.planoGratuito).toMatchObject({ mostrados: gratis.body.contratos.length, total: gratis.body.total })
+    const semContato = await http('GET', '/api/obras/ganhador/11222333000181', undefined, caio.token)
+    expect(semContato.status).toBe(403)
+    expect(semContato.body.code).toBe('OBRAS_SO_NOS_PLANOS')
+    expect((await http('GET', `/api/obras/mensagem/${encodeURIComponent(idDoContrato(1))}`, undefined, caio.token)).status).toBe(403)
   })
 })

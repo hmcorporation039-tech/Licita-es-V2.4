@@ -22,6 +22,7 @@ import {
   type RegiaoDaEmpresa,
 } from '../../lib/obrasEGanhadores'
 import { termosDoPreFiltro } from '../../lib/matching'
+import { PLANO_DE_TESTE } from '../../lib/acessoEncerrado'
 import { CnpjIndisponivel, CnpjNaoEncontrado, consultarCnpj, normalizarCnpj } from '../../services/perfilDoNegocio'
 
 export const obrasRouter = Router()
@@ -30,10 +31,22 @@ const UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', '
 const RAIO_PADRAO_KM = 150
 const MAX_CANDIDATOS = 3000
 const MAX_RESULTADOS = 200
+// Plano gratuito (teste): vê uma amostra da lista; contato e mensagem só nos planos pagos.
+export const AMOSTRA_NO_PLANO_GRATUITO = 5
+export const MENSAGEM_SO_NOS_PLANOS = 'Ver o contato do ganhador e a mensagem pronta é liberado nos planos pagos. Assine em Minha conta para usar.'
+
+function noPlanoGratuito(planCode: string, isAdmin: boolean | undefined): boolean {
+  return planCode === PLANO_DE_TESTE && isAdmin !== true
+}
+
+async function exigirPlanoPago(companyId: string, isAdmin: boolean | undefined) {
+  const { planCode } = await prisma.company.findUniqueOrThrow({ where: { id: companyId }, select: { planCode: true } })
+  if (noPlanoGratuito(planCode, isAdmin)) throw new ApiError(403, MENSAGEM_SO_NOS_PLANOS, { code: 'OBRAS_SO_NOS_PLANOS' })
+}
 
 async function perfilDaEmpresa(companyId: string) {
   const [empresa, perfil, nichos] = await Promise.all([
-    prisma.company.findUniqueOrThrow({ where: { id: companyId }, select: { name: true, baseMunicipio: true, baseUf: true, baseLat: true, baseLng: true, telefone: true, email: true } }),
+    prisma.company.findUniqueOrThrow({ where: { id: companyId }, select: { name: true, baseMunicipio: true, baseUf: true, baseLat: true, baseLng: true, telefone: true, email: true, planCode: true } }),
     prisma.perfilDeObras.findUnique({ where: { companyId } }),
     prisma.nichoDeObras.findMany({ where: { companyId }, orderBy: { createdAt: 'asc' } }),
   ])
@@ -116,7 +129,7 @@ obrasRouter.get(
   radarLimiter,
   asyncHandler(async (req, res) => {
     const q = consultaSchema.parse(req.query)
-    const { nichos, regiao, valorMinimo } = await perfilDaEmpresa(req.companyId!)
+    const { empresa, nichos, regiao, valorMinimo } = await perfilDaEmpresa(req.companyId!)
     if (nichos.length === 0) {
       res.json({ configurado: false, contratos: [], total: 0 })
       return
@@ -142,7 +155,7 @@ obrasRouter.get(
       take: MAX_CANDIDATOS,
     })
 
-    const contratos = candidatos
+    const todos = candidatos
       .flatMap((c) => {
         const local = naRegiao(regiao, { uf: c.uf, lat: c.lat, lng: c.lng })
         if (!local.dentro) return []
@@ -168,8 +181,16 @@ obrasRouter.get(
       })
       .slice(0, MAX_RESULTADOS)
 
+    const gratuito = noPlanoGratuito(empresa.planCode, req.isAdmin)
+    const contratos = gratuito ? todos.slice(0, AMOSTRA_NO_PLANO_GRATUITO) : todos
     const ultimaColeta = await prisma.coletaDeContratosDia.findFirst({ orderBy: { atualizadoEm: 'desc' }, select: { atualizadoEm: true } })
-    res.json({ configurado: true, contratos, total: contratos.length, atualizadoEm: ultimaColeta?.atualizadoEm ?? null })
+    res.json({
+      configurado: true,
+      contratos,
+      total: todos.length,
+      planoGratuito: gratuito ? { mostrados: contratos.length, total: todos.length } : null,
+      atualizadoEm: ultimaColeta?.atualizadoEm ?? null,
+    })
   })
 )
 
@@ -183,6 +204,7 @@ obrasRouter.get(
   '/ganhador/:cnpj',
   radarLimiter,
   asyncHandler(async (req, res) => {
+    await exigirPlanoPago(req.companyId!, req.isAdmin)
     const cnpj = normalizarCnpj(req.params.cnpj)
     if (!cnpj) throw new ApiError(400, 'CNPJ inválido.')
     const contratos = await prisma.contratoPublico.count({ where: { fornecedorNi: cnpj } })
@@ -211,6 +233,7 @@ obrasRouter.get(
   '/mensagem/:id',
   estudoCalculoLimiter,
   asyncHandler(async (req, res) => {
+    await exigirPlanoPago(req.companyId!, req.isAdmin)
     const id = decodeURIComponent(String(req.params.id))
     const [contrato, { empresa, nichos }] = await Promise.all([prisma.contratoPublico.findUnique({ where: { id } }), perfilDaEmpresa(req.companyId!)])
     if (!contrato) throw new ApiError(404, 'Contrato não encontrado.')
