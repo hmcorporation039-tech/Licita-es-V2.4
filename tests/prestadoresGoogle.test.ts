@@ -1,12 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { buscarPrestadoresNoGoogle, GoogleIndisponivel, GoogleNaoConfigurado, googleConfigurado } from '../src/services/prestadoresGoogle'
 
-const post = vi.fn()
+const { post } = vi.hoisted(() => ({ post: vi.fn() }))
 vi.mock('axios', async (original) => {
   const real = (await original<typeof import('axios')>()).default
   return { default: { ...real, post, isAxiosError: real.isAxiosError } }
 })
-
-const { buscarPrestadoresNoGoogle, GoogleIndisponivel, GoogleNaoConfigurado, googleConfigurado } = await import('../src/services/prestadoresGoogle')
 
 describe('busca de prestadores no Google', () => {
   afterEach(() => {
