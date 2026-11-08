@@ -55,7 +55,7 @@ Certificado digital em **token (A3)** não funciona no navegador remoto. Para es
    - `NAVEGADOR_URL` = a URL do passo 1.
    - `NAVEGADOR_SEGREDO` = `${{bela-navegador.NAVEGADOR_SEGREDO}}` (referência ao valor do passo 1; troque `bela-navegador` pelo nome do serviço).
    - Sem esse segredo, o portal abre normalmente, mas o botão "Preencher meu login" avisa que ainda não foi ativado.
-3. **Vercel** (site), em Settings → Environment Variables: `NAVEGADOR_URL` = a mesma URL. Depois faça um redeploy, porque a política de segurança (CSP) do site precisa liberar a conexão com o navegador.
+3. **Vercel** (site): o `web/next.config.ts` já libera, por padrão, o navegador de produção (`https://licita-es-v24-production.up.railway.app`) na política de segurança (CSP). Se o domínio mudar, coloque `NAVEGADOR_URL` em Settings → Environment Variables com a nova URL e faça um redeploy: a variável vale por cima do padrão.
 4. Confira: `GET https://<navegador>/saude` deve responder `{"ok":true,...}`. No site, abra uma licitação escolhida, depois **Pregão com a Bela → escolha o portal → Abrir … aqui**.
 
 Sem `NAVEGADOR_URL`, a tela mostra "ainda não foi ativado", e a extensão continua funcionando normalmente.
