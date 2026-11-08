@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import Captcha, { captchaAtivo } from '@/components/Captcha'
 import ConfirmarCodigo from '@/components/ConfirmarCodigo'
 import { PublicCard, type DestaqueDoPainel } from '@/components/PublicShell'
-import { Button, Checkbox, cx, Field, FormError, Input, Notice, TextLink } from '@/components/ui'
+import { Button, Checkbox, cx, Field, FormError, Input, InputDeSenha, Notice, TextLink } from '@/components/ui'
 import { api, ApiRequestError } from '@/lib/api'
 import { estadoDaSigla } from '@/lib/estados'
 import { maisDe } from '@/lib/fontes'
@@ -191,10 +191,10 @@ export default function FormularioDeCadastro({
           <Input type="tel" autoComplete="tel" value={telefone} onChange={(e) => setTelefone(e.target.value)} maxLength={30} />
         </Field>
         <Field label="Senha" hint="Mínimo de 10 caracteres" required>
-          <Input type="password" value={senha} onChange={(e) => setSenha(e.target.value)} maxLength={72} autoComplete="new-password" />
+          <InputDeSenha value={senha} onChange={(e) => setSenha(e.target.value)} maxLength={72} autoComplete="new-password" />
         </Field>
         <Field label="Confirmar senha" required>
-          <Input type="password" value={confirmar} onChange={(e) => setConfirmar(e.target.value)} maxLength={72} autoComplete="new-password" />
+          <InputDeSenha value={confirmar} onChange={(e) => setConfirmar(e.target.value)} maxLength={72} autoComplete="new-password" />
         </Field>
 
         <div aria-hidden="true" style={{ position: 'absolute', left: '-9999px', height: 0, overflow: 'hidden' }}>

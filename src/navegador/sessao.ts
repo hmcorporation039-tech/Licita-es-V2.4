@@ -4,7 +4,8 @@
 // mouse/teclado da pessoa repassados para a página.
 //
 // Regras que não mudam:
-//  - quem entra no portal é a pessoa (senha e CAPTCHA digitados por ela na tela);
+//  - quem entra no portal é a pessoa: ela resolve o CAPTCHA e clica em "Entrar". Se ela
+//    pedir, a Bela escreve no formulário o acesso salvo em Meus Portais, sem enviar;
 //  - a Bela nunca clica em "enviar lance" nem confirma nada sozinha: só lê o lance e o
 //    chat e, quando a pessoa pede, escreve o lance sugerido no campo;
 //  - nada da sessão é guardado: ao fechar, o contexto (cookies, login) é descartado.
@@ -22,7 +23,7 @@ import {
   type MensagemDaWeb,
   type MensagemDoNavegador,
 } from './protocolo'
-import type { ApiDaBela } from './apiDaBela'
+import { ErroDaApi, type ApiDaBela } from './apiDaBela'
 
 export interface LimitesDaSessao {
   /** Fecha depois deste tempo sem a página da Bela conectada. */
@@ -43,6 +44,18 @@ export const LIMITES_PADRAO: LimitesDaSessao = {
   maximaMs: 6 * 60 * 60_000,
   leituraMs: 1_500,
 }
+
+export interface DestinoDaSessao {
+  /** Portal de Meus Portais aberto nesta sessão (ex.: COMPRASNET, BLL). */
+  portal: string
+  nomeDoPortal: string
+  /** Primeira página: o processo no portal ou o início do portal. */
+  inicio: string
+  /** Domínios dos portais de compras liberados para navegação (além do gov.br). */
+  hostsPermitidos: string[]
+}
+
+const FORA_DOS_PORTAIS = 'O navegador da Bela abre só os portais do governo e os portais de compras de Meus Portais.'
 
 const MAX_DOWNLOAD_BYTES = 25 * 1024 * 1024
 const MAX_BUFFER_WS = 3 * 1024 * 1024
@@ -70,10 +83,22 @@ export class SessaoDoPortal {
     readonly tenderId: string,
     private token: string,
     private readonly api: ApiDaBela,
-    private readonly inicio: string,
+    private readonly destino: DestinoDaSessao,
     private readonly aoEncerrar: (s: SessaoDoPortal) => void,
     private readonly limites: LimitesDaSessao = LIMITES_PADRAO
   ) {}
+
+  get portal(): string {
+    return this.destino.portal
+  }
+
+  private get inicio(): string {
+    return this.destino.inicio
+  }
+
+  private permitida(url: string): boolean {
+    return navegacaoPermitida(url, this.limites.hostsLocais, this.destino.hostsPermitidos)
+  }
 
   get fechada(): boolean {
     return this.encerrada
@@ -90,8 +115,8 @@ export class SessaoDoPortal {
     // Só a navegação da página principal é limitada aos portais do governo.
     await this.contexto.route('**/*', async (rota) => {
       const pedido = rota.request()
-      if (ehNavegacaoPrincipal(pedido) && !navegacaoPermitida(pedido.url(), this.limites.hostsLocais)) {
-        this.enviar({ t: 'bloqueado', url: pedido.url().slice(0, 300), motivo: 'O navegador da Bela abre só os portais do governo (gov.br).' })
+      if (ehNavegacaoPrincipal(pedido) && !this.permitida(pedido.url())) {
+        this.enviar({ t: 'bloqueado', url: pedido.url().slice(0, 300), motivo: FORA_DOS_PORTAIS })
         await rota.abort('blockedbyclient')
         return
       }
@@ -115,7 +140,7 @@ export class SessaoDoPortal {
     this.token = token
     this.desconectadaEm = null
     this.ultimoUso = Date.now()
-    this.enviar({ t: 'pronto', largura: this.largura, altura: this.altura })
+    this.enviar({ t: 'pronto', largura: this.largura, altura: this.altura, portal: this.destino.portal, nomeDoPortal: this.destino.nomeDoPortal })
     void this.anunciarEstado()
     void this.transmitir()
   }
@@ -258,14 +283,17 @@ export class SessaoDoPortal {
         return
       case 'ir':
         if (!p) return
-        if (!navegacaoPermitida(m.url, this.limites.hostsLocais)) {
-          this.enviar({ t: 'bloqueado', url: m.url, motivo: 'O navegador da Bela abre só os portais do governo (gov.br).' })
+        if (!this.permitida(m.url)) {
+          this.enviar({ t: 'bloqueado', url: m.url, motivo: FORA_DOS_PORTAIS })
           return
         }
         await p.goto(m.url, { timeout: 45_000 }).catch(() => undefined)
         return
       case 'preencher-lance':
         await this.preencherLance(m.valor)
+        return
+      case 'preencher-login':
+        await this.preencherLogin()
         return
       case 'arquivos': {
         const fc = this.arquivoPendente
@@ -324,6 +352,48 @@ export class SessaoDoPortal {
       }
     }
     this.enviar({ t: 'lance-preenchido', ok: false, motivo: 'Não achei o campo de lance nesta tela. Abra a sala de disputa do item.' })
+  }
+
+  // Login com o acesso de Meus Portais, quando a pessoa pede: a Bela só escreve o usuário
+  // e a senha no formulário da tela. O CAPTCHA e o clique em "Entrar" são da pessoa.
+  // A senha vem da API direto para cá e não passa pelo site nem fica guardada.
+  private async preencherLogin(): Promise<void> {
+    const p = this.ativa
+    if (!p) return
+    let host = ''
+    try {
+      host = new URL(p.url()).hostname
+    } catch {
+      /* about:blank */
+    }
+    if (!host) {
+      this.enviar({ t: 'login-preenchido', ok: false, mensagem: 'Abra a tela de login do portal primeiro.' })
+      return
+    }
+    let acesso: { login: string; senha: string }
+    try {
+      acesso = await this.api.acessoSalvo(this.token, this.tenderId, host)
+    } catch (err) {
+      this.enviar({ t: 'login-preenchido', ok: false, mensagem: err instanceof ErroDaApi ? err.message : 'Não consegui buscar o acesso salvo agora.' })
+      return
+    }
+    try {
+      for (const f of p.frames()) {
+        const r = await preencherFormularioDeLogin(f, acesso.login, acesso.senha)
+        if (!r) continue
+        const mensagem =
+          r === 'tudo'
+            ? 'Usuário e senha de Meus Portais escritos na tela. Resolva o CAPTCHA, se houver, e clique em Entrar.'
+            : r === 'so-login'
+              ? 'Usuário escrito na tela. Clique em Continuar e, na tela da senha, clique de novo em "Preencher meu login".'
+              : 'Senha escrita na tela. Confira o usuário e clique em Entrar.'
+        this.enviar({ t: 'login-preenchido', ok: true, mensagem })
+        return
+      }
+      this.enviar({ t: 'login-preenchido', ok: false, mensagem: 'Não achei o formulário de login nesta tela. Abra a página "Entrar" do portal e tente de novo.' })
+    } finally {
+      acesso.senha = ''
+    }
   }
 
   // ---------- leitura do lance e do chat ----------
@@ -423,4 +493,50 @@ function tipoPeloNome(nome: string): string {
     txt: 'text/plain',
   }
   return tipos[ext] ?? 'application/octet-stream'
+}
+
+// Marca na página o campo da senha e o campo do usuário (o texto antes da senha, no mesmo
+// formulário; sem senha na tela, um campo com cara de CPF/usuário/e-mail). Roda no portal,
+// por isso é texto: o valor da senha não entra aqui, só é escrito depois pelo Playwright.
+const MARCAR_LOGIN = `(() => {
+  for (const e of document.querySelectorAll('[data-bela-login],[data-bela-senha]')) { e.removeAttribute('data-bela-login'); e.removeAttribute('data-bela-senha') }
+  const visivel = (el) => { const r = el.getBoundingClientRect(); const cs = getComputedStyle(el); return r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none' }
+  const editavel = (el) => !el.disabled && !el.readOnly && visivel(el)
+  const campos = [...document.querySelectorAll('input')]
+  const deTexto = (i) => ['text', 'email', 'tel', 'number', ''].includes((i.getAttribute('type') || '').toLowerCase()) && editavel(i)
+  const senha = campos.find((i) => i.type === 'password' && editavel(i))
+  let login
+  if (senha) {
+    const antes = campos.slice(0, campos.indexOf(senha)).filter(deTexto)
+    const doFormulario = senha.form ? antes.filter((i) => i.form === senha.form) : []
+    const lista = doFormulario.length ? doFormulario : antes
+    login = lista[lista.length - 1]
+    senha.setAttribute('data-bela-senha', '1')
+  } else {
+    const cara = /cpf|cnpj|login|usu[aá]rio|user|e-?mail|documento|conta|account/i
+    login = campos.find((i) => deTexto(i) && cara.test([i.name, i.id, i.placeholder, i.getAttribute('aria-label') || '', i.autocomplete].join(' ')))
+  }
+  if (login) login.setAttribute('data-bela-login', '1')
+  return { senha: !!senha, login: !!login }
+})()`
+
+const DESMARCAR_LOGIN = `(() => { for (const e of document.querySelectorAll('[data-bela-login],[data-bela-senha]')) { e.removeAttribute('data-bela-login'); e.removeAttribute('data-bela-senha') } })()`
+
+/** Escreve usuário e senha no formulário de login deste frame. Nunca clica em "Entrar". */
+export async function preencherFormularioDeLogin(
+  f: import('playwright-core').Frame,
+  login: string,
+  senha: string
+): Promise<'tudo' | 'so-login' | 'so-senha' | null> {
+  const marcado = (await f.evaluate(MARCAR_LOGIN).catch(() => null)) as { senha: boolean; login: boolean } | null
+  if (!marcado || (!marcado.senha && !marcado.login)) return null
+  try {
+    if (marcado.login) await f.locator('[data-bela-login]').first().fill(login, { timeout: 5_000 })
+    if (marcado.senha) await f.locator('[data-bela-senha]').first().fill(senha, { timeout: 5_000 })
+  } catch {
+    return null
+  } finally {
+    await f.evaluate(DESMARCAR_LOGIN).catch(() => undefined)
+  }
+  return marcado.senha ? (marcado.login ? 'tudo' : 'so-senha') : 'so-login'
 }

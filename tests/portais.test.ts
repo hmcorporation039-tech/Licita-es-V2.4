@@ -36,3 +36,20 @@ describe('mascararLogin', () => {
     expect(mascararLogin('ab')).toBe('••')
   })
 })
+
+describe('portal da licitação (portal dentro da Bela)', () => {
+  it('acha o portal pelo link do processo, depois pelo nome da plataforma', async () => {
+    const { portalDaLicitacao, inicioNoPortal, portalDoHost, portalPorId } = await import('../src/lib/portais')
+    expect(portalDaLicitacao({ linkEdital: 'https://www.licitanet.com.br/processo/1' })?.id).toBe('LICITANET')
+    expect(portalDaLicitacao({ linkEdital: 'https://pncp.gov.br/app/editais/1', plataformaDeOrigem: 'BLL COMPRAS' })?.id).toBe('BLL')
+    expect(portalDaLicitacao({ plataformaDeOrigem: 'Portal de Compras Públicas' })?.id).toBe('PCP')
+    expect(portalDaLicitacao({ plataformaDeOrigem: 'Compras.gov.br' })?.id).toBe('COMPRASNET')
+    expect(portalDaLicitacao({ plataformaDeOrigem: 'Prefeitura Municipal de Vitória' })).toBeNull()
+    expect(portalDaLicitacao({ fonte: 'COMPRASNET' })?.id).toBe('COMPRASNET')
+    expect(portalDoHost('bll.org.br.example.com')).toBeNull()
+    const bll = portalPorId('BLL')!
+    expect(inicioNoPortal(bll, 'https://bllcompras.com/Process/1')).toBe('https://bllcompras.com/Process/1')
+    expect(inicioNoPortal(bll, 'https://pncp.gov.br/app/editais/1')).toBe(bll.inicio)
+    expect(inicioNoPortal(bll, 'http://bllcompras.com/Process/1')).toBe(bll.inicio)
+  })
+})

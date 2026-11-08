@@ -1,6 +1,6 @@
 export { cx } from './cx'
 export { Button, LinkButton, TextLink, buttonClasses, type ButtonVariant, type ButtonSize } from './Button'
-export { Field, Input, Select, Textarea, Checkbox, FormError } from './Form'
+export { Field, Input, InputDeSenha, Select, Textarea, Checkbox, FormError } from './Form'
 export { PageHeader, Panel, Metric, MetricRow, EmptyState, Notice, ErrorState, Skeleton, Carregando, DescriptionList } from './Layout'
 export { StatusTag, StatusDot, Prazo, tomDoPrazo, textoDoPrazo, toneText, type Tom } from './Status'
 export { Tabs, TabLinks, useAbaNaUrl, type Aba } from './Tabs'

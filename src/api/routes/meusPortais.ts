@@ -18,7 +18,7 @@ const salvarSchema = z.object({
 meusPortaisRouter.get(
   '/',
   asyncHandler(async (req, res) => {
-    res.json({ portais: PORTAIS, credenciais: await listarCredenciais(req.companyId!) })
+    res.json({ portais: PORTAIS.map(({ apelidos: _apelidos, ...p }) => p), credenciais: await listarCredenciais(req.companyId!) })
   })
 )
 

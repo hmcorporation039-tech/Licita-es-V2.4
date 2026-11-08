@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { PublicCard } from '@/components/PublicShell'
-import { Button, Field, FormError, Input, Notice, TextLink } from '@/components/ui'
+import { Button, Field, FormError, Input, InputDeSenha, Notice, TextLink } from '@/components/ui'
 import { api, ApiRequestError, CODIGO_ACESSO_EXPIRADO } from '@/lib/api'
 import AcessoEncerrado, { lerDadosDoAcessoEncerrado, type DadosDoAcessoEncerrado } from '@/components/AcessoEncerrado'
 import { setSession } from '@/lib/session'
@@ -176,7 +176,7 @@ export default function LoginPage() {
           <Input type="email" autoComplete="email" placeholder="voce@empresa.com.br" value={email} onChange={(e) => setEmail(e.target.value)} />
         </Field>
         <Field label="Senha" required>
-          <Input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+          <InputDeSenha autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
         </Field>
         <FormError>{error}</FormError>
         {naoConfirmado && (

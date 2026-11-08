@@ -14,7 +14,7 @@ const coord = z.number().finite().min(0).max(4000)
 const modificadores = z.number().int().min(0).max(15).default(0) // Alt=1, Ctrl=2, Meta=4, Shift=8 (como no CDP)
 
 export const mensagemDaWeb = z.discriminatedUnion('t', [
-  z.object({ t: z.literal('entrar'), token: z.string().min(10).max(4000), tenderId: z.string().uuid() }),
+  z.object({ t: z.literal('entrar'), token: z.string().min(10).max(4000), tenderId: z.string().uuid(), portal: z.string().max(40).optional() }),
   z.object({ t: z.literal('tamanho'), largura: z.number().int().min(800).max(1920), altura: z.number().int().min(500).max(1200) }),
   z.object({
     t: z.literal('mouse'),
@@ -30,6 +30,7 @@ export const mensagemDaWeb = z.discriminatedUnion('t', [
   z.object({ t: z.literal('navegar'), acao: z.enum(['voltar', 'avancar', 'recarregar', 'inicio']) }),
   z.object({ t: z.literal('ir'), url: z.string().url().max(2000) }),
   z.object({ t: z.literal('preencher-lance'), valor: z.number().positive().max(1e13) }),
+  z.object({ t: z.literal('preencher-login') }),
   z.object({
     t: z.literal('arquivos'),
     arquivos: z
@@ -44,10 +45,11 @@ export const mensagemDaWeb = z.discriminatedUnion('t', [
 export type MensagemDaWeb = z.infer<typeof mensagemDaWeb>
 
 export type MensagemDoNavegador =
-  | { t: 'pronto'; largura: number; altura: number }
+  | { t: 'pronto'; largura: number; altura: number; portal: string; nomeDoPortal: string }
   | { t: 'estado'; url: string; titulo: string; host: string; portal: string | null }
   | { t: 'leitura'; melhorLance: number | null; mensagensNovas: number }
   | { t: 'lance-preenchido'; ok: boolean; texto?: string; motivo?: string }
+  | { t: 'login-preenchido'; ok: boolean; mensagem: string }
   | { t: 'pedido-de-arquivo'; multiplo: boolean }
   | { t: 'download'; nome: string; tipo: string; base64: string }
   | { t: 'dialogo'; tipo: string; mensagem: string; padrao: string }
@@ -58,11 +60,12 @@ export type MensagemDoNavegador =
   | { t: 'pong' }
 
 /**
- * Para onde a página principal pode navegar: só portais do governo, em https.
+ * Para onde a página principal pode navegar, sempre em https: os portais do governo
+ * (gov.br, inclusive o login do gov.br) e os portais de compras de Meus Portais.
  * (Imagens, scripts e o CAPTCHA de outros domínios carregam normalmente; o que se
  * limita é a navegação, para o navegador da Bela não virar um navegador qualquer.)
  */
-export function navegacaoPermitida(url: string, hostsLocais: string[] = []): boolean {
+export function navegacaoPermitida(url: string, hostsLocais: string[] = [], hostsDosPortais: string[] = []): boolean {
   let u: URL
   try {
     u = new URL(url)
@@ -74,7 +77,8 @@ export function navegacaoPermitida(url: string, hostsLocais: string[] = []): boo
   // Só para teste/desenvolvimento: hosts locais liberados em http (NAVEGADOR_HOSTS_LOCAIS).
   if (hostsLocais.includes(host) && (u.protocol === 'http:' || u.protocol === 'https:')) return true
   if (u.protocol !== 'https:') return false
-  return host === 'gov.br' || host.endsWith('.gov.br')
+  if (host === 'gov.br' || host.endsWith('.gov.br')) return true
+  return hostsDosPortais.some((d) => host === d || host.endsWith('.' + d))
 }
 
 /** Tecla vinda do navegador da pessoa -> nome que o Playwright entende. */
