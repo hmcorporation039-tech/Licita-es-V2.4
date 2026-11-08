@@ -7,6 +7,7 @@ import { Worker, Job } from 'bullmq'
 import { redisConnection, matcherQueue } from '../queues'
 import { parsePNCPTender } from '../services/pncpParser'
 import { saveTenderSeAindaServir, saveWorkerLog } from '../services/tenderService'
+import { coletarContratosComLog } from '../services/contratosPublicosColeta'
 import { enfileirarSemTravar } from '../queues/enfileirar'
 import { resolveColetaWindow } from '../lib/coletaWindow'
 import { ultimaPublicacaoColetada } from '../services/coletaCursorService'
@@ -202,6 +203,7 @@ export function startColetorPNCPWorker() {
     async (job: Job<ColetorJobPayload>) => {
       if (job.data.varredura === 'propostas') await varrerPropostasAbertas(job)
       else if (job.data.varredura === 'resultados') await conferirResultadosNoPncp()
+      else if (job.data.varredura === 'contratos') await coletarContratosComLog()
       else await coletarPublicacoes(job)
     },
     {

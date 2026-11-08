@@ -26,6 +26,10 @@ export interface EmpresaDoCnpj {
   uf: string | null
   municipio: string | null
   atividades: AtividadeDaEmpresa[]
+  /** Contato público do cadastro na Receita (pode estar desatualizado). */
+  telefones?: string[]
+  email?: string | null
+  situacao?: string | null
 }
 
 export interface ItemSugerido {
@@ -85,7 +89,22 @@ export function empresaDaBrasilApi(cnpj: string, j: unknown): EmpresaDoCnpj | nu
     uf: uf.length === 2 ? uf : null,
     municipio: municipio ? cidadeLegivel(municipio) : null,
     atividades,
+    telefones: [o.ddd_telefone_1, o.ddd_telefone_2].map((t) => telefoneLegivel(texto(t, 20))).filter((t): t is string => t !== null),
+    email: emailValido(texto(o.email, 120)),
+    situacao: texto(o.descricao_situacao_cadastral, 40) || null,
   }
+}
+
+function telefoneLegivel(bruto: string): string | null {
+  const d = bruto.replace(/\D/g, '')
+  if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`
+  if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`
+  return null
+}
+
+function emailValido(bruto: string): string | null {
+  const e = bruto.toLowerCase()
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) ? e : null
 }
 
 const cache = new Map<string, { em: number; valor: EmpresaDoCnpj }>()

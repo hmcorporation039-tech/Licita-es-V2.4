@@ -2,6 +2,7 @@
 
 import CompartilharLicitacao from '@/components/CompartilharLicitacao'
 import { dataDaLicitacao, faltamDiasUteis, formatarData } from '@/lib/datas'
+import { AVISO_DE_APOIO_TECNICO } from '@/lib/avisoDeApoio'
 import { use, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { AlertCircle, Calculator, Check, CheckCircle2, ChevronDown, ChevronUp, ExternalLink, Gavel, Loader2, Plus, RotateCcw, Trash2 } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
@@ -341,8 +342,16 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
     }
   }
 
-  function addChecklistItem(label: string) {
-    if (items.some((i) => i.label === label)) return
+  // O servidor aceita até 500 caracteres por item; o edital às vezes descreve o documento num parágrafo inteiro.
+  const rotuloDoChecklist = (texto: string) => {
+    const t = texto.replace(/\s+/g, ' ').trim()
+    return t.length > 500 ? `${t.slice(0, 497).trimEnd()}…` : t
+  }
+  const estaNoChecklist = (texto: string) => items.some((i) => i.label === rotuloDoChecklist(texto))
+
+  function addChecklistItem(texto: string) {
+    const label = rotuloDoChecklist(texto)
+    if (!label || items.some((i) => i.label === label)) return
     const next = [
       ...items,
       {
@@ -501,7 +510,7 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
     { id: 'analise', label: 'Análise' },
     { id: 'habilitacao', label: 'Habilitação' },
     { id: 'exigencias', label: 'Exigências' },
-    { id: 'concorrentes', label: 'Concorrentes' },
+    { id: 'concorrentes', label: <span title="Agente de documentação">Agente Doc.</span> },
     {
       id: 'checklist',
       label: (
@@ -849,6 +858,12 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
                     ) : null
                   })()}
 
+                  {(analysis.resultado.exigenciasTecnicas.length > 0 || analysis.resultado.documentosExigidos.length > 0) && (
+                    <Notice tone="warn" title="Ajuda técnica">
+                      {AVISO_DE_APOIO_TECNICO}
+                    </Notice>
+                  )}
+
                   {analysis.resultado.exigenciasTecnicas.length > 0 && (
                     <section className="flex flex-col gap-2">
                       <h3 className="text-sm font-semibold text-ink">Exigências técnicas</h3>
@@ -864,17 +879,56 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
 
                   {analysis.resultado.documentosExigidos.length > 0 && (
                     <section className="flex flex-col gap-2">
-                      <h3 className="text-sm font-semibold text-ink">Documentos específicos deste edital (além do checklist padrão)</h3>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <h3 className="text-sm font-semibold text-ink">Documentos específicos deste edital (além do checklist padrão)</h3>
+                        <AvisoDeSalvamento estado={checklistSalvo.estado} erro={checklistSalvo.erro} />
+                      </div>
                       <ul className="flex flex-col divide-y divide-line-soft rounded border border-line">
-                        {analysis.resultado.documentosExigidos.map((doc, i) => (
-                          <li key={i} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm text-ink-2">
-                            <span className="min-w-0">{doc}</span>
-                            <Button variant="ghost" size="sm" icon={Plus} onClick={() => addChecklistItem(doc)}>
-                              Adicionar ao checklist
-                            </Button>
-                          </li>
-                        ))}
+                        {analysis.resultado.documentosExigidos.map((doc, i) => {
+                          const jaEsta = estaNoChecklist(doc)
+                          return (
+                            <li key={i} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm text-ink-2">
+                              <span className="min-w-0 flex-1">{doc}</span>
+                              {jaEsta ? (
+                                <Button variant="ghost" size="sm" icon={Check} onClick={() => setActiveTab('checklist')} aria-label={`Já está no checklist. Abrir o checklist: ${doc}`}>
+                                  No checklist · ver
+                                </Button>
+                              ) : (
+                                <Button variant="ghost" size="sm" icon={Plus} onClick={() => addChecklistItem(doc)}>
+                                  Adicionar ao checklist
+                                </Button>
+                              )}
+                            </li>
+                          )
+                        })}
                       </ul>
+                      {analysis.resultado.documentosExigidos.length > 1 && analysis.resultado.documentosExigidos.some((d) => !estaNoChecklist(d)) && (
+                        <div className="flex justify-end">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            icon={Plus}
+                            onClick={() => {
+                              const novos = analysis.resultado!.documentosExigidos.map(rotuloDoChecklist).filter((l) => l && !items.some((i) => i.label === l))
+                              if (novos.length === 0) return
+                              const next = [
+                                ...items,
+                                ...novos.map((label) => ({
+                                  id: `custom-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+                                  section: 'Documentos Adicionais do Seu Edital',
+                                  label,
+                                  checked: false,
+                                  custom: true,
+                                })),
+                              ]
+                              setItems(next)
+                              persist(next)
+                            }}
+                          >
+                            Adicionar todos ao checklist
+                          </Button>
+                        </div>
+                      )}
                     </section>
                   )}
 

@@ -7,6 +7,7 @@ import type { PainelDoFiscal as Painel, ParecerDeHabilitacao, RequisitoDeHabilit
 import { diasUteis } from '@/lib/datas'
 import { Carregando, ErrorState, Notice, Panel, StatusTag, TextLink, cx, toneText, type Tom } from '@/components/ui'
 import AnexarDocumentoPendente from '@/components/AnexarDocumentoPendente'
+import { AVISO_DE_APOIO_TECNICO } from '@/lib/avisoDeApoio'
 
 const STATUS: Record<StatusHabilitacao, { tom: Tom; rotulo: string }> = {
   verde: { tom: 'ok', rotulo: 'Em dia' },
@@ -98,6 +99,7 @@ function Parecer({ p }: { p: ParecerDeHabilitacao }) {
               ))}
             </ul>
           )}
+          <p className="text-xs text-muted">{AVISO_DE_APOIO_TECNICO}</p>
           <p className="text-xs text-muted">Apoio à decisão pelo que está cadastrado no cofre. Quem decide a habilitação é a comissão, na sessão.</p>
         </div>
       </div>
