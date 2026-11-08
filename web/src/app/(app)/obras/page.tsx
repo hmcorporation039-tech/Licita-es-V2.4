@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Copy, ExternalLink, HardHat, MessageSquareText, Phone, Settings2 } from 'lucide-react'
+import { Copy, ExternalLink, HardHat, Lock, MessageSquareText, Phone, Settings2 } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
 import { api, ApiRequestError } from '@/lib/api'
 import { Button, Carregando, Checkbox, EmptyState, ErrorState, Field, Input, Notice, PageHeader, Panel, Select, StatusTag, TextLink, cx } from '@/components/ui'
@@ -202,7 +202,7 @@ function Configuracao({ perfil, aoSalvar }: { perfil: Perfil; aoSalvar: () => vo
   )
 }
 
-function CartaoDoContrato({ c }: { c: Oportunidade }) {
+function CartaoDoContrato({ c, bloqueado }: { c: Oportunidade; bloqueado: boolean }) {
   const [ganhador, setGanhador] = useState<Ganhador | null>(null)
   const [mensagem, setMensagem] = useState<string | null>(null)
   const [carregando, setCarregando] = useState<'contato' | 'mensagem' | null>(null)
@@ -269,12 +269,20 @@ function CartaoDoContrato({ c }: { c: Oportunidade }) {
         {c.categoria && <StatusTag tone="neutral">{c.categoria}</StatusTag>}
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" variant="secondary" icon={Phone} loading={carregando === 'contato'} onClick={verContato} disabled={ganhador !== null}>
-          Ver contato
-        </Button>
-        <Button size="sm" variant="secondary" icon={MessageSquareText} loading={carregando === 'mensagem'} onClick={verMensagem} disabled={mensagem !== null}>
-          Mensagem pronta
-        </Button>
+        {bloqueado ? (
+          <TextLink href="/conta" className="inline-flex items-center gap-1 text-sm">
+            <Lock size={14} aria-hidden /> Contato e mensagem pronta nos planos pagos
+          </TextLink>
+        ) : (
+          <>
+            <Button size="sm" variant="secondary" icon={Phone} loading={carregando === 'contato'} onClick={verContato} disabled={ganhador !== null}>
+              Ver contato
+            </Button>
+            <Button size="sm" variant="secondary" icon={MessageSquareText} loading={carregando === 'mensagem'} onClick={verMensagem} disabled={mensagem !== null}>
+              Mensagem pronta
+            </Button>
+          </>
+        )}
         {c.linkPncp && (
           <TextLink href={c.linkPncp} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm">
             Ver contrato no PNCP <ExternalLink size={14} aria-hidden />
@@ -325,6 +333,7 @@ export default function ObrasPage() {
   const [editando, setEditando] = useState(false)
   const [contratos, setContratos] = useState<Oportunidade[] | null>(null)
   const [atualizadoEm, setAtualizadoEm] = useState<string | null>(null)
+  const [planoGratuito, setPlanoGratuito] = useState<{ mostrados: number; total: number } | null>(null)
   const [dias, setDias] = useState(60)
   const [nicho, setNicho] = useState('')
   const [ordem, setOrdem] = useState<'recentes' | 'perto'>('recentes')
@@ -348,9 +357,10 @@ export default function ObrasPage() {
     setContratos(null)
     const params = new URLSearchParams({ dias: String(dias), ...(nicho ? { nicho } : {}) })
     api
-      .get<{ contratos: Oportunidade[]; atualizadoEm: string | null }>(`/api/obras/oportunidades?${params}`)
+      .get<{ contratos: Oportunidade[]; atualizadoEm: string | null; planoGratuito: { mostrados: number; total: number } | null }>(`/api/obras/oportunidades?${params}`)
       .then((r) => {
         setContratos(r.contratos)
+        setPlanoGratuito(r.planoGratuito ?? null)
         setAtualizadoEm(r.atualizadoEm)
       })
       .catch((e) => setErro(e instanceof ApiRequestError ? e.message : 'Não foi possível buscar os contratos.'))
@@ -424,6 +434,12 @@ export default function ObrasPage() {
                   </Field>
                 )}
               </div>
+              {planoGratuito && (
+                <Notice tone="info" title="Plano gratuito">
+                  Você está vendo {planoGratuito.mostrados} de {planoGratuito.total} {planoGratuito.total === 1 ? 'contrato' : 'contratos'}. Nos planos pagos a lista vem completa, com o
+                  contato do ganhador e a mensagem pronta. <TextLink href="/conta">Ver planos</TextLink>
+                </Notice>
+              )}
               {!ordenados ? (
                 <Carregando linhas={5} texto="Procurando contratos…" />
               ) : ordenados.length === 0 ? (
@@ -433,10 +449,10 @@ export default function ObrasPage() {
                   description="Aumente o raio, marque mais estados, escolha mais nichos ou aumente o período. A Bela busca contratos novos 3 vezes por dia."
                 />
               ) : (
-                <Panel padding="none" title={`${ordenados.length} ${ordenados.length === 1 ? 'contrato' : 'contratos'}`} description={atualizadoEm ? `Base atualizada em ${new Date(atualizadoEm).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}` : undefined}>
+                <Panel padding="none" title={`${ordenados.length} ${ordenados.length === 1 ? 'contrato' : 'contratos'}${planoGratuito ? ` de ${planoGratuito.total}` : ''}`} description={atualizadoEm ? `Base atualizada em ${new Date(atualizadoEm).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}` : undefined}>
                   <ul className="flex flex-col divide-y divide-line-soft">
                     {ordenados.map((c) => (
-                      <CartaoDoContrato key={c.id} c={c} />
+                      <CartaoDoContrato key={c.id} c={c} bloqueado={planoGratuito !== null} />
                     ))}
                   </ul>
                 </Panel>
