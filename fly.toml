@@ -1,42 +1,37 @@
-# ============================================================
-# Navegador da Bela no Fly.io, em São Paulo (região "gru").
-# Por que fora do Railway: o Compras.gov.br recusa (403) conexões vindas de fora do
-# Brasil, e o Railway só tem servidores nos EUA, Europa e Ásia. Só o navegador vem para cá;
-# a API, o banco e os workers continuam no Railway.
-# Passo a passo: docs/PORTAL_DENTRO_DA_BELA.md, seção "Navegador no Brasil (Fly.io)".
-# API_URL e NAVEGADOR_SEGREDO vão por `fly secrets set` (nunca neste arquivo).
-# ============================================================
-app = "bela-navegador"
-primary_region = "gru"
+# fly.toml app configuration file generated for licita-es-v2-4 on 2026-11-09T01:47:47Z
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'licita-es-v2-4'
+primary_region = 'gru'
 
 [build]
-  dockerfile = "navegador.Dockerfile"
+  dockerfile = 'navegador.Dockerfile'
 
 [env]
-  NAVEGADOR_ORIGENS = "https://licitabela.com.br,https://www.licitabela.com.br,https://licita-es-v2-4.vercel.app"
-  NAVEGADOR_MAX_SESSOES = "3"
+  NAVEGADOR_MAX_SESSOES = '3'
+  NAVEGADOR_ORIGENS = 'https://licitabela.com.br,https://www.licitabela.com.br,https://licita-es-v2-4.vercel.app'
 
 [http_service]
   internal_port = 8080
   force_https = true
-  # As sessões ficam abertas no navegador: a máquina não pode desligar sozinha.
-  auto_stop_machines = "off"
+  auto_stop_machines = 'off'
   auto_start_machines = true
   min_machines_running = 1
 
   [http_service.concurrency]
-    type = "connections"
-    soft_limit = 20
+    type = 'connections'
     hard_limit = 40
+    soft_limit = 20
 
   [[http_service.checks]]
-    grace_period = "20s"
-    interval = "30s"
-    timeout = "5s"
-    method = "GET"
-    path = "/saude"
+    interval = '30s'
+    timeout = '5s'
+    grace_period = '20s'
+    method = 'GET'
+    path = '/saude'
 
-# Cada sessão do Chromium usa ~300-500 MB: 2 GB comportam as 3 sessões.
 [[vm]]
-  size = "shared-cpu-1x"
-  memory = "2gb"
+  size = 'shared-cpu-1x'
+  memory = '2gb'
