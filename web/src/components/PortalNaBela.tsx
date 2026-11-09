@@ -435,11 +435,13 @@ export default function PortalNaBela({ tenderId, robo, aoLer }: { tenderId: stri
       {erro && <Notice tone="danger">{erro}</Notice>}
       {pagina?.recusado && (
         <Notice tone="warn" title={`O ${nomeAberto ?? 'portal'} não aceitou o navegador da Bela`}>
-          <p>
-            O site do portal recusou o acesso (erro {pagina.recusado}). Abra o portal no seu Chrome: a extensão Bela trabalha lá, lê a disputa e
-            escreve o lance sugerido. Quem confere e envia é você.
-          </p>
-          {!extensao && <p>A extensão Bela não está neste Chrome. Peça a instalação ao suporte da Bela.</p>}
+          <p>Este portal bloqueia o acesso por aqui (erro {pagina.recusado}). Faça assim:</p>
+          <ol className="ml-4 list-decimal">
+            {!extensao && <li>Instale a extensão Bela no seu Chrome (peça ao suporte da Bela).</li>}
+            <li>Clique no botão abaixo: o portal abre numa aba nova do Chrome.</li>
+            <li>Entre no portal com o seu login, como sempre.</li>
+            <li>Clique no ícone da Bela na barra do Chrome: o painel abre ao lado, lendo a disputa e sugerindo o lance.</li>
+          </ol>
           {(portalEscolhido?.endereco || /^https:\/\//i.test(pagina.url)) && (
             <a
               href={portalEscolhido?.endereco || pagina.url}
