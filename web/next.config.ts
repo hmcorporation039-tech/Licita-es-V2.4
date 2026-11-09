@@ -7,14 +7,20 @@ const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3333";
 
 // "Portal dentro da Bela": a página conversa por WebSocket com o serviço navegador.
 // Mesma URL configurada na API (NAVEGADOR_URL), em ws(s)://. Na Vercel, sem a variável,
-// vale o serviço navegador de produção no Railway (endereço público, não é segredo);
-// a variável NAVEGADOR_URL, quando existir, vale por cima. Fora da Vercel, sem ela,
-// nada é liberado.
-const NAVEGADOR_DE_PRODUCAO = "https://licita-es-v24-production.up.railway.app";
-const navegadorUrl = (process.env.NAVEGADOR_URL?.trim() || (process.env.VERCEL ? NAVEGADOR_DE_PRODUCAO : ""))
-  .trim()
-  .replace(/^http(s?):\/\//i, (_m, s: string) => `ws${s}://`)
-  .replace(/\/+$/, "");
+// valem os dois endereços de produção (públicos, não são segredo): o do Railway e o do
+// Fly.io em São Paulo (fly.toml). Assim a troca de um para o outro é só na API, sem novo
+// deploy aqui. A variável NAVEGADOR_URL, quando existir, vale por cima. Fora da Vercel,
+// sem ela, nada é liberado.
+const NAVEGADORES_DE_PRODUCAO = ["https://licita-es-v24-production.up.railway.app", "https://bela-navegador.fly.dev"];
+const paraWs = (url: string) =>
+  url
+    .trim()
+    .replace(/^http(s?):\/\//i, (_m, s: string) => `ws${s}://`)
+    .replace(/\/+$/, "");
+const navegadorUrl = (process.env.NAVEGADOR_URL?.trim() ? [process.env.NAVEGADOR_URL] : process.env.VERCEL ? NAVEGADORES_DE_PRODUCAO : [])
+  .map(paraWs)
+  .filter(Boolean)
+  .join(" ");
 
 // Content-Security-Policy: o app não usa CDN de script nem estilo externo, só
 // o próprio bundle e chamadas à API. O Next (App Router) injeta scripts INLINE
