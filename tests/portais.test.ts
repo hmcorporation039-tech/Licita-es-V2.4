@@ -63,6 +63,7 @@ describe('portais que abrem dentro da Bela', () => {
 
   it('a extensão cobre todos os domínios dos portais do catálogo', async () => {
     const { hostsDosPortais } = await import('../src/lib/portais')
+    // @ts-expect-error módulo .mjs puro da extensão, sem tipos
     const { portalDoHost: daExtensao } = await import('../extensao-bela/config.mjs')
     for (const host of hostsDosPortais()) expect(daExtensao(host), host).not.toBeNull()
   })
