@@ -434,15 +434,25 @@ export default function PortalNaBela({ tenderId, robo, aoLer }: { tenderId: stri
 
       {erro && <Notice tone="danger">{erro}</Notice>}
       {pagina?.recusado && (
-        <Notice tone="warn" title={`O ${nomeAberto ?? 'portal'} não aceitou a conexão do navegador da Bela`}>
+        <Notice tone="warn" title={`O ${nomeAberto ?? 'portal'} não aceitou o navegador da Bela`}>
           <p>
-            O site do portal recusou o acesso (erro {pagina.recusado}) antes de mostrar a tela de login. Alguns portais do governo só aceitam
-            conexões vindas do Brasil. Enquanto isso, abra o portal numa aba normal e use a extensão Bela na disputa.
+            O site do portal recusou o acesso (erro {pagina.recusado}). Abra o portal no seu Chrome: a extensão Bela trabalha lá, lê a disputa e
+            escreve o lance sugerido. Quem confere e envia é você.
           </p>
-          {/^https:\/\//i.test(pagina.url) && (
-            <TextLink href={pagina.url} target="_blank" rel="noopener noreferrer">
-              Abrir o portal numa aba normal
-            </TextLink>
+          {!extensao && <p>A extensão Bela não está neste Chrome. Peça a instalação ao suporte da Bela.</p>}
+          {(portalEscolhido?.endereco || /^https:\/\//i.test(pagina.url)) && (
+            <a
+              href={portalEscolhido?.endereco || pagina.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => {
+                avisarExtensao(tenderId)
+                fechar()
+              }}
+              className={buttonClasses('primary', 'sm', 'mt-2 self-start')}
+            >
+              <ExternalLink size={14} aria-hidden /> Abrir o {nomeAberto ?? nomeEscolhido} no Chrome com a Bela
+            </a>
           )}
         </Notice>
       )}

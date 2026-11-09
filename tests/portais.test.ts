@@ -55,9 +55,10 @@ describe('portal da licitação (portal dentro da Bela)', () => {
 })
 
 describe('portais que abrem dentro da Bela', () => {
-  it('só o Compras.gov.br abre no quadro; os particulares vão para a aba com a extensão', async () => {
+  it('todos abrem dentro da Bela, menos os que já recusaram (LicitaNet), que vão para a aba com a extensão', async () => {
     const { PORTAIS: todos } = await import('../src/lib/portais')
-    expect(todos.filter((p) => p.abreDentroDaBela).map((p) => p.id)).toEqual(['COMPRASNET'])
+    expect(todos.filter((p) => !p.abreDentroDaBela).map((p) => p.id)).toEqual(['LICITANET'])
+    expect(todos.find((p) => p.id === 'COMPRASNET')?.abreDentroDaBela).toBe(true)
   })
 
   it('a extensão cobre todos os domínios dos portais do catálogo', async () => {
