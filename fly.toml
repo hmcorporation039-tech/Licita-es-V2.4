@@ -6,7 +6,7 @@
 # Passo a passo: docs/PORTAL_DENTRO_DA_BELA.md, seção "Navegador no Brasil (Fly.io)".
 # API_URL e NAVEGADOR_SEGREDO vão por `fly secrets set` (nunca neste arquivo).
 # ============================================================
-app = "bela-navegador"
+app = "licita-es-v2-4"
 primary_region = "gru"
 
 [build]
@@ -23,6 +23,8 @@ primary_region = "gru"
   auto_stop_machines = "off"
   auto_start_machines = true
   min_machines_running = 1
+  # Só UMA máquina: as sessões ficam na memória dela (duas máquinas dividiriam as
+  # conexões e dobrariam o custo). Se o Fly criar duas, use `fly scale count 1`.
 
   [http_service.concurrency]
     type = "connections"

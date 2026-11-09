@@ -55,7 +55,7 @@ Certificado digital em **token (A3)** não funciona no navegador remoto. Para es
    - `NAVEGADOR_URL` = a URL do passo 1.
    - `NAVEGADOR_SEGREDO` = o mesmo valor do passo 1. Copie o valor gerado e cole puro; a referência `${{servico.NAVEGADOR_SEGREDO}}` só funciona se o nome do serviço não tiver pontos.
    - Sem esse segredo, o portal abre normalmente, mas o botão "Preencher meu login" avisa que ainda não foi ativado.
-3. **Vercel** (site): o `web/next.config.ts` já libera, por padrão, os navegadores de produção (`https://licita-es-v24-production.up.railway.app` e `https://bela-navegador.fly.dev`) na política de segurança (CSP). Se o domínio mudar, coloque `NAVEGADOR_URL` em Settings → Environment Variables com a nova URL e faça um redeploy: a variável vale por cima do padrão.
+3. **Vercel** (site): o `web/next.config.ts` já libera, por padrão, os navegadores de produção (`https://licita-es-v24-production.up.railway.app` e `https://licita-es-v2-4.fly.dev`) na política de segurança (CSP). Se o domínio mudar, coloque `NAVEGADOR_URL` em Settings → Environment Variables com a nova URL e faça um redeploy: a variável vale por cima do padrão.
 4. Confira: `GET https://<navegador>/saude` deve responder `{"ok":true,...}`. No site, abra uma licitação escolhida, depois **Pregão com a Bela → escolha o portal → Abrir … aqui**.
 
 Sem `NAVEGADOR_URL`, a tela mostra "ainda não foi ativado", e a extensão continua funcionando normalmente.
@@ -68,11 +68,11 @@ O Compras.gov.br responde **403 Forbidden** para conexões vindas de fora do Bra
    `iwr https://fly.io/install.ps1 -useb | iex`
 2. Na pasta do repositório:
    - `fly auth login`
-   - `fly apps create bela-navegador` (se o nome estiver ocupado, use outro e troque `app` no `fly.toml` e o endereço no `web/next.config.ts`)
+   - `fly apps create licita-es-v2-4` (se o nome estiver ocupado, use outro e troque `app` no `fly.toml` e o endereço no `web/next.config.ts`)
    - `fly secrets set API_URL=<URL pública da API no Railway> NAVEGADOR_SEGREDO=<o mesmo valor do NAVEGADOR_SEGREDO da API>`
    - `fly deploy`
-3. Confira `https://bela-navegador.fly.dev/saude` → `{"ok":true,...}`.
-4. Na **API** (Railway), troque `NAVEGADOR_URL` para `https://bela-navegador.fly.dev`. A Vercel já libera esse endereço; não precisa redeploy do site.
+3. Confira `https://licita-es-v2-4.fly.dev/saude` → `{"ok":true,...}`.
+4. Na **API** (Railway), troque `NAVEGADOR_URL` para `https://licita-es-v2-4.fly.dev`. A Vercel já libera esse endereço; não precisa redeploy do site.
 5. Teste o Compras.gov.br pelo site. Funcionando, o serviço do navegador no Railway pode ser desligado.
 
 Custo: máquina `shared-cpu-1x` com 2 GB ligada o mês todo, cerca de US$ 11/mês (preço do Fly.io em 2026; confira no painel).
