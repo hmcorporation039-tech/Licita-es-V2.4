@@ -11,7 +11,7 @@ const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3333";
 // Fly.io em São Paulo (fly.toml). Assim a troca de um para o outro é só na API, sem novo
 // deploy aqui. A variável NAVEGADOR_URL, quando existir, vale por cima. Fora da Vercel,
 // sem ela, nada é liberado.
-const NAVEGADORES_DE_PRODUCAO = ["https://licita-es-v24-production.up.railway.app", "https://bela-navegador.fly.dev"];
+const NAVEGADORES_DE_PRODUCAO = ["https://licita-es-v24-production.up.railway.app", "https://licita-es-v2-4.fly.dev"];
 const paraWs = (url: string) =>
   url
     .trim()
