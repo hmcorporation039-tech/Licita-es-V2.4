@@ -103,7 +103,7 @@ rodar('Atendimento e especialista do suporte', () => {
     const r = await falar(dono.token, 'Quantos itens posso monitorar?')
     expect(r.status).toBe(201)
     expect(r.body.resposta).toMatchObject({ papel: 'ATENDIMENTO', texto: 'Você usou 0 de 10 itens monitorados.' })
-    expect(r.body.cota).toEqual({ usadas: 1, limite: 30 })
+    expect(r.body.cota).toEqual({ usadas: 1, limite: 5 })
 
     const pedido = gerar.mock.calls[0][0]
     const partes = pedido.contents[0].parts.map((p: { text: string }) => p.text)

@@ -153,7 +153,7 @@ rodar('Conversa com o edital', () => {
     const ana = await conta('ana')
     const id = await analisada('pergunta')
     const antes = (await http('GET', `/api/tenders/${id}/conversa`, undefined, ana.token)).body
-    expect(antes).toMatchObject({ disponivel: true, situacao: 'pronta', perguntas: [], cota: { usadas: 0, limite: 30 } })
+    expect(antes).toMatchObject({ disponivel: true, situacao: 'pronta', perguntas: [], cota: { usadas: 0, limite: 3 } })
     expect(antes.documentos).toEqual([
       { nome: 'Edital PE 12-2026', paginas: 3, escaneado: false },
       { nome: 'Projeto básico escaneado', paginas: 0, escaneado: true },
@@ -167,7 +167,7 @@ rodar('Conversa com o edital', () => {
       autor: 'Pessoa ana',
       resposta: { encontrado: true, semComprovacao: false, citacoes: [{ documento: 'Edital PE 12-2026', pagina: '2', conferencia: 'confirmado' }] },
     })
-    expect(r.body.cota).toEqual({ usadas: 1, limite: 30 })
+    expect(r.body.cota).toEqual({ usadas: 1, limite: 3 })
 
     const enviado = gerar.mock.calls[0][0]
     const partes = enviado.contents[0].parts.map((p: { text: string }) => p.text)
