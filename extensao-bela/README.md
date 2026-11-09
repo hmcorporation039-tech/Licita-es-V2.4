@@ -17,6 +17,21 @@ coisas, todas sem enviar nada sozinha:
 guardar senha ou certificado. O login é do cliente, na sessão dele. Todo lance preenchido
 fica na auditoria da Bela.
 
+## Portais que não abrem dentro da Bela (0.7.0)
+
+LicitaNet, BLL, BNC, Portal de Compras Públicas, Licitações-e, Licitar Digital, BEC/SP,
+Compras BR e Publinexo bloqueiam navegador automático, então não abrem no "portal dentro da
+Bela". Neles a Bela trabalha pela extensão, no Chrome da própria pessoa:
+
+1. No Pregão com a Bela, escolher o portal e clicar **Abrir o … com a Bela**: o portal abre
+   numa aba normal e a extensão já liga a leitura daquela licitação.
+2. Clicar no ícone da Bela: o painel abre **ao lado do portal** (painel lateral do Chrome).
+3. O login é da pessoa (o Chrome pode guardar e preencher a senha). Nada de disfarce: a
+   extensão roda num navegador de verdade, o da própria pessoa.
+
+A leitura nesses portais usa seletores genéricos até a captura da tela real de cada um
+(`SELETORES_GENERICOS` em `config.mjs`).
+
 ## Instalar (modo desenvolvedor)
 
 1. Chrome/Edge → `chrome://extensions` → ligar "Modo do desenvolvedor".

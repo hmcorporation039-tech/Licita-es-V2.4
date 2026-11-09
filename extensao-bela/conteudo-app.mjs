@@ -24,3 +24,19 @@ function enviarCredenciais() {
 
 enviarCredenciais()
 setInterval(enviarCredenciais, 30000)
+
+// Marca a página para o site saber que a extensão está instalada (e a versão).
+try {
+  document.documentElement.dataset.belaExtensao = chrome.runtime.getManifest().version
+} catch {
+  /* página sem DOM pronto */
+}
+
+// O site pede para abrir um portal com a Bela: liga a leitura da licitação indicada.
+window.addEventListener('bela:abrir-portal', (e) => {
+  // O detalhe é só o id (texto): objetos não atravessam bem do site para a extensão.
+  const tenderId = e?.detail
+  if (typeof tenderId !== 'string' || !/^[0-9a-f-]{36}$/i.test(tenderId)) return
+  enviarCredenciais()
+  chrome.runtime.sendMessage({ tipo: 'ativar-leitura', tenderId })
+})

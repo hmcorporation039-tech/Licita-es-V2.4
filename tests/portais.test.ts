@@ -53,3 +53,16 @@ describe('portal da licitação (portal dentro da Bela)', () => {
     expect(inicioNoPortal(bll, 'http://bllcompras.com/Process/1')).toBe(bll.inicio)
   })
 })
+
+describe('portais que abrem dentro da Bela', () => {
+  it('só o Compras.gov.br abre no quadro; os particulares vão para a aba com a extensão', async () => {
+    const { PORTAIS: todos } = await import('../src/lib/portais')
+    expect(todos.filter((p) => p.abreDentroDaBela).map((p) => p.id)).toEqual(['COMPRASNET'])
+  })
+
+  it('a extensão cobre todos os domínios dos portais do catálogo', async () => {
+    const { hostsDosPortais } = await import('../src/lib/portais')
+    const { portalDoHost: daExtensao } = await import('../extensao-bela/config.mjs')
+    for (const host of hostsDosPortais()) expect(daExtensao(host), host).not.toBeNull()
+  })
+})

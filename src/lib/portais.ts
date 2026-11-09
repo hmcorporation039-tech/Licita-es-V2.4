@@ -10,6 +10,13 @@ export interface Portal {
   apelidos: RegExp
   loginComCaptcha: boolean
   automacao: NivelDeAutomacao
+  /**
+   * Se o portal aceita o navegador da Bela (no servidor). Os portais particulares têm proteção
+   * contra navegador automático e recusam (403) venha de onde vier: neles a Bela não tenta o
+   * quadro e manda abrir numa aba do Chrome da pessoa, com a extensão. A Bela não disfarça o
+   * navegador para passar por essa proteção.
+   */
+  abreDentroDaBela: boolean
   observacao?: string
 }
 
@@ -22,6 +29,8 @@ export const PORTAIS: Portal[] = [
     apelidos: /compras\.?gov|comprasnet|siasg/,
     loginComCaptcha: true,
     automacao: 'confirmar',
+    // Testado em 11/2026 com o navegador em São Paulo (Fly.io): abre normalmente.
+    abreDentroDaBela: true,
     observacao: 'Login pelo gov.br; automação a validar na sessão real.',
   },
   {
@@ -32,6 +41,7 @@ export const PORTAIS: Portal[] = [
     apelidos: /portal de compras publicas|portaldecompraspublicas/,
     loginComCaptcha: true,
     automacao: 'confirmar',
+    abreDentroDaBela: false,
   },
   {
     id: 'LICITACOES_E',
@@ -41,6 +51,7 @@ export const PORTAIS: Portal[] = [
     apelidos: /licitacoes-e|licitacoes e\b|banco do brasil/,
     loginComCaptcha: true,
     automacao: 'confirmar',
+    abreDentroDaBela: false,
   },
   {
     id: 'BLL',
@@ -50,6 +61,7 @@ export const PORTAIS: Portal[] = [
     apelidos: /\bbll\b|bolsa de licitacoes/,
     loginComCaptcha: true,
     automacao: 'confirmar',
+    abreDentroDaBela: false,
   },
   {
     id: 'BNC',
@@ -59,6 +71,7 @@ export const PORTAIS: Portal[] = [
     apelidos: /\bbnc\b|bolsa nacional de compras/,
     loginComCaptcha: true,
     automacao: 'confirmar',
+    abreDentroDaBela: false,
   },
   {
     id: 'LICITAR_DIGITAL',
@@ -68,6 +81,7 @@ export const PORTAIS: Portal[] = [
     apelidos: /licitar digital|licitardigital|\bamm ?licita/,
     loginComCaptcha: true,
     automacao: 'confirmar',
+    abreDentroDaBela: false,
   },
   {
     id: 'LICITANET',
@@ -77,6 +91,7 @@ export const PORTAIS: Portal[] = [
     apelidos: /licitanet/,
     loginComCaptcha: true,
     automacao: 'confirmar',
+    abreDentroDaBela: false,
   },
   {
     id: 'BEC_SP',
@@ -86,6 +101,7 @@ export const PORTAIS: Portal[] = [
     apelidos: /\bbec\b|bolsa eletronica de compras/,
     loginComCaptcha: true,
     automacao: 'confirmar',
+    abreDentroDaBela: false,
   },
   {
     id: 'COMPRAS_BR',
@@ -95,6 +111,7 @@ export const PORTAIS: Portal[] = [
     apelidos: /compras ?br\b|comprasbr/,
     loginComCaptcha: true,
     automacao: 'confirmar',
+    abreDentroDaBela: false,
   },
   {
     id: 'PUBLINEXO',
@@ -104,6 +121,7 @@ export const PORTAIS: Portal[] = [
     apelidos: /publinexo/,
     loginComCaptcha: true,
     automacao: 'confirmar',
+    abreDentroDaBela: false,
   },
 ]
 

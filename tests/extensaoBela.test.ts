@@ -261,3 +261,12 @@ describe('proposta no portal (nunca envia)', () => {
     expect(preencherProposta({ querySelectorAll: () => [] }, { itens: [{ numero: 1, precoUnitario: 1 }], seletores: { linha: ['tr'] } }).ok).toBe(false)
   })
 })
+
+describe('extensão nos portais que não abrem dentro da Bela', () => {
+  it('reconhece LicitaNet, BLL e Portal de Compras Públicas', () => {
+    expect(portalDoHost('www.licitanet.com.br')?.nome).toBe('LicitaNet')
+    expect(portalDoHost('bll.org.br')?.nome).toBe('BLL')
+    expect(portalDoHost('operacao.portaldecompraspublicas.com.br')?.nome).toBe('Portal de Compras Públicas')
+    expect(portalDoHost('licitanet.com.br.golpe.com')).toBeNull()
+  })
+})

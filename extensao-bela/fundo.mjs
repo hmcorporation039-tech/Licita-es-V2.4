@@ -106,7 +106,15 @@ async function buscarProposta() {
   }
 }
 
+// O ícone da Bela abre o painel ao lado do portal (em vez de um popup que fecha sozinho).
+chrome.sidePanel?.setPanelBehavior?.({ openPanelOnActionClick: true }).catch(() => {})
+
 chrome.runtime.onMessage.addListener((msg, _remetente, responder) => {
+  if (msg?.tipo === 'ativar-leitura' && typeof msg.tenderId === 'string') {
+    // A pessoa clicou em "Abrir o portal com a Bela" no site: liga a leitura desta licitação.
+    void guardar({ tenderId: msg.tenderId, vigiando: true, status: 'Leitura ligada. Abra a sala de disputa no portal.' })
+    return
+  }
   if (msg?.tipo === 'buscar-proposta') {
     buscarProposta().then(responder)
     return true
