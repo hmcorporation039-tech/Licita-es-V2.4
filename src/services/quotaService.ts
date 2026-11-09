@@ -115,11 +115,26 @@ export async function resumoDeCotas(companyId: string) {
 // Lança 402 se criar mais um do recurso estouraria o limite do plano.
 // A checagem é aproximada sob concorrência (duas requisições simultâneas podem
 // passar juntas); o pior caso é exceder o limite em uma unidade.
+const MENSAGEM_FORA_DO_PLANO: Partial<Record<Recurso, string>> = {
+  analisesIaMes:
+    'No período de teste você vê as análises de edital que já estão prontas. Este edital ainda não foi analisado: para pedir a análise, assine um plano.',
+}
+
 export async function exigirCota(companyId: string, recurso: Recurso, isAdmin = false): Promise<void> {
   if (isAdmin) return
   const [{ planName, limites }, uso] = await Promise.all([limitesDaEmpresa(companyId), usoDaEmpresa(companyId)])
   const limite = limites[recurso]
   if (limite === null || !bloqueiaNovo(uso[recurso], limite)) return
+  // Limite zero = recurso fora do plano (ex.: o teste só vê análises já prontas).
+  if (limite === 0) {
+    throw new ApiError(402, MENSAGEM_FORA_DO_PLANO[recurso] ?? `O plano ${planName} não inclui ${ROTULO_RECURSO[recurso]}. Assine um plano para usar.`, {
+      code: 'COTA_EXCEDIDA',
+      recurso,
+      limite,
+      usado: uso[recurso],
+      foraDoPlano: true,
+    })
+  }
   throw new ApiError(
     402,
     `Limite do plano ${planName} atingido: ${quantidadeDoRecurso(recurso, limite)}. Fale com o administrador para ampliar o plano.`,

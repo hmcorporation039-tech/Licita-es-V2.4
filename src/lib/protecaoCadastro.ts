@@ -15,6 +15,14 @@ const DESCARTAVEIS = new Set([
   'fakeinbox.com', 'mintemail.com', 'mohmal.com', 'emailondeck.com', 'tempinbox.com', 'spamgourmet.com', 'mytemp.email',
   'moakt.com', 'tempr.email', 'discard.email', 'burnermail.io', 'inboxkitten.com', 'emailfake.com', 'fakemail.net',
   'mail.tm', 'mail.gw', 'tmail.ws', 'tmpmail.org', 'tmpmail.net', 'linshiyouxiang.net', 'crazymailing.com', 'luxusmail.org',
+  // Mais provedores comuns de caixa temporária (lista ampliada em 11/2026).
+  'guerrillamail.org', 'guerrillamail.biz', 'guerrillamail.de', 'grr.la', 'pokemail.net', 'spam4.me', 'yopmail.fr',
+  'cool.fr.nf', 'jetable.fr.nf', 'mailinator.net', 'mailinator2.com', 'trbvm.com', 'mailcatch.com', 'mailpoof.com',
+  'tempmailo.com', 'tempmail.dev', 'tempmail.plus', 'temp-mail.lol', 'tempmailaddress.com', 'emailtemporario.com.br',
+  'emailtemporal.org', 'minuteinbox.com', '20minutemail.com', '33mail.com', 'dropmail.me', 'emltmp.com', 'spymail.one',
+  'mailsac.com', 'harakirimail.com', 'anonaddy.me', 'byom.de', 'wegwerfmail.de', 'einrot.com', 'mvrht.com',
+  'owlymail.com', 'tempail.com', 'fexbox.org', 'rootfest.net', 'mailto.plus', 'firemailbox.club', 'vomoto.com',
+  'getairmail.com', 'inboxbear.com', 'smailpro.com', 'kukook.com', 'gufum.com', 'tmails.net', 'mail7.io',
 ])
 
 export function emailDescartavel(email: string): boolean {
@@ -54,4 +62,32 @@ export async function captchaValido(
   } catch {
     return false
   }
+}
+
+// Situações da Receita em que o CNPJ não pode abrir teste (a empresa não existe mais
+// ou está irregular). "ATIVA" passa; situação desconhecida também passa.
+const SITUACOES_QUE_BLOQUEIAM = ['BAIXADA', 'INAPTA', 'SUSPENSA', 'NULA']
+
+export function situacaoBloqueiaCadastro(situacao: string | null | undefined): boolean {
+  const s = (situacao ?? '').trim().toUpperCase()
+  return SITUACOES_QUE_BLOQUEIAM.includes(s)
+}
+
+// A consulta à Receita só roda em produção (testes e desenvolvimento não dependem da
+// BrasilAPI). CADASTRO_CONSULTA_RECEITA="false" desliga; "true" liga fora de produção.
+export function consultaReceitaLigada(env: NodeJS.ProcessEnv = process.env): boolean {
+  const v = env.CADASTRO_CONSULTA_RECEITA?.trim().toLowerCase()
+  if (v === 'false') return false
+  if (v === 'true') return true
+  return env.NODE_ENV === 'production'
+}
+
+// Vários testes do mesmo endereço de internet em pouco tempo costumam ser a mesma
+// pessoa com documentos diferentes. Não bloqueia (escritório e internet de celular
+// dividem endereço): só avisa o administrador a partir do 3º teste em 30 dias.
+export const JANELA_MESMO_IP_DIAS = 30
+export const AVISAR_A_PARTIR_DE = 3
+
+export function avisarMesmoIp(cadastrosNaJanela: number): boolean {
+  return cadastrosNaJanela >= AVISAR_A_PARTIR_DE
 }

@@ -91,7 +91,7 @@ rodar('API com banco real', () => {
 
     await criarConta('a', 'PROFISSIONAL')
     await criarConta('b', 'PROFISSIONAL')
-    await criarConta('teste', 'TESTE') // 3 itens, 1 usuário, 3 análises
+    await criarConta('teste', 'TESTE') // 3 itens, 1 usuário, 0 análises novas
     await criarConta('admin', 'EMPRESARIAL', { admin: true })
 
     const tender = await prisma.tender.create({
@@ -353,9 +353,9 @@ rodar('API com banco real', () => {
     })
 
     it('análises de IA do mês: só as OK contam, e o admin nunca é limitado', async () => {
-      await prisma.company.update({ where: { id: ids.empresab }, data: { planCode: 'TESTE' } })
-      const planoTeste = await prisma.subscriptionPlan.findUnique({ where: { code: 'TESTE' } })
-      const limiteDoTeste = (planoTeste.limits as { analisesIaMes: number }).analisesIaMes
+      await prisma.company.update({ where: { id: ids.empresab }, data: { planCode: 'ESSENCIAL' } })
+      const planoEssencial = await prisma.subscriptionPlan.findUnique({ where: { code: 'ESSENCIAL' } })
+      const limiteDoTeste = (planoEssencial.limits as { analisesIaMes: number }).analisesIaMes
       for (let n = 0; n < limiteDoTeste; n++) {
         await prisma.aiUsage.create({
           data: { companyId: ids.empresab, userId: ids.b, provider: 'claude', model: 'm', inputTokens: 10, outputTokens: 5, status: 'OK' },
@@ -368,6 +368,16 @@ rodar('API com banco real', () => {
       await prisma.aiUsage.deleteMany({ where: { companyId: ids.empresab } })
       await prisma.aiUsage.create({ data: { companyId: ids.empresab, provider: 'claude', model: 'm', status: 'ERRO' } })
       await expect(quota.exigirCota(ids.empresab, 'analisesIaMes', false)).resolves.toBeUndefined()
+    })
+
+    it('teste: não gera análise nova de edital (só vê as prontas), com mensagem para assinar', async () => {
+      await prisma.company.update({ where: { id: ids.empresab }, data: { planCode: 'TESTE' } })
+      await prisma.aiUsage.deleteMany({ where: { companyId: ids.empresab } })
+      await expect(quota.exigirCota(ids.empresab, 'analisesIaMes', false)).rejects.toMatchObject({
+        status: 402,
+        extra: { code: 'COTA_EXCEDIDA', foraDoPlano: true },
+      })
+      await expect(quota.exigirCota(ids.empresab, 'analisesIaMes', true)).resolves.toBeUndefined()
     })
   })
 

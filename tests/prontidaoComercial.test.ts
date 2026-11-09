@@ -156,3 +156,31 @@ describe('endurecimento: sessão e URL do PNCP', () => {
     await expect(listPNCPDocuments('123', 2026, 1)).rejects.toThrow(/inválido/)
   })
 })
+
+import { avisarMesmoIp, consultaReceitaLigada, situacaoBloqueiaCadastro } from '../src/lib/protecaoCadastro'
+
+describe('proteção do cadastro contra testes em série', () => {
+  it('recusa os novos provedores de e-mail temporário', () => {
+    expect(emailDescartavel('a@emailtemporario.com.br')).toBe(true)
+    expect(emailDescartavel('a@mailsac.com')).toBe(true)
+    expect(emailDescartavel('a@hotmail.com')).toBe(false)
+  })
+
+  it('bloqueia só CNPJ baixado, inapto, suspenso ou nulo', () => {
+    for (const s of ['BAIXADA', 'Inapta', ' suspensa ', 'NULA']) expect(situacaoBloqueiaCadastro(s)).toBe(true)
+    for (const s of ['ATIVA', '', null, undefined, 'qualquer outra']) expect(situacaoBloqueiaCadastro(s)).toBe(false)
+  })
+
+  it('consulta a Receita só em produção, salvo ajuste explícito', () => {
+    expect(consultaReceitaLigada({ NODE_ENV: 'production' })).toBe(true)
+    expect(consultaReceitaLigada({ NODE_ENV: 'test' })).toBe(false)
+    expect(consultaReceitaLigada({ NODE_ENV: 'production', CADASTRO_CONSULTA_RECEITA: 'false' })).toBe(false)
+    expect(consultaReceitaLigada({ NODE_ENV: 'development', CADASTRO_CONSULTA_RECEITA: 'true' })).toBe(true)
+  })
+
+  it('avisa o administrador a partir do 3º teste do mesmo endereço', () => {
+    expect(avisarMesmoIp(1)).toBe(false)
+    expect(avisarMesmoIp(2)).toBe(false)
+    expect(avisarMesmoIp(3)).toBe(true)
+  })
+})

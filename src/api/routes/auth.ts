@@ -20,7 +20,8 @@ import { asyncHandler, ApiError } from '../asyncHandler'
 import { requireAuth } from '../authMiddleware'
 import { registrarAuditoria } from '../../services/auditService'
 import { loginLimiter, loginPorContaLimiter, loginPorContaGlobalLimiter, codigoPorContaLimiter, changePasswordLimiter, cadastroLimiter, recuperacaoLimiter, segundoFatorNoLoginLimiter } from '../rateLimit'
-import { captchaValido, emailDescartavel, maxCadastrosPorHora } from '../../lib/protecaoCadastro'
+import { avisarMesmoIp, captchaValido, consultaReceitaLigada, emailDescartavel, JANELA_MESMO_IP_DIAS, maxCadastrosPorHora, situacaoBloqueiaCadastro } from '../../lib/protecaoCadastro'
+import { consultarCnpj } from '../../services/perfilDoNegocio'
 import { alertarFalha, avisarAdministrador } from '../../services/alertaOperacional'
 import { cnpjValido, cpfValido } from '../../lib/documentos'
 import {
@@ -111,6 +112,16 @@ authRouter.post(
       throw new ApiError(429, 'Muitos cadastros neste momento. Tente novamente em alguns minutos.')
     }
 
+    // CNPJ baixado, inapto, suspenso ou nulo na Receita não abre teste. Se a consulta
+    // falhar ou não achar o CNPJ (empresa recém-aberta), o cadastro segue normalmente.
+    if (d.tipo === 'PESSOA_JURIDICA' && consultaReceitaLigada()) {
+      const situacao = await consultarCnpj(d.documento).then((e) => e.situacao, () => null)
+      if (situacaoBloqueiaCadastro(situacao)) {
+        await registrarAuditoria(req, { action: 'CADASTRO_RECUSADO', metadata: { motivo: 'cnpj-irregular', situacao } }, { userId: null, email: null })
+        throw new ApiError(400, `Este CNPJ consta como ${situacao!.toLowerCase()} na Receita Federal. O período de teste é só para empresas ativas.`, { code: 'CNPJ_IRREGULAR' })
+      }
+    }
+
     const r = await cadastrar({
       nome: d.nome,
       email: d.email,
@@ -129,6 +140,20 @@ authRouter.post(
         { userId: r.userId, email: r.email }
       )
       await registrarAuditoria(req, { action: 'CODIGO_ENVIADO', entityType: 'usuario', entityId: r.userId, companyId: r.companyId, metadata: { validadeMinutos: 15 } }, { userId: r.userId, email: r.email })
+      if (req.ip) {
+        // Inclui o cadastro que acabou de ser registrado acima.
+        const doMesmoIp = await prisma.auditLog.count({
+          where: { action: 'CADASTRO_CRIADO', ip: req.ip, createdAt: { gt: new Date(Date.now() - JANELA_MESMO_IP_DIAS * 86_400_000) } },
+        })
+        if (avisarMesmoIp(doMesmoIp)) {
+          await registrarAuditoria(req, { action: 'CADASTRO_MESMO_IP', entityType: 'usuario', entityId: r.userId, companyId: r.companyId, metadata: { cadastrosNaJanela: doMesmoIp, janelaDias: JANELA_MESMO_IP_DIAS } }, { userId: r.userId, email: r.email })
+          void avisarAdministrador(
+            'cadastro-mesmo-ip:' + req.ip,
+            'Vários testes do mesmo endereço de internet',
+            `Foram ${doMesmoIp} cadastros de teste do mesmo endereço de internet nos últimos ${JANELA_MESMO_IP_DIAS} dias (o último: ${r.email}, ${d.tipo === 'PESSOA_JURIDICA' ? 'CNPJ' : 'CPF'}). Pode ser a mesma pessoa com documentos diferentes, ou só um escritório/rede de celular compartilhada. Confira no Admin, na auditoria (ação CADASTRO_MESMO_IP), e decida se desativa as contas.`
+          )
+        }
+      }
     } else {
       // Só o motivo (visível apenas ao admin): sem e-mail nem documento no log.
       await registrarAuditoria(req, { action: 'CADASTRO_RECUSADO', metadata: { motivo: r.motivo } }, { userId: null, email: null })
