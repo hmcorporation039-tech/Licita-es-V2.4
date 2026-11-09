@@ -1,5 +1,6 @@
 'use client'
 
+import { rastrear } from '@/lib/rastreamento'
 import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 import { ExternalLink } from 'lucide-react'
@@ -44,6 +45,8 @@ export default function AssinaturaDaEmpresa({ onSituacao }: { onSituacao?: (situ
     setEnviando(true)
     try {
       const r = await api.post<{ linkDaFatura: string | null }>('/api/cobranca/assinar', escolha)
+      // Conversão "escolheu um plano" (Google Analytics/Ads, só com o aceite de cookies).
+      rastrear('begin_checkout', { plano: escolha.planCode, ciclo: escolha.ciclo })
       if (r.linkDaFatura) {
         window.location.href = r.linkDaFatura
         return

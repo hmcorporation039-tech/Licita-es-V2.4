@@ -31,8 +31,18 @@ const navegadorUrl = (process.env.NAVEGADOR_URL?.trim() ? [process.env.NAVEGADOR
 // 'none' impede embutir o site em iframe (clickjacking), além do X-Frame-Options.
 const isProd = process.env.NODE_ENV === "production";
 const scriptSrc = isProd
-  ? "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com"
-  : "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com";
+  ? "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://www.googletagmanager.com"
+  : "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com https://www.googletagmanager.com";
+
+// Google Analytics/Ads (só carregam depois do "Aceitar" no aviso de cookies).
+const GOOGLE_MEDICAO = [
+  "https://*.google-analytics.com",
+  "https://*.analytics.google.com",
+  "https://*.googletagmanager.com",
+  "https://www.googleadservices.com",
+  "https://googleads.g.doubleclick.net",
+  "https://www.google.com",
+].join(" ");
 
 const csp = [
   "default-src 'self'",
@@ -40,12 +50,12 @@ const csp = [
   "form-action 'self'",
   "frame-ancestors 'none'",
   "object-src 'none'",
-  "img-src 'self' data: blob:",
+  `img-src 'self' data: blob: ${GOOGLE_MEDICAO}`,
   "style-src 'self' 'unsafe-inline'",
   scriptSrc,
   // Captcha Turnstile (cadastro) roda num iframe da Cloudflare.
   "frame-src https://challenges.cloudflare.com",
-  `connect-src 'self' ${apiUrl}${navegadorUrl ? ` ${navegadorUrl}` : ""}`,
+  `connect-src 'self' ${GOOGLE_MEDICAO} ${apiUrl}${navegadorUrl ? ` ${navegadorUrl}` : ""}`,
 ].join("; ");
 
 const securityHeaders = [
