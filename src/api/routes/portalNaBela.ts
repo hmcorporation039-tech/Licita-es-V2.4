@@ -62,15 +62,21 @@ portalNaBelaRouter.get(
     })
     const salvos = new Set(comAcesso.map((c) => c.portal))
     let portalSugerido: string | null = null
+    let linkEdital: string | null = null
     if (tenderId) {
       const tender = await prisma.tender.findUnique({ where: { id: tenderId }, select: { linkEdital: true, plataformaDeOrigem: true, fonte: true } })
-      if (tender) portalSugerido = portalDaLicitacao(tender)?.id ?? null
+      if (tender) {
+        portalSugerido = portalDaLicitacao(tender)?.id ?? null
+        linkEdital = tender.linkEdital
+      }
     }
     res.json({
       disponivel: url !== null,
       url,
       planoGratuito: await ehPlanoGratuito(req),
-      portais: PORTAIS.map((p) => ({ id: p.id, nome: p.nome, temAcessoSalvo: salvos.has(p.id) })),
+      // abreAqui: o portal aceita o navegador da Bela. Os outros abrem numa aba do Chrome
+      // da pessoa (endereco), onde a extensão Bela lê a disputa e preenche o lance.
+      portais: PORTAIS.map((p) => ({ id: p.id, nome: p.nome, temAcessoSalvo: salvos.has(p.id), abreAqui: p.abreDentroDaBela, endereco: inicioNoPortal(p, linkEdital) })),
       portalSugerido,
     })
   })

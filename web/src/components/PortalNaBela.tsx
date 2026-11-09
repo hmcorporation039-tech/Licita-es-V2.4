@@ -7,17 +7,17 @@
 // no campo. Quem clica em "Entrar" e em enviar o lance é sempre a pessoa.
 
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent, type MouseEvent } from 'react'
-import { ArrowLeft, ArrowRight, Home, KeyRound, Lock, Monitor, PencilLine, RotateCw, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, ExternalLink, Home, KeyRound, Lock, Monitor, PencilLine, RotateCw, X } from 'lucide-react'
 import { api, ApiRequestError } from '@/lib/api'
 import { getSessionToken } from '@/lib/session'
 import type { RoboDoPregao } from '@/lib/types'
-import { Button, Field, Notice, Panel, Select, StatusTag, TextLink } from '@/components/ui'
+import { Button, Field, Notice, Panel, Select, StatusTag, TextLink, buttonClasses } from '@/components/ui'
 
 interface Config {
   disponivel: boolean
   url: string | null
   planoGratuito: boolean
-  portais: { id: string; nome: string; temAcessoSalvo: boolean }[]
+  portais: { id: string; nome: string; temAcessoSalvo: boolean; abreAqui: boolean; endereco: string }[]
   portalSugerido: string | null
 }
 
@@ -66,6 +66,21 @@ function baixar(nome: string, tipo: string, base64: string) {
   setTimeout(() => URL.revokeObjectURL(url), 10_000)
 }
 
+// A extensão Bela marca a página do site quando está instalada (conteudo-app.mjs).
+function versaoDaExtensao(): string | null {
+  if (typeof document === 'undefined') return null
+  return document.documentElement.dataset.belaExtensao ?? null
+}
+
+// Avisa a extensão qual licitação abrir e liga a leitura da disputa (ela ouve este evento).
+function avisarExtensao(tenderId: string) {
+  try {
+    window.dispatchEvent(new CustomEvent('bela:abrir-portal', { detail: tenderId }))
+  } catch {
+    /* sem extensão: só abre a aba */
+  }
+}
+
 export default function PortalNaBela({ tenderId, robo, aoLer }: { tenderId: string; robo: RoboDoPregao; aoLer: () => void }) {
   const [config, setConfig] = useState<Config | null>(null)
   const [estado, setEstado] = useState<Estado>('fechado')
@@ -82,6 +97,21 @@ export default function PortalNaBela({ tenderId, robo, aoLer }: { tenderId: stri
   const [escolhido, setEscolhido] = useState('COMPRASNET')
   const [nomeAberto, setNomeAberto] = useState<string | null>(null)
   const [login, setLogin] = useState<{ ok: boolean; mensagem: string } | null>(null)
+  const [extensao, setExtensao] = useState<string | null>(null)
+
+  // A extensão marca a página logo depois de carregar: confere algumas vezes.
+  useEffect(() => {
+    let vezes = 0
+    const conferir = () => {
+      const v = versaoDaExtensao()
+      setExtensao(v)
+      vezes += 1
+      if (v || vezes >= 10) clearInterval(t)
+    }
+    const t = setInterval(conferir, 1000)
+    conferir()
+    return () => clearInterval(t)
+  }, [])
 
   const ws = useRef<WebSocket | null>(null)
   const tela = useRef<HTMLCanvasElement | null>(null)
@@ -323,20 +353,48 @@ export default function PortalNaBela({ tenderId, robo, aoLer }: { tenderId: stri
                   </Select>
                 </Field>
               )}
-              {portalEscolhido && !portalEscolhido.temAcessoSalvo && (
-                <Notice tone="info">
-                  Salve o login e a senha do {portalEscolhido.nome} em <TextLink href="/portais">Meus Portais</TextLink> para a Bela preencher o login para você. Sem isso, você digita na tela.
-                </Notice>
+              {portalEscolhido && !portalEscolhido.abreAqui ? (
+                <>
+                  <Notice tone="info" title={`O ${portalEscolhido.nome} abre no seu Chrome, com a Bela do lado`}>
+                    Este portal bloqueia navegador automático, então ele não abre dentro desta página. Ele abre numa aba normal do seu Chrome e a extensão Bela trabalha lá: lê o melhor lance e o chat do pregoeiro e escreve o lance sugerido no campo. Quem confere e envia é você.
+                  </Notice>
+                  {extensao ? (
+                    <p className="text-sm text-ink-2">
+                      Extensão Bela instalada neste Chrome (versão {extensao}). Depois de abrir, clique no ícone da Bela na barra do Chrome para ver o painel ao lado do portal. O Chrome pode guardar e preencher o seu login do portal.
+                    </p>
+                  ) : (
+                    <Notice tone="warn" title="A extensão Bela não está neste Chrome">
+                      Sem ela, o portal abre normalmente, mas a Bela não lê a disputa nem preenche o lance. Peça a instalação da extensão ao suporte da Bela.
+                    </Notice>
+                  )}
+                  <a
+                    href={portalEscolhido.endereco}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => avisarExtensao(tenderId)}
+                    className={buttonClasses('primary', 'md', 'self-start')}
+                  >
+                    <ExternalLink size={16} aria-hidden /> Abrir o {portalEscolhido.nome} com a Bela
+                  </a>
+                </>
+              ) : (
+                <>
+                {portalEscolhido && !portalEscolhido.temAcessoSalvo && (
+                  <Notice tone="info">
+                    Salve o login e a senha do {portalEscolhido.nome} em <TextLink href="/portais">Meus Portais</TextLink> para a Bela preencher o login para você. Sem isso, você digita na tela.
+                  </Notice>
+                )}
+                <ul className="ml-4 list-disc text-sm text-ink-2">
+                  <li>Na tela de login, clique em &quot;Preencher meu login&quot;: a Bela escreve o usuário e a senha de Meus Portais. O CAPTCHA e o clique em Entrar são seus.</li>
+                  <li>A senha vai direto para o navegador da Bela, não aparece nesta página e nada fica guardado: ao fechar, a sessão é apagada.</li>
+                  <li>A Bela nunca envia lance sozinha. Com um clique, ela escreve o lance sugerido no campo; quem confere e envia é você.</li>
+                  <li>Certificado digital em token (A3) não funciona aqui: para ele, use a extensão.</li>
+                </ul>
+                <Button variant="primary" icon={Monitor} onClick={abrir} className="self-start">
+                  Abrir o {nomeEscolhido} aqui
+                </Button>
+                </>
               )}
-              <ul className="ml-4 list-disc text-sm text-ink-2">
-                <li>Na tela de login, clique em &quot;Preencher meu login&quot;: a Bela escreve o usuário e a senha de Meus Portais. O CAPTCHA e o clique em Entrar são seus.</li>
-                <li>A senha vai direto para o navegador da Bela, não aparece nesta página e nada fica guardado: ao fechar, a sessão é apagada.</li>
-                <li>A Bela nunca envia lance sozinha. Com um clique, ela escreve o lance sugerido no campo; quem confere e envia é você.</li>
-                <li>Certificado digital em token (A3) não funciona aqui: para ele, use a extensão.</li>
-              </ul>
-              <Button variant="primary" icon={Monitor} onClick={abrir} className="self-start">
-                Abrir o {nomeEscolhido} aqui
-              </Button>
             </>
           )}
         </div>
@@ -376,15 +434,27 @@ export default function PortalNaBela({ tenderId, robo, aoLer }: { tenderId: stri
 
       {erro && <Notice tone="danger">{erro}</Notice>}
       {pagina?.recusado && (
-        <Notice tone="warn" title={`O ${nomeAberto ?? 'portal'} não aceitou a conexão do navegador da Bela`}>
-          <p>
-            O site do portal recusou o acesso (erro {pagina.recusado}) antes de mostrar a tela de login. Alguns portais do governo só aceitam
-            conexões vindas do Brasil. Enquanto isso, abra o portal numa aba normal e use a extensão Bela na disputa.
-          </p>
-          {/^https:\/\//i.test(pagina.url) && (
-            <TextLink href={pagina.url} target="_blank" rel="noopener noreferrer">
-              Abrir o portal numa aba normal
-            </TextLink>
+        <Notice tone="warn" title={`O ${nomeAberto ?? 'portal'} não aceitou o navegador da Bela`}>
+          <p>Este portal bloqueia o acesso por aqui (erro {pagina.recusado}). Faça assim:</p>
+          <ol className="ml-4 list-decimal">
+            {!extensao && <li>Instale a extensão Bela no seu Chrome (peça ao suporte da Bela).</li>}
+            <li>Clique no botão abaixo: o portal abre numa aba nova do Chrome.</li>
+            <li>Entre no portal com o seu login, como sempre.</li>
+            <li>Clique no ícone da Bela na barra do Chrome: o painel abre ao lado, lendo a disputa e sugerindo o lance.</li>
+          </ol>
+          {(portalEscolhido?.endereco || /^https:\/\//i.test(pagina.url)) && (
+            <a
+              href={portalEscolhido?.endereco || pagina.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => {
+                avisarExtensao(tenderId)
+                fechar()
+              }}
+              className={buttonClasses('primary', 'sm', 'mt-2 self-start')}
+            >
+              <ExternalLink size={14} aria-hidden /> Abrir o {nomeAberto ?? nomeEscolhido} no Chrome com a Bela
+            </a>
           )}
         </Notice>
       )}

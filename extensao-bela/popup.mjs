@@ -63,7 +63,7 @@ capturar.addEventListener('click', async () => {
     await navigator.clipboard.writeText(JSON.stringify(estrutura))
     captura.textContent = `Copiado: ${estrutura.total} elementos da tela. Cole no chamado de suporte da Bela.`
   } catch {
-    captura.textContent = 'Abra a sala de disputa do Compras.gov.br nesta aba e tente de novo.'
+    captura.textContent = 'Abra a sala de disputa do portal nesta aba e tente de novo.'
   }
 })
 
