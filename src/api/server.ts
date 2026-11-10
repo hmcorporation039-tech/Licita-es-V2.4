@@ -12,6 +12,7 @@ import { authRouter } from './routes/auth'
 import { adminRouter } from './routes/admin'
 import { adminGestaoRouter } from './routes/adminGestao'
 import { publicRouter } from './routes/public'
+import { internoRouter } from './routes/interno'
 import { companyRouter } from './routes/company'
 import { monitoredItemsRouter } from './routes/monitoredItems'
 import { tendersRouter } from './routes/tenders'
@@ -112,6 +113,8 @@ app.use('/api', globalLimiter)
 // (ver /api/admin/users), não existe mais autocadastro aberto.
 app.use('/api/auth', authRouter)
 app.use('/api/public', publicRouter)
+// Sistemas internos (comercial-ia): chave própria no header, desligada sem COMERCIAL_IA_CHAVE.
+app.use('/api/interno', internoRouter)
 app.use('/api/descadastro', descadastroRouter)
 app.use('/api/admin', adminRouter)
 app.use('/api/admin', adminGestaoRouter)
