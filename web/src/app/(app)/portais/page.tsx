@@ -1,15 +1,15 @@
 'use client'
 
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { KeyRound, ShieldCheck, Trash2 } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
+import { ExternalLink, KeyRound, ShieldCheck, Trash2 } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
 import { api, ApiRequestError } from '@/lib/api'
 import {
   Button,
+  buttonClasses,
   Carregando,
   EmptyState,
   Field,
-  FormError,
   Input, InputDeSenha,
   Notice,
   PageHeader,
@@ -31,6 +31,8 @@ type Portal = {
   id: string
   nome: string
   hosts: string[]
+  inicio: string
+  abreDentroDaBela?: boolean
   loginComCaptcha: boolean
   automacao: 'confirmar' | 'permitida' | 'vedada'
   observacao?: string
@@ -75,6 +77,8 @@ export default function PortaisPage() {
   const [salvando, setSalvando] = useState(false)
   const [erroDoForm, setErroDoForm] = useState<string | null>(null)
   const [salvoAgora, setSalvoAgora] = useState<string | null>(null)
+  const lista = useRef<HTMLDivElement | null>(null)
+  const termo = useRef<HTMLInputElement | null>(null)
 
   const carregar = useCallback(async () => {
     try {
@@ -106,7 +110,8 @@ export default function PortaisPage() {
       return
     }
     if (!aceite) {
-      setErroDoForm('É preciso aceitar o termo de autorização.')
+      setErroDoForm('Marque a caixa de autorização acima do botão para salvar.')
+      termo.current?.focus()
       return
     }
     setSalvando(true)
@@ -123,6 +128,8 @@ export default function PortaisPage() {
       setAceite(false)
       setSalvoAgora(portais.find((p) => p.id === portal)?.nome ?? portal)
       await carregar()
+      // A lista fica embaixo, fora da tela: leva a pessoa até o acesso que acabou de salvar.
+      lista.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     } catch (e) {
       setErroDoForm(e instanceof ApiRequestError ? e.message : 'Não foi possível salvar agora.')
     } finally {
@@ -176,15 +183,15 @@ export default function PortaisPage() {
             </p>
           )}
           <label className="flex items-start gap-2 text-sm text-ink">
-            <input type="checkbox" className="mt-1" checked={aceite} onChange={(e) => setAceite(e.target.checked)} />
+            <input ref={termo} type="checkbox" className="mt-1 h-4 w-4" checked={aceite} onChange={(e) => setAceite(e.target.checked)} />
             <span>{TERMO}</span>
           </label>
-          <FormError>{erroDoForm}</FormError>
+          {erroDoForm && <Notice tone="danger">{erroDoForm}</Notice>}
           {salvoAgora && (
             <Notice tone="ok" title={`Acesso ao ${salvoAgora} salvo`}>
-              Ele aparece em Acessos cadastrados, logo abaixo. Na hora da disputa: abra a licitação escolhida, entre em <strong>Pregão com a Bela</strong> e entre no
-              portal com a extensão Bela na disputa ligada. A Bela lê os lances e o chat e preenche o lance sugerido; quem confere e envia é você.{' '}
-              <TextLink href="/sessoes">Ver minhas sessões</TextLink>
+              Ele aparece em Acessos cadastrados, logo abaixo, com o botão para abrir o portal. Na hora da disputa: abra a licitação escolhida e entre em{' '}
+              <strong>Pregão com a Bela</strong>. O portal abre ao lado do painel e, na tela de login, o botão &quot;Preencher meu login&quot; escreve este acesso para você.
+              A Bela lê os lances e o chat e preenche o lance sugerido; quem confere e envia é você. <TextLink href="/escolhidas">Ver minhas licitações escolhidas</TextLink>
             </Notice>
           )}
           <Button type="submit" variant="primary" icon={KeyRound} loading={salvando} className="self-start">
@@ -193,7 +200,8 @@ export default function PortaisPage() {
         </form>
       </Panel>
 
-      <Panel title="Acessos cadastrados">
+      <div ref={lista} className="scroll-mt-4">
+      <Panel title="Acessos cadastrados" description="Abra o site do portal para conferir o seu login. Para disputar com a Bela ao lado, entre pela licitação escolhida, em Pregão com a Bela.">
         {carregando ? (
           <Carregando linhas={3} />
         ) : credenciais.length === 0 ? (
@@ -224,7 +232,17 @@ export default function PortaisPage() {
                           <StatusTag tone={st.tom}>{st.rotulo}</StatusTag>
                         </span>
                       </Td>
-                      <Td>
+                      <Td className="whitespace-nowrap">
+                        {dadosDoPortal?.inicio && (
+                          <a
+                            href={dadosDoPortal.inicio}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={buttonClasses('secondary', 'sm', 'mr-1')}
+                          >
+                            <ExternalLink size={14} aria-hidden /> Abrir o portal
+                          </a>
+                        )}
                         <Button size="sm" variant="ghost" icon={Trash2} onClick={() => void excluir(c)} aria-label={`Excluir acesso ao ${c.portal}`} />
                       </Td>
                     </Tr>
@@ -235,6 +253,7 @@ export default function PortaisPage() {
           </TableWrap>
         )}
       </Panel>
+      </div>
 
       {dialogo}
     </div>
