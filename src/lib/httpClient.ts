@@ -216,3 +216,8 @@ export const famemClient = createRateLimitedClient('https://diariooficial.famem.
 famemClient.defaults.timeout = 60_000
 famemClient.defaults.maxContentLength = 5 * 1024 * 1024
 famemClient.defaults.maxRedirects = 0
+
+// DOM/SC: portal de dados abertos do CIGA (CKAN). Os ZIPs de cada faixa de horário têm até ~5 MB.
+export const domScClient = createRateLimitedClient('https://dados.ciga.sc.gov.br', 2000, { Accept: 'application/json' })
+domScClient.defaults.timeout = 120_000
+domScClient.defaults.maxContentLength = 40 * 1024 * 1024

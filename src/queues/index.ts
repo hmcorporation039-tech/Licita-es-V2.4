@@ -47,6 +47,7 @@ export const coletorTcePiQueue = new Queue('coletor-tce-pi', defaultQueueOptions
 export const coletorTceToQueue = new Queue('coletor-tce-to', defaultQueueOptions)
 export const coletorTceRsQueue = new Queue('coletor-tce-rs', defaultQueueOptions)
 export const coletorFamemQueue = new Queue('coletor-famem', defaultQueueOptions)
+export const coletorDomScQueue = new Queue('coletor-dom-sc', defaultQueueOptions)
 
 // Fila de matching (disparada após salvar cada licitação nova)
 export const matcherQueue = new Queue('matcher', defaultQueueOptions)
@@ -240,6 +241,15 @@ export const COLETOR_SCHEDULERS: ColetorScheduler[] = [
     pattern: '10 11,18 * * *',
     tz: 'America/Sao_Paulo',
     fonte: 'FAMEM',
+  },
+  {
+    // Os arquivos de cada dia saem no portal do CIGA de madrugada (por volta das 3h30).
+    queue: coletorDomScQueue,
+    schedulerId: 'coleta-dom-sc',
+    jobName: 'coleta-dom-sc',
+    pattern: '25 6,15 * * *',
+    tz: 'America/Sao_Paulo',
+    fonte: 'DIARIO_MUNICIPAL',
   },
 ]
 
