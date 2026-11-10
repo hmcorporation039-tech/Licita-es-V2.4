@@ -1,5 +1,6 @@
 'use client'
 
+import { rastrear } from '@/lib/rastreamento'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { PublicCard } from '@/components/PublicShell'
@@ -31,6 +32,8 @@ export default function ConfirmarCodigo({ email, senha }: { email: string; senha
     setEnviando(true)
     try {
       await api.post('/api/auth/verify-email', { email, codigo })
+      // Conversão de cadastro (Google Analytics/Ads, só com o aceite de cookies).
+      rastrear('sign_up', { method: 'email' })
       setConfirmado(true)
       if (senha) {
         try {

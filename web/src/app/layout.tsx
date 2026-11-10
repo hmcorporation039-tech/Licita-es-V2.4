@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import localFont from 'next/font/local'
 import './globals.css'
+import AvisoDeMedicao from '@/components/AvisoDeMedicao'
 
 const plexSans = localFont({
   variable: '--font-plex-sans',
@@ -42,7 +43,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
     <html lang="pt-BR" className={`${plexSans.variable} ${plexMono.variable} ${nunito.variable} h-full`}>
-      <body className="min-h-full bg-canvas text-ink antialiased">{children}</body>
+      <body className="min-h-full bg-canvas text-ink antialiased">
+        {children}
+        <AvisoDeMedicao />
+      </body>
     </html>
   )
 }
