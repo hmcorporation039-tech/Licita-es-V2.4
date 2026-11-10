@@ -271,3 +271,13 @@ export const exportacaoDosDadosLimiter = rateLimit({
   keyGenerator: (req) => 'exportacao:' + (req.userId ?? ipKeyGenerator(req.ip ?? '')),
   message: { error: 'Você já baixou a cópia dos seus dados várias vezes na última hora. Tente de novo mais tarde.' },
 })
+
+// Rota interna do comercial-ia (/api/interno/abertas): por IP e por hora. Vem antes da
+// conferência da chave, então também freia quem tenta adivinhá-la.
+export const comercialLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: limite(300),
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { error: 'Muitas consultas — aguarde um pouco e tente de novo' },
+})
