@@ -34,6 +34,12 @@ export const ASSOCIACOES_SIGPUB: AssociacaoSigpub[] = [
   { slug: 'famurs', uf: 'RS', nome: 'Federação das Associações de Municípios do Rio Grande do Sul', entidades: 304 },
   { slug: 'amp', uf: 'PR', nome: 'Associação dos Municípios do Paraná', entidades: 189 },
   { slug: 'amm-mg', uf: 'MG', nome: 'Associação Mineira de Municípios', entidades: 751 },
+  // Goiás tem duas associações no SIGPub; cada prefeitura publica numa delas.
+  { slug: 'agm', uf: 'GO', nome: 'Associação Goiana de Municípios', entidades: 128 },
+  { slug: 'fgm', uf: 'GO', nome: 'Federação Goiana de Municípios', entidades: 78 },
+  { slug: 'aemerj', uf: 'RJ', nome: 'Associação Estadual de Municípios do Rio de Janeiro', entidades: 14 },
+  { slug: 'amr', uf: 'RR', nome: 'Associação dos Municípios de Roraima', entidades: 32 },
+  { slug: 'apm', uf: 'SP', nome: 'Associação Paulista de Municípios', entidades: 8 },
 ]
 
 export interface CartaoDeMateria {

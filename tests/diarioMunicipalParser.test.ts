@@ -36,12 +36,12 @@ function materia(arquivo: string, codigo: string): MateriaSigpub {
 }
 
 describe('SIGPub — associações', () => {
-  it('cobre as 13 associações, cada uma com sua UF, na ordem de prioridade pela lacuna de cobertura', () => {
+  it('cobre as 18 associações (Goiás tem duas), na ordem de prioridade pela lacuna de cobertura', () => {
     expect(ASSOCIACOES_SIGPUB.map((a) => a.slug)).toEqual([
-      'famup', 'famep', 'amm-mt', 'femurn', 'appm', 'aam', 'arom', 'ama', 'aprece', 'amupe', 'famurs', 'amp', 'amm-mg',
+      'famup', 'famep', 'amm-mt', 'femurn', 'appm', 'aam', 'arom', 'ama', 'aprece', 'amupe', 'famurs', 'amp', 'amm-mg', 'agm', 'fgm', 'aemerj', 'amr', 'apm',
     ])
-    expect(new Set(ASSOCIACOES_SIGPUB.map((a) => a.uf)).size).toBe(13)
-    expect(ASSOCIACOES_SIGPUB.reduce((soma, a) => soma + a.entidades, 0)).toBe(2645)
+    expect(new Set(ASSOCIACOES_SIGPUB.map((a) => a.uf)).size).toBe(17)
+    expect(ASSOCIACOES_SIGPUB.reduce((soma, a) => soma + a.entidades, 0)).toBe(2905)
   })
 
   it('monta a URL e a chave da memória pela associação e pelo código da matéria', () => {
