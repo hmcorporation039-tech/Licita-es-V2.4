@@ -1,7 +1,7 @@
 # Mapa da fonte — Diários municipais (SIGPub) — verificado em 17/10/2026
 
 Prefeituras pequenas ainda podem publicar licitação só no diário oficial, sem o PNCP, até cerca de 04/2027 (prazo de adaptação da Lei 14.133 para municípios de até 20 mil habitantes).
-Boa parte desses diários fica na plataforma **SIGPub** (Vox Tecnologia), em `www.diariomunicipal.com.br`, que hospeda o diário oficial de 13 associações de municípios.
+Boa parte desses diários fica na plataforma **SIGPub** (Vox Tecnologia), em `www.diariomunicipal.com.br`, que hospeda o diário oficial de 18 associações de municípios.
 
 - `robots.txt` libera tudo (`Disallow:` vazio).
 - Não há API nem RSS. A coleta usa só GET na página de busca e na página de cada matéria.
@@ -24,6 +24,13 @@ Boa parte desses diários fica na plataforma **SIGPub** (Vox Tecnologia), em `ww
 | 11 | `famurs` | RS | Federação das Associações de Municípios do Rio Grande do Sul | 304 | 263 |
 | 12 | `amp` | PR | Associação dos Municípios do Paraná | 189 | 352 |
 | 13 | `amm-mg` | MG | Associação Mineira de Municípios | 751 | 357 |
+| 14 | `agm` | GO | Associação Goiana de Municípios | 128 | 104 (6–10/11/2026) |
+| 15 | `fgm` | GO | Federação Goiana de Municípios | 78 | 88 (6–10/11/2026) |
+| 16 | `aemerj` | RJ | Associação Estadual de Municípios do Rio de Janeiro | 14 | 13 (6–10/11/2026) |
+| 17 | `amr` | RR | Associação dos Municípios de Roraima | 32 | 16 (6–10/11/2026) |
+| 18 | `apm` | SP | Associação Paulista de Municípios | 8 | 4 (6–10/11/2026) |
+
+Também estão no SIGPub, mas ficaram de fora por não terem publicado nada em 30 dias (conferido em 10/11/2026): `amurc` (BA), `ms` (MS) e `sergipe` (SE).
 
 O número de entidades vem da pesquisa de 17/10 e inclui câmaras, consórcios, fundos e autarquias, não só prefeituras.
 `amm-mt` e `appm` respondem, mas a busca não traz nenhuma matéria de outubro (a página inicial da AMM-MT mostra "Nenhuma edição publicada nesta data"). Elas continuam na lista: custam uma busca por coleta e voltam a ser lidas sozinhas se as publicações retornarem.
@@ -91,7 +98,7 @@ Detalhes que importam:
    - requisições em sequência, com 2 s entre elas (no coletor e no `diarioMunicipalClient`);
    - timeout de 60 s, resposta de no máximo 5 MB e sem redirecionamento;
    - erro comum repete uma vez depois de 5 s;
-   - **403/429**: espera 60 s e tenta mais uma vez. Se continuar, **para a coleta inteira** (o servidor é o mesmo para as 13 associações). O cliente HTTP ainda faz as próprias esperas em 429/503;
+   - **403/429**: espera 60 s e tenta mais uma vez. Se continuar, **para a coleta inteira** (o servidor é o mesmo para as 18 associações). O cliente HTTP ainda faz as próprias esperas em 429/503;
    - 5 falhas seguidas também param a coleta.
 10. **Orçamento por coleta**: 45 minutos e 900 requisições (buscas + matérias). O que sobra fica para a coleta seguinte, listado no log.
 11. **Memória** no Redis: sorted set `diario-municipal:materias-lidas` com membros `{slug}:{CÓDIGO}`, guardados por 20 dias.
@@ -127,4 +134,4 @@ A comparação com o PNCP foi feita à mão, pela busca pública por município 
 - Aviso sem data de sessão legível entra sem `aberturaAt` e segue a regra de "aberta sem data" (≤ 30 dias da publicação).
 - Matéria de consórcio ou de entidade estadual não é gravada.
 - O Querido Diário também indexa parte desses diários. O SIGPub confere o Querido Diário antes de gravar, mas o coletor do Querido Diário não confere o SIGPub. Um aviso que o SIGPub gravou primeiro pode voltar pelo Querido Diário com outro `fonteId`.
-- A primeira coleta é a mais pesada: cerca de 1.600 matérias com "aviso de licitação" em 5 dias, somadas as 13 associações. Ela para no orçamento e as seguintes completam com a memória.
+- A primeira coleta é a mais pesada: cerca de 1.600 matérias com "aviso de licitação" em 5 dias, somadas as 13 primeiras associações. Ela para no orçamento e as seguintes completam com a memória.

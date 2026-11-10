@@ -9,7 +9,7 @@ Prefeituras pequenas do Maranhão ainda publicam aviso de licitação só no di�
 
 ## Por que uma fonte própria, e não mais uma associação em `DIARIO_MUNICIPAL`
 
-- O coletor do SIGPub é da plataforma SIGPub: busca por termo em HTML, cartões, código de 8 caracteres e bloqueio que para as 13 associações juntas (mesmo servidor). A FAMEM é outra plataforma, com outro protocolo (lista JSON com cookie de sessão), outro servidor e outro bloqueio. Pôr as duas no mesmo coletor exigiria abstrair as duas plataformas: mais código e mais risco do que um coletor pequeno.
+- O coletor do SIGPub é da plataforma SIGPub: busca por termo em HTML, cartões, código de 8 caracteres e bloqueio que para as 18 associações juntas (mesmo servidor). A FAMEM é outra plataforma, com outro protocolo (lista JSON com cookie de sessão), outro servidor e outro bloqueio. Pôr as duas no mesmo coletor exigiria abstrair as duas plataformas: mais código e mais risco do que um coletor pequeno.
 - A saúde dos coletores (`saudeDosColetores.ts`) é por fonte. Com a mesma fonte, a FAMEM parada ficaria escondida atrás do SIGPub funcionando.
 - O que é de diário continua compartilhado: o leitor de avisos (`parseDiarioOficial`), o filtro de título do SIGPub (`tituloDeAviso`, `TITULO_COM_MODALIDADE`), o município pela entidade (`municipioDaEntidade`), a republicação (`prepararRepublicacao`), a conferência com o Querido Diário (`existeNoQueridoDiario`, prefixo `FAMEM-` → `QD-`), a memória no Redis e o `salvarLote`. A FAMEM entra em `FONTES_DE_DIARIO` (aviso sem objeto é escondido) e em `FONTES_QUE_REPETEM_O_PNCP`.
 
