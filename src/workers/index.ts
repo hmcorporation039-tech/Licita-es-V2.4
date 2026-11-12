@@ -38,6 +38,7 @@ import { enderecoDaPonteSemSenha } from '../lib/httpClient'
 import { alertarFalha, instalarAlertasDoProcesso } from '../services/alertaOperacional'
 import { preencherAnoDoProcesso } from '../services/anoDoProcessoBackfill'
 import { verificarColetoresParados } from '../services/saudeDosColetores'
+import { iniciarStatusParaOPredio } from '../services/statusParaOPredio'
 
 async function main() {
   console.log('🚀 Iniciando workers da plataforma de licitações...')
@@ -186,8 +187,12 @@ async function main() {
   setTimeout(runSaudeDosColetores, 60 * 60 * 1000)
   setInterval(runSaudeDosColetores, 6 * 60 * 60 * 1000)
 
+  // Prédio H&M (painel 3D): status dos 6 agentes a cada 30 s. Só liga com CENTRAL_STATUS_URL.
+  const pararStatusDoPredio = iniciarStatusParaOPredio()
+
   // Graceful shutdown
   process.on('SIGTERM', async () => {
+    pararStatusDoPredio()
     console.log('Encerrando workers...')
     await workerPNCP.close()
     await workerNovacap.close()
