@@ -27,6 +27,7 @@ import { idsQueCitamOTexto, whereDoMunicipio, whereDoNumeroDoEdital, whereDoOrga
 import { sugerirTermoParecido } from '../../services/sugestaoDeTermo'
 import { fatiasDaPagina } from '../../lib/paginacaoEmGrupos'
 import { TENDER_PUBLICO, semRawJson } from '../../lib/tenderPublico'
+import { ondeDisputar } from '../../lib/ondeDisputar'
 import { MAX_ANALISES_POR_HORA, pedidosDeAnaliseNaUltimaHora } from '../../services/quotaService'
 import { desfazerReserva, reservarAnalise } from '../../services/reservaDeAnalise'
 import { falhouHaPouco } from '../../lib/esperaDeReanalise'
@@ -213,7 +214,8 @@ tendersRouter.get(
       rows = partes.flat() as Record<string, unknown>[]
     }
 
-    const items = rows.map((t) => {
+    const items = rows.map((linha) => {
+      const t: Record<string, unknown> = { ...linha, ondeDisputar: ondeDisputar(linha as Parameters<typeof ondeDisputar>[0]) }
       const matches = t.tenderMatches as MatchDaLista[] | undefined
       if (!matches) return t
 
