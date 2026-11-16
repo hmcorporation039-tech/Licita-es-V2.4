@@ -62,9 +62,10 @@ function formatValor(v: string | null) {
   return Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-function local(t: Tender) {
-  if (t.municipio) return `${t.municipio}/${t.uf ?? ''}`
-  return t.uf ?? 'UF n/d'
+// Na coluna Fonte: cidade e UF, para a pessoa ver a região sem ler o nome do órgão.
+function regiao(t: Tender) {
+  if (t.municipio && t.uf) return `${t.municipio}/${t.uf}`
+  return t.municipio ?? t.uf ?? 'Região n/d'
 }
 
 type Ordem = 'prazo' | 'recentes'
@@ -94,15 +95,23 @@ function TenderRow({ t, somenteRelacionadas, favoritas }: { t: TenderComEncerram
               {objeto}
             </Link>
             <span className="truncate text-xs text-muted">
-              {t.orgao ?? 'Órgão n/d'} · {local(t)}
+              {t.orgao ?? 'Órgão n/d'}
             </span>
           </div>
           <BotaoFavorito favorita={favoritas.ehFavorita(t.id)} onToggle={() => favoritas.alternar(t.id)} size={16} className="mt-0.5" />
         </div>
       </Td>
       <Td className="whitespace-nowrap text-ink-2">{MODALIDADE_OPTIONS.find((o) => o.value === t.modalidade)?.label ?? t.modalidade}</Td>
-      <Td>
-        <StatusTag mono>{rotuloDaFonte(t.fonte)}</StatusTag>
+      <Td className="max-w-[12rem]">
+        <div className="flex min-w-0 flex-col items-start gap-0.5">
+          <span className="max-w-full truncate" title={t.ondeDisputar ?? rotuloDaFonte(t.fonte)}>
+            <StatusTag mono>{t.ondeDisputar ?? rotuloDaFonte(t.fonte)}</StatusTag>
+          </span>
+          <span className="max-w-full truncate text-xs text-muted">
+            {regiao(t)}
+            {t.ondeDisputar ? ` · via ${rotuloDaFonte(t.fonte)}` : ''}
+          </span>
+        </div>
       </Td>
       <Td numeric className={t.valorEstimado ? 'text-ink' : 'text-faint'}>
         {formatValor(t.valorEstimado)}
@@ -621,7 +630,7 @@ export default function TendersPage() {
                   <Th>Encerra</Th>
                   <Th>Objeto e órgão</Th>
                   <Th>Modalidade</Th>
-                  <Th>Fonte</Th>
+                  <Th>Onde disputar</Th>
                   <Th align="right">Valor estimado</Th>
                   <Th>Nº do processo</Th>
                   <Th>Situação</Th>

@@ -206,6 +206,8 @@ export interface Tender {
   encerramentoAt?: string | null
   publicadoAt: string | null
   linkEdital: string | null
+  /** Portal onde a disputa acontece (vem da lista de licitações). */
+  ondeDisputar?: string | null
   duplicataDe?: string | null
   createdAt: string
   resultadoFinal?: boolean

@@ -251,10 +251,16 @@ export function chaveDaMateria(associacao: AssociacaoSigpub, codigo: string): st
   return `${associacao.slug}:${codigo}`
 }
 
+// Matéria sem o cabeçalho "AVISO DE LICITAÇÃO" no texto, mas com a modalidade no título:
+// o título vira o cabeçalho, para o parser do diário reconhecer o aviso.
+export function textoComOTituloDoAviso(texto: string, titulo: string): string {
+  if (separarBlocosDeAviso(texto).length > 0) return texto
+  if (!TITULO_COM_MODALIDADE.test(chaveDeBusca(titulo))) return texto
+  return `AVISO DE LICITAÇÃO\n${titulo}\n${texto}`
+}
+
 function textoParaOParser(materia: MateriaSigpub, cartao: CartaoDeMateria): string {
-  if (separarBlocosDeAviso(materia.texto).length > 0) return materia.texto
-  if (!TITULO_COM_MODALIDADE.test(chaveDeBusca(cartao.titulo))) return materia.texto
-  return `AVISO DE LICITAÇÃO\n${cartao.titulo}\n${materia.texto}`
+  return textoComOTituloDoAviso(materia.texto, cartao.titulo)
 }
 
 export function avisosDaMateria(

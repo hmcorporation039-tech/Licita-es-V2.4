@@ -20,6 +20,7 @@ import { startColetorTcePiWorker } from './coletorTcePi'
 import { startColetorTceToWorker } from './coletorTceTo'
 import { startColetorTceRsWorker } from './coletorTceRs'
 import { startColetorFamemWorker } from './coletorFamem'
+import { startColetorDomScWorker } from './coletorDomSc'
 import { startMatcherWorker } from './matcher'
 import { startNotificadorWorker } from './notificador'
 import { startAnaliseWorker } from './analise'
@@ -37,6 +38,7 @@ import { enderecoDaPonteSemSenha } from '../lib/httpClient'
 import { alertarFalha, instalarAlertasDoProcesso } from '../services/alertaOperacional'
 import { preencherAnoDoProcesso } from '../services/anoDoProcessoBackfill'
 import { verificarColetoresParados } from '../services/saudeDosColetores'
+import { iniciarStatusParaOPredio } from '../services/statusParaOPredio'
 
 async function main() {
   console.log('🚀 Iniciando workers da plataforma de licitações...')
@@ -59,17 +61,18 @@ async function main() {
   const workerTceTo = startColetorTceToWorker()
   const workerTceRs = startColetorTceRsWorker()
   const workerFamem = startColetorFamemWorker()
+  const workerDomSc = startColetorDomScWorker()
   const workerMatcher = startMatcherWorker()
   const workerNotificador = startNotificadorWorker()
   const workerAnalise = startAnaliseWorker()
   const workerRematchItem = startRematchItemWorker()
 
-  console.log('✅ Workers ativos: PNCP, Novacap, FIEG, SESC GO, SEST SENAT, SESC Regionais, Querido Diário, Sistema S, Infraero, Diários municipais, TCE-CE, TCE-PI, TCE-TO, TCE-RS, FAMEM, Matcher, Notificador, Análise, Busca do item')
+  console.log('✅ Workers ativos: PNCP, Novacap, FIEG, SESC GO, SEST SENAT, SESC Regionais, Querido Diário, Sistema S, Infraero, Diários municipais, TCE-CE, TCE-PI, TCE-TO, TCE-RS, FAMEM, DOM/SC, Matcher, Notificador, Análise, Busca do item')
 
   // Alerta ao administrador só na falha DEFINITIVA (esgotadas as tentativas): uma tentativa
   // que falha e depois dá certo (portal instável) não é motivo para acordar ninguém.
   instalarAlertasDoProcesso('workers')
-  const todos = [workerPNCP, workerNovacap, workerFieg, workerSescGo, workerSestSenat, workerSescRegional, workerQueridoDiario, workerSistemaS, workerInfraero, workerDiarioMunicipal, workerTceCe, workerTcePi, workerTceTo, workerTceRs, workerFamem, workerMatcher, workerNotificador, workerAnalise, workerRematchItem]
+  const todos = [workerPNCP, workerNovacap, workerFieg, workerSescGo, workerSestSenat, workerSescRegional, workerQueridoDiario, workerSistemaS, workerInfraero, workerDiarioMunicipal, workerTceCe, workerTcePi, workerTceTo, workerTceRs, workerFamem, workerDomSc, workerMatcher, workerNotificador, workerAnalise, workerRematchItem]
   for (const w of todos) {
     w.on('failed', (job, err) => {
       const tentativas = job?.opts?.attempts ?? 1
@@ -184,8 +187,12 @@ async function main() {
   setTimeout(runSaudeDosColetores, 60 * 60 * 1000)
   setInterval(runSaudeDosColetores, 6 * 60 * 60 * 1000)
 
+  // Prédio H&M (painel 3D): status dos 6 agentes a cada 30 s. Só liga com CENTRAL_STATUS_URL.
+  const pararStatusDoPredio = iniciarStatusParaOPredio()
+
   // Graceful shutdown
   process.on('SIGTERM', async () => {
+    pararStatusDoPredio()
     console.log('Encerrando workers...')
     await workerPNCP.close()
     await workerNovacap.close()
@@ -202,6 +209,7 @@ async function main() {
     await workerTceTo.close()
     await workerTceRs.close()
     await workerFamem.close()
+    await workerDomSc.close()
     await workerMatcher.close()
     await workerNotificador.close()
     await workerAnalise.close()
