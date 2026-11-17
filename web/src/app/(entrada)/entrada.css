@@ -3570,3 +3570,9 @@
   justify-content: center;
   gap: 4px;
 }
+
+.az-ramos-todos {
+  margin: 24px 0 0;
+  text-align: center;
+  font-weight: 700;
+}

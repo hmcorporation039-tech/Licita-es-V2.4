@@ -155,3 +155,78 @@ publicRouter.get(
   })
 )
 
+
+// Páginas públicas por ramo e estado (SEO): mais amostras e onde estão as licitações.
+// Aceita até 4 termos (sinônimos do ramo); a contagem é da união, sem repetir licitação.
+const AMOSTRAS_DA_PAGINA_DE_RAMO = 20
+const MAX_IDS_NA_DISTRIBUICAO = 15000
+const MUNICIPIOS_NA_PAGINA_DE_RAMO = 12
+
+const paginaDeRamoSchema = z.object({
+  termos: z
+    .string()
+    .trim()
+    .transform((v) => [...new Set(v.split(',').map((t) => t.trim()).filter(Boolean))])
+    .pipe(z.array(z.string().min(3).max(60)).min(1).max(4)),
+  uf: z.string().trim().toUpperCase().length(2).optional(),
+})
+
+publicRouter.get(
+  '/ramo',
+  vitrineLimiter,
+  asyncHandler(async (req, res) => {
+    const { termos, uf } = paginaDeRamoSchema.parse(req.query)
+    const chave = `ramo:${termos.map(normalize).sort().join('|')}:${uf ?? ''}`
+    const emCache = lerCache(chave)
+    if (emCache) {
+      res.setHeader('Cache-Control', 'public, max-age=300')
+      res.json(emCache)
+      return
+    }
+    const where: Prisma.TenderWhereInput = { AND: [whereLicitacaoComPrazoConfirmado(), ...(uf ? [{ uf }] : [])] }
+    const listas = await Promise.all(termos.map((t) => idsQueCitamOTexto(t, where, ORDEM_DA_VITRINE)))
+    const todos = [...new Set(listas.flatMap((l) => l.ids))]
+    const candidatos = [...new Set(listas.flatMap((l) => l.ids.slice(0, AMOSTRAS_DA_PAGINA_DE_RAMO * 3)))]
+    const paraDistribuir = todos.slice(0, MAX_IDS_NA_DISTRIBUICAO)
+    const [encontradas, porUf, porMunicipio] = await Promise.all([
+      prisma.tender.findMany({
+        where: { id: { in: candidatos } },
+        orderBy: ORDEM_DA_VITRINE,
+        select: { id: true, objeto: true, objetoResumido: true, orgao: true, uf: true, municipio: true, encerramentoAt: true, aberturaAt: true, fonte: true },
+      }),
+      uf || paraDistribuir.length === 0
+        ? Promise.resolve([])
+        : prisma.tender.groupBy({ by: ['uf'], where: { id: { in: paraDistribuir }, uf: { not: null } }, _count: { _all: true } }),
+      paraDistribuir.length === 0
+        ? Promise.resolve([])
+        : prisma.tender.groupBy({ by: ['municipio', 'uf'], where: { id: { in: paraDistribuir }, municipio: { not: null } }, _count: { _all: true } }),
+    ])
+    const amostras = encontradas
+      .filter((t) => !citaPessoaOuProcesso(`${t.objeto} ${t.objetoResumido ?? ''}`))
+      .slice(0, AMOSTRAS_DA_PAGINA_DE_RAMO)
+      .map((t) => {
+        const objeto = limparObjetoDaVitrine(t.objetoResumido ?? t.objeto)
+        return {
+          objeto: objeto.length > 180 ? `${objeto.slice(0, 177)}...` : objeto,
+          orgao: orgaoDaVitrine(t.orgao),
+          local: [t.municipio, t.uf].filter(Boolean).join('/'),
+          prazo: dataDaSessao(t),
+          fonte: t.fonte,
+        }
+      })
+    const valor = {
+      total: todos.length,
+      amostras,
+      porUf: porUf
+        .map((g) => ({ uf: g.uf as string, total: g._count._all }))
+        .sort((a, b) => b.total - a.total),
+      porMunicipio: porMunicipio
+        .map((g) => ({ municipio: g.municipio as string, uf: g.uf, total: g._count._all }))
+        .sort((a, b) => b.total - a.total || a.municipio.localeCompare(b.municipio, 'pt-BR'))
+        .slice(0, MUNICIPIOS_NA_PAGINA_DE_RAMO),
+    }
+    gravarCache(chave, valor)
+    res.setHeader('Cache-Control', 'public, max-age=300')
+    res.json(valor)
+  })
+)

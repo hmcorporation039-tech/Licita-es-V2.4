@@ -125,6 +125,7 @@ export function PublicFrame({ children }: { children: ReactNode }) {
           </p>
           <p>© Licita Bela · H&amp;M Engenharia e Tecnologia LTDA · CNPJ 04.003.376/0001-00 · Brasília/DF</p>
           <nav aria-label="Documentos legais" className="pb-rodape-links">
+            <Link href="/licitacoes">Licitações por ramo e estado</Link>
             <Link href="/termos">Termos de Uso</Link>
             <Link href="/privacidade">Política de Privacidade</Link>
           </nav>
