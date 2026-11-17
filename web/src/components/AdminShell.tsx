@@ -13,6 +13,7 @@ import ConfirmacaoDoSegundoFator from './ConfirmacaoDoSegundoFator'
 
 const ABAS = [
   { href: '/admin', label: 'Visão geral', exato: true },
+  { href: '/admin/funil', label: 'Funil' },
   { href: '/admin/empresas', label: 'Empresas' },
   { href: '/admin/usuarios', label: 'Usuários' },
   { href: '/admin/auditoria', label: 'Auditoria' },
