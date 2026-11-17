@@ -100,6 +100,7 @@ rodar('Obras e ganhadores', () => {
         bruto(3, { objetoContrato: 'Construção de creche em Campinas/SP', unidadeOrgao: { ufSigla: 'SP', municipioNome: 'Campinas', codigoIbge: '3509502' } }),
         bruto(4, { objetoContrato: 'Aquisição de material de construção', categoriaProcesso: { nome: 'Compras' } }),
         bruto(5, { objetoContrato: 'Serviço de limpeza e conservação' }),
+        bruto(6, { objetoContrato: "Capacitação de servidores: curso 'Impactos da Reforma Tributária nas compras públicas'", categoriaProcesso: { nome: 'Serviços' } }),
       ],
     }
     const r = await coletarContratosPublicos({
@@ -108,7 +109,7 @@ rodar('Obras e ganhadores', () => {
       buscar: async (dia, pagina) => ({ data: pagina === 1 ? (paginas[dia] ?? []) : [], totalPaginas: 1, totalRegistros: (paginas[dia] ?? []).length }),
     })
     expect(r.falhas).toEqual([])
-    expect(await prisma.contratoPublico.count({ where: { id: { startsWith: prefixo } } })).toBe(4)
+    expect(await prisma.contratoPublico.count({ where: { id: { startsWith: prefixo } } })).toBe(5)
 
     // Base em Vitória/ES: Vila Velha (perto) entra; Linhares (~130 km) fica fora de 100 km; Campinas/SP fora.
     const ana = await conta('ana', { baseMunicipio: 'Vitória', baseUf: 'ES', baseLat: -20.3155, baseLng: -40.3128, telefone: '(27) 98888-7777', planCode: 'PROFISSIONAL' })
@@ -128,6 +129,12 @@ rodar('Obras e ganhadores', () => {
     expect(meus.map((c: { id: string }) => c.id)).toEqual([idDoContrato(1)])
     expect(meus[0]).toMatchObject({ municipio: 'Vila Velha', uf: 'ES', nichos: ['Instalações elétricas'], fornecedor: { cnpj: '11222333000181' } })
     expect(meus[0].distanciaKm).toBeLessThan(30)
+    // Por que apareceu e a conferência do cadastro (pessoa física, sem documentos).
+    expect(meus[0].porQueApareceu).toEqual(['construção'])
+    expect(meus[0].aptidao.veredito).toBe('confira')
+    expect(meus[0].aptidao.itens.map((i: { texto: string }) => i.texto)).toEqual(
+      expect.arrayContaining([expect.stringMatching(/pessoa física/), 'Nenhum documento cadastrado em Empresa e documentos.', expect.stringMatching(/CREA\/CAU/)])
+    )
 
     // Estado inteiro: Linhares entra também.
     await http('PUT', '/api/obras/perfil', { raioKm: 100, ufs: ['ES'], nichos: [eletrica] }, ana.token)
@@ -136,7 +143,7 @@ rodar('Obras e ganhadores', () => {
 
     const contato = await http('GET', '/api/obras/ganhador/11.222.333%2F0001-81', undefined, ana.token)
     expect(contato.status).toBe(200)
-    expect(contato.body).toMatchObject({ telefones: ['(27) 3333-4444'], email: 'contato@capixaba.com.br', contratosRecentes: 4 })
+    expect(contato.body).toMatchObject({ telefones: ['(27) 3333-4444'], email: 'contato@capixaba.com.br', contratosRecentes: 5 })
 
     const msg = await http('GET', `/api/obras/mensagem/${encodeURIComponent(idDoContrato(1))}`, undefined, ana.token)
     expect(msg.status).toBe(200)

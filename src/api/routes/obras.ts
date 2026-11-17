@@ -18,6 +18,7 @@ import {
   mensagemDeApresentacao,
   naRegiao,
   nichosDoContrato,
+  porQueApareceu,
   regiaoValida,
   type RegiaoDaEmpresa,
 } from '../../lib/obrasEGanhadores'
@@ -29,6 +30,7 @@ import { registrarAuditoria } from '../../services/auditService'
 import { nomeLegivel } from '../../services/contratosPublicosColeta'
 import { PLANO_DE_TESTE } from '../../lib/acessoEncerrado'
 import { CnpjIndisponivel, CnpjNaoEncontrado, consultarCnpj, normalizarCnpj } from '../../services/perfilDoNegocio'
+import { aptidaoParaObra, type EmpresaParaAptidao } from '../../lib/aptidaoParaObra'
 
 export const obrasRouter = Router()
 
@@ -130,6 +132,49 @@ obrasRouter.put(
   })
 )
 
+// CNAEs da própria empresa (Receita, via BrasilAPI): uma consulta por pedido, com cache de
+// 24 h em consultarCnpj. Se não responder rápido, a conferência segue sem CNAE.
+const ESPERA_DO_CNAE_MS = 2500
+const FALHA_DO_CNAE_MS = 5 * 60 * 1000
+const falhasDoCnae = new Map<string, number>()
+
+async function cnaesDaEmpresa(cnpj: string | null): Promise<string[] | null> {
+  const doc = cnpj ? normalizarCnpj(cnpj) : null
+  if (!doc) return null
+  const falhou = falhasDoCnae.get(doc)
+  if (falhou && Date.now() - falhou < FALHA_DO_CNAE_MS) return null
+  let espera: NodeJS.Timeout | undefined
+  try {
+    const empresa = await Promise.race([
+      consultarCnpj(doc),
+      new Promise<null>((resolve) => {
+        espera = setTimeout(() => resolve(null), ESPERA_DO_CNAE_MS)
+      }),
+    ])
+    const codigos = empresa?.atividades.map((a) => a.codigo.replace(/\D/g, '')).filter((c) => c.length >= 4) ?? []
+    if (codigos.length === 0) {
+      falhasDoCnae.set(doc, Date.now())
+      return null
+    }
+    falhasDoCnae.delete(doc)
+    return codigos
+  } catch {
+    falhasDoCnae.set(doc, Date.now())
+    return null
+  } finally {
+    clearTimeout(espera)
+  }
+}
+
+async function empresaParaAptidao(companyId: string, raioKm: number | null): Promise<EmpresaParaAptidao> {
+  const [empresa, documentos] = await Promise.all([
+    prisma.company.findUniqueOrThrow({ where: { id: companyId }, select: { tipo: true, cnpj: true } }),
+    prisma.companyDocument.findMany({ where: { companyId }, select: { nome: true, tipo: true, dataValidade: true }, take: 500 }),
+  ])
+  const pessoaFisica = empresa.tipo === 'PESSOA_FISICA'
+  return { pessoaFisica, cnaes: pessoaFisica ? null : await cnaesDaEmpresa(empresa.cnpj), documentos, raioKm }
+}
+
 // Caixa em graus em volta da base: pré-filtro no banco antes da distância exata.
 function caixaDoRaio(base: { lat: number; lng: number }, raioKm: number) {
   const dLat = raioKm / 111
@@ -163,15 +208,19 @@ obrasRouter.get(
     const ondeRegiao: Prisma.ContratoPublicoWhereInput[] = []
     if (regiao.ufs.length > 0) ondeRegiao.push({ uf: { in: regiao.ufs } })
     if (regiao.raioKm !== null && regiao.base) ondeRegiao.push(caixaDoRaio(regiao.base, regiao.raioKm))
-    const candidatos = await prisma.contratoPublico.findMany({
-      where: {
-        dataAssinatura: { gte: desde },
-        ...(valorMinimo ? { valorGlobal: { gte: valorMinimo } } : {}),
-        AND: [{ OR: ondeRegiao }, { OR: termos.map((t) => ({ objetoNorm: { contains: t } })) }],
-      },
-      orderBy: { dataAssinatura: 'desc' },
-      take: MAX_CANDIDATOS,
-    })
+    const [candidatos, paraAptidao] = await Promise.all([
+      prisma.contratoPublico.findMany({
+        where: {
+          dataAssinatura: { gte: desde },
+          ...(valorMinimo ? { valorGlobal: { gte: valorMinimo } } : {}),
+          AND: [{ OR: ondeRegiao }, { OR: termos.map((t) => ({ objetoNorm: { contains: t } })) }],
+        },
+        orderBy: { dataAssinatura: 'desc' },
+        take: MAX_CANDIDATOS,
+      }),
+      empresaParaAptidao(req.companyId!, regiao.raioKm),
+    ])
+    const hoje = new Date()
 
     const todos = candidatos
       .flatMap((c) => {
@@ -193,6 +242,8 @@ obrasRouter.get(
             assinatura: c.dataAssinatura?.toISOString().slice(0, 10) ?? null,
             vigenciaFim: c.vigenciaFim?.toISOString().slice(0, 10) ?? null,
             nichos: casados.map((n) => n.nome),
+            porQueApareceu: porQueApareceu(casados),
+            aptidao: aptidaoParaObra({ nichos: casados.map((n) => n.nome), distanciaKm: local.distanciaKm, vigenciaFim: c.vigenciaFim }, paraAptidao, hoje),
             linkPncp: linkDoContrato(c.id),
           },
         ]

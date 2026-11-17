@@ -66,6 +66,83 @@ const MAO_DE_OBRA = /\bmao de obra\b/g
 // "Aquisição de cimento" foi ganho por um fornecedor, não por quem vai executar uma obra.
 const SO_COMPRA = /^\s*(aquisicao|compra|fornecimento)\b|\b(aquisicao|aquisicoes|compra|fornecimento) de (materia|equipament|produto|insumo|genero|pecas)/
 
+// "Reforma tributária/administrativa/previdenciária" não é obra: tira do texto antes de casar,
+// para "reforma" não puxar curso ou parecer sobre lei.
+const REFORMA_QUE_NAO_E_OBRA = /\breformas? (tributaria|administrativa|previdenciaria|da previdencia|trabalhista|fiscal|politica|agraria|do ensino|do ensino medio|curricular)\b/g
+
+// Objeto que é, antes de tudo, curso, consultoria, software ou evento: quem ganhou não executa obra.
+// ("Curso d'água" é rio: canalização de curso d'água é obra.)
+const SERVICO_QUE_NAO_E_OBRA = /\b(cursos?(?!\s+(d'?\s*agua|de agua|dagua|hidric))|capacitac(ao|oes)|treinamentos?|palestras?|seminarios?|workshops?|congressos?|inscricao|inscricoes|consultoria|assessoria|licenca de uso|licencas de uso|licenca de software|licencas de software|softwares?|sistemas? de gestao|eventos?)\b/
+// Sinal de obra de verdade no objeto.
+const SINAL_DE_OBRA = /\b(obras?|empreitada|construcao|reforma|reformas|ampliacao|edificacao|pavimentacao|recapeamento|terraplenagem|drenagem|manutencao predial|instalacao|instalacoes|revitalizacao|demolicao)\b/
+
+/**
+ * O objeto é principalmente um serviço que não é obra? Decide pelo que aparece primeiro:
+ * "Capacitação ... curso sobre gestão de obras" sai; "Projeto e execução de obra ..., incluindo
+ * consultoria ambiental" fica.
+ */
+export function objetoNaoEDeObra(texto: string): boolean {
+  const servico = SERVICO_QUE_NAO_E_OBRA.exec(texto)
+  if (!servico) return false
+  const obra = SINAL_DE_OBRA.exec(texto)
+  return !obra || servico.index < obra.index
+}
+
+// O catálogo guarda as palavras sem acento (comparação com o objeto normalizado);
+// na tela, mostra-se a forma escrita.
+const PALAVRAS_LEGIVEIS: Record<string, string> = {
+  construcao: 'construção',
+  ampliacao: 'ampliação',
+  edificacao: 'edificação',
+  edificio: 'edifício',
+  predio: 'prédio',
+  'manutencao predial': 'manutenção predial',
+  revitalizacao: 'revitalização',
+  iluminacao: 'iluminação',
+  'iluminacao cenica': 'iluminação cênica',
+  subestacao: 'subestação',
+  'rede eletrica': 'rede elétrica',
+  'eficiencia energetica': 'eficiência energética',
+  'rede de agua': 'rede de água',
+  'abastecimento de agua': 'abastecimento de água',
+  reservatorio: 'reservatório',
+  'sinalizacao viaria': 'sinalização viária',
+  climatizacao: 'climatização',
+  refrigeracao: 'refrigeração',
+  'estrutura metalica': 'estrutura metálica',
+  impermeabilizacao: 'impermeabilização',
+  pavimentacao: 'pavimentação',
+  calcamento: 'calçamento',
+  urbanizacao: 'urbanização',
+  praca: 'praça',
+  calcada: 'calçada',
+  'regularizacao fundiaria': 'regularização fundiária',
+  residuos: 'resíduos',
+  demolicao: 'demolição',
+  rocagem: 'roçagem',
+}
+
+/** Forma legível de uma palavra do catálogo ("manutencao predial" -> "manutenção predial"). */
+export function palavraLegivel(palavra: string): string {
+  const t = palavra.replace(/\s+/g, ' ').trim()
+  return PALAVRAS_LEGIVEIS[t.toLowerCase()] ?? t
+}
+
+/** Palavras que fizeram o contrato aparecer, legíveis e sem repetir, na ordem em que vieram. */
+export function porQueApareceu(achados: { palavras: string[] }[], max = 6): string[] {
+  const vistas = new Set<string>()
+  const lista: string[] = []
+  for (const p of achados.flatMap((a) => a.palavras)) {
+    const legivel = palavraLegivel(p)
+    const chave = normalize(legivel)
+    if (vistas.has(chave)) continue
+    vistas.add(chave)
+    lista.push(legivel.toLowerCase())
+    if (lista.length >= max) break
+  }
+  return lista
+}
+
 export interface NichoCompilado {
   nome: string
   alvos: { palavra: string; regex: RegExp }[]
@@ -89,8 +166,9 @@ export function compilarNichos(nichos: NichoDaEmpresa[]): NichoCompilado[] {
 /** Nichos da empresa que este contrato pede, com as palavras que casaram. */
 export function nichosDoContrato(contrato: ContratoParaCasar, nichos: NichoCompilado[]): { nome: string; palavras: string[] }[] {
   if (contrato.categoria === 'Mão de Obra' || TERCEIRIZACAO.test(contrato.objetoNorm)) return []
-  const texto = contrato.objetoNorm.replace(MAO_DE_OBRA, ' ')
+  const texto = contrato.objetoNorm.replace(MAO_DE_OBRA, ' ').replace(REFORMA_QUE_NAO_E_OBRA, ' ')
   if (SO_COMPRA.test(texto) && !/\b(execucao|instalacao|empreitada)\b/.test(texto)) return []
+  if (objetoNaoEDeObra(texto)) return []
   const achados: { nome: string; palavras: string[] }[] = []
   for (const n of nichos) {
     if (n.exclusoes.some((r) => r.test(texto))) continue

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CATALOGO_DE_NICHOS, compilarNichos, limparPalavras, mensagemDeApresentacao, naRegiao, nichosDoContrato, regiaoValida } from '../src/lib/obrasEGanhadores'
+import { CATALOGO_DE_NICHOS, compilarNichos, limparPalavras, mensagemDeApresentacao, naRegiao, nichosDoContrato, objetoNaoEDeObra, palavraLegivel, porQueApareceu, regiaoValida } from '../src/lib/obrasEGanhadores'
 import { contratoParaGravar, diasParaColetar, textoParaBusca } from '../src/services/contratosPublicosColeta'
 import { linkDoContrato } from '../src/api/routes/obras'
 import { normalize } from '../src/lib/geoService'
@@ -45,6 +45,56 @@ describe('nichosDoContrato', () => {
     const [n] = compilarNichos([{ nome: 'Pintura', alvos: ['reforma'], exclusoes: ['telhado'] }])
     expect(nichosDoContrato({ objetoNorm: normalize('Reforma do telhado da escola') }, [n])).toEqual([])
     expect(nichosDoContrato({ objetoNorm: normalize('Reforma da escola') }, [n])).toEqual([{ nome: 'Pintura', palavras: ['reforma'] }])
+  })
+})
+
+describe('falsos positivos: não é obra', () => {
+  it('"Reforma Tributária" não é reforma de prédio', () => {
+    const curso = "Contratação de capacitação para servidores: curso 'Impactos da Reforma Tributária nas compras públicas'"
+    expect(casa(curso, 'eletrica')).toBe(false)
+    expect(casa('Consultoria sobre a reforma administrativa e previdenciária do município', 'pintura')).toBe(false)
+    // Mesmo sem a palavra "curso", "reforma tributária" não puxa o nicho.
+    expect(casa('Parecer técnico sobre a Reforma Tributária', 'eletrica')).toBe(false)
+  })
+
+  it('curso, capacitação, treinamento, consultoria e software saem', () => {
+    expect(casa('Curso de capacitação em manutenção predial para servidores', 'eletrica')).toBe(false)
+    expect(casa('Treinamento de equipe em gestão de obras públicas', 'mao-de-obra')).toBe(false)
+    expect(casa('Prestação de serviços de assessoria e consultoria na fiscalização de obras de construção', 'eletrica')).toBe(false)
+    expect(casa('Licença de software para gestão de obras e construção', 'eletrica')).toBe(false)
+    expect(casa('Organização de evento de inauguração da praça', 'paisagismo')).toBe(false)
+  })
+
+  it('obra de verdade continua: reforma de escola, mesmo citando consultoria ou treinamento depois', () => {
+    expect(casa('Reforma da Escola Municipal Maria das Dores', 'eletrica')).toBe(true)
+    expect(casa('Contratação de empresa para reforma de escola', 'pintura')).toBe(true)
+    expect(casa('Projeto e execução de obra de construção da creche, incluindo consultoria ambiental', 'hidraulica')).toBe(true)
+    expect(casa('Reforma e ampliação do centro de eventos com treinamento dos operadores', 'hidraulica')).toBe(true)
+    expect(casa("Obra de canalização de curso d'água e drenagem", 'hidraulica')).toBe(true)
+  })
+
+  it('objetoNaoEDeObra decide pelo que vem primeiro', () => {
+    expect(objetoNaoEDeObra(normalize('Capacitação em obras públicas'))).toBe(true)
+    expect(objetoNaoEDeObra(normalize('Obras públicas com capacitação'))).toBe(false)
+    expect(objetoNaoEDeObra(normalize('Reforma da quadra'))).toBe(false)
+  })
+})
+
+describe('por que apareceu', () => {
+  it('mostra as palavras legíveis, sem repetir', () => {
+    expect(palavraLegivel('manutencao predial')).toBe('manutenção predial')
+    expect(palavraLegivel('reforma')).toBe('reforma')
+    expect(palavraLegivel('Telhado verde')).toBe('Telhado verde')
+    expect(porQueApareceu([{ palavras: ['manutencao predial', 'reforma'] }, { palavras: ['reforma', 'Construção'] }, { palavras: ['construcao'] }])).toEqual([
+      'manutenção predial',
+      'reforma',
+      'construção',
+    ])
+  })
+
+  it('nichosDoContrato devolve as palavras que casaram', () => {
+    const [achado] = nichosDoContrato({ objetoNorm: normalize('Manutenção predial e reforma do posto de saúde') }, nicho('eletrica'))
+    expect(achado.palavras).toEqual(expect.arrayContaining(['reforma', 'manutencao predial']))
   })
 })
 
