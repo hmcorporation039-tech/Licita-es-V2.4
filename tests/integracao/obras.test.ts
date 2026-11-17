@@ -16,6 +16,30 @@ vi.mock('../../src/services/perfilDoNegocio', async (original) => ({
   })),
 }))
 
+// PNCP simulado para "O que o contrato pede": itens, resultados, arquivos e o texto do edital.
+const pncp = vi.hoisted(() => ({ arquivos: vi.fn(), baixar: vi.fn() }))
+vi.mock('../../src/services/pncpItemsService', async (original) => ({
+  ...(await original<typeof import('../../src/services/pncpItemsService')>()),
+  fetchPNCPItensBrutos: vi.fn(async () => ({
+    completo: true,
+    itens: [
+      { numeroItem: 1, descricao: 'Administração local da obra', quantidade: 1, unidadeMedida: 'MÊS', valorTotal: 50000, temResultado: true },
+      { numeroItem: 2, descricao: 'Quadro de distribuição e disjuntores', quantidade: 4, unidadeMedida: 'UN', valorTotal: 12000, temResultado: true },
+      { numeroItem: 3, descricao: 'Pintura acrílica', quantidade: 800, unidadeMedida: 'M2', valorTotal: 20000, temResultado: false },
+    ],
+  })),
+  fetchPNCPResultadosDoItem: vi.fn(async () => [{ niFornecedor: '11222333000181', valorTotalHomologado: 11500, dataCancelamento: null }]),
+}))
+vi.mock('../../src/services/pncpDocumentsService', async (original) => ({
+  ...(await original<typeof import('../../src/services/pncpDocumentsService')>()),
+  listPNCPDocuments: pncp.arquivos,
+  downloadPNCPDocument: pncp.baixar,
+}))
+vi.mock('../../src/services/pdfTextService', async (original) => ({
+  ...(await original<typeof import('../../src/services/pdfTextService')>()),
+  extractPdf: vi.fn(async (b: Buffer) => ({ texto: b.toString('utf8').slice(5).padEnd(400, ' .'), paginas: 1, textoComPaginas: '' })),
+}))
+
 const URL_BANCO = process.env.TEST_DATABASE_URL
 const rodar = describe.skipIf(!URL_BANCO)
 
@@ -95,7 +119,7 @@ rodar('Obras e ganhadores', () => {
     const { coletarContratosPublicos } = await import('../../src/services/contratosPublicosColeta')
     const paginas: Record<string, unknown[]> = {
       [hoje]: [
-        bruto(1, { objetoContrato: 'Execução de obra de construção da escola municipal no bairro Itapuã, em Vila Velha/ES' }),
+        bruto(1, { objetoContrato: 'Execução de obra de construção da escola municipal no bairro Itapuã, em Vila Velha/ES', numeroControlePncpCompra: `${prefixo}000100-1-000077/2026` }),
         bruto(2, { objetoContrato: 'Reforma da unidade de saúde de Linhares/ES' }),
         bruto(3, { objetoContrato: 'Construção de creche em Campinas/SP', unidadeOrgao: { ufSigla: 'SP', municipioNome: 'Campinas', codigoIbge: '3509502' } }),
         bruto(4, { objetoContrato: 'Aquisição de material de construção', categoriaProcesso: { nome: 'Compras' } }),
@@ -168,6 +192,38 @@ rodar('Obras e ganhadores', () => {
     expect(semContato.status).toBe(403)
     expect(semContato.body.code).toBe('OBRAS_SO_NOS_PLANOS')
     expect((await http('GET', `/api/obras/mensagem/${encodeURIComponent(idDoContrato(1))}`, undefined, caio.token)).status).toBe(403)
+
+    // "O que o contrato pede": itens da compra (os do nicho primeiro) e a regra de subcontratação do edital.
+    pncp.arquivos.mockResolvedValue([{ uri: 'https://pncp.gov.br/pncp-api/v1/orgaos/x/arquivos/1', titulo: 'Edital', sequencialDocumento: 1, tipoDocumentoNome: 'Edital', statusAtivo: true }])
+    pncp.baixar.mockResolvedValue(Buffer.from('%PDF-15.1. Será admitida a subcontratação parcial até 30% (trinta por cento) do valor total do contrato.'))
+    const detalhe = (token: string, n = 1) => http('GET', `/api/obras/contratos/${encodeURIComponent(idDoContrato(n))}/detalhe`, undefined, token)
+    expect((await detalhe(caio.token)).body.code).toBe('OBRAS_SO_NOS_PLANOS')
+    const pede = await detalhe(ana.token)
+    expect(pede.status).toBe(200)
+    expect(pede.body.compra).toEqual({ controle: `${prefixo}000100-1-000077/2026`, link: `https://pncp.gov.br/app/editais/${prefixo}000100/2026/77` })
+    expect(pede.body.itens.total).toBe(3)
+    expect(pede.body.itens.doNicho).toEqual([
+      { numero: 2, descricao: 'Quadro de distribuição e disjuntores', complemento: null, quantidade: 4, unidade: 'UN', valorEstimado: 12000, valorHomologado: 11500, nichos: ['Instalações elétricas'] },
+    ])
+    expect(pede.body.itens.outros.map((i: { numero: number }) => i.numero)).toEqual([1, 3])
+    expect(pede.body.subcontratacao).toMatchObject({
+      situacao: 'permite',
+      limite: 'até 30% do valor do contrato',
+      documento: 'Edital',
+      explicacao: 'O contrato permite subcontratar parte do serviço (limite: até 30% do valor do contrato).',
+    })
+    expect(pede.body.subcontratacao.trecho).toMatch(/^Será admitida a subcontratação parcial/)
+    expect(pede.body.avisos).toEqual([])
+    // Em cache: a segunda abertura não vai de novo ao PNCP.
+    expect((await detalhe(ana.token)).status).toBe(200)
+    expect(pncp.arquivos).toHaveBeenCalledTimes(1)
+    // Contrato sem compra ligada no PNCP: avisa e manda para a página do contrato.
+    const semCompra = await detalhe(ana.token, 2)
+    expect(semCompra.status).toBe(200)
+    expect(semCompra.body).toMatchObject({ compra: null, itens: { total: 0, doNicho: [], outros: [] }, subcontratacao: { situacao: 'nao_encontrei', linkArquivos: expect.stringContaining('pncp.gov.br/app/contratos/') } })
+    expect(semCompra.body.avisos[0]).toMatch(/não liga este contrato a uma compra/)
+    expect((await http('GET', '/api/obras/contratos/x/detalhe', undefined, ana.token)).status).toBe(400)
+    expect((await http('GET', `/api/obras/contratos/${encodeURIComponent(idDoContrato(99))}/detalhe`, undefined, ana.token)).status).toBe(404)
 
     // O caminho inverso: quem ganhou uma obra em Vila Velha procura eletricista perto dela.
     // Ana aceita aparecer como prestadora; Caio não.

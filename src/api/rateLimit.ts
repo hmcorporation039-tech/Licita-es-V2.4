@@ -135,6 +135,17 @@ export const radarLimiter = rateLimit({
   message: { error: 'Muitas consultas ao Radar — aguarde alguns minutos e tente de novo' },
 })
 
+// "O que o contrato pede" (Obras e ganhadores): cada pedido novo baixa itens e edital do PNCP
+// e lê PDF. Por usuário; o resultado fica 24 h em cache, então reabrir o mesmo contrato é barato.
+export const detalheDoContratoLimiter = rateLimit({
+  windowMs: JANELA_MS,
+  limit: limite(30),
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  keyGenerator: (req) => req.userId ?? 'anonimo',
+  message: { error: 'Muitas consultas aos detalhes dos contratos — aguarde alguns minutos e tente de novo' },
+})
+
 // Login por CONTA (e-mail digitado), além do limite por IP: senão um ataque distribuído
 // (muitos IPs) contra um mesmo e-mail não era freado. Só conta as tentativas que falham.
 export const loginPorContaLimiter = rateLimit({

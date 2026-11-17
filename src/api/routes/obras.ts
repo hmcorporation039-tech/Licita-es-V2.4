@@ -9,7 +9,7 @@ import { z } from 'zod'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '../../services/tenderService'
 import { asyncHandler, ApiError } from '../asyncHandler'
-import { estudoCalculoLimiter, radarLimiter } from '../rateLimit'
+import { detalheDoContratoLimiter, estudoCalculoLimiter, radarLimiter } from '../rateLimit'
 import {
   CATALOGO_DE_NICHOS,
   MAX_NICHOS,
@@ -31,6 +31,9 @@ import { nomeLegivel } from '../../services/contratosPublicosColeta'
 import { PLANO_DE_TESTE } from '../../lib/acessoEncerrado'
 import { CnpjIndisponivel, CnpjNaoEncontrado, consultarCnpj, normalizarCnpj } from '../../services/perfilDoNegocio'
 import { aptidaoParaObra, type EmpresaParaAptidao } from '../../lib/aptidaoParaObra'
+import { compilarNichosParaItens, compraDoControle, linkDaCompra, separarItens, type ItemComNichos } from '../../lib/itensDoContrato'
+import { explicacaoDaSubcontratacao } from '../../lib/subcontratacao'
+import { baseDaCompra, homologadosDosItens } from '../../services/detalheDoContrato'
 
 export const obrasRouter = Router()
 
@@ -321,6 +324,75 @@ obrasRouter.get(
         meusNichos: meusNichos.length > 0 ? meusNichos : nichos.map((n) => n.nome),
         meuContato: contato,
       }),
+    })
+  })
+)
+
+// ---------- O que o contrato pede ----------
+
+const MAX_ITENS_DO_NICHO = 200
+const MAX_OUTROS_ITENS = 300
+const ID_DE_CONTRATO = /^\d{14}-\d+-\d{1,9}\/\d{4}$/
+
+// Itens da compra no PNCP (os do nicho da empresa primeiro) e a regra de subcontratação
+// do edital. Sem IA; mesmo acesso do contato e da mensagem (planos pagos).
+obrasRouter.get(
+  '/contratos/:id/detalhe',
+  detalheDoContratoLimiter,
+  asyncHandler(async (req, res) => {
+    await exigirPlanoPago(req.companyId!, req.isAdmin)
+    const id = String(req.params.id)
+    if (!ID_DE_CONTRATO.test(id)) throw new ApiError(400, 'Contrato inválido.')
+    const [contrato, { nichos }] = await Promise.all([prisma.contratoPublico.findUnique({ where: { id } }), perfilDaEmpresa(req.companyId!)])
+    if (!contrato) throw new ApiError(404, 'Contrato não encontrado.')
+
+    const compra = compraDoControle(contrato.compraControle)
+    const base = compra ? await baseDaCompra(compra) : null
+    const { doNicho, outros } = separarItens(base?.itens ?? [], compilarNichosParaItens(nichos))
+    const homologado = compra && doNicho.length > 0 ? await homologadosDosItens(compra, contrato.id, contrato.fornecedorNi, doNicho) : new Map<number, number | null>()
+    const paraTela = (i: ItemComNichos) => ({
+      numero: i.numero,
+      descricao: i.descricao,
+      complemento: i.complemento,
+      quantidade: i.quantidade,
+      unidade: i.unidade,
+      valorEstimado: i.valorEstimado,
+      valorHomologado: homologado.get(i.numero) ?? null,
+      nichos: i.nichos,
+    })
+
+    const avisos: string[] = []
+    if (!compra) avisos.push('O PNCP não liga este contrato a uma compra publicada: não há itens nem edital para consultar.')
+    if (base?.itensFalharam) avisos.push('Os itens da compra não vieram do PNCP agora. Tente de novo em alguns minutos.')
+    else if (base && !base.itensCompletos) avisos.push(`A compra tem muitos itens: mostrando os primeiros ${base.itens.length}.`)
+    if (base?.arquivosFalharam) avisos.push('Não deu para ler os arquivos da compra no PNCP agora.')
+    if (base?.parcial) avisos.push('O PNCP demorou para responder: mostrando o que chegou a tempo.')
+    const regra = base?.regra ?? { situacao: 'nao_encontrei' as const, trecho: null, limite: null, parcelas: null, documento: null }
+
+    res.json({
+      contrato: {
+        id: contrato.id,
+        municipio: contrato.municipio,
+        uf: contrato.uf,
+        assinatura: contrato.dataAssinatura?.toISOString().slice(0, 10) ?? null,
+        vigenciaFim: contrato.vigenciaFim?.toISOString().slice(0, 10) ?? null,
+        linkPncp: linkDoContrato(contrato.id),
+      },
+      compra: compra ? { controle: contrato.compraControle, link: linkDaCompra(compra) } : null,
+      itens: {
+        total: base?.itens.length ?? 0,
+        doNicho: doNicho.slice(0, MAX_ITENS_DO_NICHO).map(paraTela),
+        outros: outros.slice(0, MAX_OUTROS_ITENS).map(paraTela),
+        outrosOcultos: Math.max(0, outros.length - MAX_OUTROS_ITENS) + Math.max(0, doNicho.length - MAX_ITENS_DO_NICHO),
+      },
+      subcontratacao: {
+        ...regra,
+        explicacao: explicacaoDaSubcontratacao(regra),
+        documentosLidos: base?.documentosLidos ?? [],
+        linkArquivos: compra ? linkDaCompra(compra) : linkDoContrato(contrato.id),
+      },
+      parcial: base?.parcial ?? false,
+      avisos,
     })
   })
 )
