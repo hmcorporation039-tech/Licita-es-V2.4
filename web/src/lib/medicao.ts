@@ -12,8 +12,8 @@ const CHAVE = 'licita-bela:medicao'
 export const EVENTO_REABRIR = 'bela:medicao-reabrir'
 
 // Conversão de cadastro no Google Ads: "AW-123456789/AbCdEf". Também é público (vai no código do site).
-// Vazio = Google Ads desligado (só o GA4 funciona).
-const CONVERSAO_PADRAO = ''
+// NEXT_PUBLIC_GOOGLE_ADS_CONVERSAO troca o código; NEXT_PUBLIC_GOOGLE_ADS_CONVERSAO=desligado desliga o Ads.
+const CONVERSAO_PADRAO = 'AW-18564317906/OqtRCNnTm7odENKFlJRF' // "Cadastro — teste grátis"
 export const VALOR_DO_CADASTRO_EM_REAIS = 30
 
 export interface ConversaoDoAds {
@@ -23,6 +23,7 @@ export interface ConversaoDoAds {
 
 export function conversaoDoAds(valor: string | undefined = process.env.NEXT_PUBLIC_GOOGLE_ADS_CONVERSAO): ConversaoDoAds | null {
   const texto = (valor ?? '').trim() || CONVERSAO_PADRAO
+  if (texto.toLowerCase() === 'desligado') return null
   const partes = /^(AW-\d{6,15})\/([A-Za-z0-9_-]{4,64})$/.exec(texto)
   return partes ? { conta: partes[1], enviarPara: texto } : null
 }
