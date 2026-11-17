@@ -702,11 +702,10 @@ function RoboDeLance({
   onMudar: (patch: { roboAtivo?: boolean; intervaloLancesSeg?: number }) => void;
   onDarLance: (alvo: string, valor: number) => void;
 }) {
-  const [intervalo, setIntervalo] = useState(String(robo.intervaloLancesSeg));
 
   if (!robo.disponivel) {
     return (
-      <Panel title="Robô de lance">
+      <Panel title="Lance sugerido pela Bela">
         <Notice tone="danger" title="Indisponível neste edital">
           A análise do edital achou proibição de lances automatizados. Use só
           lances manuais.
@@ -719,19 +718,18 @@ function RoboDeLance({
   const outras = robo.instrucoes.filter((i) => i.alvo !== alvoAtual);
 
   return (
-    <Panel title="Robô de lance">
+    <Panel title="Lance sugerido pela Bela">
       <div className="flex flex-col gap-3">
         <Checkbox
-          label="Ativar o robô nesta disputa"
+          label="Bela calcular o lance nesta disputa"
           checked={robo.ativo}
           disabled={desabilitado || salvando}
           onChange={(e) => onMudar({ roboAtivo: e.target.checked })}
         />
         <p className="text-xs text-muted">
-          Modo confirmação: a Bela decide o lance pelo seu piso (valor final
-          mínimo) e nunca abaixo dele. Você confirma o lance no portal. O modo
-          automático — a Bela dando o lance sozinha — entra quando validarmos o
-          portal ao vivo.
+          A Bela calcula o lance pelo seu piso (valor final mínimo) e nunca
+          abaixo dele. Ela não é robô de lance: não entra no portal sozinha,
+          não resolve o CAPTCHA e não envia lance. Quem envia é sempre você.
         </p>
 
         {robo.ativo && (
@@ -762,36 +760,6 @@ function RoboDeLance({
               </div>
             )}
 
-            <Field
-              label="Intervalo entre lances (segundos)"
-              hint="Respeita o tempo mínimo do portal; vale para o modo automático."
-            >
-              <div className="flex gap-2">
-                <Input
-                  type="number"
-                  min={5}
-                  max={120}
-                  step={1}
-                  value={intervalo}
-                  onChange={(e) => setIntervalo(e.target.value)}
-                  disabled={desabilitado || salvando}
-                  className="h-11! min-w-0 flex-1 font-mono sm:h-10!"
-                />
-                <Button
-                  icon={Save}
-                  loading={salvando}
-                  disabled={desabilitado || salvando}
-                  onClick={() => {
-                    const n = Number(intervalo);
-                    if (Number.isInteger(n) && n >= 5 && n <= 120)
-                      onMudar({ intervaloLancesSeg: n });
-                  }}
-                  className="h-11! sm:h-10!"
-                >
-                  Salvar
-                </Button>
-              </div>
-            </Field>
           </>
         )}
       </div>
