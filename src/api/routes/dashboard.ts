@@ -15,6 +15,7 @@ import { fimDoPrazoDaLicitacao, horaDeBrasilia } from '../../lib/dataDeBrasilia'
 import { dataDaSessao } from '../../lib/dataDaSessao'
 import { calcularPrazosDaSessao, lerDataTexto, type Dia } from '../../lib/diasUteis'
 import { prazoNoMapa, urgenciaDoEstado, type UrgenciaNoMapa } from '../../lib/prazoNoMapa'
+import { montarResumoDaBela, type SessaoParaOResumo } from '../../lib/resumoDaBela'
 
 export const dashboardRouter = Router()
 
@@ -130,6 +131,42 @@ dashboardRouter.get(
       documentosVencendoEmBreve,
       proximosPrazos,
     })
+  })
+)
+
+// Recado da Bela ao abrir o painel: o que é novo, o que acontece hoje/amanhã e o que está vencido.
+dashboardRouter.get(
+  '/resumo-da-bela',
+  asyncHandler(async (req, res) => {
+    const companyId = req.companyId!
+    const [usuario, novas, documentos, planos] = await Promise.all([
+      prisma.user.findUnique({ where: { id: req.userId! }, select: { name: true } }),
+      prisma.tenderMatch.count({ where: { companyId, read: false, tender: whereDaLicitacaoNoFeed() } }),
+      prisma.companyDocument.findMany({ where: { companyId, dataValidade: { not: null } }, select: { id: true, nome: true, dataValidade: true } }),
+      prisma.tenderParticipationPlan.findMany({
+        where: { companyId, status: 'VOU_PARTICIPAR' },
+        select: { tender: { select: { id: true, fonte: true, objeto: true, objetoResumido: true, encerramentoAt: true, aberturaAt: true } } },
+      }),
+    ])
+    const analises = await prisma.tenderAnalysis.findMany({
+      where: { tenderId: { in: planos.map((p) => p.tender.id) }, status: 'DONE' },
+      select: { tenderId: true, resultado: true },
+    })
+    const sessaoDaAnalise = new Map(analises.map((a) => [a.tenderId, lerDataTexto((a.resultado as { dataSessao?: string } | null)?.dataSessao)]))
+    const sessoes: SessaoParaOResumo[] = []
+    for (const { tender } of planos) {
+      const data = dataDaSessao(tender) ?? sessaoDaAnalise.get(tender.id)
+      if (data) sessoes.push({ tenderId: tender.id, objeto: tender.objetoResumido ?? tender.objeto, fonte: tender.fonte, data })
+    }
+    res.json(
+      montarResumoDaBela({
+        agora: new Date(),
+        nome: usuario?.name ?? null,
+        novas,
+        sessoes,
+        documentos: documentos.map((d) => ({ id: d.id, nome: d.nome, dataValidade: d.dataValidade! })),
+      })
+    )
   })
 )
 

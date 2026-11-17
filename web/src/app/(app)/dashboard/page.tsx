@@ -13,6 +13,7 @@ import MapaDeOportunidades from '@/components/MapaDeOportunidades'
 import MedidorDeAnalises from '@/components/MedidorDeAnalises'
 import { Carregando, EmptyState, ErrorState, Metric, MetricRow, Notice, PageHeader, Panel, Prazo, Tabs, TextLink, type Aba } from '@/components/ui'
 import SeloObraCompleta from '@/components/SeloObraCompleta'
+import RecadoDaBela from '@/components/RecadoDaBela'
 
 const numero = (n: number) => n.toLocaleString('pt-BR')
 
@@ -92,6 +93,8 @@ export default function DashboardPage() {
   return (
     <>
       <PageHeader title="Painel" description={`Olá, ${user.name ?? user.email}. Este é o resumo da sua conta.`} />
+
+      <RecadoDaBela />
 
       {erro ? (
         <ErrorState message="Não foi possível carregar o resumo do painel." onRetry={carregarResumo} />
