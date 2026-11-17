@@ -18,7 +18,8 @@ export default function NumeroQueSobe({ valor, casas = 0, sufixo = '', atrasoMs 
     if (!elemento || prefereMenosMovimento() || typeof IntersectionObserver === 'undefined' || estaNaTela(elemento)) return
     let quadro = 0
     let espera = 0
-    setExibido(0)
+    // O número real fica na página até ele aparecer na tela: quem lê sem rolar
+    // (robô do Google, revisão de anúncio, leitor de tela) nunca vê "0".
     const animar = () => {
       const inicio = performance.now()
       const passo = (agora: number) => {
@@ -32,9 +33,10 @@ export default function NumeroQueSobe({ valor, casas = 0, sufixo = '', atrasoMs 
       (entradas) => {
         if (!entradas.some((e) => e.isIntersecting)) return
         observador.disconnect()
+        setExibido(0)
         espera = window.setTimeout(animar, atrasoMs)
       },
-      { threshold: 0.5 },
+      { threshold: 0 },
     )
     observador.observe(elemento)
     return () => {
