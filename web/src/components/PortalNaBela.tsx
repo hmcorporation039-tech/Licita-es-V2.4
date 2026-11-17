@@ -328,9 +328,10 @@ export default function PortalNaBela({ tenderId, robo, aoLer }: { tenderId: stri
             <Monitor size={16} aria-hidden /> Portal dentro da Bela
           </span>
         }
-        description="Abra o portal da licitação aqui mesmo, ao lado do painel da Bela. Você usa o portal normalmente e a Bela escreve o seu login salvo e o lance sugerido quando você pede."
+        description="Abra o portal da licitação aqui mesmo, ao lado do painel da Bela."
       >
         <div className="flex flex-col gap-3">
+          <ComoFunciona />
           {erro && <Notice tone="danger">{erro}</Notice>}
           {aviso && <Notice tone="info">{aviso}</Notice>}
           {!config.disponivel ? (
@@ -385,9 +386,7 @@ export default function PortalNaBela({ tenderId, robo, aoLer }: { tenderId: stri
                   </Notice>
                 )}
                 <ul className="ml-4 list-disc text-sm text-ink-2">
-                  <li>Na tela de login, clique em &quot;Preencher meu login&quot;: a Bela escreve o usuário e a senha de Meus Portais. O CAPTCHA e o clique em Entrar são seus.</li>
-                  <li>A senha vai direto para o navegador da Bela, não aparece nesta página e nada fica guardado: ao fechar, a sessão é apagada.</li>
-                  <li>A Bela nunca envia lance sozinha. Com um clique, ela escreve o lance sugerido no campo; quem confere e envia é você.</li>
+                  <li>Na tela de login, o botão &quot;Preencher meu login&quot; escreve o usuário e a senha de Meus Portais. A senha vai direto para o navegador da Bela, não aparece nesta página e nada fica guardado ao fechar.</li>
                   <li>Certificado digital em token (A3) não funciona aqui: para ele, use a extensão.</li>
                 </ul>
                 <Button variant="primary" icon={Monitor} onClick={abrir} className="self-start">
@@ -432,6 +431,7 @@ export default function PortalNaBela({ tenderId, robo, aoLer }: { tenderId: stri
         </Button>
       </div>
 
+      <EtapaAtual lendo={!!pagina?.portal} />
       {erro && <Notice tone="danger">{erro}</Notice>}
       {pagina?.recusado && (
         <Notice tone="warn" title={`O ${nomeAberto ?? 'portal'} não aceitou o navegador da Bela`}>
@@ -539,5 +539,52 @@ export default function PortalNaBela({ tenderId, robo, aoLer }: { tenderId: stri
         Clique na tela para usar o teclado nela. Você está no portal oficial, num navegador da Bela; nada é guardado ao fechar. A Bela só lê a disputa e escreve o lance quando você pede.
       </p>
     </section>
+  )
+}
+
+// Passo a passo mostrado antes de abrir: deixa claro o que é da pessoa e o que é da Bela.
+// A Bela não é robô de lance: não faz login sozinha, não resolve CAPTCHA e não envia lance.
+const PASSOS = [
+  { titulo: 'A Bela avisa', texto: 'Você recebe o aviso do dia e da hora da sessão no painel, no e-mail e no celular.' },
+  { titulo: 'Você entra no portal', texto: 'Abra o portal aqui. O login, o CAPTCHA e o clique em Entrar são seus, com o seu acesso.' },
+  { titulo: 'A Bela acompanha a disputa', texto: 'Ela lê o melhor lance e o chat do pregoeiro, calcula o lance pelo seu piso e escreve o valor no campo quando você pede.' },
+  { titulo: 'Você envia o lance', texto: 'Confira o valor e clique em enviar no portal. A Bela nunca envia lance sozinha.' },
+]
+
+function ComoFunciona() {
+  return (
+    <div className="flex flex-col gap-3">
+      <ol className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        {PASSOS.map((p, i) => (
+          <li key={p.titulo} className="flex gap-2 rounded-lg border border-line bg-sunken p-3 text-sm">
+            <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-accent text-xs font-bold text-white">{i + 1}</span>
+            <span className="min-w-0">
+              <strong className="block text-ink">{p.titulo}</strong>
+              <span className="text-ink-2">{p.texto}</span>
+            </span>
+          </li>
+        ))}
+      </ol>
+      <Notice tone="ok" title="Sua empresa não corre risco de bloqueio por robô">
+        A Bela não é robô de lance: ela não entra no portal sozinha, não burla o CAPTCHA e não clica em enviar. Você usa o portal oficial com o seu acesso, como sempre, e a Bela ajuda ao lado. Isso também respeita os editais que proíbem lances automáticos.
+      </Notice>
+    </div>
+  )
+}
+
+// Na tela aberta: em que etapa a pessoa está.
+function EtapaAtual({ lendo }: { lendo: boolean }) {
+  return (
+    <p className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded border border-accent-line bg-accent-soft px-3 py-2 text-sm text-ink">
+      {lendo ? (
+        <>
+          <strong>Etapa 3 de 4:</strong> a Bela está acompanhando a disputa. Quando quiser, use &quot;Preencher&quot; e depois envie o lance no portal.
+        </>
+      ) : (
+        <>
+          <strong>Etapa 2 de 4:</strong> entre no portal com o seu login. O CAPTCHA e o clique em Entrar são seus; a Bela assume a leitura da disputa depois que você entrar.
+        </>
+      )}
+    </p>
   )
 }
