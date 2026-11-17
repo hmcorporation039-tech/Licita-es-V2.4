@@ -216,7 +216,7 @@ authRouter.post(
     } catch (err) {
       console.error('[Cadastro] Item do interesse não foi criado:', err instanceof Error ? err.message : err)
     }
-    res.json({ ok: true })
+    res.json({ ok: true, id: r.userId })
   })
 )
 

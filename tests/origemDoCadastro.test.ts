@@ -2,9 +2,14 @@ import { describe, expect, it } from 'vitest'
 import { interesseDaOrigem, interesseSchema, montarOrigem, nomeDoItemDoInteresse, utmSchema } from '../src/lib/origemDoCadastro'
 
 describe('utmSchema', () => {
-  it('aceita só as cinco chaves conhecidas e descarta as demais', () => {
-    const lido = utmSchema.parse({ utm_source: ' google ', utm_medium: 'cpc', capturadoEm: '2026-10-16', gclid: 'x', utm_term: '' })
+  it('aceita só as chaves conhecidas e descarta as demais', () => {
+    const lido = utmSchema.parse({ utm_source: ' google ', utm_medium: 'cpc', capturadoEm: '2026-10-16', fbclid: 'x', utm_term: '' })
     expect(lido).toEqual({ utm_source: 'google', utm_medium: 'cpc', utm_term: undefined })
+  })
+
+  it('guarda o identificador do clique no anúncio do Google', () => {
+    expect(utmSchema.parse({ utm_source: 'google', gclid: ' Cj0KCQabc ' })).toEqual({ utm_source: 'google', gclid: 'Cj0KCQabc' })
+    expect(montarOrigem(utmSchema.parse({ gclid: 'abc', gbraid: '' }), undefined)).toEqual({ gclid: 'abc' })
   })
 
   it('recusa valor acima de 200 caracteres', () => {

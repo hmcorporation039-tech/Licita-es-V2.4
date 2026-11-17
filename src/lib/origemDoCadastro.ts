@@ -20,6 +20,11 @@ export const utmSchema = z.object({
   utm_campaign: valorDeUtm,
   utm_content: valorDeUtm,
   utm_term: valorDeUtm,
+  // Identificador do clique no anúncio do Google (gclid; gbraid/wbraid no iPhone).
+  // Serve para saber depois quais cadastros vindos do Google viraram clientes.
+  gclid: valorDeUtm,
+  gbraid: valorDeUtm,
+  wbraid: valorDeUtm,
 })
 
 export const interesseSchema = z.object({

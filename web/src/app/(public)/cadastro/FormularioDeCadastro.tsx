@@ -11,6 +11,7 @@ import { maisDe } from '@/lib/fontes'
 import type { Limites } from '@/lib/adminTypes'
 import { resumoDosLimites } from '@/lib/planos'
 import { guardarUtm, lerUtm, rastrear, type Utm } from '@/lib/rastreamento'
+import { lerEscolha } from '@/lib/medicaoNoNavegador'
 import InteresseDoCadastro, { type Interesse } from './InteresseDoCadastro'
 
 const OPCOES_DE_TIPO = [
@@ -19,14 +20,18 @@ const OPCOES_DE_TIPO = [
 ] as const
 
 const TRIAL_DIAS_PADRAO = 7
-const CHAVES_DE_UTM = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'] as const
+const CHAVES_DE_UTM = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'gclid', 'gbraid', 'wbraid'] as const
 
 export type InteresseInicial = Interesse
 
-function utmParaEnvio(utm: Utm | null): Partial<Record<(typeof CHAVES_DE_UTM)[number], string>> | undefined {
+const IDS_DO_CLIQUE_NO_ANUNCIO = new Set<string>(['gclid', 'gbraid', 'wbraid'])
+
+// O identificador do clique no anúncio só vai junto se a pessoa aceitou a medição do Google.
+function utmParaEnvio(utm: Utm | null, aceitouMedicao: boolean): Partial<Record<(typeof CHAVES_DE_UTM)[number], string>> | undefined {
   if (!utm) return undefined
   const envio: Partial<Record<(typeof CHAVES_DE_UTM)[number], string>> = {}
   for (const chave of CHAVES_DE_UTM) {
+    if (!aceitouMedicao && IDS_DO_CLIQUE_NO_ANUNCIO.has(chave)) continue
     const valor = utm[chave]
     if (typeof valor === 'string' && valor.trim()) envio[chave] = valor.trim().slice(0, 200)
   }
@@ -116,7 +121,7 @@ export default function FormularioDeCadastro({
         aceiteTermos: aceite,
         website: isca || undefined,
         captcha: captcha ?? undefined,
-        origem: utmParaEnvio(lerUtm()),
+        origem: utmParaEnvio(lerUtm(), lerEscolha() === 'aceita'),
         interesse: interesse ? { termo: interesse.termo, uf: interesse.uf || undefined } : undefined,
       })
       rastrear('cadastro_enviado', { com_busca: Boolean(interesse), uf: interesse?.uf || undefined })

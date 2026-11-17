@@ -1,5 +1,5 @@
 const CHAVE_UTM = 'licitacao-platform:utm'
-const PARAMETROS_UTM = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'] as const
+const PARAMETROS_UTM = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'gclid', 'gbraid', 'wbraid'] as const
 
 type ParametroUtm = (typeof PARAMETROS_UTM)[number]
 export type Utm = Partial<Record<ParametroUtm, string>> & { capturadoEm?: string }
