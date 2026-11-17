@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Copy, ExternalLink, HardHat, Lock, MessageSquareText, Phone, Settings2 } from 'lucide-react'
+import { CircleCheck, CircleX, Copy, ExternalLink, HardHat, Lock, MessageSquareText, Phone, Settings2, TriangleAlert } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
 import { api, ApiRequestError } from '@/lib/api'
 import { Button, Carregando, Checkbox, EmptyState, ErrorState, Field, Input, Notice, PageHeader, Panel, Select, StatusTag, Tabs, TextLink, Textarea, cx, useAbaNaUrl } from '@/components/ui'
@@ -49,7 +49,49 @@ interface Oportunidade {
   assinatura: string | null
   vigenciaFim: string | null
   nichos: string[]
+  /** Palavras do objeto que fizeram o contrato aparecer (legíveis). */
+  porQueApareceu: string[]
+  aptidao: Aptidao
   linkPncp: string | null
+}
+
+interface Aptidao {
+  veredito: 'boa' | 'confira' | 'fora'
+  titulo: string
+  itens: { tom: 'ok' | 'atencao' | 'problema'; texto: string }[]
+}
+
+const TOM_DO_VEREDITO = { boa: 'ok', confira: 'warn', fora: 'danger' } as const
+const ICONE_DO_ITEM = {
+  ok: { icone: CircleCheck, cor: 'text-ok', rotulo: 'Ok' },
+  atencao: { icone: TriangleAlert, cor: 'text-warn', rotulo: 'Atenção' },
+  problema: { icone: CircleX, cor: 'text-danger', rotulo: 'Problema' },
+} as const
+
+// "Minha empresa é apta?": conferência do cadastro feita pela API, sem IA.
+function AptidaoDoContrato({ aptidao }: { aptidao: Aptidao }) {
+  return (
+    <div className="rounded border border-line bg-sunken px-3 py-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs font-semibold text-ink-2">Sua empresa é apta?</span>
+        <StatusTag tone={TOM_DO_VEREDITO[aptidao.veredito]} dot>
+          {aptidao.titulo}
+        </StatusTag>
+      </div>
+      <ul className="mt-1.5 flex flex-col gap-1">
+        {aptidao.itens.map((item) => {
+          const { icone: Icone, cor, rotulo } = ICONE_DO_ITEM[item.tom]
+          return (
+            <li key={item.texto} className="flex items-start gap-1.5 text-xs text-ink-2">
+              <Icone size={14} className={cx('mt-px shrink-0', cor)} aria-label={rotulo} />
+              <span>{item.texto}</span>
+            </li>
+          )
+        })}
+      </ul>
+      <p className="mt-1.5 text-2xs text-muted">A decisão é da empresa que ganhou; isto é só uma conferência do seu cadastro.</p>
+    </div>
+  )
 }
 
 interface Ganhador {
@@ -307,6 +349,12 @@ function CartaoDoContrato({ c, bloqueado }: { c: Oportunidade; bloqueado: boolea
         ))}
         {c.categoria && <StatusTag tone="neutral">{c.categoria}</StatusTag>}
       </div>
+      {c.porQueApareceu.length > 0 && (
+        <p className="text-xs text-muted">
+          <span className="font-semibold text-ink-2">Apareceu por:</span> {c.porQueApareceu.join(', ')}
+        </p>
+      )}
+      <AptidaoDoContrato aptidao={c.aptidao} />
       <div className="flex flex-wrap items-center gap-2">
         {bloqueado ? (
           <TextLink href="/conta" className="inline-flex items-center gap-1 text-sm">
