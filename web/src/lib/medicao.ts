@@ -11,6 +11,22 @@ const ID_PADRAO = 'G-ZJQHVTXD35'
 const CHAVE = 'licita-bela:medicao'
 export const EVENTO_REABRIR = 'bela:medicao-reabrir'
 
+// Conversão de cadastro no Google Ads: "AW-123456789/AbCdEf". Também é público (vai no código do site).
+// Vazio = Google Ads desligado (só o GA4 funciona).
+const CONVERSAO_PADRAO = ''
+export const VALOR_DO_CADASTRO_EM_REAIS = 30
+
+export interface ConversaoDoAds {
+  conta: string
+  enviarPara: string
+}
+
+export function conversaoDoAds(valor: string | undefined = process.env.NEXT_PUBLIC_GOOGLE_ADS_CONVERSAO): ConversaoDoAds | null {
+  const texto = (valor ?? '').trim() || CONVERSAO_PADRAO
+  const partes = /^(AW-\d{6,15})\/([A-Za-z0-9_-]{4,64})$/.exec(texto)
+  return partes ? { conta: partes[1], enviarPara: texto } : null
+}
+
 export type EscolhaDeMedicao = 'aceita' | 'recusada'
 
 export type Armazenamento = { getItem(chave: string): string | null; setItem(chave: string, valor: string): void }

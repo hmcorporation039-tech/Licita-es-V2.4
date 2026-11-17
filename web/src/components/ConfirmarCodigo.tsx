@@ -1,6 +1,7 @@
 'use client'
 
 import { rastrear } from '@/lib/rastreamento'
+import { registrarConversaoDoCadastro } from '@/lib/medicaoNoNavegador'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { PublicCard } from '@/components/PublicShell'
@@ -31,9 +32,10 @@ export default function ConfirmarCodigo({ email, senha }: { email: string; senha
     setInfo(null)
     setEnviando(true)
     try {
-      await api.post('/api/auth/verify-email', { email, codigo })
+      const confirmacao = await api.post<{ ok: boolean; id?: string }>('/api/auth/verify-email', { email, codigo })
       // Conversão de cadastro (Google Analytics/Ads, só com o aceite de cookies).
       rastrear('sign_up', { method: 'email' })
+      registrarConversaoDoCadastro(confirmacao.id)
       setConfirmado(true)
       if (senha) {
         try {

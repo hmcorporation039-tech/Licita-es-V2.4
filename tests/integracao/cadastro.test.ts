@@ -567,7 +567,7 @@ rodar('Cadastro público e recuperação de senha', () => {
         cadastro({
           email: email('origem'),
           documento: gerarCpf(),
-          origem: { utm_source: 'google', utm_medium: 'cpc', utm_campaign: 'limpeza-go', utm_content: 'anuncio-1', utm_term: 'licitacao limpeza', capturadoEm: '2026-10-16', gclid: 'abc' },
+          origem: { utm_source: 'google', utm_medium: 'cpc', utm_campaign: 'limpeza-go', utm_content: 'anuncio-1', utm_term: 'licitacao limpeza', capturadoEm: '2026-10-16', gclid: 'abc', fbclid: 'descartado' },
           interesse: { termo: '  material   de limpeza ', uf: 'go' },
         })
       )
@@ -579,6 +579,7 @@ rodar('Cadastro público e recuperação de senha', () => {
         utm_campaign: 'limpeza-go',
         utm_content: 'anuncio-1',
         utm_term: 'licitacao limpeza',
+        gclid: 'abc',
         interesse: { termo: 'material de limpeza', uf: 'GO' },
       })
       expect(await prisma.monitoredItem.count({ where: { companyId: user.companyId } })).toBe(0)

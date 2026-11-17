@@ -8,6 +8,7 @@ import { useEffect, useSyncExternalStore } from 'react'
 import { Button, TextLink } from '@/components/ui'
 import { EVENTO_REABRIR, idDaMedicao, type EscolhaDeMedicao } from '@/lib/medicao'
 import { guardarEscolha, lerEscolha, ligarMedicao } from '@/lib/medicaoNoNavegador'
+import { guardarUtm } from '@/lib/rastreamento'
 
 const MUDOU = 'bela:medicao-mudou'
 let reaberto = false
@@ -37,6 +38,9 @@ const estadoNoServidor = () => 'recusada' as const
 export default function AvisoDeMedicao() {
   const id = idDaMedicao()
   const estado = useSyncExternalStore(assinar, estadoNoCliente, estadoNoServidor)
+
+  // Origem da visita (UTMs e gclid) fica só neste navegador e vai junto no cadastro.
+  useEffect(() => guardarUtm(), [])
 
   useEffect(() => {
     if (id && estado === 'aceita' && process.env.NODE_ENV === 'production') ligarMedicao(id)
