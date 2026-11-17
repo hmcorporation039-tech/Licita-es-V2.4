@@ -1,9 +1,16 @@
 import type { Metadata } from 'next'
 import { buscarEstatisticas, buscarPlanos } from '@/lib/dadosPublicos'
 import { estadoDaSigla } from '@/lib/estados'
+import { enderecoDoSite } from '@/lib/enderecoDoSite'
 import FormularioDeCadastro, { type InteresseInicial } from './FormularioDeCadastro'
 
-export const metadata: Metadata = { title: 'Criar conta' }
+// /cadastro?q=limpeza e afins são a mesma página: o canônico junta tudo em /cadastro.
+export const metadata: Metadata = {
+  metadataBase: enderecoDoSite(),
+  title: 'Criar conta: teste grátis',
+  description: 'Crie sua conta na Licita Bela e receba as licitações abertas do seu ramo em todo o Brasil. Teste grátis, sem cartão.',
+  alternates: { canonical: '/cadastro' },
+}
 
 const ESPERA_DOS_DADOS_DO_PAINEL_MS = 2500
 const TAMANHO_MINIMO_DO_TERMO = 2
