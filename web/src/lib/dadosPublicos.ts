@@ -197,3 +197,38 @@ export async function carregarDadosDaEntrada(termosDosRamos: string[]): Promise<
     primeiroPrazoPorTermo,
   }
 }
+
+export interface PaginaDeRamo {
+  total: number
+  amostras: AmostraDaVitrine[]
+  porUf: Array<{ uf: string; total: number }>
+  porMunicipio: Array<{ municipio: string; uf: string | null; total: number }>
+}
+
+const ESPERA_DA_PAGINA_DE_RAMO_MS = 15000
+const UMA_HORA_EM_SEGUNDOS = 3600
+
+function paginaDeRamoValida(dados: PaginaDeRamo | null): PaginaDeRamo | null {
+  if (!dados || typeof dados.total !== 'number' || !Array.isArray(dados.amostras)) return null
+  return {
+    total: dados.total,
+    amostras: dados.amostras.map((a) => ({ ...a, prazo: dataDaLicitacao(a.prazo, a.fonte) })),
+    porUf: Array.isArray(dados.porUf) ? dados.porUf : [],
+    porMunicipio: Array.isArray(dados.porMunicipio) ? dados.porMunicipio : [],
+  }
+}
+
+export async function buscarPaginaDeRamo(termos: string[], uf?: string): Promise<PaginaDeRamo | null> {
+  const query = new URLSearchParams({ termos: termos.join(',') })
+  if (uf) query.set('uf', uf)
+  try {
+    const resposta = await fetch(`${API_URL}/api/public/ramo?${query.toString()}`, {
+      next: { revalidate: UMA_HORA_EM_SEGUNDOS },
+      signal: AbortSignal.timeout(ESPERA_DA_PAGINA_DE_RAMO_MS),
+    })
+    if (!resposta.ok) return null
+    return paginaDeRamoValida((await resposta.json()) as PaginaDeRamo)
+  } catch {
+    return null
+  }
+}

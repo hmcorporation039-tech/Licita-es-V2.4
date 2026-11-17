@@ -480,6 +480,11 @@ function Ramos({ totaisPorTermo }: { totaisPorTermo: Record<string, number | nul
             ))}
           </ul>
         </Revelar>
+        <p className="az-ramos-todos">
+          <Link href="/licitacoes" className="az-link">
+            Ver licitações abertas de todos os ramos, por estado
+          </Link>
+        </p>
       </div>
     </section>
   )
@@ -915,6 +920,9 @@ function Rodape() {
         </p>
         <p>© Licita Bela · H&amp;M Engenharia e Tecnologia LTDA · CNPJ 04.003.376/0001-00 · Brasília/DF</p>
         <nav aria-label="Documentos legais" className="az-rodape-links">
+          <Link href="/licitacoes" className="az-link">
+            Licitações por ramo e estado
+          </Link>
           <Link href="/termos" className="az-link">
             Termos de Uso
           </Link>
