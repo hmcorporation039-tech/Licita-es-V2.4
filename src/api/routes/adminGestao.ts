@@ -17,6 +17,8 @@ import { registrarAuditoria, ACOES } from '../../services/auditService'
 import { limitesDaEmpresa, resumoDeCotas } from '../../services/quotaService'
 import { inicioDoMesBrasilia, lerLimites } from '../../lib/planos'
 import { municipiosComLicitacaoAbertaPorUf } from '../../services/coberturaMunicipal'
+import { funilDeVendas } from '../../services/funilDeVendas'
+import { lerPeriodo } from '../../lib/funilDeVendas'
 
 export const adminGestaoRouter = Router()
 adminGestaoRouter.use(requireAuth, requireAdmin)
@@ -70,6 +72,21 @@ adminGestaoRouter.get(
   '/cobertura-municipal',
   asyncHandler(async (_req, res) => {
     res.json(await municipiosComLicitacaoAbertaPorUf())
+  })
+)
+
+// ---------------------------------------------------------------
+// Funil de vendas: cadastros → e-mail confirmado → usaram → pagantes, por
+// semana e por origem, e a lista de contato dos cadastros recentes. A lista
+// traz nome, e-mail e telefone dos clientes, então a consulta é auditada.
+// ---------------------------------------------------------------
+adminGestaoRouter.get(
+  '/funil',
+  asyncHandler(async (req, res) => {
+    const dias = lerPeriodo(req.query.dias)
+    const funil = await funilDeVendas(dias)
+    await registrarAuditoria(req, { action: 'ADMIN_CONSULTOU_FUNIL', entityType: 'funil', metadata: { dias, cadastros: funil.totais.cadastros } })
+    res.json(funil)
   })
 )
 

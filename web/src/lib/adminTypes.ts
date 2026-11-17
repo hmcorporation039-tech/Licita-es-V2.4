@@ -300,3 +300,43 @@ export interface MatrizResposta {
   itens?: ExigenciaDaMatriz[]
   resumo?: { total: number; atendidas: number; verificacao: Record<StatusDaVerificacao, number> }
 }
+
+// GET /api/admin/funil — funil de vendas do painel do administrador.
+export interface EtapasDoFunil {
+  cadastros: number
+  emailConfirmado: number
+  usaram: number
+  pagantes: number
+}
+
+export interface ContatoDoFunil {
+  userId: string
+  companyId: string
+  nome: string | null
+  email: string
+  telefone: string | null
+  whatsapp: string | null
+  empresa: string
+  tipoDeDocumento: 'CNPJ' | 'CPF'
+  plano: string
+  testeAte: string | null
+  cadastradoEm: string
+  origem: { fonte: string; meio: string | null; campanha: string | null; termo: string | null; anuncioDoGoogle: boolean }
+  interesse: { termo: string; uf: string | null } | null
+  emailConfirmado: boolean
+  usou: boolean
+  pagante: boolean
+  ultimaAtividade: string | null
+}
+
+export interface FunilDeVendas {
+  dias: 7 | 30 | 90
+  desde: string
+  ate: string
+  totais: EtapasDoFunil
+  taxas: { confirmacao: number | null; uso: number | null; pagamento: number | null; total: number | null }
+  semanas: Array<EtapasDoFunil & { semana: string }>
+  origens: Array<EtapasDoFunil & { origem: string; fonte: string; campanha: string | null }>
+  contatosOmitidos: number
+  contatos: ContatoDoFunil[]
+}
