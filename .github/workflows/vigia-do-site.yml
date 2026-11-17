@@ -1,0 +1,76 @@
+name: Vigia do site
+
+# Abre o site no ar como um cliente (página inicial, cadastro com captcha,
+# login, API, sitemap) a cada 2 horas e depois de cada deploy da Vercel.
+# Se algo quebrar, abre um aviso (issue) "🚨 Site com problema" no GitHub,
+# que manda e-mail ao dono do repositório; quando volta ao normal, fecha o aviso.
+# Não usa segredo nenhum e não cria conta: só lê páginas públicas.
+on:
+  schedule:
+    - cron: '17 */2 * * *'
+  deployment_status:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: vigia-do-site
+  cancel-in-progress: false
+
+jobs:
+  vigiar:
+    # Depois de deploy, só quando o deploy de produção terminou com sucesso.
+    if: github.event_name != 'deployment_status' || (github.event.deployment_status.state == 'success' && github.event.deployment.environment == 'Production')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Instalar o navegador do vigia
+        run: |
+          mkdir -p "$RUNNER_TEMP/vigia" && cd "$RUNNER_TEMP/vigia"
+          npm init -y > /dev/null
+          npm install --no-audit --no-fund playwright@1.56.1
+          npx playwright install --with-deps chromium
+
+      - name: Conferir o site
+        id: vigia
+        env:
+          NODE_PATH: ${{ runner.temp }}/vigia/node_modules
+          RELATORIO: ${{ runner.temp }}/relatorio.md
+        run: node scripts/ops/vigiaDoSite.cjs
+
+      - name: Abrir ou atualizar o aviso
+        if: failure() && steps.vigia.outcome == 'failure'
+        uses: actions/github-script@v7
+        env:
+          RELATORIO: ${{ runner.temp }}/relatorio.md
+        with:
+          script: |
+            const fs = require('fs')
+            const titulo = '🚨 Site com problema (vigia do site)'
+            const corpo = (fs.existsSync(process.env.RELATORIO) ? fs.readFileSync(process.env.RELATORIO, 'utf8') : 'O vigia falhou antes de terminar.')
+              + `\n\nExecução: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
+            const abertos = await github.rest.issues.listForRepo({ ...context.repo, state: 'open', labels: 'vigia-do-site' })
+            if (abertos.data.length) {
+              await github.rest.issues.createComment({ ...context.repo, issue_number: abertos.data[0].number, body: corpo })
+            } else {
+              await github.rest.issues.create({ ...context.repo, title: titulo, body: corpo, labels: ['vigia-do-site'] })
+            }
+
+      - name: Fechar o aviso quando voltar ao normal
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const abertos = await github.rest.issues.listForRepo({ ...context.repo, state: 'open', labels: 'vigia-do-site' })
+            for (const i of abertos.data) {
+              await github.rest.issues.createComment({ ...context.repo, issue_number: i.number, body: '✅ O vigia conferiu de novo e o site voltou a funcionar.' })
+              await github.rest.issues.update({ ...context.repo, issue_number: i.number, state: 'closed' })
+            }

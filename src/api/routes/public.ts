@@ -13,7 +13,9 @@ import { z } from 'zod'
 import { normalize } from '../../lib/geoService'
 import { whereLicitacaoComPrazoConfirmado } from '../../lib/licitacaoAberta'
 import { dataDaSessao } from '../../lib/dataDaSessao'
-import { vitrineLimiter } from '../rateLimit'
+import { avisoDoCadastroLimiter, vitrineLimiter } from '../rateLimit'
+import { avisarAdministrador } from '../../services/alertaOperacional'
+import { textoDoAvisoDoCadastro } from '../../lib/avisoDoCadastro'
 import { idsQueCitamOTexto } from '../../services/buscaDeLicitacoes'
 import { Prisma } from '@prisma/client'
 import { marcasComLicitacao } from '../../lib/marcasDasFontes'
@@ -228,5 +230,27 @@ publicRouter.get(
     gravarCache(chave, valor)
     res.setHeader('Cache-Control', 'public, max-age=300')
     res.json(valor)
+  })
+)
+
+// O navegador de um visitante avisa que o captcha do cadastro falhou. Sem isto, um
+// erro de configuração (ex.: domínio fora da lista da Cloudflare) só era descoberto
+// quando alguém reclamava. O alerta ao admin repete no máximo a cada 15 min por código.
+const avisoDoCadastroSchema = z.object({
+  tipo: z.literal('captcha'),
+  codigo: z.string().trim().max(20).regex(/^[0-9A-Za-z_-]*$/),
+  endereco: z.string().trim().max(120),
+})
+
+publicRouter.post(
+  '/aviso-do-cadastro',
+  avisoDoCadastroLimiter,
+  asyncHandler(async (req, res) => {
+    const aviso = avisoDoCadastroSchema.safeParse(req.body)
+    if (aviso.success) {
+      const { assunto, texto } = textoDoAvisoDoCadastro(aviso.data.codigo, aviso.data.endereco)
+      void avisarAdministrador(`cadastro-captcha:${aviso.data.codigo || 'sem-codigo'}`, assunto, texto)
+    }
+    res.status(204).end()
   })
 )

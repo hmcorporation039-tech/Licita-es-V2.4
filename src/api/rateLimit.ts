@@ -103,6 +103,16 @@ export const cadastroLimiter = rateLimit({
   message: { error: 'Muitas tentativas de cadastro — aguarde um pouco e tente de novo' },
 })
 
+// Aviso de falha na tela de cadastro (ex.: captcha recusado), enviado pelo navegador
+// de quem ainda não tem conta. Cada IP manda poucos; o alerta ao admin tem silêncio próprio.
+export const avisoDoCadastroLimiter = rateLimit({
+  windowMs: JANELA_MS,
+  limit: limite(5),
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { error: 'Aviso já recebido' },
+})
+
 // Confirmação de e-mail e recuperação de senha: cada chamada pode disparar um
 // e-mail. Sem limite próprio, dava para usar o sistema para encher a caixa de
 // alguém (ou queimar a cota do provedor de e-mail).
