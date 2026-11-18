@@ -30,3 +30,32 @@ describe('Google Analytics com consentimento', () => {
     expect(lerEscolha(null)).toBeNull()
   })
 })
+
+describe('origem do cadastro vinda de anúncio do Google', () => {
+  it('com a medição aceita, manda o identificador do clique e marca google / cpc', async () => {
+    const { utmParaEnvio } = await import('../web/src/lib/rastreamento')
+    expect(utmParaEnvio({ gclid: 'abc123' }, true)).toEqual({ gclid: 'abc123', utm_source: 'google', utm_medium: 'cpc' })
+  })
+
+  it('com a medição recusada, não manda o identificador, mas continua contando como google / cpc', async () => {
+    const { utmParaEnvio } = await import('../web/src/lib/rastreamento')
+    expect(utmParaEnvio({ gclid: 'abc123' }, false)).toEqual({ utm_source: 'google', utm_medium: 'cpc' })
+    expect(utmParaEnvio({ gbraid: 'x' }, false)).toEqual({ utm_source: 'google', utm_medium: 'cpc' })
+  })
+
+  it('respeita a fonte e a campanha que já vieram no link (sufixo do anúncio)', async () => {
+    const { utmParaEnvio } = await import('../web/src/lib/rastreamento')
+    expect(utmParaEnvio({ utm_source: 'google', utm_medium: 'cpc', utm_campaign: 'lb-teste-5-dias', gclid: 'abc' }, false)).toEqual({
+      utm_source: 'google',
+      utm_medium: 'cpc',
+      utm_campaign: 'lb-teste-5-dias',
+    })
+    expect(utmParaEnvio({ utm_source: 'instagram' }, false)).toEqual({ utm_source: 'instagram' })
+  })
+
+  it('sem nada guardado, não manda origem (cadastro direto)', async () => {
+    const { utmParaEnvio } = await import('../web/src/lib/rastreamento')
+    expect(utmParaEnvio(null, true)).toBeUndefined()
+    expect(utmParaEnvio({ capturadoEm: '2026-11-18T00:00:00Z' }, true)).toBeUndefined()
+  })
+})
