@@ -1,3 +1,4 @@
+import { eventoDaMeta } from './medicao'
 import { PARAMETROS_UTM, type Utm } from './origemDoAnuncio'
 
 export { utmParaEnvio, type Utm } from './origemDoAnuncio'
@@ -15,7 +16,11 @@ export function rastrear(evento: string, dados: Record<string, unknown> = {}) {
   const janela = window as JanelaComRastreadores
   try {
     if (Array.isArray(janela.dataLayer)) janela.dataLayer.push({ event: evento, ...dados })
-    if (typeof janela.fbq === 'function') janela.fbq('trackCustom', evento, dados)
+    const meta = eventoDaMeta(evento)
+    if (meta && typeof janela.fbq === 'function') {
+      if ('padrao' in meta) janela.fbq('track', meta.padrao, dados)
+      else janela.fbq('trackCustom', meta.personalizado, dados)
+    }
     if (typeof janela.gtag === 'function') janela.gtag('event', evento, dados)
   } catch {}
 }

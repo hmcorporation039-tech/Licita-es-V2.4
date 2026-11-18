@@ -57,9 +57,11 @@ export function lerOrigem(origem: unknown): OrigemLida {
   const anuncioDoGoogle = Boolean(texto(o.gclid) || texto(o.gbraid) || texto(o.wbraid))
   const bruto = o.interesse && typeof o.interesse === 'object' ? (o.interesse as Record<string, unknown>) : null
   const termoDoInteresse = bruto ? texto(bruto.termo) : null
+  const anuncioDaMeta = !anuncioDoGoogle && Boolean(texto(o.fbclid))
+  const fonteDoClique = anuncioDoGoogle ? 'google' : anuncioDaMeta ? 'meta' : ORIGEM_DIRETA
   return {
-    fonte: (texto(o.utm_source)?.toLowerCase() ?? (anuncioDoGoogle ? 'google' : ORIGEM_DIRETA)),
-    meio: texto(o.utm_medium) ?? (anuncioDoGoogle && !texto(o.utm_source) ? 'cpc' : null),
+    fonte: texto(o.utm_source)?.toLowerCase() ?? fonteDoClique,
+    meio: texto(o.utm_medium) ?? (!texto(o.utm_source) ? (anuncioDoGoogle ? 'cpc' : anuncioDaMeta ? 'paid_social' : null) : null),
     campanha: texto(o.utm_campaign),
     termo: texto(o.utm_term),
     anuncioDoGoogle,

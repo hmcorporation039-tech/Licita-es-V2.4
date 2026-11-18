@@ -59,3 +59,55 @@ describe('origem do cadastro vinda de anúncio do Google', () => {
     expect(utmParaEnvio({ capturadoEm: '2026-11-18T00:00:00Z' }, true)).toBeUndefined()
   })
 })
+
+describe('Pixel da Meta', () => {
+  it('usa o pixel da Licita Bela por padrão, aceita troca e pode ser desligado', async () => {
+    const { idDoPixelDaMeta } = await import('../web/src/lib/medicao')
+    expect(idDoPixelDaMeta(undefined)).toBe('1675739133906804')
+    expect(idDoPixelDaMeta('123456789012345')).toBe('123456789012345')
+    expect(idDoPixelDaMeta('desligado')).toBeNull()
+    expect(idDoPixelDaMeta('abc')).toBeNull()
+  })
+
+  it('só carrega nas páginas públicas, nunca dentro do sistema nem na troca de senha', async () => {
+    const { paginaComPixel } = await import('../web/src/lib/medicao')
+    for (const p of ['/', '/cadastro', '/verificar-email', '/login', '/licitacoes', '/licitacoes/obras/df', '/privacidade', '/termos']) {
+      expect(paginaComPixel(p)).toBe(true)
+    }
+    for (const p of ['/dashboard', '/tenders/abc', '/tenders/abc/pregao', '/escolhidas/x', '/empresa', '/redefinir-senha', '/esqueci-senha', '/descadastro', '/cadastrox', null]) {
+      expect(paginaComPixel(p)).toBe(false)
+    }
+  })
+
+  it('traduz nossos eventos para os eventos padrão da Meta', async () => {
+    const { eventoDaMeta } = await import('../web/src/lib/medicao')
+    expect(eventoDaMeta('cadastro_enviado')).toEqual({ padrao: 'Lead' })
+    expect(eventoDaMeta('begin_checkout')).toEqual({ padrao: 'InitiateCheckout' })
+    expect(eventoDaMeta('clique_whatsapp')).toEqual({ padrao: 'Contact' })
+    expect(eventoDaMeta('busca_vitrine')).toEqual({ personalizado: 'busca_vitrine' })
+    // O cadastro concluído sai à parte, com o id para não contar duas vezes.
+    expect(eventoDaMeta('sign_up')).toBeNull()
+  })
+
+  it('monta o cookie _fbc a partir do fbclid guardado', async () => {
+    const { valorDoCookieFbc } = await import('../web/src/lib/medicao')
+    expect(valorDoCookieFbc('IwAR1abcDEF_-x', '2026-11-18T12:00:00Z')).toBe(`fb.1.${Date.parse('2026-11-18T12:00:00Z')}.IwAR1abcDEF_-x`)
+    expect(valorDoCookieFbc(undefined, undefined)).toBeNull()
+    expect(valorDoCookieFbc('com espaço;', undefined)).toBeNull()
+  })
+
+  it('meta tag de verificação do domínio só com código válido', async () => {
+    const { verificacaoDoDominioDaMeta } = await import('../web/src/lib/medicao')
+    expect(verificacaoDoDominioDaMeta('abcdef0123456789abcdef0123456')).toBe('abcdef0123456789abcdef0123456')
+    expect(verificacaoDoDominioDaMeta('<script>')).toBeNull()
+  })
+})
+
+describe('origem do cadastro vinda de anúncio da Meta', () => {
+  it('com o aceite manda o fbclid; sem o aceite, só meta / paid_social', async () => {
+    const { utmParaEnvio } = await import('../web/src/lib/origemDoAnuncio')
+    expect(utmParaEnvio({ fbclid: 'IwAR1abc' }, true)).toEqual({ fbclid: 'IwAR1abc', utm_source: 'meta', utm_medium: 'paid_social' })
+    expect(utmParaEnvio({ fbclid: 'IwAR1abc' }, false)).toEqual({ utm_source: 'meta', utm_medium: 'paid_social' })
+    expect(utmParaEnvio({ utm_source: 'meta', utm_campaign: 'lb-meta-brasil', fbclid: 'x' }, false)).toEqual({ utm_source: 'meta', utm_campaign: 'lb-meta-brasil' })
+  })
+})

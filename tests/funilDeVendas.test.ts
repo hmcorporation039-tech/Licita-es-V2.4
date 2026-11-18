@@ -68,6 +68,12 @@ describe('origem do cadastro', () => {
     expect(chaveDaOrigem(o)).toBe('google / pesquisa')
     expect(lerOrigem({ wbraid: 'x' }).fonte).toBe('google')
   })
+  it('fbclid sem utm_source vira meta/paid_social', () => {
+    const o = lerOrigem({ fbclid: 'IwAR1', utm_campaign: 'lb-meta-brasil' })
+    expect(o).toMatchObject({ fonte: 'meta', meio: 'paid_social', anuncioDoGoogle: false })
+    expect(chaveDaOrigem(o)).toBe('meta / lb-meta-brasil')
+    expect(lerOrigem({ utm_source: 'meta', utm_medium: 'paid_social' }).fonte).toBe('meta')
+  })
   it('interesse sem UF', () => {
     expect(lerOrigem({ interesse: { termo: 'papel' } }).interesse).toEqual({ termo: 'papel', uf: null })
   })

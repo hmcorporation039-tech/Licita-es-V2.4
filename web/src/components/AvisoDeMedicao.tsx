@@ -1,14 +1,16 @@
 'use client'
 
-// Aviso de cookies (LGPD): o Google Analytics só carrega depois do "Aceitar".
+// Aviso de cookies (LGPD): o Google Analytics e o Pixel da Meta só carregam depois do "Aceitar".
+// O pixel da Meta, além disso, só carrega nas páginas públicas (paginaComPixel).
 // Fica no rodapé da tela, pequeno, e some depois da escolha. A Política de
 // Privacidade tem um botão para mudar a escolha (reabrirEscolha).
 
 import { useEffect, useSyncExternalStore } from 'react'
+import { usePathname } from 'next/navigation'
 import { Button, TextLink } from '@/components/ui'
-import { EVENTO_REABRIR, idDaMedicao, type EscolhaDeMedicao } from '@/lib/medicao'
-import { guardarEscolha, lerEscolha, ligarMedicao } from '@/lib/medicaoNoNavegador'
-import { guardarUtm } from '@/lib/rastreamento'
+import { EVENTO_REABRIR, idDaMedicao, idDoPixelDaMeta, paginaComPixel, type EscolhaDeMedicao } from '@/lib/medicao'
+import { guardarEscolha, lerEscolha, ligarMedicao, ligarPixelDaMeta, paginaVistaNaMeta } from '@/lib/medicaoNoNavegador'
+import { guardarUtm, lerUtm } from '@/lib/rastreamento'
 
 const MUDOU = 'bela:medicao-mudou'
 let reaberto = false
@@ -37,6 +39,8 @@ const estadoNoServidor = () => 'recusada' as const
 
 export default function AvisoDeMedicao() {
   const id = idDaMedicao()
+  const pixel = idDoPixelDaMeta()
+  const caminho = usePathname()
   const estado = useSyncExternalStore(assinar, estadoNoCliente, estadoNoServidor)
 
   // Origem da visita (UTMs e gclid) fica só neste navegador e vai junto no cadastro.
@@ -46,7 +50,14 @@ export default function AvisoDeMedicao() {
     if (id && estado === 'aceita' && process.env.NODE_ENV === 'production') ligarMedicao(id)
   }, [id, estado])
 
-  if (!id || estado !== 'pendente') return null
+  // Pixel da Meta: só com o aceite e só nas páginas públicas; uma "página vista" por página.
+  useEffect(() => {
+    if (!pixel || estado !== 'aceita' || process.env.NODE_ENV !== 'production' || !paginaComPixel(caminho)) return
+    ligarPixelDaMeta(pixel, lerUtm())
+    paginaVistaNaMeta()
+  }, [pixel, estado, caminho])
+
+  if ((!id && !pixel) || estado !== 'pendente') return null
 
   function escolher(escolha: EscolhaDeMedicao) {
     const antes = lerEscolha()
@@ -64,7 +75,8 @@ export default function AvisoDeMedicao() {
       className="fixed inset-x-2 bottom-2 z-50 mx-auto flex max-w-2xl flex-col gap-2 rounded-lg border border-line bg-surface p-3 text-sm text-ink shadow-lg sm:flex-row sm:items-center"
     >
       <p className="flex-1 text-ink-2">
-        Usamos o Google Analytics para saber como as pessoas chegam e usam a Licita Bela. Ele só é ligado se você aceitar.{' '}
+        Usamos o Google Analytics e o Pixel da Meta (Facebook e Instagram) para saber como as pessoas chegam à Licita Bela, por
+        exemplo por um anúncio. Eles só são ligados se você aceitar.{' '}
         <TextLink href="/privacidade">Saiba mais</TextLink>
       </p>
       <div className="flex shrink-0 gap-2">

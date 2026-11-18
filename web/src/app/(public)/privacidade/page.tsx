@@ -7,7 +7,7 @@ export default function PrivacidadePage() {
   return (
     <PublicProse titulo="Política de Privacidade" rotulo="Documento legal">
       <div className="text-base leading-relaxed text-ink-2 marker:text-faint [&_h2]:mb-3 [&_h2]:mt-8 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:text-ink [&_li]:pl-1 [&_p]:mb-3 [&_strong]:font-semibold [&_strong]:text-ink [&_ul]:mb-3 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-5">
-        <p className="text-sm text-muted">Versão de 9 de novembro de 2026.</p>
+        <p className="text-sm text-muted">Versão de 18 de novembro de 2026.</p>
         <p>
           Esta Política explica quais dados pessoais a Licita Bela trata, para quê, com quem compartilha e quais são os seus
           direitos, conforme a Lei Geral de Proteção de Dados (Lei 13.709/2018). A controladora dos dados é a{' '}
@@ -67,7 +67,11 @@ export default function PrivacidadePage() {
             <strong>Melhorar o produto e entender de onde vêm os clientes</strong> (legítimo interesse), usando a origem do cadastro.
           </li>
         </ul>
-        <p>Não vendemos dados pessoais e não usamos seus dados para publicidade de terceiros.</p>
+        <p>
+          Com o seu consentimento (art. 7º, I, da LGPD), usamos o Google Analytics, o Google Ads e o Pixel da Meta para medir e
+          melhorar os anúncios da própria Licita Bela. Não vendemos dados pessoais e não usamos seus dados para publicidade de
+          terceiros.
+        </p>
 
         <h2>3. Com quem compartilhamos</h2>
         <p>Só com fornecedores necessários para o serviço funcionar, que tratam os dados em nosso nome:</p>
@@ -100,6 +104,14 @@ export default function PrivacidadePage() {
             identificador do navegador. Não enviamos nome, e-mail, CPF, CNPJ nem o conteúdo das licitações.
           </li>
           <li>
+            <strong>Meta (Facebook e Instagram), pelo Pixel da Meta</strong>: só se você aceitar no aviso de cookies, e só nas páginas
+            públicas do site (página inicial, cadastro, login, vitrine de licitações, termos e esta política). Recebe as páginas
+            públicas que você visita, se você chegou por um anúncio da Meta e ações como enviar ou concluir o cadastro, clicar no
+            WhatsApp e começar a assinar um plano, ligadas a cookies do navegador (_fbp e _fbc). Serve para medir os anúncios e mostrá-los
+            a pessoas parecidas com nossos clientes. Não enviamos nome, e-mail, telefone, CPF, CNPJ nem o conteúdo das licitações, e o
+            pixel não é carregado dentro do sistema (editais, estudos, empresa e documentos).
+          </li>
+          <li>
             <strong>Asaas</strong>: intermediador de pagamento, quando você assina um plano. Recebe o nome e o CNPJ (ou CPF) da empresa e o
             e-mail de cobrança; os dados do cartão, quando você paga com cartão, são digitados direto na página do Asaas e não passam
             pela Licita Bela.
@@ -120,14 +132,15 @@ export default function PrivacidadePage() {
 
         <h2>5. Cookies e armazenamento no navegador</h2>
         <p>
-          A plataforma não usa cookies próprios. Guardamos no armazenamento local do seu navegador a
+          Fora os cookies de medição do Google e da Meta, que só existem se você aceitar (veja abaixo), a plataforma não usa cookies. Guardamos no armazenamento local do seu navegador a
           sessão de acesso, a preferência de voz da Bela, os parâmetros do link pelo qual você chegou e qual usuário ativou as
           notificações naquele aparelho. Esses dados ficam no seu
           aparelho e são apagados quando você sai da conta ou limpa os dados do navegador.
         </p>
         <p>
-          Usamos o Google Analytics (e, para medir anúncios, o Google Ads) somente com o seu consentimento: na primeira visita aparece
-          um aviso com &quot;Aceitar&quot; e &quot;Recusar&quot;. Se você recusar, nenhum script nem cookie do Google é carregado. A
+          Usamos o Google Analytics (e, para medir anúncios, o Google Ads e o Pixel da Meta) somente com o seu consentimento: na
+          primeira visita aparece um aviso com &quot;Aceitar&quot; e &quot;Recusar&quot;. Se você recusar, nenhum script nem cookie
+          do Google ou da Meta é carregado. O Pixel da Meta, mesmo com o aceite, só é carregado nas páginas públicas do site. A
           base legal é o consentimento (art. 7º, I, da LGPD), e você pode mudar de ideia quando quiser:
         </p>
         <div className="mb-3">

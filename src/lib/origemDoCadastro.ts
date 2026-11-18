@@ -25,6 +25,8 @@ export const utmSchema = z.object({
   gclid: valorDeUtm,
   gbraid: valorDeUtm,
   wbraid: valorDeUtm,
+  // Identificador do clique no anúncio da Meta (Facebook/Instagram).
+  fbclid: valorDeUtm,
 })
 
 export const interesseSchema = z.object({
