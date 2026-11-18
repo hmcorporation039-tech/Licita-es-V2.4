@@ -31,13 +31,20 @@ export async function fetchPNCPItens(
   anoCompra: number | string,
   sequencialCompra: number | string
 ): Promise<NormalizedTenderItem[]> {
-  assertIdentificadorCompraPncp(cnpj, anoCompra, sequencialCompra)
-  const url = `https://pncp.gov.br/api/pncp/v1/orgaos/${cnpj}/compras/${anoCompra}/${sequencialCompra}/itens`
-  const response = await axios.get<PNCPItemRaw[]>(url, { timeout: 20_000 })
-  const raw = Array.isArray(response.data) ? response.data : []
-
-  return raw.map(normalizarItemDoPncp)
+  // Sem `pagina`/`tamanhoPagina` o PNCP devolve só os 10 primeiros itens — por isso pagina.
+  const { itens, completo } = await fetchPNCPItensBrutos(cnpj, anoCompra, sequencialCompra, {
+    maxPaginas: MAX_PAGINAS_DE_ITENS,
+  })
+  if (!completo) {
+    console.warn(
+      `[pncpItems] compra ${cnpj}/${anoCompra}/${sequencialCompra} tem mais de ${itens.length} itens; guardando só os primeiros ${itens.length}`
+    )
+  }
+  return (itens as unknown as PNCPItemRaw[]).map(normalizarItemDoPncp)
 }
+
+// Teto de páginas na coleta: 20 × 500 = 10.000 itens — bem acima de qualquer compra real.
+const MAX_PAGINAS_DE_ITENS = 20
 
 export function normalizarItemDoPncp(item: PNCPItemRaw): NormalizedTenderItem {
   return {
