@@ -1,8 +1,8 @@
-const CHAVE_UTM = 'licitacao-platform:utm'
-const PARAMETROS_UTM = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'gclid', 'gbraid', 'wbraid'] as const
+import { PARAMETROS_UTM, type Utm } from './origemDoAnuncio'
 
-type ParametroUtm = (typeof PARAMETROS_UTM)[number]
-export type Utm = Partial<Record<ParametroUtm, string>> & { capturadoEm?: string }
+export { utmParaEnvio, type Utm } from './origemDoAnuncio'
+
+const CHAVE_UTM = 'licitacao-platform:utm'
 
 type JanelaComRastreadores = Window & {
   dataLayer?: Array<Record<string, unknown>>
@@ -44,3 +44,4 @@ export function lerUtm(): Utm | null {
     return null
   }
 }
+
