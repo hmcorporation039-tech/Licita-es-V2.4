@@ -1,9 +1,10 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
-import { ExternalLink, KeyRound, ShieldCheck, Trash2 } from 'lucide-react'
+import { ExternalLink, KeyRound, Monitor, ShieldCheck, Trash2 } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
 import { api, ApiRequestError } from '@/lib/api'
+import PortalNaBela from '@/components/PortalNaBela'
 import {
   Button,
   buttonClasses,
@@ -77,6 +78,9 @@ export default function PortaisPage() {
   const [salvando, setSalvando] = useState(false)
   const [erroDoForm, setErroDoForm] = useState<string | null>(null)
   const [salvoAgora, setSalvoAgora] = useState<string | null>(null)
+  // Portal aberto dentro da Bela para conferir o login (sem licitação).
+  const [conferindo, setConferindo] = useState<string | null>(null)
+  const painelDoPortal = useRef<HTMLDivElement | null>(null)
   const lista = useRef<HTMLDivElement | null>(null)
   const termo = useRef<HTMLInputElement | null>(null)
 
@@ -96,6 +100,11 @@ export default function PortaisPage() {
   useEffect(() => {
     if (user) void carregar()
   }, [user, carregar])
+
+  // No celular o painel fica fora da tela: leva a pessoa até ele.
+  useEffect(() => {
+    if (conferindo) painelDoPortal.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [conferindo])
 
   if (!user) return <Carregando linhas={6} />
 
@@ -201,7 +210,7 @@ export default function PortaisPage() {
       </Panel>
 
       <div ref={lista} className="scroll-mt-4">
-      <Panel title="Acessos cadastrados" description="Abra o site do portal para conferir o seu login. Para disputar com a Bela ao lado, entre pela licitação escolhida, em Pregão com a Bela.">
+      <Panel title="Acessos cadastrados" description="Para disputar com a Bela ao lado, abra a licitação em Pregão com a Bela. Aqui você só confere se o seu login funciona.">
         {carregando ? (
           <Carregando linhas={3} />
         ) : credenciais.length === 0 ? (
@@ -232,18 +241,28 @@ export default function PortaisPage() {
                           <StatusTag tone={st.tom}>{st.rotulo}</StatusTag>
                         </span>
                       </Td>
-                      <Td className="whitespace-nowrap">
+                      <Td>
+                        <div className="flex flex-wrap items-center gap-1">
+                        {dadosDoPortal && dadosDoPortal.abreDentroDaBela !== false && (
+                          <Button size="sm" variant="primary" icon={Monitor} onClick={() => setConferindo(dadosDoPortal.id)} aria-pressed={conferindo === dadosDoPortal.id}>
+                            Abrir aqui dentro da Bela
+                          </Button>
+                        )}
                         {dadosDoPortal?.inicio && (
                           <a
                             href={dadosDoPortal.inicio}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className={buttonClasses('secondary', 'sm', 'mr-1')}
+                            className={buttonClasses('secondary', 'sm')}
                           >
-                            <ExternalLink size={14} aria-hidden /> Abrir o portal
+                            <ExternalLink size={14} aria-hidden /> {dadosDoPortal.abreDentroDaBela === false ? 'Abrir no Chrome' : 'Abrir o portal'}
                           </a>
                         )}
                         <Button size="sm" variant="ghost" icon={Trash2} onClick={() => void excluir(c)} aria-label={`Excluir acesso ao ${c.portal}`} />
+                        </div>
+                        {dadosDoPortal?.abreDentroDaBela === false && (
+                          <p className="mt-1 text-xs text-muted">Este portal não aceita o navegador da Bela. Abra no seu Chrome.</p>
+                        )}
                       </Td>
                     </Tr>
                   )
@@ -254,6 +273,12 @@ export default function PortaisPage() {
         )}
       </Panel>
       </div>
+
+      {conferindo && (
+        <div ref={painelDoPortal} className="scroll-mt-4">
+          <PortalNaBela key={conferindo} portal={conferindo} abrirJa aoFechar={() => setConferindo(null)} />
+        </div>
+      )}
 
       {dialogo}
     </div>

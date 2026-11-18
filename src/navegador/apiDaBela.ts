@@ -7,7 +7,8 @@
 export interface AutorizacaoDaSessao {
   userId: string
   companyId: string
-  tenderId: string
+  /** null no modo "conferir acesso" (sem licitação). */
+  tenderId: string | null
   inicio: string
   portal: string
   nomeDoPortal: string
@@ -35,9 +36,9 @@ export class ErroDaApi extends Error {
 }
 
 export interface ApiDaBela {
-  autorizar(token: string, tenderId: string, portal?: string): Promise<AutorizacaoDaSessao>
+  autorizar(token: string, tenderId: string | undefined, portal?: string): Promise<AutorizacaoDaSessao>
   /** Login e senha de Meus Portais para o portal desta página (só com NAVEGADOR_SEGREDO). */
-  acessoSalvo(token: string, tenderId: string, host: string): Promise<AcessoSalvo>
+  acessoSalvo(token: string, tenderId: string | null, host: string): Promise<AcessoSalvo>
   painel(token: string, tenderId: string): Promise<PainelResumido>
   registrarMelhorLance(token: string, tenderId: string, valor: number): Promise<void>
   registrarMensagens(token: string, tenderId: string, mensagens: unknown[]): Promise<void>
@@ -64,10 +65,10 @@ export function apiDaBela(base: string, segredo?: string): ApiDaBela {
     return json as T
   }
   return {
-    autorizar: (token, tenderId, portal) => chamar(token, 'POST', '/api/portal-na-bela/sessao', portal ? { tenderId, portal } : { tenderId }),
+    autorizar: (token, tenderId, portal) => chamar(token, 'POST', '/api/portal-na-bela/sessao', { ...(tenderId ? { tenderId } : {}), ...(portal ? { portal } : {}) }),
     acessoSalvo: async (token, tenderId, host) => {
       if (!segredo) throw new ErroDaApi(503, 'O preenchimento do login ainda não foi ativado no navegador da Bela.', 'SEGREDO_DO_NAVEGADOR')
-      return chamar(token, 'POST', '/api/portal-na-bela/acesso-salvo', { tenderId, host }, { 'x-navegador-segredo': segredo })
+      return chamar(token, 'POST', '/api/portal-na-bela/acesso-salvo', tenderId ? { tenderId, host } : { host }, { 'x-navegador-segredo': segredo })
     },
     painel: (token, tenderId) => chamar(token, 'GET', `/api/tenders/${tenderId}/pregao`),
     registrarMelhorLance: async (token, tenderId, valor) => {

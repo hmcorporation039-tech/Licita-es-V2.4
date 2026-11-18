@@ -141,4 +141,42 @@ rodar('Portal dentro da Bela', () => {
     expect((await http('POST', '/api/portal-na-bela/acesso-salvo', { tenderId: tender.id, host: 'example.com' }, empresa.token, comSegredo)).body.code).toBe('PORTAL_DESCONHECIDO')
     expect(await prisma.auditLog.count({ where: { companyId: empresa.companyId, action: 'PORTAL_NA_BELA_LOGIN_PREENCHIDO' } })).toBe(1)
   })
+
+  it('conferir acesso (Meus Portais): sem licitação, só no plano pago e só portal que abre aqui', async () => {
+    process.env.NAVEGADOR_URL = 'https://navegador.exemplo.app/'
+    const paga = await conta('conferir', 'PROFISSIONAL')
+    const gratis = await conta('conferir-gratis', 'TESTE')
+
+    // Plano gratuito: o mesmo 403 de sempre.
+    const semPlano = await http('POST', '/api/portal-na-bela/sessao', { portal: 'BLL' }, gratis.token)
+    expect(semPlano.status).toBe(403)
+    expect(semPlano.body.code).toBe('PORTAL_SO_NOS_PLANOS')
+
+    // Sem licitação, o portal é obrigatório e precisa aceitar o navegador da Bela.
+    expect((await http('POST', '/api/portal-na-bela/sessao', {}, paga.token)).status).toBe(400)
+    expect((await http('POST', '/api/portal-na-bela/sessao', { portal: 'NAO_EXISTE' }, paga.token)).status).toBe(400)
+    const licitanet = await http('POST', '/api/portal-na-bela/sessao', { portal: 'LICITANET' }, paga.token)
+    expect(licitanet.status).toBe(400)
+    expect(licitanet.body.code).toBe('PORTAL_NAO_ABRE_AQUI')
+
+    const ok = await http('POST', '/api/portal-na-bela/sessao', { portal: 'BLL' }, paga.token)
+    expect(ok.status).toBe(200)
+    expect(ok.body).toMatchObject({ userId: paga.id, companyId: paga.companyId, tenderId: null, portal: 'BLL' })
+    expect(String(ok.body.inicio)).toMatch(/^https:\/\//)
+    expect(ok.body.hostsPermitidos).toContain('bllcompras.com')
+    const auditoria = await prisma.auditLog.findFirst({ where: { companyId: paga.companyId, action: 'PORTAL_NA_BELA_ABERTO' } })
+    expect(auditoria).toMatchObject({ entityType: 'portal', entityId: 'BLL', metadata: { modo: 'conferir-acesso', portal: 'BLL' } })
+
+    // Login salvo sem licitação: continua exigindo o segredo do serviço navegador e o plano pago.
+    expect((await http('POST', '/api/portal-na-bela/acesso-salvo', { host: 'www.bllcompras.com' }, paga.token)).body.code).toBe('SEGREDO_DO_NAVEGADOR')
+    const comSegredo = { 'x-navegador-segredo': SEGREDO }
+    expect((await http('POST', '/api/portal-na-bela/acesso-salvo', { host: 'www.bllcompras.com' }, gratis.token, comSegredo)).status).toBe(403)
+    const { salvarCredencial } = await import('../../src/services/meusPortais')
+    await salvarCredencial(paga.companyId, { portal: 'BLL', login: '11222333000144', senha: 'senha-bll', consentimentoTexto: 'ok' })
+    const acesso = await http('POST', '/api/portal-na-bela/acesso-salvo', { host: 'www.bllcompras.com' }, paga.token, comSegredo)
+    expect(acesso.status).toBe(200)
+    expect(acesso.body).toEqual({ portal: 'BLL', login: '11222333000144', senha: 'senha-bll' })
+    const preenchido = await prisma.auditLog.findFirst({ where: { companyId: paga.companyId, action: 'PORTAL_NA_BELA_LOGIN_PREENCHIDO' } })
+    expect(preenchido).toMatchObject({ entityType: 'portal', entityId: 'BLL', metadata: { modo: 'conferir-acesso', portal: 'BLL' } })
+  })
 })

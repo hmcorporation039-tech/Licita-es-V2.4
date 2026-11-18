@@ -37,11 +37,21 @@ async function ehPlanoGratuito(req: Request): Promise<boolean> {
   return empresa.planCode === PLANO_DE_TESTE && req.isAdmin !== true
 }
 
-async function conferirAcesso(req: Request, tenderId: string): Promise<void> {
+async function conferirPlano(req: Request): Promise<void> {
   if (!urlDoNavegador()) throw new ApiError(503, 'O portal dentro da Bela ainda não foi ativado.', { code: 'NAVEGADOR_NAO_CONFIGURADO' })
   if (await ehPlanoGratuito(req)) {
     throw new ApiError(403, 'O portal dentro da Bela é liberado nos planos pagos. Assine em Minha conta para usar.', { code: 'PORTAL_SO_NOS_PLANOS' })
   }
+}
+
+/**
+ * Com licitação: plano pago e a licitação marcada "Vou participar" (como sempre).
+ * Sem licitação (modo "conferir acesso", aberto de Meus Portais): só o plano pago. Nesse
+ * modo o navegador não lê disputa nem preenche lance: serve para a pessoa conferir o login.
+ */
+async function conferirAcesso(req: Request, tenderId: string | undefined): Promise<void> {
+  await conferirPlano(req)
+  if (!tenderId) return
   const plano = await prisma.tenderParticipationPlan.findUnique({
     where: { companyId_tenderId: { companyId: req.companyId!, tenderId } },
     select: { status: true },
@@ -82,13 +92,33 @@ portalNaBelaRouter.get(
   })
 )
 
-const sessaoSchema = z.object({ tenderId: z.string().uuid(), portal: z.string().max(40).optional() })
+const sessaoSchema = z.object({ tenderId: z.string().uuid().optional(), portal: z.string().max(40).optional() })
 
 portalNaBelaRouter.post(
   '/sessao',
   estudoCalculoLimiter,
   asyncHandler(async (req, res) => {
     const { tenderId, portal: pedido } = sessaoSchema.parse(req.body)
+    if (!tenderId) {
+      // Modo "conferir acesso" (Meus Portais): sem licitação, o portal é obrigatório e
+      // precisa aceitar o navegador da Bela.
+      const portal = pedido ? portalPorId(pedido) : null
+      if (!portal || portal.id !== pedido) throw new ApiError(400, 'Portal não suportado.')
+      if (!portal.abreDentroDaBela) throw new ApiError(400, `O ${portal.nome} não aceita o navegador da Bela. Abra no seu Chrome.`, { code: 'PORTAL_NAO_ABRE_AQUI' })
+      await conferirAcesso(req, undefined)
+      const inicioFixo = portal.id === 'COMPRASNET' ? process.env.NAVEGADOR_INICIO?.trim() : undefined
+      await registrarAuditoria(req, { action: 'PORTAL_NA_BELA_ABERTO', entityType: 'portal', entityId: portal.id, metadata: { modo: 'conferir-acesso', portal: portal.id } })
+      res.json({
+        userId: req.userId,
+        companyId: req.companyId,
+        tenderId: null,
+        portal: portal.id,
+        nomeDoPortal: portal.nome,
+        inicio: inicioFixo || inicioNoPortal(portal, null),
+        hostsPermitidos: hostsDosPortais(),
+      })
+      return
+    }
     await conferirAcesso(req, tenderId)
     const tender = await prisma.tender.findUnique({ where: { id: tenderId }, select: { linkEdital: true, plataformaDeOrigem: true, fonte: true } })
     if (!tender) throw new ApiError(404, 'Licitação não encontrada.')
@@ -129,7 +159,7 @@ export function portalDaTela(host: string): string | null {
   return h === 'gov.br' || h.endsWith('.gov.br') ? 'COMPRASNET' : null
 }
 
-const acessoSchema = z.object({ tenderId: z.string().uuid(), host: z.string().min(1).max(253) })
+const acessoSchema = z.object({ tenderId: z.string().uuid().optional(), host: z.string().min(1).max(253) })
 
 portalNaBelaRouter.post(
   '/acesso-salvo',
@@ -144,7 +174,12 @@ portalNaBelaRouter.post(
     const portal = portalDaTela(host)
     if (!portal) throw new ApiError(404, 'Esta página não é de um portal de Meus Portais.', { code: 'PORTAL_DESCONHECIDO' })
     const acesso = await acessoParaPreencher(req.companyId!, portal)
-    await registrarAuditoria(req, { action: 'PORTAL_NA_BELA_LOGIN_PREENCHIDO', entityType: 'tender', entityId: tenderId, metadata: { portal } })
+    await registrarAuditoria(
+      req,
+      tenderId
+        ? { action: 'PORTAL_NA_BELA_LOGIN_PREENCHIDO', entityType: 'tender', entityId: tenderId, metadata: { portal } }
+        : { action: 'PORTAL_NA_BELA_LOGIN_PREENCHIDO', entityType: 'portal', entityId: portal, metadata: { modo: 'conferir-acesso', portal } }
+    )
     res.set('cache-control', 'no-store')
     res.json({ portal, ...acesso })
   })

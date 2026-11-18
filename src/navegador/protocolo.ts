@@ -14,7 +14,9 @@ const coord = z.number().finite().min(0).max(4000)
 const modificadores = z.number().int().min(0).max(15).default(0) // Alt=1, Ctrl=2, Meta=4, Shift=8 (como no CDP)
 
 export const mensagemDaWeb = z.discriminatedUnion('t', [
-  z.object({ t: z.literal('entrar'), token: z.string().min(10).max(4000), tenderId: z.string().uuid(), portal: z.string().max(40).optional() }),
+  // Sem tenderId: modo "conferir acesso" (aberto de Meus Portais) — o portal é obrigatório,
+  // e a sessão não lê disputa nem preenche lance (a API confere o plano e o portal).
+  z.object({ t: z.literal('entrar'), token: z.string().min(10).max(4000), tenderId: z.string().uuid().optional(), portal: z.string().max(40).optional() }),
   z.object({ t: z.literal('tamanho'), largura: z.number().int().min(800).max(1920), altura: z.number().int().min(500).max(1200) }),
   z.object({
     t: z.literal('mouse'),
