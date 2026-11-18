@@ -53,3 +53,50 @@ export function normalizarItemDoPncp(item: PNCPItemRaw): NormalizedTenderItem {
     valorTotal: item.valorTotal ?? undefined,
   }
 }
+
+export interface OpcoesDaConsulta {
+  timeoutMs?: number
+  signal?: AbortSignal
+}
+
+// O /itens devolve 10 por página se não pedir; 500 por página cobre quase toda compra numa chamada.
+const ITENS_POR_PAGINA = 500
+
+/** Itens crus da compra, paginando (até `maxPaginas` páginas de 500). Para "O que o contrato pede". */
+export async function fetchPNCPItensBrutos(
+  cnpj: string,
+  anoCompra: number | string,
+  sequencialCompra: number | string,
+  opcoes: OpcoesDaConsulta & { maxPaginas?: number } = {}
+): Promise<{ itens: Record<string, unknown>[]; completo: boolean }> {
+  assertIdentificadorCompraPncp(cnpj, anoCompra, sequencialCompra)
+  const maxPaginas = opcoes.maxPaginas ?? 2
+  const itens: Record<string, unknown>[] = []
+  for (let pagina = 1; pagina <= maxPaginas; pagina++) {
+    const url = `https://pncp.gov.br/api/pncp/v1/orgaos/${cnpj}/compras/${anoCompra}/${sequencialCompra}/itens`
+    const response = await axios.get<unknown>(url, {
+      params: { pagina, tamanhoPagina: ITENS_POR_PAGINA },
+      timeout: opcoes.timeoutMs ?? 20_000,
+      signal: opcoes.signal,
+    })
+    const lote = Array.isArray(response.data) ? (response.data as Record<string, unknown>[]) : []
+    itens.push(...lote)
+    if (lote.length < ITENS_POR_PAGINA) return { itens, completo: true }
+  }
+  return { itens, completo: false }
+}
+
+/** Resultados (fornecedor e valor homologado) de um item da compra. */
+export async function fetchPNCPResultadosDoItem(
+  cnpj: string,
+  anoCompra: number | string,
+  sequencialCompra: number | string,
+  numeroItem: number,
+  opcoes: OpcoesDaConsulta = {}
+): Promise<unknown[]> {
+  assertIdentificadorCompraPncp(cnpj, anoCompra, sequencialCompra)
+  if (!Number.isInteger(numeroItem) || numeroItem < 1) throw new Error('Número de item inválido')
+  const url = `https://pncp.gov.br/api/pncp/v1/orgaos/${cnpj}/compras/${anoCompra}/${sequencialCompra}/itens/${numeroItem}/resultados`
+  const response = await axios.get<unknown>(url, { timeout: opcoes.timeoutMs ?? 20_000, signal: opcoes.signal })
+  return Array.isArray(response.data) ? response.data : []
+}

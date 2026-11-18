@@ -1,11 +1,12 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { CircleCheck, CircleX, Copy, ExternalLink, HardHat, Lock, MessageSquareText, Phone, Settings2, TriangleAlert } from 'lucide-react'
+import { ChevronDown, CircleCheck, CircleX, ClipboardList, Copy, ExternalLink, HardHat, Lock, MessageSquareText, Phone, Settings2, TriangleAlert } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
 import { api, ApiRequestError } from '@/lib/api'
 import { Button, Carregando, Checkbox, EmptyState, ErrorState, Field, Input, Notice, PageHeader, Panel, Select, StatusTag, Tabs, TextLink, Textarea, cx, useAbaNaUrl } from '@/components/ui'
 import PrestadoresDaObra from '@/components/PrestadoresDaObra'
+import OQueOContratoPede from '@/components/OQueOContratoPede'
 
 interface NichoPronto {
   id: string
@@ -289,6 +290,8 @@ function CartaoDoContrato({ c, bloqueado }: { c: Oportunidade; bloqueado: boolea
   const [carregando, setCarregando] = useState<'contato' | 'mensagem' | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [copiado, setCopiado] = useState(false)
+  const [pedeAberto, setPedeAberto] = useState(false)
+  const idDoPainel = `pede-${c.id.replace(/[^A-Za-z0-9]/g, '-')}`
 
   async function verContato() {
     setCarregando('contato')
@@ -358,10 +361,13 @@ function CartaoDoContrato({ c, bloqueado }: { c: Oportunidade; bloqueado: boolea
       <div className="flex flex-wrap items-center gap-2">
         {bloqueado ? (
           <TextLink href="/conta" className="inline-flex items-center gap-1 text-sm">
-            <Lock size={14} aria-hidden /> Contato e mensagem pronta nos planos pagos
+            <Lock size={14} aria-hidden /> Contato, mensagem pronta e o que o contrato pede nos planos pagos
           </TextLink>
         ) : (
           <>
+            <Button size="sm" variant={pedeAberto ? 'primary' : 'secondary'} icon={ClipboardList} iconRight={ChevronDown} aria-expanded={pedeAberto} aria-controls={idDoPainel} onClick={() => setPedeAberto((v) => !v)}>
+              O que o contrato pede
+            </Button>
             <Button size="sm" variant="secondary" icon={Phone} loading={carregando === 'contato'} onClick={verContato} disabled={ganhador !== null}>
               Ver contato
             </Button>
@@ -376,6 +382,7 @@ function CartaoDoContrato({ c, bloqueado }: { c: Oportunidade; bloqueado: boolea
           </TextLink>
         )}
       </div>
+      {pedeAberto && !bloqueado && <OQueOContratoPede contratoId={c.id} id={idDoPainel} />}
       {erro && <Notice tone="danger">{erro}</Notice>}
       {ganhador && (
         <div className="rounded border border-line bg-sunken px-3 py-2 text-sm text-ink-2">

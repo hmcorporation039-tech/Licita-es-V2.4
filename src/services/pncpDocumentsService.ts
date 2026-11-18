@@ -24,14 +24,21 @@ export interface PNCPDocumentInfo {
 }
 
 // Lista os documentos publicados para uma contratação
+// Quem precisa responder rápido (tela "O que o contrato pede") passa um tempo menor e um sinal de cancelamento.
+export interface OpcoesDoDownload {
+  timeoutMs?: number
+  signal?: AbortSignal
+}
+
 export async function listPNCPDocuments(
   cnpj: string,
   anoCompra: number | string,
-  sequencialCompra: number | string
+  sequencialCompra: number | string,
+  opcoes: OpcoesDoDownload = {}
 ): Promise<PNCPDocumentInfo[]> {
   assertIdentificadorCompraPncp(String(cnpj), anoCompra, sequencialCompra)
   const url = `https://pncp.gov.br/api/pncp/v1/orgaos/${cnpj}/compras/${anoCompra}/${sequencialCompra}/arquivos`
-  const response = await axios.get(url, { timeout: 20_000 })
+  const response = await axios.get(url, { timeout: opcoes.timeoutMs ?? 20_000, signal: opcoes.signal })
   return Array.isArray(response.data) ? response.data : []
 }
 
@@ -39,14 +46,15 @@ export async function listPNCPDocuments(
 // nome, hoje serve qualquer fonte (Novacap, SESC GO), não só PNCP (ver
 // editalAnalysisService.ts). User-Agent de navegador: alguns sites bloqueiam
 // cliente sem cara de browser mesmo em arquivo público sem login.
-export async function downloadPNCPDocument(uri: string): Promise<Buffer> {
+export async function downloadPNCPDocument(uri: string, opcoes: OpcoesDoDownload = {}): Promise<Buffer> {
   // SSRF: só baixa de host conhecido, por https, e bloqueando qualquer IP
   // interno — inclusive se um redirect tentar desviar pra rede privada
   // (o bloqueio é no lookup do agente, que roda a cada hop). Ver urlGuard.ts.
   const url = assertUrlDownloadPermitida(uri)
   const response = await axios.get(url.toString(), {
     responseType: 'arraybuffer',
-    timeout: 60_000,
+    timeout: opcoes.timeoutMs ?? 60_000,
+    signal: opcoes.signal,
     httpsAgent: agenteDownloadSeguro,
     maxContentLength: MAX_DOWNLOAD_BYTES,
     maxBodyLength: MAX_DOWNLOAD_BYTES,
