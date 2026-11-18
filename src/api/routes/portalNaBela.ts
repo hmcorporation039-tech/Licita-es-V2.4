@@ -17,7 +17,6 @@ import { asyncHandler, ApiError } from '../asyncHandler'
 import { estudoCalculoLimiter } from '../rateLimit'
 import { registrarAuditoria } from '../../services/auditService'
 import { acessoParaPreencher } from '../../services/meusPortais'
-import { PLANO_DE_TESTE } from '../../lib/acessoEncerrado'
 import { PORTAIS, hostsDosPortais, inicioNoPortal, portalDaLicitacao, portalDoHost, portalPorId } from '../../lib/portais'
 
 export const portalNaBelaRouter = Router()
@@ -32,21 +31,16 @@ export function urlDoNavegador(): string | null {
   return url.replace(/^http(s?):\/\//i, (_m, s: string) => `ws${s}://`).replace(/\/+$/, '')
 }
 
-async function ehPlanoGratuito(req: Request): Promise<boolean> {
-  const empresa = await prisma.company.findUniqueOrThrow({ where: { id: req.companyId! }, select: { planCode: true } })
-  return empresa.planCode === PLANO_DE_TESTE && req.isAdmin !== true
-}
-
-async function conferirPlano(req: Request): Promise<void> {
+// O portal dentro da Bela vale também no período de teste: é o que mais mostra o valor
+// do sistema para quem está experimentando. Quando o teste acaba, o acesso todo é
+// encerrado pelo authMiddleware, então não há uso gratuito sem prazo.
+async function conferirPlano(_req: Request): Promise<void> {
   if (!urlDoNavegador()) throw new ApiError(503, 'O portal dentro da Bela ainda não foi ativado.', { code: 'NAVEGADOR_NAO_CONFIGURADO' })
-  if (await ehPlanoGratuito(req)) {
-    throw new ApiError(403, 'O portal dentro da Bela é liberado nos planos pagos. Assine em Minha conta para usar.', { code: 'PORTAL_SO_NOS_PLANOS' })
-  }
 }
 
 /**
- * Com licitação: plano pago e a licitação marcada "Vou participar" (como sempre).
- * Sem licitação (modo "conferir acesso", aberto de Meus Portais): só o plano pago. Nesse
+ * Com licitação: a licitação marcada "Vou participar" (como sempre).
+ * Sem licitação (modo "conferir acesso", aberto de Meus Portais): basta o navegador ligado. Nesse
  * modo o navegador não lê disputa nem preenche lance: serve para a pessoa conferir o login.
  */
 async function conferirAcesso(req: Request, tenderId: string | undefined): Promise<void> {
@@ -83,7 +77,8 @@ portalNaBelaRouter.get(
     res.json({
       disponivel: url !== null,
       url,
-      planoGratuito: await ehPlanoGratuito(req),
+      // Mantido para telas antigas em cache: o portal agora vale também no teste.
+      planoGratuito: false,
       // abreAqui: o portal aceita o navegador da Bela. Os outros abrem numa aba do Chrome
       // da pessoa (endereco), onde a extensão Bela lê a disputa e preenche o lance.
       portais: PORTAIS.map((p) => ({ id: p.id, nome: p.nome, temAcessoSalvo: salvos.has(p.id), abreAqui: p.abreDentroDaBela, endereco: inicioNoPortal(p, linkEdital) })),

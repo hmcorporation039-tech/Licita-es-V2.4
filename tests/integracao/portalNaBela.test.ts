@@ -70,7 +70,7 @@ rodar('Portal dentro da Bela', () => {
     await prisma?.$disconnect()
   }, 60_000)
 
-  it('só abre com o serviço ligado, no plano pago e na licitação escolhida', async () => {
+  it('só abre com o serviço ligado e na licitação escolhida (vale também no teste)', async () => {
     const paga = await conta('paga', 'PROFISSIONAL')
     const gratis = await conta('gratis', 'TESTE')
     const tender = await prisma.tender.create({
@@ -86,11 +86,11 @@ rodar('Portal dentro da Bela', () => {
 
     process.env.NAVEGADOR_URL = 'https://navegador.exemplo.app/'
     expect((await http('GET', '/api/portal-na-bela/config', undefined, paga.token)).body).toMatchObject({ disponivel: true, url: 'wss://navegador.exemplo.app' })
-    expect((await http('GET', '/api/portal-na-bela/config', undefined, gratis.token)).body.planoGratuito).toBe(true)
-
-    const semPlano = await http('POST', '/api/portal-na-bela/sessao', { tenderId: tender.id }, gratis.token)
-    expect(semPlano.status).toBe(403)
-    expect(semPlano.body.code).toBe('PORTAL_SO_NOS_PLANOS')
+    // Período de teste: o portal dentro da Bela também vale (só falta o "Vou participar").
+    expect((await http('GET', '/api/portal-na-bela/config', undefined, gratis.token)).body.planoGratuito).toBe(false)
+    expect((await http('POST', '/api/portal-na-bela/sessao', { tenderId: tender.id }, gratis.token)).status).toBe(409)
+    await prisma.tenderParticipationPlan.create({ data: { companyId: gratis.companyId, userId: gratis.id, tenderId: tender.id, status: 'VOU_PARTICIPAR', state: {} } })
+    expect((await http('POST', '/api/portal-na-bela/sessao', { tenderId: tender.id }, gratis.token)).status).toBe(200)
 
     expect((await http('POST', '/api/portal-na-bela/sessao', { tenderId: tender.id }, paga.token)).status).toBe(409)
     await prisma.tenderParticipationPlan.create({ data: { companyId: paga.companyId, userId: paga.id, tenderId: tender.id, status: 'VOU_PARTICIPAR', state: {} } })
@@ -142,15 +142,13 @@ rodar('Portal dentro da Bela', () => {
     expect(await prisma.auditLog.count({ where: { companyId: empresa.companyId, action: 'PORTAL_NA_BELA_LOGIN_PREENCHIDO' } })).toBe(1)
   })
 
-  it('conferir acesso (Meus Portais): sem licitação, só no plano pago e só portal que abre aqui', async () => {
+  it('conferir acesso (Meus Portais): sem licitação, só portal que abre aqui (vale também no teste)', async () => {
     process.env.NAVEGADOR_URL = 'https://navegador.exemplo.app/'
     const paga = await conta('conferir', 'PROFISSIONAL')
     const gratis = await conta('conferir-gratis', 'TESTE')
 
-    // Plano gratuito: o mesmo 403 de sempre.
-    const semPlano = await http('POST', '/api/portal-na-bela/sessao', { portal: 'BLL' }, gratis.token)
-    expect(semPlano.status).toBe(403)
-    expect(semPlano.body.code).toBe('PORTAL_SO_NOS_PLANOS')
+    // Período de teste: abre do mesmo jeito.
+    expect((await http('POST', '/api/portal-na-bela/sessao', { portal: 'BLL' }, gratis.token)).status).toBe(200)
 
     // Sem licitação, o portal é obrigatório e precisa aceitar o navegador da Bela.
     expect((await http('POST', '/api/portal-na-bela/sessao', {}, paga.token)).status).toBe(400)
@@ -167,10 +165,11 @@ rodar('Portal dentro da Bela', () => {
     const auditoria = await prisma.auditLog.findFirst({ where: { companyId: paga.companyId, action: 'PORTAL_NA_BELA_ABERTO' } })
     expect(auditoria).toMatchObject({ entityType: 'portal', entityId: 'BLL', metadata: { modo: 'conferir-acesso', portal: 'BLL' } })
 
-    // Login salvo sem licitação: continua exigindo o segredo do serviço navegador e o plano pago.
+    // Login salvo sem licitação: continua exigindo o segredo do serviço navegador.
     expect((await http('POST', '/api/portal-na-bela/acesso-salvo', { host: 'www.bllcompras.com' }, paga.token)).body.code).toBe('SEGREDO_DO_NAVEGADOR')
     const comSegredo = { 'x-navegador-segredo': SEGREDO }
-    expect((await http('POST', '/api/portal-na-bela/acesso-salvo', { host: 'www.bllcompras.com' }, gratis.token, comSegredo)).status).toBe(403)
+    // No teste, sem acesso salvo: não é recusado pelo plano, só não há login para preencher.
+    expect((await http('POST', '/api/portal-na-bela/acesso-salvo', { host: 'www.bllcompras.com' }, gratis.token, comSegredo)).body.code).not.toBe('PORTAL_SO_NOS_PLANOS')
     const { salvarCredencial } = await import('../../src/services/meusPortais')
     await salvarCredencial(paga.companyId, { portal: 'BLL', login: '11222333000144', senha: 'senha-bll', consentimentoTexto: 'ok' })
     const acesso = await http('POST', '/api/portal-na-bela/acesso-salvo', { host: 'www.bllcompras.com' }, paga.token, comSegredo)

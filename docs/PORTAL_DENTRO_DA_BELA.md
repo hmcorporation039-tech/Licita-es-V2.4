@@ -23,7 +23,7 @@ Por trás, um navegador (Chromium) roda num serviço da Bela. A tela dele é tra
   - Não há gravação da tela.
   - O token da pessoa fica só na memória da sessão.
 - **Só portais de compras.** A página principal só navega para `https://*.gov.br` e para os domínios dos portais de Meus Portais. Imagens, scripts e o CAPTCHA de outros domínios carregam normalmente.
-- **Liberado só nos planos pagos**, e só na licitação marcada como "Vou participar".
+- **Liberado nos planos pagos e no período de teste**; no Pregão com a Bela, só na licitação marcada como "Vou participar".
 
 ## Limites
 
@@ -92,7 +92,7 @@ página Pregão com a Bela ──WebSocket──► serviço navegador (src/nave
 - A leitura do melhor lance e do chat, por enquanto, só existe no Compras.gov.br (os seletores dos outros portais ainda não foram capturados). Nos outros portais, o portal abre, o login é preenchido e a pessoa usa normalmente.
 - `src/navegador/leitor.ts`: injeta nas páginas as **mesmas funções da extensão** (`extensao-bela/lib` e `config.mjs`). Ao ajustar os seletores na extensão, o navegador já usa os novos.
 - `src/navegador/protocolo.ts`: mensagens validadas (zod), a regra de navegação e o mapeamento de teclas.
-- `src/api/routes/portalNaBela.ts`: `GET /config` (ligado? URL? plano) e `POST /sessao` (plano pago, "Vou participar", auditoria `PORTAL_NA_BELA_ABERTO`).
+- `src/api/routes/portalNaBela.ts`: `GET /config` (ligado? URL? plano) e `POST /sessao` ("Vou participar", auditoria `PORTAL_NA_BELA_ABERTO`).
 - `web/src/components/PortalNaBela.tsx`: a tela (canvas), a barra de navegação, o botão Preencher, os arquivos e os diálogos.
 
 ## Riscos conhecidos
