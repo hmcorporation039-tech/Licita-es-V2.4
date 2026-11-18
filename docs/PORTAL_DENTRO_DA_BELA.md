@@ -75,6 +75,15 @@ O Compras.gov.br responde **403 Forbidden** para conexões vindas de fora do Bra
 4. Na **API** (Railway), troque `NAVEGADOR_URL` para `https://licita-es-v2-4.fly.dev`. A Vercel já libera esse endereço; não precisa redeploy do site.
 5. Teste o Compras.gov.br pelo site. Funcionando, o serviço do navegador no Railway pode ser desligado.
 
+### Atualizar o navegador sem computador (GitHub Actions)
+
+O workflow `.github/workflows/navegador-fly.yml` faz o `fly deploy` sozinho quando `src/navegador`, `extensao-bela`, `navegador.Dockerfile` ou `fly.toml` mudam no `main`. Também dá para rodar na mão em **Actions → Navegador da Bela (Fly) → Run workflow**. Ele precisa do segredo `FLY_API_TOKEN`:
+
+1. No painel do Fly (fly.io → app **licita-es-v2-4** → **Tokens**), crie um **Deploy token**.
+2. No GitHub, em **Settings → Secrets and variables → Actions → New repository secret**, crie `FLY_API_TOKEN` com esse valor.
+
+Publicar reinicia o navegador e fecha as sessões abertas: evite rodar durante uma disputa.
+
 Custo: máquina `shared-cpu-1x` com 2 GB ligada o mês todo, cerca de US$ 11/mês (preço do Fly.io em 2026; confira no painel).
 
 ## Arquitetura
