@@ -67,6 +67,7 @@ import {
   type Tom,
 } from '@/components/ui'
 import { ROTULOS_DE_FONTE } from '@/lib/fontes'
+import { EVENTO_ABRIR_ABA } from '@/lib/pedidoDoEdital'
 
 function validDocumentTypes(docs: CompanyDocument[]): Set<string> {
   const now = Date.now()
@@ -244,6 +245,19 @@ export default function TenderDetailPage({ params }: { params: Promise<{ id: str
   const [objetoAberto, setObjetoAberto] = useState(false)
   const [newItemLabel, setNewItemLabel] = useState('')
   const [activeTab, setActiveTab] = useAbaNaUrl<TabId>(ABAS, 'informacoes')
+
+  // "Falar com a Bela" pode pedir uma aba ("abre os itens") sem recarregar a página.
+  useEffect(() => {
+    const aoPedirAba = (e: Event) => {
+      const aba = (e as CustomEvent<string>).detail
+      if ((ABAS as readonly string[]).includes(aba)) {
+        setActiveTab(aba as TabId)
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      }
+    }
+    window.addEventListener(EVENTO_ABRIR_ABA, aoPedirAba)
+    return () => window.removeEventListener(EVENTO_ABRIR_ABA, aoPedirAba)
+  }, [setActiveTab])
 
   const [analysis, setAnalysis] = useState<TenderAnalysis | null>(null)
   const [analyzing, setAnalyzing] = useState(false)

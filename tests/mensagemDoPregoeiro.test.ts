@@ -29,6 +29,10 @@ describe('mensagem do pregoeiro', () => {
     expect(classificarMensagem('Sessão retomada. Vamos prosseguir com o item 3.', EMPRESA)).toMatchObject({ categoria: 'RETOMADA', urgente: true })
   })
 
+  it('aviso de iminência de encerramento (tempo aleatório) é urgente', () => {
+    expect(classificarMensagem('Aviso de iminência de encerramento da etapa de lances. O encerramento ocorrerá em tempo aleatório.', EMPRESA).urgente).toBe(true)
+  })
+
   it('aviso geral não é urgente', () => {
     expect(classificarMensagem('Bom dia a todos, daremos início à fase de lances.', EMPRESA)).toEqual({ categoria: 'AVISO', citaAEmpresa: false, urgente: false })
   })

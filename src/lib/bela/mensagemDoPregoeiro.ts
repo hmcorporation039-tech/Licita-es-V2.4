@@ -72,7 +72,9 @@ export function classificarMensagem(texto: string, empresa: EmpresaParaCitar): M
   const categoria = REGRAS.find(([, re]) => re.test(t))?.[0] ?? 'AVISO'
   const cita = citaAEmpresa(texto, empresa)
   const pedeAcao = categoria === 'CONVOCACAO' || categoria === 'DOCUMENTO' || categoria === 'NEGOCIACAO'
-  const mudaASessao = categoria === 'SUSPENSAO' || categoria === 'RETOMADA'
+  // Aviso de que a etapa de lances vai fechar (tempo aleatório): urgente, a disputa pode acabar a qualquer momento.
+  const faseFinal = /\b(iminencia|tempo aleatorio|aleatoriamente|randomic\w*|prorrogacao automatica|encerramento (da etapa|dos lances|iminente)|fechamento iminente)\b/.test(t)
+  const mudaASessao = categoria === 'SUSPENSAO' || categoria === 'RETOMADA' || faseFinal
   return { categoria, citaAEmpresa: cita, urgente: (pedeAcao && cita) || mudaASessao }
 }
 

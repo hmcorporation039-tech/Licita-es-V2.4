@@ -91,6 +91,8 @@ export default function PortalNaBela({
   portal: portalFixo,
   abrirJa = false,
   aoFechar,
+  aoPoderPreencher,
+  aoConfirmarMeuLance,
 }: {
   /** Sem licitação: modo "conferir acesso" (Meus Portais). */
   tenderId?: string
@@ -102,6 +104,10 @@ export default function PortalNaBela({
   abrirJa?: boolean
   /** Modo "conferir acesso": some com o painel. */
   aoFechar?: () => void
+  /** Avisa a página se dá para escrever o lance no portal aberto aqui (vigia do lance). */
+  aoPoderPreencher?: (preencher: ((valor: number, alvo: string) => void) | null) => void
+  /** O melhor lance lido é o valor que a Bela escreveu: a pessoa confirma que foi o dela. */
+  aoConfirmarMeuLance?: (alvo: string, valor: number) => void
 }) {
   const conferir = !tenderId
   const [config, setConfig] = useState<Config | null>(null)
@@ -120,6 +126,9 @@ export default function PortalNaBela({
   const [nomeAberto, setNomeAberto] = useState<string | null>(null)
   const [login, setLogin] = useState<{ ok: boolean; mensagem: string } | null>(null)
   const [extensao, setExtensao] = useState<string | null>(null)
+  // Último valor escrito no campo: se ele virar o melhor lance, provavelmente foi você que enviou.
+  const ultimoPreenchido = useRef<{ valor: number; alvo: string } | null>(null)
+  const [foiMeu, setFoiMeu] = useState<{ valor: number; alvo: string } | null>(null)
 
   // A extensão marca a página logo depois de carregar: confere algumas vezes.
   useEffect(() => {
@@ -188,6 +197,10 @@ export default function PortalNaBela({
           break
         case 'leitura':
           setMelhorLance(m.melhorLance)
+          if (ultimoPreenchido.current && m.melhorLance !== null && Math.abs(m.melhorLance - ultimoPreenchido.current.valor) < 0.005) {
+            setFoiMeu(ultimoPreenchido.current)
+            ultimoPreenchido.current = null
+          }
           // O painel da Bela (sugestão, piso, chat) é recalculado na API: atualiza sem martelar.
           if (atualizarPainel.current) clearTimeout(atualizarPainel.current)
           atualizarPainel.current = setTimeout(() => aoLerRef.current?.(), 800)
@@ -352,6 +365,23 @@ export default function PortalNaBela({
 
   const instrucao = robo?.instrucoes.find((i) => i.acao === 'dar' && typeof i.valor === 'number')
 
+  const preencherLance = useCallback(
+    (valor: number, alvo: string) => {
+      ultimoPreenchido.current = { valor, alvo }
+      setFoiMeu(null)
+      mandar({ t: 'preencher-lance', valor })
+    },
+    [mandar],
+  )
+
+  const podePreencher = !conferir && estado === 'aberto' && robo?.disponivel === true
+  const aoPoderPreencherRef = useRef(aoPoderPreencher)
+  aoPoderPreencherRef.current = aoPoderPreencher
+  useEffect(() => {
+    aoPoderPreencherRef.current?.(podePreencher ? preencherLance : null)
+  }, [podePreencher, preencherLance])
+  useEffect(() => () => aoPoderPreencherRef.current?.(null), [])
+
   if (!config) return null
   const portalEscolhido = config.portais.find((p) => p.id === escolhido)
   const nomeEscolhido = portalEscolhido?.nome ?? 'o portal'
@@ -506,7 +536,7 @@ export default function PortalNaBela({
           </span>
         )}
         {!conferir && robo?.disponivel && instrucao?.valor ? (
-          <Button size="sm" variant="primary" icon={PencilLine} onClick={() => mandar({ t: 'preencher-lance', valor: instrucao.valor })} title="Escreve no campo de lance do portal. Quem envia é você.">
+          <Button size="sm" variant="primary" icon={PencilLine} onClick={() => preencherLance(instrucao.valor as number, instrucao.alvo)} title="Escreve no campo de lance do portal. Quem envia é você.">
             Preencher {brl(instrucao.valor)}
           </Button>
         ) : null}
@@ -567,6 +597,31 @@ export default function PortalNaBela({
       {aviso && <Notice tone="info">{aviso}</Notice>}
       {login && <Notice tone={login.ok ? 'ok' : 'warn'}>{login.mensagem}</Notice>}
       {preenchimento && <Notice tone={preenchimento.ok ? 'ok' : 'warn'}>{preenchimento.texto}</Notice>}
+      {foiMeu && aoConfirmarMeuLance && (
+        <Notice
+          tone="ok"
+          title={`O melhor lance agora é ${brl(foiMeu.valor)}, o valor que a Bela escreveu`}
+          action={
+            <span className="flex gap-2">
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={() => {
+                  aoConfirmarMeuLance(foiMeu.alvo, foiMeu.valor)
+                  setFoiMeu(null)
+                }}
+              >
+                Sim, foi o meu
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => setFoiMeu(null)}>
+                Não
+              </Button>
+            </span>
+          }
+        >
+          Foi o seu lance? Confirmando, a Bela sabe que você está na frente e só avisa se cobrirem.
+        </Notice>
+      )}
       {pedidoDeArquivo && (
         <Notice tone="warn" title="O portal pediu um arquivo">
           <div className="flex flex-wrap items-center gap-2">
