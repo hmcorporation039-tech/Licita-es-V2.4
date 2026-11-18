@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { CheckCheck, MessageSquareWarning } from 'lucide-react'
 import { api } from '@/lib/api'
 import { Button, Notice, Panel, StatusTag, cx } from '@/components/ui'
@@ -30,9 +30,11 @@ function hora(iso: string) {
 
 // Chat do pregoeiro lido pela extensão da Bela na sala de disputa. Atualiza sozinho
 // a cada 15 s enquanto a página está aberta.
-export default function ChatDoPregoeiro({ tenderId }: { tenderId: string }) {
+export default function ChatDoPregoeiro({ tenderId, aoAtualizar }: { tenderId: string; aoAtualizar?: (mensagens: MensagemDoPregoeiro[]) => void }) {
   const [chat, setChat] = useState<RespostaDoChat | null>(null)
   const [marcando, setMarcando] = useState(false)
+  const aoAtualizarRef = useRef(aoAtualizar)
+  aoAtualizarRef.current = aoAtualizar
 
   useEffect(() => {
     let cancelado = false
@@ -40,7 +42,9 @@ export default function ChatDoPregoeiro({ tenderId }: { tenderId: string }) {
       api
         .get<RespostaDoChat>(`/api/tenders/${tenderId}/pregao/mensagens`)
         .then((r) => {
-          if (!cancelado) setChat(r)
+          if (cancelado) return
+          setChat(r)
+          aoAtualizarRef.current?.(r.mensagens)
         })
         .catch(() => undefined)
     void ler()

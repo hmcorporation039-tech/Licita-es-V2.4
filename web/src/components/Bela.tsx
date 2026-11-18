@@ -3,11 +3,26 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
 import { ArrowRight, Mic, Search, Square, X } from 'lucide-react'
 import { api, ApiRequestError } from '@/lib/api'
-import type { FiltrosDaBela, Paginated, PedidoDaBela, Tender } from '@/lib/types'
+import type { FiltrosDaBela, Paginated, PedidoDaBela, Tender, TenderAnalysis } from '@/lib/types'
 import { MODALIDADE_OPTIONS } from '@/lib/modalidades'
-import { dataDaLicitacao } from '@/lib/datas'
+import { dataDaLicitacao, formatarDataDaLicitacao } from '@/lib/datas'
+import {
+  interpretarPedidoDoEdital,
+  licitacaoDaPagina,
+  respostaDoPrazo,
+  respostaDoResumo,
+  respostaDosDocumentos,
+  respostaDosRiscos,
+  respostaDoValor,
+  respostaSemAnalise,
+  EVENTO_ABRIR_ABA,
+  type DestinoNoEdital,
+  type PedidoDoEdital,
+  type Resposta,
+} from '@/lib/pedidoDoEdital'
 import { rotuloDaFonte, variadasPorFonte } from '@/lib/fontes'
 import { useEscuta, useFalaDaBela } from '@/hooks/useBela'
 import { Button, Checkbox, cx, FormError, Input, LinkButton, Notice, Prazo, StatusTag } from '@/components/ui'
@@ -25,6 +40,7 @@ type EstadoDaBela =
   | { fase: 'desconhecida'; pedido: string; resumo: string }
   | { fase: 'resultado'; pedido: string; filtros: FiltrosDaBela; total: number; itens: Tender[]; porFonte: ContagemPorFonte[] }
   | { fase: 'erro'; pedido: string; mensagem: string }
+  | { fase: 'edital'; pedido: string; resposta: Resposta }
 
 type TenderComEncerramento = Tender & { encerramentoAt?: string | null }
 
@@ -215,6 +231,61 @@ export function BotaoDaBela({ onAbrir, className, rotulo = 'Bela', detalhe }: { 
   )
 }
 
+function abrirAba(aba: string) {
+  window.dispatchEvent(new CustomEvent(EVENTO_ABRIR_ABA, { detail: aba }))
+}
+
+function destinoDaPagina(destino: Extract<DestinoNoEdital, { tipo: 'pagina' }>, id: string): string {
+  return destino.caminho === 'pregao' ? `/tenders/${id}/pregao` : `/escolhidas/${id}`
+}
+
+async function lerAnalise(id: string): Promise<TenderAnalysis | null> {
+  try {
+    return await api.get<TenderAnalysis>(`/api/tenders/${id}/analysis`)
+  } catch (e) {
+    if (e instanceof ApiRequestError && e.status === 404) return null
+    throw e
+  }
+}
+
+function respostaDaAnaliseEmAndamento(a: TenderAnalysis | null): Resposta | null {
+  if (a?.status === 'PENDING' || a?.status === 'RUNNING') {
+    const texto = 'A análise deste edital está sendo feita agora. Em alguns minutos eu já consigo responder.'
+    return { texto, lista: [], fala: texto, verMais: { tipo: 'aba', aba: 'analise', rotulo: 'Análise' } }
+  }
+  return null
+}
+
+async function responderSobreOEdital(pedido: Exclude<PedidoDoEdital, { tipo: 'abrir' }>, id: string): Promise<Resposta> {
+  if (pedido.tipo === 'resumo' || pedido.tipo === 'documentos' || pedido.tipo === 'riscos') {
+    const [analise, tender] = await Promise.all([lerAnalise(id), pedido.tipo === 'resumo' ? api.get<Tender>(`/api/tenders/${id}`) : Promise.resolve(null)])
+    const emAndamento = respostaDaAnaliseEmAndamento(analise)
+    if (emAndamento) return emAndamento
+    const r = analise?.status === 'DONE' ? analise.resultado : null
+    if (!r) return respostaSemAnalise(pedido.tipo)
+    if (pedido.tipo === 'resumo') return respostaDoResumo(r, tender?.objetoResumido || tender?.objeto || '')
+    if (pedido.tipo === 'documentos') return respostaDosDocumentos(r)
+    return respostaDosRiscos(r)
+  }
+  const [tender, analise] = await Promise.all([api.get<TenderComEncerramento>(`/api/tenders/${id}`), lerAnalise(id).catch(() => null)])
+  const r = analise?.status === 'DONE' ? analise.resultado : null
+  if (pedido.tipo === 'valor') {
+    const valor = tender.valorEstimado !== null ? Number(tender.valorEstimado) : null
+    return respostaDoValor(valor !== null && Number.isFinite(valor) ? valor : null, r?.valorEstimado ?? null)
+  }
+  const fimBruto = tender.encerramentoAt ?? null
+  return respostaDoPrazo(
+    {
+      fim: fimBruto ? new Date(fimBruto) : null,
+      fimTexto: fimBruto ? formatarDataDaLicitacao(fimBruto, tender.fonte) : null,
+      abertura: tender.aberturaAt ? new Date(tender.aberturaAt) : null,
+      aberturaTexto: tender.aberturaAt ? formatarDataDaLicitacao(tender.aberturaAt, tender.fonte) : null,
+      sessaoDaAnalise: r?.dataSessao ?? null,
+    },
+    new Date(),
+  )
+}
+
 export default function Bela({ aberta, onFechar }: { aberta: boolean; onFechar: () => void }) {
   const ref = useRef<HTMLDialogElement>(null)
   const campo = useRef<HTMLInputElement>(null)
@@ -226,6 +297,9 @@ export default function Bela({ aberta, onFechar }: { aberta: boolean; onFechar: 
   const fala = useFalaDaBela()
   const { cancelar: cancelarEscuta } = escuta
   const { calar } = fala
+  const pathname = usePathname()
+  const router = useRouter()
+  const licitacaoAberta = licitacaoDaPagina(pathname)
 
   useEffect(() => {
     const dialogo = ref.current
@@ -249,6 +323,23 @@ export default function Bela({ aberta, onFechar }: { aberta: boolean; onFechar: 
     const numero = ++ultimaBusca.current
     setEstado({ fase: 'pensando', pedido })
     try {
+      const sobreOEdital = licitacaoAberta ? interpretarPedidoDoEdital(pedido) : null
+      if (licitacaoAberta && sobreOEdital) {
+        if (sobreOEdital.tipo === 'abrir') {
+          const { destino } = sobreOEdital
+          fala.dizer(`Abrindo ${destino.rotulo}.`)
+          setEstado({ fase: 'ocioso' })
+          onFechar()
+          if (destino.tipo === 'aba') abrirAba(destino.aba)
+          else router.push(destinoDaPagina(destino, licitacaoAberta))
+          return
+        }
+        const resposta = await responderSobreOEdital(sobreOEdital, licitacaoAberta)
+        if (numero !== ultimaBusca.current) return
+        setEstado({ fase: 'edital', pedido, resposta })
+        fala.dizer(resposta.fala)
+        return
+      }
       const interpretado = await api.post<PedidoDaBela>('/api/bela/interpretar', { texto: pedido, contexto: 'busca' })
       if (numero !== ultimaBusca.current) return
       if (interpretado.acao !== 'buscar') {
@@ -311,7 +402,9 @@ export default function Bela({ aberta, onFechar }: { aberta: boolean; onFechar: 
                   Bela
                 </h2>
                 <p id="bela-descricao" className="text-sm text-muted">
-                  Peça uma busca de licitações falando ou digitando.
+                  {licitacaoAberta
+                    ? 'Pergunte sobre esta licitação (“me resume esse edital”, “que documentos pede?”) ou peça uma busca.'
+                    : 'Peça uma busca de licitações falando ou digitando.'}
                 </p>
               </div>
             </div>
@@ -333,7 +426,7 @@ export default function Bela({ aberta, onFechar }: { aberta: boolean; onFechar: 
                 {escuta.ouvindo ? 'Ouvindo… toque para parar' : 'Toque e fale'}
               </Button>
               <p aria-live="polite" className="text-sm text-ink-2 empty:hidden">
-                {escuta.ouvindo ? escuta.parcial || 'Pode falar. Ex.: “pregão de móveis em Brasília”.' : ''}
+                {escuta.ouvindo ? escuta.parcial || (licitacaoAberta ? 'Pode falar. Ex.: “me resume esse edital”.' : 'Pode falar. Ex.: “pregão de móveis em Brasília”.') : ''}
               </p>
               <FormError>{escuta.erro}</FormError>
             </div>
@@ -349,7 +442,7 @@ export default function Bela({ aberta, onFechar }: { aberta: boolean; onFechar: 
               value={texto}
               maxLength={LIMITE_DO_PEDIDO}
               onChange={(e) => setTexto(e.target.value)}
-              placeholder={`ou digite: ${EXEMPLO}`}
+              placeholder={`ou digite: ${licitacaoAberta ? 'me resume esse edital' : EXEMPLO}`}
               aria-label="Pedido para a Bela"
               enterKeyHint="search"
               className="h-11! min-w-0 flex-1 sm:h-10!"
@@ -365,14 +458,44 @@ export default function Bela({ aberta, onFechar }: { aberta: boolean; onFechar: 
 
           {estado.fase === 'pensando' && (
             <p role="status" className="text-sm text-muted">
-              Procurando “{estado.pedido}”…
+              {licitacaoAberta ? 'Pensando em' : 'Procurando'} “{estado.pedido}”…
             </p>
           )}
           {estado.fase === 'desconhecida' && <Notice tone="warn">{estado.resumo}</Notice>}
           {estado.fase === 'erro' && <Notice tone="danger">{estado.mensagem}</Notice>}
           {estado.fase === 'resultado' && <ResultadosDaBusca estado={estado} onAbrir={onFechar} />}
+          {estado.fase === 'edital' && (
+            <RespostaSobreOEdital
+              resposta={estado.resposta}
+              onVerMais={(destino) => {
+                onFechar()
+                if (destino.tipo === 'aba') abrirAba(destino.aba)
+                else if (licitacaoAberta) router.push(destinoDaPagina(destino, licitacaoAberta))
+              }}
+            />
+          )}
         </div>
       )}
     </dialog>
+  )
+}
+
+function RespostaSobreOEdital({ resposta, onVerMais }: { resposta: Resposta; onVerMais: (destino: DestinoNoEdital) => void }) {
+  return (
+    <div role="status" className="flex flex-col gap-3 rounded-xl border border-accent-line bg-accent-soft p-4 text-sm text-ink">
+      <p className="leading-relaxed">{resposta.texto}</p>
+      {resposta.lista.length > 0 && (
+        <ul className="flex list-disc flex-col gap-1.5 pl-5 text-ink-2">
+          {resposta.lista.map((item, i) => (
+            <li key={i}>{item}</li>
+          ))}
+        </ul>
+      )}
+      {resposta.verMais && (
+        <Button size="sm" variant="secondary" icon={ArrowRight} onClick={() => onVerMais(resposta.verMais as DestinoNoEdital)} className="self-start">
+          Ver em {resposta.verMais.rotulo}
+        </Button>
+      )}
+    </div>
   )
 }

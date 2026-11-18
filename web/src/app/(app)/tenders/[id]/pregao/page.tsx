@@ -22,6 +22,8 @@ import {
 import { useRequireSession } from "@/hooks/useRequireSession";
 import ChatDoPregoeiro from "@/components/ChatDoPregoeiro";
 import PortalNaBela from "@/components/PortalNaBela";
+import VigiaDoLance from "@/components/VigiaDoLance";
+import { faseFinalPeloChat } from "@/lib/vigiaDoLance";
 import { useEscuta, useFalaDaBela } from "@/hooks/useBela";
 import { api, ApiRequestError } from "@/lib/api";
 import { formatarData } from "@/lib/datas";
@@ -972,6 +974,25 @@ export default function PregaoComABelaPage({
   const [vencedores, setVencedores] = useState<PrecosVencedoresResposta | null>(
     null,
   );
+  const [preencherNoPortal, setPreencherNoPortal] = useState<
+    ((valor: number, alvo: string) => void) | null
+  >(null);
+  const [faseFinalDoChat, setFaseFinalDoChat] = useState(false);
+  const encerradoNoPainel = Boolean(painel?.config.encerradoEm);
+
+  // Painel sempre atualizado durante a disputa (a extensão do Chrome também grava o
+  // melhor lance): o vigia do lance precisa da sugestão nova sem ninguém recarregar.
+  useEffect(() => {
+    if (!user || encerradoNoPainel) return;
+    const timer = setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      api
+        .get<PainelDoPregao>(`/api/tenders/${id}/pregao`)
+        .then(setPainel)
+        .catch(() => undefined);
+    }, 10_000);
+    return () => clearInterval(timer);
+  }, [user, id, encerradoNoPainel]);
 
   useEffect(() => {
     if (!user) return;
@@ -1296,13 +1317,29 @@ export default function PregaoComABelaPage({
         A Bela não dá lances: ela calcula e sugere. Você dá o lance no portal.
       </Notice>
 
+      <VigiaDoLance
+        instrucoes={painelAtual.robo.instrucoes}
+        faseFinalDoChat={faseFinalDoChat}
+        encerrado={encerrado}
+        preencher={preencherNoPortal}
+        aoJaEnviei={(destino, valor) => void registrarMeuLanceEm(destino, valor)}
+        dizer={fala.dizer}
+      />
+
       <PortalNaBela
         tenderId={id}
         robo={painelAtual.robo}
         aoLer={() => setTentativa((n) => n + 1)}
+        aoPoderPreencher={(fn) => setPreencherNoPortal(() => fn)}
+        aoConfirmarMeuLance={(destino, valor) => void registrarMeuLanceEm(destino, valor)}
       />
 
-      <ChatDoPregoeiro tenderId={id} />
+      <ChatDoPregoeiro
+        tenderId={id}
+        aoAtualizar={(mensagens) =>
+          setFaseFinalDoChat(faseFinalPeloChat(mensagens, Date.now()))
+        }
+      />
 
       {painelAtual.disputa.vedacaoARobo && (
         <Notice
