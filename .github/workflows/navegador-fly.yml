@@ -1,0 +1,57 @@
+name: Navegador da Bela (Fly)
+
+# Publica o navegador da Bela (src/navegador) no Fly.io, em São Paulo, sem precisar
+# de computador: roda quando o código do navegador muda no main, ou pelo botão
+# "Run workflow" em Actions. Precisa do segredo FLY_API_TOKEN (token de deploy do
+# app licita-es-v2-4, criado no painel do Fly) em Settings → Secrets → Actions.
+#
+# Atenção: publicar reinicia o navegador e fecha as sessões abertas. Por isso só roda
+# quando arquivos do navegador mudam, e não a cada mudança da API ou do site.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/navegador/**'
+      - 'extensao-bela/**'
+      - 'navegador.Dockerfile'
+      - 'fly.toml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: navegador-fly
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Conferir o segredo do Fly
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          if [ -z "$FLY_API_TOKEN" ]; then
+            echo "::error::Falta o segredo FLY_API_TOKEN (Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Publicar no Fly
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: flyctl deploy --remote-only
+
+      - name: Conferir se voltou no ar
+        run: |
+          for i in $(seq 1 12); do
+            if curl -fsS https://licita-es-v2-4.fly.dev/saude; then echo; echo "Navegador no ar."; exit 0; fi
+            sleep 10
+          done
+          echo "::error::O navegador não respondeu em /saude depois do deploy."
+          exit 1
