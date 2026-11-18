@@ -99,11 +99,18 @@ export function criarServidor(op: OpcoesDoServidor) {
 
       if (m.t === 'entrar') {
         if (sessao || entrando) return
+        // Sem licitação (conferir acesso), o portal tem de vir escolhido.
+        if (!m.tenderId && !m.portal) {
+          enviar(ws, { t: 'erro', codigo: 'SEM_PORTAL', mensagem: 'Escolha o portal para abrir.' })
+          ws.close(4002, 'Não autorizado')
+          return
+        }
         entrando = true
         try {
           const aut = await op.api.autorizar(m.token, m.tenderId, m.portal)
           const existente = sessoes.get(aut.userId)
-          if (existente && !existente.fechada && existente.tenderId === aut.tenderId && existente.portal === aut.portal) {
+          const tenderDaSessao = aut.tenderId ?? null
+          if (existente && !existente.fechada && existente.tenderId === tenderDaSessao && existente.portal === aut.portal) {
             sessao = existente
           } else {
             if (existente) await existente.encerrar('Você abriu outro portal ou outra licitação.')
@@ -113,7 +120,7 @@ export function criarServidor(op: OpcoesDoServidor) {
               return
             }
             const destino = { portal: aut.portal, nomeDoPortal: aut.nomeDoPortal, inicio: aut.inicio, hostsPermitidos: aut.hostsPermitidos ?? [] }
-            const nova = new SessaoDoPortal(aut.userId, aut.tenderId, m.token, op.api, destino, (s) => {
+            const nova = new SessaoDoPortal(aut.userId, tenderDaSessao, m.token, op.api, destino, (s) => {
               if (sessoes.get(s.userId) === s) sessoes.delete(s.userId)
             }, op.limites ?? LIMITES_PADRAO)
             sessoes.set(aut.userId, nova)

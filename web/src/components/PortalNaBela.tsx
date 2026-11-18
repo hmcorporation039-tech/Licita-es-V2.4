@@ -5,6 +5,9 @@
 // com a Bela. A pessoa usa o portal normalmente (clica, digita, resolve o CAPTCHA). Quando
 // ela pede, a Bela escreve o login salvo em Meus Portais no formulário e o lance sugerido
 // no campo. Quem clica em "Entrar" e em enviar o lance é sempre a pessoa.
+//
+// Sem tenderId é o modo "conferir acesso" (Meus Portais): o portal vem fixo, a Bela não
+// lê a disputa nem preenche lance; serve só para a pessoa conferir se o login funciona.
 
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent, type MouseEvent } from 'react'
 import { ArrowLeft, ArrowRight, ExternalLink, Home, KeyRound, Lock, Monitor, PencilLine, RotateCw, X } from 'lucide-react'
@@ -81,7 +84,26 @@ function avisarExtensao(tenderId: string) {
   }
 }
 
-export default function PortalNaBela({ tenderId, robo, aoLer }: { tenderId: string; robo: RoboDoPregao; aoLer: () => void }) {
+export default function PortalNaBela({
+  tenderId,
+  robo,
+  aoLer,
+  portal: portalFixo,
+  abrirJa = false,
+  aoFechar,
+}: {
+  /** Sem licitação: modo "conferir acesso" (Meus Portais). */
+  tenderId?: string
+  robo?: RoboDoPregao
+  aoLer?: () => void
+  /** Portal fixo (modo "conferir acesso"). */
+  portal?: string
+  /** Abre o portal assim que a configuração chega (quando liberado). */
+  abrirJa?: boolean
+  /** Modo "conferir acesso": some com o painel. */
+  aoFechar?: () => void
+}) {
+  const conferir = !tenderId
   const [config, setConfig] = useState<Config | null>(null)
   const [estado, setEstado] = useState<Estado>('fechado')
   const [erro, setErro] = useState<string | null>(null)
@@ -94,7 +116,7 @@ export default function PortalNaBela({ tenderId, robo, aoLer }: { tenderId: stri
   const [respostaDoDialogo, setRespostaDoDialogo] = useState('')
   const [preenchimento, setPreenchimento] = useState<{ ok: boolean; texto: string } | null>(null)
   const [focado, setFocado] = useState(false)
-  const [escolhido, setEscolhido] = useState('COMPRASNET')
+  const [escolhido, setEscolhido] = useState(portalFixo ?? 'COMPRASNET')
   const [nomeAberto, setNomeAberto] = useState<string | null>(null)
   const [login, setLogin] = useState<{ ok: boolean; mensagem: string } | null>(null)
   const [extensao, setExtensao] = useState<string | null>(null)
@@ -123,10 +145,10 @@ export default function PortalNaBela({ tenderId, robo, aoLer }: { tenderId: stri
 
   useEffect(() => {
     api
-      .get<Config>(`/api/portal-na-bela/config?tenderId=${encodeURIComponent(tenderId)}`)
+      .get<Config>(tenderId ? `/api/portal-na-bela/config?tenderId=${encodeURIComponent(tenderId)}` : '/api/portal-na-bela/config')
       .then((c) => {
         setConfig(c)
-        if (c.portalSugerido) setEscolhido(c.portalSugerido)
+        if (c.portalSugerido && tenderId) setEscolhido(c.portalSugerido)
       })
       .catch(() => setConfig({ disponivel: false, url: null, planoGratuito: false, portais: [], portalSugerido: null }))
   }, [tenderId])
@@ -168,7 +190,7 @@ export default function PortalNaBela({ tenderId, robo, aoLer }: { tenderId: stri
           setMelhorLance(m.melhorLance)
           // O painel da Bela (sugestão, piso, chat) é recalculado na API: atualiza sem martelar.
           if (atualizarPainel.current) clearTimeout(atualizarPainel.current)
-          atualizarPainel.current = setTimeout(() => aoLerRef.current(), 800)
+          atualizarPainel.current = setTimeout(() => aoLerRef.current?.(), 800)
           break
         case 'lance-preenchido':
           setPreenchimento({ ok: m.ok, texto: m.ok ? `Lance ${m.texto} escrito no campo. Confira e clique em enviar no portal.` : (m.motivo ?? 'Não deu para preencher.') })
@@ -216,7 +238,7 @@ export default function PortalNaBela({ tenderId, robo, aoLer }: { tenderId: stri
     const c = new WebSocket(`${config.url}/sessao`)
     c.binaryType = 'blob'
     ws.current = c
-    c.onopen = () => c.send(JSON.stringify({ t: 'entrar', token, tenderId, portal: escolhido }))
+    c.onopen = () => c.send(JSON.stringify({ t: 'entrar', token, ...(tenderId ? { tenderId } : {}), portal: escolhido }))
     c.onmessage = (ev) => {
       if (typeof ev.data === 'string') {
         try {
@@ -234,6 +256,15 @@ export default function PortalNaBela({ tenderId, robo, aoLer }: { tenderId: stri
     }
     c.onerror = () => setErro('Não consegui conectar ao navegador da Bela. Tente de novo em instantes.')
   }, [config, tenderId, escolhido, tratar, desenhar])
+
+  // Modo "conferir acesso": a pessoa já escolheu abrir na linha do portal.
+  const abriuSozinho = useRef(false)
+  useEffect(() => {
+    if (!abrirJa || abriuSozinho.current || !config?.disponivel || config.planoGratuito) return
+    if (config.portais.find((p) => p.id === escolhido)?.abreAqui === false) return
+    abriuSozinho.current = true
+    abrir()
+  }, [abrirJa, config, escolhido, abrir])
 
   // Mantém a conexão viva e fecha ao sair da página (a sessão espera 2 minutos por uma reconexão).
   useEffect(() => {
@@ -314,11 +345,64 @@ export default function PortalNaBela({ tenderId, robo, aoLer }: { tenderId: stri
     ws.current?.close()
   }
 
-  const instrucao = robo.instrucoes.find((i) => i.acao === 'dar' && typeof i.valor === 'number')
+  function fecharTudo() {
+    fechar()
+    aoFechar?.()
+  }
+
+  const instrucao = robo?.instrucoes.find((i) => i.acao === 'dar' && typeof i.valor === 'number')
 
   if (!config) return null
   const portalEscolhido = config.portais.find((p) => p.id === escolhido)
   const nomeEscolhido = portalEscolhido?.nome ?? 'o portal'
+
+  if (estado === 'fechado' && conferir) {
+    return (
+      <Panel
+        title={
+          <span className="inline-flex items-center gap-2">
+            <Monitor size={16} aria-hidden /> {nomeEscolhido} dentro da Bela
+          </span>
+        }
+        description="Confira se o seu login funciona. Nada fica guardado ao fechar."
+        actions={
+          aoFechar ? (
+            <Button size="sm" variant="ghost" icon={X} onClick={aoFechar}>
+              Fechar
+            </Button>
+          ) : undefined
+        }
+      >
+        <div className="flex flex-col gap-3">
+          {erro && <Notice tone="danger">{erro}</Notice>}
+          {aviso && <Notice tone="info">{aviso}</Notice>}
+          {!config.disponivel ? (
+            <Notice tone="info">O portal dentro da Bela ainda não foi ativado nesta instalação. Enquanto isso, use a extensão Bela na disputa.</Notice>
+          ) : config.planoGratuito ? (
+            <Notice tone="info">
+              O portal dentro da Bela é liberado nos planos pagos. <TextLink href="/conta">Ver planos</TextLink>
+            </Notice>
+          ) : portalEscolhido && !portalEscolhido.abreAqui ? (
+            <>
+              <Notice tone="info">Este portal não aceita o navegador da Bela. Abra no seu Chrome.</Notice>
+              <a href={portalEscolhido.endereco} target="_blank" rel="noopener noreferrer" className={buttonClasses('primary', 'md', 'self-start')}>
+                <ExternalLink size={16} aria-hidden /> Abrir no Chrome
+              </a>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-ink-2">
+                Na tela de login, o botão &quot;Preencher meu login&quot; escreve o usuário e a senha salvos aqui. A senha vai direto para o navegador da Bela e não aparece nesta página. O CAPTCHA e o clique em Entrar são seus.
+              </p>
+              <Button variant="primary" icon={Monitor} onClick={abrir} className="self-start">
+                Abrir o {nomeEscolhido} aqui
+              </Button>
+            </>
+          )}
+        </div>
+      </Panel>
+    )
+  }
 
   if (estado === 'fechado') {
     return (
@@ -372,7 +456,7 @@ export default function PortalNaBela({ tenderId, robo, aoLer }: { tenderId: stri
                     href={portalEscolhido.endereco}
                     target="_blank"
                     rel="noopener noreferrer"
-                    onClick={() => avisarExtensao(tenderId)}
+                    onClick={() => tenderId && avisarExtensao(tenderId)}
                     className={buttonClasses('primary', 'md', 'self-start')}
                   >
                     <ExternalLink size={16} aria-hidden /> Abrir o {portalEscolhido.nome} com a Bela
@@ -412,7 +496,7 @@ export default function PortalNaBela({ tenderId, robo, aoLer }: { tenderId: stri
           <Lock size={12} aria-hidden className="shrink-0" />
           {estado === 'conectando' ? `Abrindo o ${nomeEscolhido}…` : (pagina?.host ?? nomeAberto ?? '…')}
         </span>
-        {pagina?.portal && <StatusTag tone="accent">Bela lendo a disputa</StatusTag>}
+        {!conferir && pagina?.portal && <StatusTag tone="accent">Bela lendo a disputa</StatusTag>}
         <Button size="sm" variant="secondary" icon={KeyRound} onClick={() => mandar({ t: 'preencher-login' })} title="Escreve o usuário e a senha de Meus Portais na tela de login. Quem clica em Entrar é você.">
           Preencher meu login
         </Button>
@@ -421,19 +505,41 @@ export default function PortalNaBela({ tenderId, robo, aoLer }: { tenderId: stri
             Melhor lance: <strong className="font-mono text-ink">{brl(melhorLance)}</strong>
           </span>
         )}
-        {robo.disponivel && instrucao?.valor ? (
+        {!conferir && robo?.disponivel && instrucao?.valor ? (
           <Button size="sm" variant="primary" icon={PencilLine} onClick={() => mandar({ t: 'preencher-lance', valor: instrucao.valor })} title="Escreve no campo de lance do portal. Quem envia é você.">
             Preencher {brl(instrucao.valor)}
           </Button>
         ) : null}
-        <Button size="sm" variant="secondary" icon={X} onClick={fechar}>
+        <Button size="sm" variant="secondary" icon={X} onClick={conferir ? fecharTudo : fechar}>
           Fechar portal
         </Button>
       </div>
 
-      <EtapaAtual lendo={!!pagina?.portal} />
+      {conferir ? (
+        <p className="rounded border border-accent-line bg-accent-soft px-3 py-2 text-sm text-ink">
+          Entre com o seu login para conferir o acesso. O CAPTCHA e o clique em Entrar são seus.
+        </p>
+      ) : (
+        <EtapaAtual lendo={!!pagina?.portal} />
+      )}
       {erro && <Notice tone="danger">{erro}</Notice>}
-      {pagina?.recusado && (
+      {pagina?.recusado && conferir && (
+        <Notice tone="warn" title={`O ${nomeAberto ?? 'portal'} não aceitou o navegador da Bela`}>
+          <p>Este portal bloqueia o acesso por aqui (erro {pagina.recusado}). Confira o seu login numa aba normal do Chrome.</p>
+          {(portalEscolhido?.endereco || /^https:\/\//i.test(pagina.url)) && (
+            <a
+              href={portalEscolhido?.endereco || pagina.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={fecharTudo}
+              className={buttonClasses('primary', 'sm', 'mt-2 self-start')}
+            >
+              <ExternalLink size={14} aria-hidden /> Abrir no Chrome
+            </a>
+          )}
+        </Notice>
+      )}
+      {pagina?.recusado && !conferir && (
         <Notice tone="warn" title={`O ${nomeAberto ?? 'portal'} não aceitou o navegador da Bela`}>
           <p>Este portal bloqueia o acesso por aqui (erro {pagina.recusado}). Faça assim:</p>
           <ol className="ml-4 list-decimal">
@@ -448,7 +554,7 @@ export default function PortalNaBela({ tenderId, robo, aoLer }: { tenderId: stri
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => {
-                avisarExtensao(tenderId)
+                if (tenderId) avisarExtensao(tenderId)
                 fechar()
               }}
               className={buttonClasses('primary', 'sm', 'mt-2 self-start')}
@@ -536,7 +642,8 @@ export default function PortalNaBela({ tenderId, robo, aoLer }: { tenderId: stri
         {estado === 'conectando' && <p className="absolute inset-0 grid place-items-center text-sm text-muted">Abrindo o portal…</p>}
       </div>
       <p className="text-2xs text-muted">
-        Clique na tela para usar o teclado nela. Você está no portal oficial, num navegador da Bela; nada é guardado ao fechar. A Bela só lê a disputa e escreve o lance quando você pede.
+        Clique na tela para usar o teclado nela. Você está no portal oficial, num navegador da Bela; nada é guardado ao fechar.{' '}
+        {conferir ? 'Aqui a Bela não lê disputa nem preenche lance.' : 'A Bela só lê a disputa e escreve o lance quando você pede.'}
       </p>
     </section>
   )

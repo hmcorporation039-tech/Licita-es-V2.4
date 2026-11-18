@@ -101,10 +101,11 @@ describe.skipIf(!temChromium)('portal dentro da Bela (Chromium real)', () => {
   const api: ApiDaBela = {
     autorizar: async (token, tenderId) => {
       if (token !== 'token-valido-123') throw Object.assign(new Error('Sessão expirada'), { status: 401 })
-      return { userId: 'u1', companyId: 'c1', tenderId, inicio: `http://${HOST_DO_PORTAL}:${portaDoPortal}/sala`, portal: 'COMPRASNET', nomeDoPortal: 'Compras.gov.br', hostsPermitidos: [] }
+      return { userId: 'u1', companyId: 'c1', tenderId: tenderId ?? null, inicio: `http://${HOST_DO_PORTAL}:${portaDoPortal}/sala`, portal: 'COMPRASNET', nomeDoPortal: 'Compras.gov.br', hostsPermitidos: [] }
     },
-    acessoSalvo: async (_t, _id, host) => {
+    acessoSalvo: async (_t, id, host) => {
       chamadas.push({ tipo: 'acesso', dados: host })
+      chamadas.push({ tipo: 'acesso-tender', dados: id })
       return { portal: 'COMPRASNET', login: '123.456.789-00', senha: 'senha-secreta-1' }
     },
     painel: async () => ({ robo: { disponivel: true, instrucoes: [{ alvo: 'global', acao: 'dar', valor: 1230 }] } }),
@@ -240,6 +241,48 @@ describe.skipIf(!temChromium)('portal dentro da Bela (Chromium real)', () => {
 
     d.mandar({ t: 'encerrar' })
     await d.esperar(() => d.textos.find((m) => m.t === 'encerrada'))
+    await c.esperar(() => servico.sessoes.size === 0)
+  }, 90_000)
+
+  it('conferir acesso (sem licitação): abre o portal escolhido, preenche o login e não lê disputa nem preenche lance', async () => {
+    const semPortal = conectar()
+    await semPortal.aberto
+    semPortal.mandar({ t: 'entrar', token: 'token-valido-123' })
+    const erro = (await semPortal.esperar(() => semPortal.textos.find((m) => m.t === 'erro'))) as { codigo: string }
+    expect(erro.codigo).toBe('SEM_PORTAL')
+
+    chamadas.length = 0
+    const c = conectar()
+    await c.aberto
+    c.mandar({ t: 'entrar', token: 'token-valido-123', portal: 'COMPRASNET' })
+    await c.esperar(() => c.textos.find((m) => m.t === 'pronto'))
+    await c.esperar(() => c.textos.find((m) => m.t === 'estado' && String(m.url).endsWith('/sala')))
+    // Sem leitor: a página da disputa não é lida nem registrada na API.
+    await new Promise((r) => setTimeout(r, 1200))
+    expect(c.textos.find((m) => m.t === 'leitura')).toBeUndefined()
+    expect(chamadas.find((x) => x.tipo === 'lance' || x.tipo === 'mensagens')).toBeUndefined()
+    expect(c.textos.find((m) => m.t === 'estado' && m.portal)).toBeUndefined()
+
+    c.mandar({ t: 'preencher-lance', valor: 1230 })
+    const lance = (await c.esperar(() => c.textos.find((m) => m.t === 'lance-preenchido'))) as { ok: boolean }
+    expect(lance.ok).toBe(false)
+    expect(chamadas.find((x) => x.tipo === 'preenchido')).toBeUndefined()
+
+    // Navegação continua limitada aos portais.
+    c.mandar({ t: 'ir', url: 'https://example.com/' })
+    await c.esperar(() => c.textos.find((m) => m.t === 'bloqueado'))
+
+    c.mandar({ t: 'ir', url: `http://${HOST_DO_PORTAL}:${portaDoPortal}/login` })
+    await c.esperar(() => c.textos.find((m) => m.t === 'estado' && String(m.url).endsWith('/login')))
+    c.mandar({ t: 'preencher-login' })
+    const login = (await c.esperar(() => c.textos.find((m) => m.t === 'login-preenchido'))) as { ok: boolean }
+    expect(login.ok).toBe(true)
+    expect(chamadas.find((x) => x.tipo === 'acesso-tender')?.dados).toBeNull()
+    const pagina = [...servico.sessoes.values()][0] as unknown as { ativa: import('playwright-core').Page }
+    // Só escreve: o formulário não é enviado.
+    expect(await pagina.ativa.title()).toBe('Entrar')
+
+    c.mandar({ t: 'encerrar' })
     await c.esperar(() => servico.sessoes.size === 0)
   }, 90_000)
 })

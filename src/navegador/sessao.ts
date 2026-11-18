@@ -83,7 +83,8 @@ export class SessaoDoPortal {
 
   constructor(
     readonly userId: string,
-    readonly tenderId: string,
+    /** null no modo "conferir acesso" (Meus Portais): sem leitura da disputa nem lance. */
+    readonly tenderId: string | null,
     private token: string,
     private readonly api: ApiDaBela,
     private readonly destino: DestinoDaSessao,
@@ -114,7 +115,8 @@ export class SessaoDoPortal {
       timezoneId: 'America/Sao_Paulo',
       acceptDownloads: true,
     })
-    await this.contexto.addInitScript({ content: scriptDoLeitor() })
+    // O leitor da disputa só entra na sessão de uma licitação (não no "conferir acesso").
+    if (this.tenderId) await this.contexto.addInitScript({ content: scriptDoLeitor() })
     // Só a navegação da página principal é limitada aos portais do governo.
     await this.contexto.route('**/*', async (rota) => {
       const pedido = rota.request()
@@ -132,7 +134,7 @@ export class SessaoDoPortal {
       this.enviar({ t: 'aviso', mensagem: 'O portal demorou para abrir. Use "Recarregar" se a tela ficar em branco.' })
     })
     this.relogio = setInterval(() => void this.conferirLimites(), 15_000)
-    this.leitura = setInterval(() => void this.ler(), this.limites.leituraMs)
+    if (this.tenderId) this.leitura = setInterval(() => void this.ler(), this.limites.leituraMs)
   }
 
   // ---------- conexão com a página da Bela ----------
@@ -339,7 +341,12 @@ export class SessaoDoPortal {
   private async preencherLance(valor: number): Promise<void> {
     const p = this.ativa
     if (!p) return
-    const painel = await this.api.painel(this.token, this.tenderId).catch(() => null)
+    const tenderId = this.tenderId
+    if (!tenderId) {
+      this.enviar({ t: 'lance-preenchido', ok: false, motivo: 'Para preencher lance, abra o portal pela licitação, em Pregão com a Bela.' })
+      return
+    }
+    const painel = await this.api.painel(this.token, tenderId).catch(() => null)
     const robo = painel?.robo
     const instrucao = (robo?.instrucoes ?? []).find((i) => i.acao === 'dar' && typeof i.valor === 'number')
     if (!robo?.disponivel || !instrucao || Math.abs((instrucao.valor ?? 0) - valor) > 0.004) {
@@ -356,7 +363,7 @@ export class SessaoDoPortal {
         .catch(() => null)) as { ok: boolean; texto?: string; motivo?: string } | null
       if (r?.ok) {
         this.enviar({ t: 'lance-preenchido', ok: true, texto: r.texto })
-        void this.api.registrarPreenchimento(this.token, this.tenderId, valor).catch(() => undefined)
+        void this.api.registrarPreenchimento(this.token, tenderId, valor).catch(() => undefined)
         return
       }
     }
@@ -409,7 +416,8 @@ export class SessaoDoPortal {
 
   private async ler(): Promise<void> {
     const p = this.ativa
-    if (!p || this.encerrada) return
+    const tenderId = this.tenderId
+    if (!p || this.encerrada || !tenderId) return
     let melhor: number | null = null
     const mensagens: unknown[] = []
     for (const f of p.frames()) {
@@ -425,11 +433,11 @@ export class SessaoDoPortal {
     if (melhor !== null && melhor !== this.ultimoLance) {
       this.ultimoLance = melhor
       mudou = true
-      void this.api.registrarMelhorLance(this.token, this.tenderId, melhor).catch(() => undefined)
+      void this.api.registrarMelhorLance(this.token, tenderId, melhor).catch(() => undefined)
     }
     if (mensagens.length > 0) {
       mudou = true
-      void this.api.registrarMensagens(this.token, this.tenderId, mensagens.slice(-50)).catch(() => undefined)
+      void this.api.registrarMensagens(this.token, tenderId, mensagens.slice(-50)).catch(() => undefined)
     }
     if (mudou) this.enviar({ t: 'leitura', melhorLance: this.ultimoLance, mensagensNovas: mensagens.length })
   }
