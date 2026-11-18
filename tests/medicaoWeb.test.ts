@@ -111,3 +111,10 @@ describe('origem do cadastro vinda de anúncio da Meta', () => {
     expect(utmParaEnvio({ utm_source: 'meta', utm_campaign: 'lb-meta-brasil', fbclid: 'x' }, false)).toEqual({ utm_source: 'meta', utm_campaign: 'lb-meta-brasil' })
   })
 })
+
+describe('verificação do domínio da Meta', () => {
+  it('usa o código do portfólio por padrão', async () => {
+    const { verificacaoDoDominioDaMeta } = await import('../web/src/lib/medicao')
+    expect(verificacaoDoDominioDaMeta(undefined)).toBe('gsh0mgsngmg9m52sjy1ad1icbbmu38')
+  })
+})

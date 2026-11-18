@@ -108,7 +108,7 @@ export function valorDoCookieFbc(fbclid: string | undefined, capturadoEm: string
 
 // Verificação do domínio na Meta (meta tag "facebook-domain-verification"). Também é público.
 // NEXT_PUBLIC_META_VERIFICACAO_DOMINIO troca o código.
-const VERIFICACAO_DO_DOMINIO_PADRAO = ''
+const VERIFICACAO_DO_DOMINIO_PADRAO = 'gsh0mgsngmg9m52sjy1ad1icbbmu38' // portfólio Agencia especializada
 
 export function verificacaoDoDominioDaMeta(valor: string | undefined = process.env.NEXT_PUBLIC_META_VERIFICACAO_DOMINIO): string | null {
   const codigo = (valor ?? '').trim() || VERIFICACAO_DO_DOMINIO_PADRAO
