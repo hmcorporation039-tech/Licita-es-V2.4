@@ -212,7 +212,7 @@ const perguntasFrequentes = (trialDias: number | null): Array<{ pergunta: string
   },
   {
     pergunta: 'Funciona no portal onde eu disputo?',
-    resposta: `O portal abre dentro da Licita Bela nos planos pagos: ${PORTAIS_NA_BELA.join(', ')}. O resto da Licita Bela (busca, análise, documentos e estudo de custos) vale para licitações de qualquer portal.`,
+    resposta: `O portal abre dentro da Licita Bela, inclusive no período de teste: ${PORTAIS_NA_BELA.join(', ')}. O resto da Licita Bela (busca, análise, documentos e estudo de custos) vale para licitações de qualquer portal.`,
   },
   {
     pergunta: 'Minha senha do portal fica segura?',
