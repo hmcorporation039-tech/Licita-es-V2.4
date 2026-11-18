@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import localFont from 'next/font/local'
 import './globals.css'
 import AvisoDeMedicao from '@/components/AvisoDeMedicao'
+import { verificacaoDoDominioDaMeta } from '@/lib/medicao'
 
 const plexSans = localFont({
   variable: '--font-plex-sans',
@@ -29,7 +30,11 @@ const nunito = localFont({
   src: './fonts/nunito-latin-variable.woff2',
 })
 
+// Verificação do domínio na Meta: uma meta tag no <head>, sem mexer no DNS.
+const verificacaoDaMeta = verificacaoDoDominioDaMeta()
+
 export const metadata: Metadata = {
+  ...(verificacaoDaMeta ? { other: { 'facebook-domain-verification': verificacaoDaMeta } } : {}),
   title: { default: 'Licita Bela', template: '%s · Licita Bela' },
   description: 'Licitações abertas para o seu negócio, com prazo, edital e habilitação no mesmo lugar.',
   applicationName: 'Licita Bela',

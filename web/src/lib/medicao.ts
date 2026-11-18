@@ -52,3 +52,65 @@ export function guardarEscolha(escolha: EscolhaDeMedicao, armazenamento: Armazen
     armazenamento?.setItem(CHAVE, escolha)
   } catch {}
 }
+
+// ------------------------------------------------------------
+// Pixel da Meta (Facebook/Instagram), com as mesmas regras do Google:
+// só carrega depois do "Aceitar" e só nas páginas públicas (entrada, cadastro,
+// login, vitrine de licitações, termos e privacidade). Dentro do sistema
+// (editais, estudos, empresa) ele não é carregado. O ID do pixel é público.
+// NEXT_PUBLIC_META_PIXEL_ID troca o ID; NEXT_PUBLIC_META_PIXEL_ID=desligado desliga.
+// ------------------------------------------------------------
+const PIXEL_PADRAO = '1675739133906804' // "Licita Bela – Site"
+
+export function idDoPixelDaMeta(valor: string | undefined = process.env.NEXT_PUBLIC_META_PIXEL_ID): string | null {
+  const id = (valor ?? '').trim() || PIXEL_PADRAO
+  if (id.toLowerCase() === 'desligado') return null
+  return /^\d{10,20}$/.test(id) ? id : null
+}
+
+// Páginas públicas onde o pixel pode carregar. Fora da lista de propósito:
+// redefinir-senha (o link traz o código de troca de senha), esqueci-senha,
+// descadastro e acesso-encerrado.
+const PAGINAS_COM_PIXEL = ['/cadastro', '/verificar-email', '/login', '/licitacoes', '/termos', '/privacidade']
+
+export function paginaComPixel(caminho: string | null | undefined): boolean {
+  if (!caminho) return false
+  if (caminho === '/') return true
+  return PAGINAS_COM_PIXEL.some((p) => caminho === p || caminho.startsWith(`${p}/`))
+}
+
+// Nossos eventos → eventos padrão da Meta (os que a campanha consegue otimizar).
+// O cadastro concluído (CompleteRegistration) sai à parte, com o id do usuário
+// para não contar duas vezes (registrarConversaoDoCadastro).
+const EVENTOS_PADRAO_DA_META: Record<string, string> = {
+  cadastro_enviado: 'Lead',
+  begin_checkout: 'InitiateCheckout',
+  clique_whatsapp: 'Contact',
+}
+
+export function eventoDaMeta(evento: string): { padrao: string } | { personalizado: string } | null {
+  if (evento === 'sign_up') return null
+  const padrao = EVENTOS_PADRAO_DA_META[evento]
+  return padrao ? { padrao } : { personalizado: evento }
+}
+
+/**
+ * Cookie _fbc a partir do fbclid guardado: o pixel só lê o fbclid do endereço
+ * atual, mas ele carrega depois do "Aceitar", quando o endereço já mudou.
+ * Formato da Meta: fb.1.<milissegundos do clique>.<fbclid>.
+ */
+export function valorDoCookieFbc(fbclid: string | undefined, capturadoEm: string | undefined): string | null {
+  const id = (fbclid ?? '').trim()
+  if (!id || !/^[A-Za-z0-9_-]{8,200}$/.test(id)) return null
+  const em = Date.parse(capturadoEm ?? '')
+  return `fb.1.${Number.isFinite(em) ? em : Date.now()}.${id}`
+}
+
+// Verificação do domínio na Meta (meta tag "facebook-domain-verification"). Também é público.
+// NEXT_PUBLIC_META_VERIFICACAO_DOMINIO troca o código.
+const VERIFICACAO_DO_DOMINIO_PADRAO = 'gsh0mgsngmg9m52sjy1ad1icbbmu38' // portfólio Agencia especializada
+
+export function verificacaoDoDominioDaMeta(valor: string | undefined = process.env.NEXT_PUBLIC_META_VERIFICACAO_DOMINIO): string | null {
+  const codigo = (valor ?? '').trim() || VERIFICACAO_DO_DOMINIO_PADRAO
+  return /^[a-z0-9]{16,64}$/i.test(codigo) ? codigo : null
+}

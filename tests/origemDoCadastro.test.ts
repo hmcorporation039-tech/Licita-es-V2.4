@@ -3,8 +3,12 @@ import { interesseDaOrigem, interesseSchema, montarOrigem, nomeDoItemDoInteresse
 
 describe('utmSchema', () => {
   it('aceita só as chaves conhecidas e descarta as demais', () => {
-    const lido = utmSchema.parse({ utm_source: ' google ', utm_medium: 'cpc', capturadoEm: '2026-10-16', fbclid: 'x', utm_term: '' })
+    const lido = utmSchema.parse({ utm_source: ' google ', utm_medium: 'cpc', capturadoEm: '2026-10-16', msclkid: 'x', utm_term: '' })
     expect(lido).toEqual({ utm_source: 'google', utm_medium: 'cpc', utm_term: undefined })
+  })
+
+  it('guarda o identificador do clique no anúncio da Meta', () => {
+    expect(utmSchema.parse({ utm_source: 'meta', fbclid: 'IwAR1' })).toEqual({ utm_source: 'meta', fbclid: 'IwAR1' })
   })
 
   it('guarda o identificador do clique no anúncio do Google', () => {
