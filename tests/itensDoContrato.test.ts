@@ -52,6 +52,27 @@ describe('nichosDoItem', () => {
   it('poste de vôlei não é item elétrico', () => {
     expect(nichosDoItem('7.2 POSTE DE VÔLEI OU PETECA OFICIAL PAR COM REDE', doCatalogo('eletrica'))).toEqual([])
     expect(nichosDoItem('8.3 REFLETOR DE LED', doCatalogo('eletrica'))).toEqual(['Instalações elétricas'])
+    expect(nichosDoItem('TRAVE OFICIAL DE FUTSAL/HANDEBOL', doCatalogo('eletrica'))).toEqual([])
+    expect(nichosDoItem('Tabela de basquete em acrílico', doCatalogo('eletrica'))).toEqual([])
+  })
+  it('poste de vôlei não é elétrico nem quando a empresa salvou "poste" no nicho', () => {
+    const salvo = compilarNichosParaItens([{ nome: 'Instalações elétricas', alvos: ['poste', 'iluminacao'], exclusoes: [] }])
+    expect(nichosDoItem('7.2 POSTE DE VÔLEI OU PETECA OFICIAL PAR COM REDE', salvo)).toEqual([])
+    expect(nichosDoItem('POSTE DE AÇO CÔNICO CONTÍNUO RETO', salvo)).toEqual(['Instalações elétricas'])
+  })
+  it('poste elétrico de verdade continua elétrico', () => {
+    const eletrica = doCatalogo('eletrica')
+    for (const d of ['POSTE DE AÇO CÔNICO CONTÍNUO RETO', 'Poste de concreto duplo T 9 m', 'POSTE DE ILUMINAÇÃO', 'Poste para luminária', 'Poste padrão de entrada de energia']) {
+      expect(nichosDoItem(d, eletrica)).toEqual(['Instalações elétricas'])
+    }
+  })
+  it('outras palavras de duplo sentido em item', () => {
+    expect(nichosDoItem('Condutor vertical de água pluvial em PVC 100 mm', doCatalogo('eletrica'))).toEqual([])
+    expect(nichosDoItem('Cabo condutor de cobre 2,5 mm²', doCatalogo('eletrica'))).toEqual(['Instalações elétricas'])
+    expect(nichosDoItem('LOCAÇÃO CONVENCIONAL DE OBRA, UTILIZANDO GABARITO', doCatalogo('equipamentos'))).toEqual([])
+    expect(nichosDoItem('Locação de andaime metálico', doCatalogo('equipamentos'))).toEqual(['Locação de equipamentos'])
+    expect(nichosDoItem('Porta-lâmpada de porcelana E27', doCatalogo('esquadrias'))).toEqual([])
+    expect(nichosDoItem('Instalação de canteiro de obras', doCatalogo('paisagismo'))).toEqual([])
   })
   it('respeita exclusões do nicho', () => {
     expect(nichosDoItem('Iluminação cênica para evento', doCatalogo('eletrica'))).toEqual([])
