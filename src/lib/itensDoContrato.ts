@@ -39,7 +39,7 @@ const GENERICAS_DE_OBRA = new Set(
 
 // Palavras de item por nicho do catálogo (pelo id). Escritas sem acento; plural é automático.
 const PALAVRAS_DE_ITEM: Record<string, string[]> = {
-  eletrica: ['eletrica', 'eletrico', 'eletricas', 'eletricos', 'disjuntor', 'quadro de distribuicao', 'quadro de medicao', 'luminaria', 'lampada', 'refletor', 'tomada', 'interruptor', 'eletroduto', 'eletrocalha', 'cabo flexivel', 'condutor', 'padrao de entrada', 'poste de iluminacao', 'transformador'],
+  eletrica: ['eletrica', 'eletrico', 'eletricas', 'eletricos', 'disjuntor', 'quadro de distribuicao', 'quadro de medicao', 'luminaria', 'lampada', 'refletor', 'tomada', 'interruptor', 'eletroduto', 'eletrocalha', 'cabo flexivel', 'condutor', 'padrao de entrada', 'poste', 'transformador'],
   hidraulica: ['hidraulica', 'hidraulico', 'hidrossanitaria', 'hidrossanitario', 'sanitaria', 'sanitario', 'tubo', 'tubulacao', 'esgoto', 'agua fria', 'agua pluvial', 'caixa d agua', 'registro de gaveta', 'torneira', 'lavatorio', 'bacia sanitaria', 'fossa', 'sumidouro', 'caixa de inspecao', 'poco de visita'],
   pintura: ['pintura', 'tinta', 'massa corrida', 'textura', 'selador', 'verniz', 'emassamento', 'esmalte sintetico'],
   climatizacao: ['ar condicionado', 'split', 'climatizacao', 'refrigeracao', 'exaustor', 'exaustao', 'condensadora', 'evaporadora'],
@@ -59,6 +59,19 @@ const PALAVRAS_DE_ITEM: Record<string, string[]> = {
   gerador: ['gerador', 'grupo gerador', 'nobreak', 'quadro de transferencia', 'usina fotovoltaica', 'modulo fotovoltaico', 'inversor'],
 }
 
+// Equipamento de quadra: "poste de vôlei", "trave de futsal", "rede de vôlei" não são elétrica.
+const ESPORTES = ['volei', 'voleibol', 'peteca', 'futsal', 'futebol', 'handebol', 'basquete', 'basquetebol', 'tenis', 'badminton']
+const EQUIPAMENTO_DE_QUADRA = ['poste', 'rede', 'tabela'].flatMap((peca) => ESPORTES.flatMap((esporte) => [`${peca} de ${esporte}`, `${peca} para ${esporte}`]))
+
+// Num item, palavras do nicho com outro sentido: o item não conta para o nicho (pelo id).
+// Valem também quando a empresa salvou a palavra no nicho dela (ex.: "poste" em elétrica).
+const EXCLUSOES_DE_ITEM: Record<string, string[]> = {
+  eletrica: [...EQUIPAMENTO_DE_QUADRA, 'trave', 'par com rede', 'rede de protecao', 'poste de alambrado', 'poste de cerca', 'poste de sinalizacao', 'condutor vertical', 'condutor horizontal', 'agua pluvial', 'tomada de agua', 'tomada d agua'],
+  equipamentos: ['locacao de obra', 'locacao convencional de obra'],
+  esquadrias: ['porta lampada', 'porta fusivel'],
+  paisagismo: ['canteiro de obra'],
+}
+
 const ID_PELO_NOME = new Map(CATALOGO_DE_NICHOS.map((n) => [n.nome, n.id]))
 
 /** Nichos prontos para casar com descrição de item. */
@@ -76,7 +89,7 @@ export function compilarNichosParaItens(nichos: NichoDaEmpresa[]): NichoCompilad
         const regex = buildKeywordRegex(palavra)
         return regex ? [{ palavra, regex }] : []
       }),
-      exclusoes: n.exclusoes.flatMap((p) => {
+      exclusoes: [...n.exclusoes, ...(id ? EXCLUSOES_DE_ITEM[id] ?? [] : [])].flatMap((p) => {
         const r = buildKeywordRegex(p)
         return r ? [r] : []
       }),
