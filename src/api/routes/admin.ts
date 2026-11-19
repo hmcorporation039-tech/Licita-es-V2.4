@@ -15,6 +15,7 @@ import { exigirConfirmacaoRecente, requireAdmin, requireAuth } from '../authMidd
 import { escritaSensivelLimiter } from '../rateLimit'
 import { registrarAuditoria } from '../../services/auditService'
 import { TRIAL_DIAS, enviarConviteDeAcesso } from '../../services/contaService'
+import { ExclusaoRecusadaError, excluirEmpresa } from '../../services/exclusaoDeEmpresa'
 import {
   importacaoEmAndamento,
   statusImportacoes,
@@ -271,5 +272,50 @@ adminRouter.post(
       // Só aparece nesta resposta, uma vez — mesmo padrão do POST /users.
       generatedPassword: body.password ? undefined : newPassword,
     })
+  })
+)
+
+// Apagar de vez uma conta (o usuário e a empresa dele, com tudo que ela guardou).
+// Só para conta sozinha na empresa e que nunca teve assinatura nem pagamento:
+// cliente que já pagou não some daqui (o histórico de cobrança fica); para esses,
+// "Desativar". Usa a mesma exclusão do pedido da LGPD (exclusaoDeEmpresa.ts).
+const apagarUsuarioSchema = z.object({ confirmarEmail: z.string().min(1) })
+
+adminRouter.delete(
+  '/users/:id',
+  exigirConfirmacaoRecente,
+  escritaSensivelLimiter,
+  asyncHandler(async (req, res) => {
+    const body = apagarUsuarioSchema.parse(req.body ?? {})
+    const alvo = await prisma.user.findUnique({ where: { id: req.params.id }, select: { id: true, email: true, isAdmin: true, companyId: true } })
+    if (!alvo) throw new ApiError(404, 'Usuário não encontrado')
+    if (normalizeEmail(body.confirmarEmail) !== alvo.email) throw new ApiError(400, 'O e-mail digitado não confere com o da conta.')
+    if (alvo.id === req.userId) throw new ApiError(400, 'Você não pode apagar a própria conta.')
+    if (alvo.isAdmin) throw new ApiError(400, 'Conta de administrador não pode ser apagada: tire o perfil de admin antes.')
+
+    const [colegas, assinaturas, pagamentos] = await Promise.all([
+      prisma.user.count({ where: { companyId: alvo.companyId, id: { not: alvo.id } } }),
+      prisma.assinatura.count({ where: { companyId: alvo.companyId } }),
+      prisma.pagamento.count({ where: { companyId: alvo.companyId } }),
+    ])
+    if (colegas > 0) throw new ApiError(409, 'Esta conta faz parte de uma empresa com outros usuários. Use "Desativar".')
+    if (assinaturas > 0 || pagamentos > 0) {
+      throw new ApiError(409, 'Esta conta já teve assinatura ou pagamento: o histórico de cobrança precisa ficar. Use "Desativar".')
+    }
+
+    try {
+      await excluirEmpresa(alvo.companyId, true)
+    } catch (err) {
+      if (err instanceof ExclusaoRecusadaError) throw new ApiError(409, err.message)
+      throw err
+    }
+    // A exclusão anonimiza a auditoria da empresa; este registro guarda só quem apagou.
+    await registrarAuditoria(req, {
+      action: 'USUARIO_APAGADO',
+      entityType: 'usuario',
+      entityId: alvo.id,
+      metadata: {},
+    })
+    res.json({ apagado: true })
   })
 )

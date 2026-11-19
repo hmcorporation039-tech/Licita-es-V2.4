@@ -3,7 +3,7 @@
 import { formatarData } from '@/lib/datas'
 import { Fragment, useEffect, useState, type ComponentProps } from 'react'
 import { useRouter } from 'next/navigation'
-import { CalendarPlus, Check, Copy, KeyRound, MailCheck, Power, UserPlus } from 'lucide-react'
+import { CalendarPlus, Check, Copy, KeyRound, MailCheck, Power, Trash2, UserPlus } from 'lucide-react'
 import { useRequireSession } from '@/hooks/useRequireSession'
 import { api, ApiRequestError } from '@/lib/api'
 import { getSessionUser } from '@/lib/session'
@@ -150,6 +150,12 @@ export default function AdminUsuariosPage() {
   const [passwordSaving, setPasswordSaving] = useState(false)
   const [senhaMsg, setSenhaMsg] = useState<MensagemDeSenha | null>(null)
 
+  const [apagarId, setApagarId] = useState<string | null>(null)
+  const [apagarEmail, setApagarEmail] = useState('')
+  const [apagando, setApagando] = useState(false)
+  const [apagarErro, setApagarErro] = useState<string | null>(null)
+  const [apagadoMsg, setApagadoMsg] = useState<string | null>(null)
+
   useEffect(() => {
     if (!user) return
     if (!user.isAdmin) {
@@ -253,6 +259,29 @@ export default function AdminUsuariosPage() {
     }
   }
 
+  function abrirApagar(u: AdminUser) {
+    setApagarErro(null)
+    setApagarEmail('')
+    setApagarId(apagarId === u.id ? null : u.id)
+    setPasswordEditId(null)
+  }
+
+  async function apagar(u: AdminUser) {
+    setApagarErro(null)
+    setApagando(true)
+    try {
+      await api.delete(`/api/admin/users/${u.id}`, { confirmarEmail: apagarEmail })
+      setApagarId(null)
+      setApagarEmail('')
+      setApagadoMsg(`A conta ${u.email} foi apagada.`)
+      await load()
+    } catch (err) {
+      setApagarErro(err instanceof ApiRequestError ? err.message : 'Erro ao apagar a conta')
+    } finally {
+      setApagando(false)
+    }
+  }
+
   if (!user || !user.isAdmin) return null
 
   const falhouAoCarregar = Boolean(error) && !loading && users.length === 0
@@ -316,6 +345,7 @@ export default function AdminUsuariosPage() {
               Usuários cadastrados
               {users.length > 0 && <span className="ml-1.5 font-mono text-xs font-normal text-muted">{users.length}</span>}
             </h2>
+            {apagadoMsg && <Notice tone="ok">{apagadoMsg}</Notice>}
 
             {loading && users.length === 0 ? (
               <Carregando linhas={6} />
@@ -411,6 +441,17 @@ export default function AdminUsuariosPage() {
                                 >
                                   Trocar senha
                                 </Button>
+                                {!souEu && !u.isAdmin && (
+                                  <Button
+                                    size="sm"
+                                    variant={apagarId === u.id ? 'secondary' : 'ghost'}
+                                    icon={Trash2}
+                                    aria-expanded={apagarId === u.id}
+                                    onClick={() => abrirApagar(u)}
+                                  >
+                                    Apagar
+                                  </Button>
+                                )}
                               </div>
                             </Td>
                           </Tr>
@@ -438,6 +479,43 @@ export default function AdminUsuariosPage() {
                                     <Button variant="ghost" onClick={() => setPasswordEditId(null)}>
                                       Cancelar
                                     </Button>
+                                  </div>
+                                </div>
+                              </Td>
+                            </Tr>
+                          )}
+
+                          {apagarId === u.id && (
+                            <Tr selected>
+                              <Td colSpan={5}>
+                                <div className="flex flex-col gap-3">
+                                  <Notice tone="danger" title={`Apagar de vez a conta ${u.email}?`}>
+                                    Some o usuário e a empresa dele, com tudo que ela guardou (licitações acompanhadas, documentos,
+                                    estudos). Não dá para desfazer. Conta que já pagou ou que tem colegas na empresa não pode ser
+                                    apagada: use &quot;Desativar&quot;.
+                                  </Notice>
+                                  <div className="flex flex-wrap items-start gap-3">
+                                    <Field
+                                      label="Para confirmar, digite o e-mail da conta"
+                                      error={apagarErro ? <span role="alert">{apagarErro}</span> : undefined}
+                                      className="w-full max-w-md"
+                                    >
+                                      <Input autoComplete="off" value={apagarEmail} onChange={(e) => setApagarEmail(e.target.value)} autoFocus />
+                                    </Field>
+                                    <div className="flex gap-2 pt-[22px]">
+                                      <Button
+                                        variant="danger"
+                                        icon={Trash2}
+                                        loading={apagando}
+                                        disabled={apagarEmail.trim().toLowerCase() !== u.email.toLowerCase()}
+                                        onClick={() => apagar(u)}
+                                      >
+                                        {apagando ? 'Apagando…' : 'Apagar de vez'}
+                                      </Button>
+                                      <Button variant="ghost" onClick={() => setApagarId(null)}>
+                                        Cancelar
+                                      </Button>
+                                    </div>
                                   </div>
                                 </div>
                               </Td>
