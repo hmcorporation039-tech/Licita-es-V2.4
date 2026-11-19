@@ -7,7 +7,7 @@ export default function PrivacidadePage() {
   return (
     <PublicProse titulo="Política de Privacidade" rotulo="Documento legal">
       <div className="text-base leading-relaxed text-ink-2 marker:text-faint [&_h2]:mb-3 [&_h2]:mt-8 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:text-ink [&_li]:pl-1 [&_p]:mb-3 [&_strong]:font-semibold [&_strong]:text-ink [&_ul]:mb-3 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-5">
-        <p className="text-sm text-muted">Versão de 18 de novembro de 2026.</p>
+        <p className="text-sm text-muted">Versão de 19 de novembro de 2026.</p>
         <p>
           Esta Política explica quais dados pessoais a Licita Bela trata, para quê, com quem compartilha e quais são os seus
           direitos, conforme a Lei Geral de Proteção de Dados (Lei 13.709/2018). A controladora dos dados é a{' '}
@@ -146,6 +146,23 @@ export default function PrivacidadePage() {
         <div className="mb-3">
           <MudarEscolhaDeMedicao />
         </div>
+
+        <h3 id="extensao">Extensão &quot;Bela na disputa&quot; (Chrome)</h3>
+        <p>
+          A extensão é opcional e só funciona nos portais de compras públicas (como o Compras.gov.br) e no site da Licita Bela. Nos
+          portais, ela lê da sessão que você já abriu o melhor lance e o chat do pregoeiro e envia esses dados para a sua conta na
+          Licita Bela, para sugerir o próximo lance e avisar quando chamam a sua empresa. Na tela da proposta, ela lê as linhas
+          dos itens só no seu computador, para saber onde escrever o preço do seu estudo de custos. No site da Licita Bela, ela pega a sua sessão de acesso e qual licitação está aberta, para falar com a sua conta.
+        </p>
+        <p>
+          Ela nunca lê nem guarda senha de portal, certificado digital ou o que você digita nos campos, não resolve CAPTCHA, não
+          faz login e não clica em enviar ou confirmar: quem envia o lance e a proposta é você. O que ela guarda fica no
+          armazenamento da própria extensão, no seu computador (a sua sessão de acesso à Licita Bela, a licitação aberta, o último
+          lance lido, a sugestão e o aviso do chat), e sai quando você remove a extensão. O botão &quot;Capturar a tela da
+          disputa&quot;, usado só quando você pede ajuda ao suporte, copia a estrutura da página para a sua área de transferência,
+          com CPF, CNPJ e e-mail mascarados e sem o que foi digitado nos campos; nada é enviado sozinho. Os dados são usados só para o funcionamento descrito aqui: não são vendidos, não
+          servem para publicidade e não são repassados a terceiros.
+        </p>
 
         <h2>6. Por quanto tempo guardamos</h2>
         <ul>

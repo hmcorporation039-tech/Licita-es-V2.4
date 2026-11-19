@@ -14,6 +14,7 @@ import { ArrowLeft, ArrowRight, ExternalLink, Home, KeyRound, Lock, Monitor, Pen
 import { api, ApiRequestError } from '@/lib/api'
 import { getSessionToken } from '@/lib/session'
 import { ehLoginDoGovBr } from '@/lib/loginDoGovBr'
+import { enderecoDaExtensao } from '@/lib/extensaoBela'
 import type { RoboDoPregao } from '@/lib/types'
 import { Button, Field, Notice, Panel, Select, StatusTag, TextLink, buttonClasses } from '@/components/ui'
 
@@ -111,6 +112,7 @@ export default function PortalNaBela({
   aoConfirmarMeuLance?: (alvo: string, valor: number) => void
 }) {
   const conferir = !tenderId
+  const lojaDaExtensao = enderecoDaExtensao()
   const [config, setConfig] = useState<Config | null>(null)
   const [estado, setEstado] = useState<Estado>('fechado')
   const [erro, setErro] = useState<string | null>(null)
@@ -480,7 +482,17 @@ export default function PortalNaBela({
                     </p>
                   ) : (
                     <Notice tone="warn" title="A extensão Bela não está neste Chrome">
-                      Sem ela, o portal abre normalmente, mas a Bela não lê a disputa nem preenche o lance. Peça a instalação da extensão ao suporte da Bela.
+                      Sem ela, o portal abre normalmente, mas a Bela não lê a disputa nem preenche o lance.{' '}
+                      {lojaDaExtensao ? (
+                        <>
+                          <a href={lojaDaExtensao} target="_blank" rel="noopener noreferrer" className="font-semibold underline">
+                            Instalar a extensão Bela
+                          </a>{' '}
+                          (grátis, na loja do Chrome) e recarregar esta página.
+                        </>
+                      ) : (
+                        'Peça a instalação da extensão ao suporte da Bela.'
+                      )}
                     </Notice>
                   )}
                   <a
@@ -577,7 +589,20 @@ export default function PortalNaBela({
         <Notice tone="warn" title={`O ${nomeAberto ?? 'portal'} não aceitou o navegador da Bela`}>
           <p>Este portal bloqueia o acesso por aqui (erro {pagina.recusado}). Faça assim:</p>
           <ol className="ml-4 list-decimal">
-            {!extensao && <li>Instale a extensão Bela no seu Chrome (peça ao suporte da Bela).</li>}
+            {!extensao && (
+              <li>
+                {lojaDaExtensao ? (
+                  <>
+                    <a href={lojaDaExtensao} target="_blank" rel="noopener noreferrer" className="font-semibold underline">
+                      Instale a extensão Bela
+                    </a>{' '}
+                    no seu Chrome (grátis, na loja do Chrome).
+                  </>
+                ) : (
+                  'Instale a extensão Bela no seu Chrome (peça ao suporte da Bela).'
+                )}
+              </li>
+            )}
             <li>Clique no botão abaixo: o portal abre numa aba nova do Chrome.</li>
             <li>Entre no portal com o seu login, como sempre.</li>
             <li>Clique no ícone da Bela na barra do Chrome: o painel abre ao lado, lendo a disputa e sugerindo o lance.</li>
