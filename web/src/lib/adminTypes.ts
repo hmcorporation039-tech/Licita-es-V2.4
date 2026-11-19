@@ -140,6 +140,7 @@ export const ROTULO_ACAO: Record<string, string> = {
   SENHA_ALTERADA: 'Senha alterada',
   USUARIO_CRIADO: 'Usuário criado (admin)',
   USUARIO_ALTERADO: 'Usuário alterado (admin)',
+  USUARIO_APAGADO: 'Usuário apagado (admin)',
   SENHA_REDEFINIDA_ADMIN: 'Senha redefinida (admin)',
   MEMBRO_CRIADO: 'Membro convidado',
   MEMBRO_ALTERADO: 'Membro alterado',
