@@ -13,6 +13,7 @@ import { useCallback, useEffect, useRef, useState, type ChangeEvent, type Keyboa
 import { ArrowLeft, ArrowRight, ExternalLink, Home, KeyRound, Lock, Monitor, PencilLine, RotateCw, X } from 'lucide-react'
 import { api, ApiRequestError } from '@/lib/api'
 import { getSessionToken } from '@/lib/session'
+import { ehLoginDoGovBr } from '@/lib/loginDoGovBr'
 import type { RoboDoPregao } from '@/lib/types'
 import { Button, Field, Notice, Panel, Select, StatusTag, TextLink, buttonClasses } from '@/components/ui'
 
@@ -502,6 +503,9 @@ export default function PortalNaBela({
                 <ul className="ml-4 list-disc text-sm text-ink-2">
                   <li>Na tela de login, o botão &quot;Preencher meu login&quot; escreve o usuário e a senha de Meus Portais. A senha vai direto para o navegador da Bela, não aparece nesta página e nada fica guardado ao fechar.</li>
                   <li>Certificado digital em token (A3) não funciona aqui: para ele, use a extensão.</li>
+                  {escolhido === 'COMPRASNET' && (
+                    <li>No login do gov.br, entre pelo <strong>QR code</strong> do app gov.br (ou pelo seu banco): o CAPTCHA do gov.br costuma recusar o navegador da Bela.</li>
+                  )}
                 </ul>
                 <Button variant="primary" icon={Monitor} onClick={abrir} className="self-start">
                   Abrir o {nomeEscolhido} aqui
@@ -590,6 +594,36 @@ export default function PortalNaBela({
               className={buttonClasses('primary', 'sm', 'mt-2 self-start')}
             >
               <ExternalLink size={14} aria-hidden /> Abrir o {nomeAberto ?? nomeEscolhido} no Chrome com a Bela
+            </a>
+          )}
+        </Notice>
+      )}
+      {pagina && !pagina.recusado && ehLoginDoGovBr(pagina.host) && (
+        <Notice tone="warn" title="Login do gov.br: entre pelo QR code">
+          <p>
+            O CAPTCHA do gov.br costuma recusar o navegador da Bela, mesmo com as imagens certas (a tela fica girando). Para entrar sem CAPTCHA:
+          </p>
+          <ol className="ml-4 list-decimal">
+            <li>Na tela do gov.br aqui embaixo, clique em <strong>Login com QR code</strong>.</li>
+            <li>No celular, abra o app <strong>gov.br</strong>, toque no ícone de QR code e aponte para a tela.</li>
+          </ol>
+          <p className="mt-1">Também funciona o <strong>Login com seu banco</strong>. Sem o app? Abra o portal no seu Chrome{conferir ? '' : ', com a extensão Bela'}.</p>
+          {(portalEscolhido?.endereco || /^https:\/\//i.test(pagina.url)) && (
+            <a
+              href={portalEscolhido?.endereco || pagina.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => {
+                if (conferir) {
+                  fecharTudo()
+                  return
+                }
+                if (tenderId) avisarExtensao(tenderId)
+                fechar()
+              }}
+              className={buttonClasses('secondary', 'sm', 'mt-2 self-start')}
+            >
+              <ExternalLink size={14} aria-hidden /> Abrir no meu Chrome
             </a>
           )}
         </Notice>
