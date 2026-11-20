@@ -7,7 +7,7 @@ Depois de editar, publique (merge na main) para o atendimento passar a usar o te
 ## O que é a Licita Bela
 - Plataforma que encontra licitações públicas compatíveis com o que a empresa vende, avisa quando surgem e ajuda a preparar a participação (análise do edital, documentos, estudo de custos, proposta e pregão).
 - Sempre "a Licita Bela", no feminino. A assistente de voz e texto se chama Bela.
-- Site: www.licitabela.com.br. E-mail de suporte: suporte@licitabela.com.br. Atendimento humano em dias úteis, das 9h às 18h, com resposta em até 1 dia útil.
+- Site: www.licitabela.com.br. E-mail de suporte: suportelicitabela@gmail.com. Atendimento humano em dias úteis, das 9h às 18h, com resposta em até 1 dia útil.
 
 ## Menu e telas
 - **Painel**: resumo do dia, últimos matches, mapa de oportunidades abertas por estado, licitações escolhidas com prazo perto.

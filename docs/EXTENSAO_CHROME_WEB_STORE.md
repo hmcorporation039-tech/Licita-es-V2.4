@@ -52,8 +52,9 @@ e escreve o lance sugerido para você conferir e enviar.
 >
 > Precisa de uma conta na Licita Bela (teste grátis por 14 dias, sem cartão).
 
-**Site:** https://www.licitabela.com.br · **Suporte:** o e-mail de suporte da empresa (campo da
-conta de desenvolvedor; o site não tem página pública de contato, o suporte fica dentro da conta).
+**Site:** https://www.licitabela.com.br · **URL de suporte:** https://www.licitabela.com.br/suporte
+(a loja recusa o envio se o endereço não abrir) · **E-mail de contato da conta de desenvolvedor:**
+suportelicitabela@gmail.com.
 
 ## Aba "Práticas de privacidade"
 

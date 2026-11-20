@@ -6,7 +6,7 @@ Base: LGPD, art. 48, e Resolução CD/ANPD 15/2024. Versão de 21/10/2026.
 
 | Papel | Pessoa | Contato |
 |---|---|---|
-| Responsável pela resposta e encarregado | Márcio Henrique | suporte@licitabela.com.br |
+| Responsável pela resposta e encarregado | Márcio Henrique | suportelicitabela@gmail.com |
 | Decisão pela empresa | Sócios da H&M Engenharia e Tecnologia LTDA | — |
 | Apoio jurídico | Advogado da empresa | a definir |
 
@@ -58,7 +58,7 @@ Qualquer acesso não autorizado, vazamento, perda, alteração ou destruição d
 
 > **Assunto:** Aviso de segurança sobre a sua conta na Licita Bela
 >
-> Olá, [nome]. Em [data], identificamos [o que aconteceu, em uma frase]. Os dados envolvidos foram [lista]. Já [o que fizemos]. Recomendamos que você [o que fazer]. Se tiver dúvidas, fale com o nosso encarregado de dados pelo e-mail suporte@licitabela.com.br. Pedimos desculpas pelo transtorno.
+> Olá, [nome]. Em [data], identificamos [o que aconteceu, em uma frase]. Os dados envolvidos foram [lista]. Já [o que fizemos]. Recomendamos que você [o que fazer]. Se tiver dúvidas, fale com o nosso encarregado de dados pelo e-mail suportelicitabela@gmail.com. Pedimos desculpas pelo transtorno.
 >
 > Equipe Licita Bela · H&M Engenharia e Tecnologia LTDA
 

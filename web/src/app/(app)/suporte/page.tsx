@@ -76,7 +76,7 @@ export default function SuportePage() {
 
       {foraDoAr && (
         <Notice tone="warn" title="O suporte pelo sistema está sendo atualizado">
-          Enquanto isso, escreva para <strong>suporte@licitabela.com.br</strong> que respondemos por e-mail.
+          Enquanto isso, escreva para <strong>suportelicitabela@gmail.com</strong> que respondemos por e-mail.
         </Notice>
       )}
 
