@@ -96,7 +96,7 @@ export function textoDoLeiaMe(r: ResumoDoPacote): string {
     '',
   ]
   if (r.documentosSemArquivo > 0) linhas.push(`${r.documentosSemArquivo} documento(s) do cofre estão cadastrados sem arquivo anexado; eles aparecem só na lista.`, '')
-  if (r.licitacoesCortadas) linhas.push(`A lista de licitações encontradas traz as ${r.licitacoesEncontradas} mais recentes. Para receber todas, escreva para suporte@licitabela.com.br.`, '')
+  if (r.licitacoesCortadas) linhas.push(`A lista de licitações encontradas traz as ${r.licitacoesEncontradas} mais recentes. Para receber todas, escreva para suportelicitabela@gmail.com.`, '')
   if (!r.dono) {
     linhas.push('Você é membro da empresa, não o dono: a cópia traz os dados da empresa que você vê na plataforma e as suas ações. Os dados dos colegas, a cobrança e o histórico de ações dos outros ficam só na cópia do dono.', '')
   }
@@ -105,7 +105,7 @@ export function textoDoLeiaMe(r: ResumoDoPacote): string {
     '- As licitações em si são públicas (vêm do PNCP e de outros portais oficiais): a cópia traz a referência e o link de cada uma, não o edital inteiro.',
     '- Senhas e códigos de acesso não são exportados.',
     '',
-    'Dúvidas: suporte@licitabela.com.br'
+    'Dúvidas: suportelicitabela@gmail.com'
   )
   return linhas.join('\r\n') + '\r\n'
 }

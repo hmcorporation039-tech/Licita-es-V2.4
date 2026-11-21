@@ -128,7 +128,7 @@ export default function TermosPage() {
         <h2>9. Suporte</h2>
         <p>
           O atendimento é feito em dias úteis, das 9h às 18h (horário de Brasília), pelo e-mail{' '}
-          <strong>suporte@licitabela.com.br</strong>. Respondemos em até 1 dia útil.
+          <strong>suportelicitabela@gmail.com</strong>. Respondemos em até 1 dia útil.
         </p>
 
         <h2>10. Suspensão e encerramento</h2>

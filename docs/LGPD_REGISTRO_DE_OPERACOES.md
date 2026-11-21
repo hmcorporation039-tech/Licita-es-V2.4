@@ -2,7 +2,7 @@
 
 - **Controladora:** H&M Engenharia e Tecnologia LTDA, CNPJ 04.003.376/0001-00, Brasília/DF.
 - **Produto:** Licita Bela (www.licitabela.com.br).
-- **Encarregado:** Márcio Henrique, suporte@licitabela.com.br.
+- **Encarregado:** Márcio Henrique, suportelicitabela@gmail.com.
 - **Versão:** 21/10/2026. Revisar a cada mudança que crie, altere ou elimine um tratamento, e no mínimo a cada 6 meses.
 
 ## 1. Titulares

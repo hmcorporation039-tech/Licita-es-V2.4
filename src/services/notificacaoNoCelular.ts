@@ -33,7 +33,7 @@ function chavesDoCelular(): ChavesDoCelular | null {
   const publica = process.env.VAPID_PUBLIC_KEY?.trim()
   const privada = process.env.VAPID_PRIVATE_KEY?.trim()
   if (!publica || !privada) return null
-  return { publica, privada, contato: process.env.VAPID_SUBJECT?.trim() || 'mailto:suporte@licitabela.com.br' }
+  return { publica, privada, contato: process.env.VAPID_SUBJECT?.trim() || 'mailto:suportelicitabela@gmail.com' }
 }
 
 export function celularConfigurado(): boolean {

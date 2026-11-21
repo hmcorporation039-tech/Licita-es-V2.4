@@ -231,7 +231,7 @@ export default function PrivacidadePage() {
         <h2>10. Encarregado de dados</h2>
         <p>
           Encarregado pelo tratamento de dados pessoais: <strong>Márcio Henrique</strong>, pelo e-mail{' '}
-          <strong>suporte@licitabela.com.br</strong>. Você também pode reclamar à Autoridade Nacional de Proteção de Dados (ANPD).
+          <strong>suportelicitabela@gmail.com</strong>. Você também pode reclamar à Autoridade Nacional de Proteção de Dados (ANPD).
         </p>
       </div>
     </PublicProse>
