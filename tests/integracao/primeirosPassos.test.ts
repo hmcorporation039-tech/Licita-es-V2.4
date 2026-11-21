@@ -22,7 +22,8 @@ rodar('Painel: primeiros passos', () => {
 
   async function pedir(caminho: string, token: string) {
     const res = await fetch(base + caminho, { headers: { Authorization: `Bearer ${token}` } })
-    return { status: res.status, body: await res.json() }
+    const body: any = await res.json() // eslint-disable-line @typescript-eslint/no-explicit-any
+    return { status: res.status, body }
   }
 
   async function entrar(prefixo: string, planCode: string) {
@@ -40,7 +41,8 @@ rodar('Painel: primeiros passos', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: u.email, password: SENHA }),
     })
-    return { usuario: u, token: (await res.json()).token as string }
+    const corpo = (await res.json()) as { token: string }
+    return { usuario: u, token: corpo.token }
   }
 
   beforeAll(async () => {
