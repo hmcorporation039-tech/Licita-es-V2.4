@@ -32,6 +32,7 @@ import { MedidorNoMenu } from '@/components/MedidorDeAnalises'
 import InstalarApp from '@/components/InstalarApp'
 import { PrazoDoAcessoNoMenu } from '@/components/PrazoDoAcesso'
 import Bela, { BotaoDaBela } from '@/components/Bela'
+import BelaAcompanha from '@/components/BelaAcompanha'
 import { cx } from '@/components/ui'
 import AvisoDeTermos from '@/components/AvisoDeTermos'
 import { desligarAoSair, sincronizarEsteAparelho } from '@/lib/notificacaoNoCelular'
@@ -228,6 +229,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       <Bela aberta={belaAberta} onFechar={() => setBelaAberta(false)} />
+      <BelaAcompanha />
       <CapturaDeErros />
 
       <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-7">

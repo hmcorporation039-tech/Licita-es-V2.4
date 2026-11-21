@@ -63,6 +63,9 @@ model User {
   totpUltimoPasso           Int?      @map("totp_ultimo_passo")
   totpCodigosDeRecuperacao  String[]  @default([]) @map("totp_codigos_de_recuperacao")
 
+  // Passo a passo guiado pela Bela (lib/jornadaDaBela.ts). null = ainda não começou.
+  jornadaDaBela Json? @map("jornada_da_bela")
+
   // Toda conta pertence a uma Company — mesmo quem usa sozinho (pessoa
   // física). Ver comentário no model Company. NOT NULL só depois da
   // migration 00000000000005_empresas_constraints (ver scripts/empresasBackfill.ts).

@@ -37,6 +37,12 @@ function estadoNoCliente(): EscolhaDeMedicao | 'pendente' {
 }
 const estadoNoServidor = () => 'recusada' as const
 
+/** true enquanto o aviso de cookies está na tela (a Bela que acompanha espera a escolha para não ficar por baixo dele). */
+export function useAvisoDeCookiesNaTela(): boolean {
+  const estado = useSyncExternalStore(assinar, estadoNoCliente, estadoNoServidor)
+  return Boolean(idDaMedicao() || idDoPixelDaMeta()) && estado === 'pendente'
+}
+
 export default function AvisoDeMedicao() {
   const id = idDaMedicao()
   const pixel = idDoPixelDaMeta()
