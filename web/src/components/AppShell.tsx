@@ -24,6 +24,7 @@ import {
   type LucideIcon,
   MessagesSquare,
   HardHat,
+  ClipboardCheck,
 } from 'lucide-react'
 import { clearSessionUser, getSessionUser, type SessionUser } from '@/lib/session'
 import { api } from '@/lib/api'
@@ -67,6 +68,7 @@ const GRUPOS: GrupoDeMenu[] = [
     nome: 'Empresa',
     itens: [
       { href: '/items', label: 'Itens monitorados', icon: ListChecks },
+      { href: '/preparar', label: 'Preparar a empresa', icon: ClipboardCheck },
       { href: '/empresa', label: 'Empresa e documentos', icon: Building2 },
       { href: '/base-de-precos', label: 'Base de preços', icon: Coins },
       { href: '/portais', label: 'Meus Portais', icon: KeyRound },

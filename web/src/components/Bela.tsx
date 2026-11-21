@@ -24,6 +24,7 @@ import {
   type Resposta,
 } from '@/lib/pedidoDoEdital'
 import { rotuloDaFonte, variadasPorFonte } from '@/lib/fontes'
+import { interpretarPedidoDeNavegacao } from '@/lib/pedidoDeNavegacao'
 import { useEscuta, useFalaDaBela } from '@/hooks/useBela'
 import { Button, Checkbox, cx, FormError, Input, LinkButton, Notice, Prazo, StatusTag } from '@/components/ui'
 
@@ -340,6 +341,16 @@ export default function Bela({ aberta, onFechar }: { aberta: boolean; onFechar: 
         fala.dizer(resposta.fala)
         return
       }
+      const tela = interpretarPedidoDeNavegacao(pedido)
+      if (tela) {
+        fala.dizer(`Abrindo ${tela.rotulo}.`)
+        setEstado({ fase: 'ocioso' })
+        onFechar()
+        // Na mesma tela, recarrega para ela abrir já no ponto pedido (documento do cofre, passo do preparo).
+        if (tela.href.split(/[?#]/)[0] === pathname) window.location.assign(tela.href)
+        else router.push(tela.href)
+        return
+      }
       const interpretado = await api.post<PedidoDaBela>('/api/bela/interpretar', { texto: pedido, contexto: 'busca' })
       if (numero !== ultimaBusca.current) return
       if (interpretado.acao !== 'buscar') {
@@ -404,7 +415,7 @@ export default function Bela({ aberta, onFechar }: { aberta: boolean; onFechar: 
                 <p id="bela-descricao" className="text-sm text-muted">
                   {licitacaoAberta
                     ? 'Pergunte sobre esta licitação (“me resume esse edital”, “que documentos pede?”) ou peça uma busca.'
-                    : 'Peça uma busca de licitações falando ou digitando.'}
+                    : 'Peça uma busca (“licitação de limpeza no DF”) ou uma tela (“me leva para o cofre”, “como tiro a certidão do FGTS?”).'}
                 </p>
               </div>
             </div>
