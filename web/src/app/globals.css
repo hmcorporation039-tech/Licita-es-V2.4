@@ -397,3 +397,28 @@ dialog::backdrop {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* "Bela que acompanha": o que ela está mostrando na tela agora (BelaAcompanha.tsx). */
+@keyframes bela-apontando {
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px var(--color-accent);
+  }
+  50% {
+    box-shadow: 0 0 0 7px color-mix(in srgb, var(--color-accent) 35%, transparent);
+  }
+}
+
+.bela-destaque {
+  position: relative;
+  border-radius: 0.75rem;
+  background: var(--color-accent-soft);
+  animation: bela-apontando 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bela-destaque {
+    animation: none;
+    box-shadow: 0 0 0 3px var(--color-accent);
+  }
+}
