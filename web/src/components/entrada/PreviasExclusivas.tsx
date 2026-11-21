@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { Check, KeyRound, MessageCircle, PencilLine, MapPin, Lock } from 'lucide-react'
 import { atraso, MolduraDeNotebook } from './PreviasDoTour'
 
-// Prévias das seções "Só na Licita Bela" da página de entrada. Tudo ilustrativo, com
+// Prévias da seção de diferenciais da página de entrada. Tudo ilustrativo, com
 // dados fictícios: empresas, valores e cidades inventados.
 
 function Ilustrativo({ children, legenda }: { children: ReactNode; legenda: string }) {
@@ -130,6 +130,40 @@ export function PreviaObrasEGanhadores() {
         </span>
         <p className="az-app-nota">
           <Check size={11} strokeWidth={3} /> E os prestadores mais bem avaliados perto da obra.
+        </p>
+      </div>
+    </Ilustrativo>
+  )
+}
+
+const PASSOS_DA_BELA: Array<{ nome: string; nota: string; estado: 'feito' | 'agora' | 'depois' }> = [
+  { nome: 'O que você vende', nota: 'uniformes escolares', estado: 'feito' },
+  { nome: 'Onde quer vender', nota: 'DF e Goiás', estado: 'feito' },
+  { nome: 'Licitações para você', nota: 'Achei 23 abertas. Vou te mostrar!', estado: 'agora' },
+  { nome: 'Documentos da empresa', nota: 'onde tirar cada certidão', estado: 'depois' },
+]
+
+export function PreviaBelaGuia() {
+  return (
+    <Ilustrativo legenda="A Bela conversa com você e vai junto, tela por tela, até a primeira licitação.">
+      <div className="az-cartao-previa az-hab">
+        <div className="az-hab-topo">
+          <small>A Bela te acompanha · passo 3 de 6</small>
+          <strong>Sua primeira licitação</strong>
+        </div>
+        <ul>
+          {PASSOS_DA_BELA.map((p, i) => (
+            <li key={p.nome} className={`revela az-hab-item az-guia-${p.estado}`} style={atraso(150 + i * 180)}>
+              <span className="az-hab-ponto">{p.estado === 'feito' && <Check size={9} strokeWidth={4} />}</span>
+              <span className="az-hab-nome">
+                {p.nome}
+                <small>{p.nota}</small>
+              </span>
+            </li>
+          ))}
+        </ul>
+        <p className="revela az-hab-resumo" style={atraso(950)}>
+          Quem decide e envia é sempre você. A Bela explica e mostra onde tocar.
         </p>
       </div>
     </Ilustrativo>

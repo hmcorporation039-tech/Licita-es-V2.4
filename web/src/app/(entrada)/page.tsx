@@ -34,7 +34,7 @@ import LinkDeCadastro from '@/components/entrada/LinkDeCadastro'
 import NumeroQueSobe from '@/components/entrada/NumeroQueSobe'
 import OuvirABela from '@/components/entrada/OuvirABela'
 import { atraso, MolduraDeCelular, PreviaAnalisar, PreviaDisputar, PreviaEncontrar, PreviaPreparar } from '@/components/entrada/PreviasDoTour'
-import { PreviaHabilitacao, PreviaObrasEGanhadores, PreviaPortalNaBela } from '@/components/entrada/PreviasExclusivas'
+import { PreviaBelaGuia, PreviaHabilitacao, PreviaObrasEGanhadores, PreviaPortalNaBela } from '@/components/entrada/PreviasExclusivas'
 import Revelar from '@/components/entrada/Revelar'
 import VitrineDeBusca from '@/components/entrada/VitrineDeBusca'
 import { carregarDadosDaEntrada, type EstatisticasPublicas, type ListaChegando, type PlanosResposta } from '@/lib/dadosPublicos'
@@ -44,7 +44,7 @@ export const revalidate = 600
 
 const TITULO = 'Licita Bela: licitações abertas para o que você vende'
 const DESCRICAO =
-  'Busca diária no PNCP, no Sistema S e nos diários oficiais. Aviso do que encerra primeiro, alerta de cláusulas ilegais no edital e proposta no papel timbrado da sua empresa. Teste grátis, sem cartão.'
+  'Licitações abertas para o que você vende, de todo o Brasil. A Bela te guia passo a passo até a primeira licitação, mostra quem ganhou as obras perto de você e monta a proposta no papel timbrado da sua empresa. Teste grátis, sem cartão.'
 const IMAGEM_DE_COMPARTILHAMENTO = { url: '/bela/v2/bela-compartilhar.jpg', width: 1200, height: 670, alt: 'Bela, a assistente da Licita Bela' }
 
 
@@ -133,6 +133,8 @@ const PASSOS: Array<{ nome: string; titulo: string; texto: string; itens: string
 type Celula = 'sim' | 'nao' | 'parcial' | 'manual'
 
 const COMPARATIVO: Array<{ recurso: string; planilha: Celula; comuns: Celula; monitor: Celula }> = [
+  { recurso: 'Assistente que guia você passo a passo até a primeira licitação', planilha: 'nao', comuns: 'nao', monitor: 'sim' },
+  { recurso: 'Obras e quem ganhou perto de você, com contato e mensagem pronta', planilha: 'nao', comuns: 'nao', monitor: 'sim' },
   { recurso: 'Busca diária em várias fontes', planilha: 'manual', comuns: 'sim', monitor: 'sim' },
   { recurso: 'Diários oficiais municipais e Sistema S', planilha: 'nao', comuns: 'parcial', monitor: 'sim' },
   { recurso: 'Resumo do edital por IA', planilha: 'nao', comuns: 'parcial', monitor: 'sim' },
@@ -143,7 +145,7 @@ const COMPARATIVO: Array<{ recurso: string; planilha: Celula; comuns: Celula; mo
   { recurso: 'Assistente por voz e copiloto de lances', planilha: 'nao', comuns: 'nao', monitor: 'sim' },
   { recurso: 'Portal de compras aberto dentro do sistema, com login preenchido', planilha: 'nao', comuns: 'nao', monitor: 'sim' },
   { recurso: 'Habilitação conferida com os seus documentos na data da sessão', planilha: 'manual', comuns: 'nao', monitor: 'sim' },
-  { recurso: 'Quem ganhou obras perto de você, com contato e mensagem pronta', planilha: 'nao', comuns: 'nao', monitor: 'sim' },
+  { recurso: 'Onde tirar cada certidão, com aviso antes de vencer', planilha: 'manual', comuns: 'parcial', monitor: 'sim' },
   { recurso: 'Chat do pregoeiro com aviso no celular', planilha: 'nao', comuns: 'parcial', monitor: 'sim' },
 ]
 
@@ -163,6 +165,22 @@ const PORTAIS_NA_BELA = [
 
 const EXCLUSIVOS: Array<{ nome: string; titulo: string; texto: string; itens: string[]; previa: () => ReactNode; tom: string; portais?: boolean }> = [
   {
+    nome: 'Nunca participou? A Bela te leva',
+    titulo: 'Uma assistente que vai junto com você, tela por tela',
+    texto: 'Logo que você entra, a Bela se oferece para te guiar. Ela pergunta o que a sua empresa vende e onde quer vender, procura as licitações e mostra na tela onde tocar, até os documentos que você precisa ter.',
+    itens: ['Fale ou escreva do seu jeito, sem termo técnico', 'Mostra onde tirar cada certidão e guarda no seu cofre', 'Pare quando quiser e continue de onde parou'],
+    previa: PreviaBelaGuia,
+    tom: 'az-tom-coral',
+  },
+  {
+    nome: 'Obras e ganhadores',
+    titulo: 'Veja quem acabou de ganhar uma obra perto de você',
+    texto: 'Os contratos assinados no PNCP, no seu nicho e na sua região. Ofereça o seu serviço a quem ganhou, com o contato público da empresa e uma mensagem pronta. E encontre os prestadores mais bem avaliados perto da obra.',
+    itens: ['Contratos novos todos os dias, filtrados por nicho e distância', 'Contato do ganhador e mensagem de apresentação', 'Para quem subcontrata, fornece ou presta serviço'],
+    previa: PreviaObrasEGanhadores,
+    tom: 'az-tom-ambar',
+  },
+  {
     nome: 'Disputar sem trocar de aba',
     titulo: 'O portal abre dentro da Licita Bela',
     texto: 'Você disputa no portal oficial, sem sair da Licita Bela, com o painel da Bela ao lado. Ela escreve o seu login salvo e o lance sugerido; o CAPTCHA, o Entrar e o Enviar são seus.',
@@ -179,14 +197,6 @@ const EXCLUSIVOS: Array<{ nome: string; titulo: string; texto: string; itens: st
     previa: PreviaHabilitacao,
     tom: 'az-tom-agua',
   },
-  {
-    nome: 'Obras e ganhadores',
-    titulo: 'Veja quem acabou de ganhar uma obra perto de você',
-    texto: 'Os contratos assinados no PNCP, no seu nicho e na sua região. Ofereça o seu serviço a quem ganhou, com o contato público da empresa e uma mensagem pronta. E encontre os prestadores mais bem avaliados perto da obra.',
-    itens: ['Contratos novos todos os dias, filtrados por nicho e distância', 'Contato do ganhador e mensagem de apresentação', 'Para quem subcontrata, fornece ou presta serviço'],
-    previa: PreviaObrasEGanhadores,
-    tom: 'az-tom-ambar',
-  },
 ]
 
 const CONFIANCA: Array<{ icone: LucideIcon; titulo: string; texto: string }> = [
@@ -197,6 +207,11 @@ const CONFIANCA: Array<{ icone: LucideIcon; titulo: string; texto: string }> = [
 ]
 
 const perguntasFrequentes = (trialDias: number | null): Array<{ pergunta: string; resposta: ReactNode }> => [
+  {
+    pergunta: 'Nunca participei de licitação. Consigo usar?',
+    resposta:
+      'Consegue. Logo que você entra, a Bela se oferece para te guiar: pergunta o que a sua empresa vende e onde, procura as licitações e mostra na tela onde tocar. Em "Preparar a empresa" ela explica onde tirar cada certidão, e o cofre avisa antes de algum documento vencer. Quem decide e envia é sempre você.',
+  },
   {
     pergunta: 'Serve para a minha cidade ou o meu estado?',
     resposta:
@@ -294,7 +309,7 @@ function Navegacao() {
           Como funciona
         </a>
         <a href="#so-na-bela" className="az-nav-link">
-          Só na Bela
+          Diferenciais
         </a>
         <a href="#planos" className="az-nav-link">
           Planos
@@ -407,7 +422,7 @@ function Heroi({
               <span className="az-claro">tudo num lugar só</span>
             </h1>
             <p className="az-heroi-sub">
-              Você diz o que vende. A Licita Bela encontra as licitações abertas {textoDoAlcanceNoHeroi(estatisticas)}, avisa o que encerra primeiro e monta a proposta no papel timbrado da sua empresa.
+              Você diz o que vende. A Licita Bela encontra as licitações abertas {textoDoAlcanceNoHeroi(estatisticas)}, a Bela te guia passo a passo até a primeira proposta e você ainda vê quem ganhou as obras perto de você.
             </p>
             <VitrineDeBusca />
             <Provas estatisticas={estatisticas} trialDias={trialDias} />
@@ -605,10 +620,10 @@ function SoNaBela({ trialDias }: { trialDias: number | null }) {
       <div className="az-conteiner">
         <TituloDeSecao
           id="so-na-bela-titulo"
-          sobretitulo="Só na Licita Bela"
-          fino="O que você não encontra"
-          forte="em outro lugar"
-          apoio="Três recursos para disputar com segurança, não perder licitação por documento e achar trabalho também fora do pregão. As telas são exemplos ilustrativos, com dados fictícios."
+          sobretitulo="Além de achar edital"
+          fino="O que a Licita Bela"
+          forte="faz por você"
+          apoio="Uma assistente que te guia desde o primeiro dia, as obras e quem ganhou perto de você, a habilitação conferida antes da sessão e o portal aberto dentro do sistema. As telas são exemplos ilustrativos, com dados fictícios."
         />
         <ol className="az-passos">
           {EXCLUSIVOS.map((p) => {
