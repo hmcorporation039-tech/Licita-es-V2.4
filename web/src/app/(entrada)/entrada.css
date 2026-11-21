@@ -3510,6 +3510,33 @@
   background: var(--az-perigo);
 }
 
+.az-guia-feito .az-hab-ponto {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  background: var(--az-verde);
+  color: #fff;
+}
+
+.az-guia-agora {
+  background: var(--az-gelo);
+  box-shadow: inset 0 0 0 2px var(--az-azul-claro);
+}
+
+.az-guia-agora .az-hab-ponto {
+  background: var(--az-azul);
+}
+
+.az-guia-depois {
+  opacity: 0.6;
+}
+
+.az-guia-depois .az-hab-ponto {
+  box-shadow: inset 0 0 0 2px var(--az-linha);
+}
+
 .az-hab-nome {
   display: flex;
   flex-direction: column;
