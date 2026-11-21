@@ -24,6 +24,7 @@ import {
   Table,
   TableWrap,
   Td,
+  TextLink,
   Th,
   THead,
   Tr,
@@ -233,6 +234,25 @@ export default function EmpresaPage() {
     load()
     loadDocs()
   }, [user])
+
+  // Vindo de "Preparar a empresa" ou da Bela (/empresa?documento=cndt#cadastrar-documento):
+  // o formulário já abre com o documento escolhido.
+  const [documentoPedido, setDocumentoPedido] = useState<string | null>(null)
+  const [guardouOPedido, setGuardouOPedido] = useState(false)
+  useEffect(() => {
+    const pedido = new URLSearchParams(window.location.search).get('documento')
+    const opcao = DOCUMENT_TYPE_OPTIONS.find((o) => o.value === pedido)
+    if (!opcao) return
+    setDocumentoPedido(opcao.value)
+    setDocTipo(opcao.value)
+    setDocNome(opcao.label)
+  }, [])
+
+  const temEmpresa = Boolean(company)
+  useEffect(() => {
+    if (!temEmpresa || window.location.hash !== '#cadastrar-documento') return
+    window.requestAnimationFrame(() => document.getElementById('cadastrar-documento')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+  }, [temEmpresa])
 
   async function load() {
     setLoading(true)
@@ -460,6 +480,7 @@ export default function EmpresaPage() {
       setDocObservacao('')
       setDocArquivo(null)
       setVersaoDoCampoDeArquivo((v) => v + 1)
+      if (documentoPedido) setGuardouOPedido(true)
       await loadDocs()
     } catch (err) {
       setDocsError(err instanceof ApiRequestError ? err.message : 'Erro ao cadastrar documento')
@@ -753,8 +774,19 @@ export default function EmpresaPage() {
             </>
           )}
 
-          <form onSubmit={criarDocumento} className="flex flex-col gap-4 border-t border-line-soft pt-4">
+          <form id="cadastrar-documento" onSubmit={criarDocumento} className="flex scroll-mt-24 flex-col gap-4 border-t border-line-soft pt-4">
             <h3 className="text-sm font-semibold text-ink">Cadastrar documento</h3>
+            {guardouOPedido ? (
+              <Notice tone="ok" title="Guardado no cofre.">
+                <TextLink href="/preparar">Voltar para Preparar a empresa</TextLink> e ver o próximo documento.
+              </Notice>
+            ) : (
+              documentoPedido && (
+                <Notice tone="info">
+                  Já escolhi o documento para você. Coloque a data de validade que está escrita na certidão, anexe o arquivo e toque em &quot;Cadastrar documento&quot;.
+                </Notice>
+              )
+            )}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="Tipo de documento" className="sm:col-span-2">
                 <Select value={docTipo} onChange={(e) => onSelectDocTipo(e.target.value)}>

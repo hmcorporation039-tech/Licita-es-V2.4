@@ -12,8 +12,9 @@ export const PASSOS_DA_PARTICIPACAO: PassoDaParticipacao[] = [
   {
     titulo: 'Acesso aos portais (fora da Bela, uma vez só)',
     texto:
-      'Conta gov.br nível prata ou ouro do representante, credenciamento da empresa no SICAF para o Compras.gov.br e cadastro nos outros portais em que for disputar. Alguns pedem certificado digital. A Bela não faz esse cadastro pela empresa; o suporte orienta.',
+      'Conta gov.br nível prata ou ouro do representante, credenciamento da empresa no SICAF para o Compras.gov.br e cadastro nos outros portais em que for disputar. Alguns pedem certificado digital. A Bela não faz esse cadastro pela empresa, mas explica cada passo em "Preparar a empresa".',
     foraDoSistema: true,
+    ondeNaBela: { rotulo: 'Preparar a empresa', href: '/preparar' },
   },
   {
     titulo: 'Dados da empresa e documentos',
