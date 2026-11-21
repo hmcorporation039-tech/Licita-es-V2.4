@@ -152,10 +152,14 @@ rodar('Rodada 3 de QA: repetição entre fontes só com sinal firme, prazo impro
     expect(await duplicataDe(qdMossoro.id)).toBe(pncpMossoro.id)
     expect(await duplicataDe(tceAntiga.id)).toBe(tceRecente.id)
 
-    const deNovo = await revisarRepeticoesDoPncp()
+    // A revisão varre o banco inteiro e os outros arquivos de teste rodam em paralelo no
+    // mesmo banco: a contagem geral de "escondidos" pode incluir registros deles. O que
+    // importa aqui é que a segunda passada não esconda de novo nenhum destes.
+    await revisarRepeticoesDoPncp()
     expect(await duplicataDe(qdMossoro.id)).toBe(pncpMossoro.id)
     expect(await duplicataDe(qdParanhos.id)).toBeNull()
-    expect(deNovo.escondidos.QUERIDO_DIARIO ?? 0).toBe(0)
+    expect(await duplicataDe(qdSalvador.id)).toBeNull()
+    expect(await duplicataDe(qdCampinas.id)).toBeNull()
 
     const visiveis = (await listar(`q=${palavra('par')}`)).map((t) => t.id).sort()
     expect(visiveis).toEqual([qdParanhos.id, pncpParanhos.id].sort())
