@@ -14,6 +14,7 @@ import MedidorDeAnalises from '@/components/MedidorDeAnalises'
 import { Carregando, EmptyState, ErrorState, Metric, MetricRow, Notice, PageHeader, Panel, Prazo, Tabs, TextLink, type Aba } from '@/components/ui'
 import SeloObraCompleta from '@/components/SeloObraCompleta'
 import RecadoDaBela from '@/components/RecadoDaBela'
+import PrimeirosPassos from '@/components/PrimeirosPassos'
 
 const numero = (n: number) => n.toLocaleString('pt-BR')
 
@@ -93,6 +94,8 @@ export default function DashboardPage() {
   return (
     <>
       <PageHeader title="Painel" description={`Olá, ${user.name ?? user.email}. Este é o resumo da sua conta.`} />
+
+      <PrimeirosPassos />
 
       <RecadoDaBela />
 

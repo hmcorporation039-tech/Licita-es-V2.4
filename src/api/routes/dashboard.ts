@@ -16,6 +16,7 @@ import { dataDaSessao } from '../../lib/dataDaSessao'
 import { calcularPrazosDaSessao, lerDataTexto, type Dia } from '../../lib/diasUteis'
 import { prazoNoMapa, urgenciaDoEstado, type UrgenciaNoMapa } from '../../lib/prazoNoMapa'
 import { montarResumoDaBela, type SessaoParaOResumo } from '../../lib/resumoDaBela'
+import { montarPrimeirosPassos } from '../../lib/primeirosPassos'
 
 export const dashboardRouter = Router()
 
@@ -131,6 +132,34 @@ dashboardRouter.get(
       documentosVencendoEmBreve,
       proximosPrazos,
     })
+  })
+)
+
+// "Primeiros passos" para quem está no teste (ver lib/primeirosPassos.ts).
+dashboardRouter.get(
+  '/primeiros-passos',
+  asyncHandler(async (req, res) => {
+    const companyId = req.companyId!
+    const [empresa, itensMonitorados, favoritas, planosDeParticipacao, perguntasAoEdital, matches, buscasEmAndamento] = await Promise.all([
+      prisma.company.findUnique({ where: { id: companyId }, select: { planCode: true } }),
+      prisma.monitoredItem.count({ where: { companyId } }),
+      prisma.tenderFavorito.count({ where: { companyId } }),
+      prisma.tenderParticipationPlan.count({ where: { companyId } }),
+      prisma.editalPergunta.count({ where: { companyId } }),
+      prisma.tenderMatch.count({ where: { companyId, tender: whereDaLicitacaoNoFeed() } }),
+      prisma.monitoredItem.count({ where: { companyId, buscaEstado: 'EM_ANDAMENTO' } }),
+    ])
+    res.json(
+      montarPrimeirosPassos({
+        planCode: empresa?.planCode ?? '',
+        itensMonitorados,
+        favoritas,
+        planosDeParticipacao,
+        perguntasAoEdital,
+        matches,
+        buscasEmAndamento,
+      })
+    )
   })
 )
 
